@@ -4,16 +4,10 @@ import type { DB } from '@matrixai/db';
 import type { IdentityId, ProviderId } from 'ids/index';
 import type Discovery from '../../discovery/Discovery';
 import type { IdentityMessage } from 'client/handlers/types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const gestaltsGestaltTrustByIdentity = new UnaryCaller<
-  ClientRPCRequestParams<IdentityMessage>,
-  ClientRPCResponseResult
->();
 
 class GestaltsGestaltTrustByIdentityHandler extends UnaryHandler<
   {
@@ -73,7 +67,4 @@ class GestaltsGestaltTrustByIdentityHandler extends UnaryHandler<
   }
 }
 
-export {
-  gestaltsGestaltTrustByIdentity,
-  GestaltsGestaltTrustByIdentityHandler,
-};
+export { GestaltsGestaltTrustByIdentityHandler };

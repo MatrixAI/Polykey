@@ -4,16 +4,10 @@ import type { IdentityMessage } from './types';
 import type { DB } from '@matrixai/db';
 import type { TokenMessage } from './types';
 import type { IdentityId, ProviderId } from 'ids/index';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const identitiesTokenGet = new UnaryCaller<
-  ClientRPCRequestParams<IdentityMessage>,
-  ClientRPCResponseResult<Partial<TokenMessage>>
->();
 
 class IdentitiesTokenGetHandler extends UnaryHandler<
   {
@@ -55,4 +49,4 @@ class IdentitiesTokenGetHandler extends UnaryHandler<
   }
 }
 
-export { identitiesTokenGet, IdentitiesTokenGetHandler };
+export { IdentitiesTokenGetHandler };

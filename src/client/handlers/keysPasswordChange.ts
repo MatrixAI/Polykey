@@ -1,13 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from 'keys/KeyRing';
 import type { PasswordMessage } from './types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const keysPasswordChange = new UnaryCaller<
-  ClientRPCRequestParams<PasswordMessage>,
-  ClientRPCResponseResult
->();
 
 class KeysPasswordChangeHandler extends UnaryHandler<
   {
@@ -25,4 +19,4 @@ class KeysPasswordChangeHandler extends UnaryHandler<
   }
 }
 
-export { keysPasswordChange, KeysPasswordChangeHandler };
+export { KeysPasswordChangeHandler };

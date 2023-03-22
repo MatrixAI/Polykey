@@ -9,14 +9,12 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  keysPasswordChange,
-  KeysPasswordChangeHandler,
-} from '@/client/handlers/keysPasswordChange';
+import { KeysPasswordChangeHandler } from '@/client/handlers/keysPasswordChange';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
+import { keysPasswordChange } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('keysPasswordChange', () => {

@@ -9,13 +9,7 @@ import { IdInternal } from '@matrixai/id';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const vaultsPermissionGet = new ServerCaller<
-  ClientRPCRequestParams<VaultIdentifierMessage>,
-  ClientRPCResponseResult<VaultPermissionMessage>
->();
 
 class VaultsPermissionGetHandler extends ServerHandler<
   {
@@ -65,4 +59,4 @@ class VaultsPermissionGetHandler extends ServerHandler<
   }
 }
 
-export { vaultsPermissionGet, VaultsPermissionGetHandler };
+export { VaultsPermissionGetHandler };

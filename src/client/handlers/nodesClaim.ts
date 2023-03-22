@@ -7,12 +7,6 @@ import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const nodesClaim = new UnaryCaller<
-  ClientRPCRequestParams<ClaimNodeMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class NodesClaimHandler extends UnaryHandler<
   {
@@ -53,4 +47,4 @@ class NodesClaimHandler extends UnaryHandler<
   }
 }
 
-export { nodesClaim, NodesClaimHandler };
+export { NodesClaimHandler };

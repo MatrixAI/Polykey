@@ -6,12 +6,6 @@ import { never } from '../../utils/index';
 import * as keysUtils from '../../keys/utils/index';
 import * as keysErrors from '../../keys/errors';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const keysEncrypt = new UnaryCaller<
-  ClientRPCRequestParams<DecryptMessage>,
-  ClientRPCResponseResult<DataMessage>
->();
 
 class KeysEncryptHandler extends UnaryHandler<
   {
@@ -40,4 +34,4 @@ class KeysEncryptHandler extends UnaryHandler<
   }
 }
 
-export { keysEncrypt, KeysEncryptHandler };
+export { KeysEncryptHandler };

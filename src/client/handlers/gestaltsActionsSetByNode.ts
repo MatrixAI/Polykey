@@ -4,16 +4,10 @@ import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from 'gestalts/GestaltGraph';
 import type { NodeId } from 'ids/index';
 import type { SetNodeActionMessage } from 'client/handlers/types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const gestaltsActionsSetByNode = new UnaryCaller<
-  ClientRPCRequestParams<SetNodeActionMessage>,
-  ClientRPCResponseResult
->();
 
 class GestaltsActionsSetByNodeHandler extends UnaryHandler<
   {
@@ -48,4 +42,4 @@ class GestaltsActionsSetByNodeHandler extends UnaryHandler<
   }
 }
 
-export { gestaltsActionsSetByNode, GestaltsActionsSetByNodeHandler };
+export { GestaltsActionsSetByNodeHandler };

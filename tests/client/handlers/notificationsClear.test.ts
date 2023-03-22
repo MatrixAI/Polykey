@@ -9,13 +9,11 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  notificationsClear,
-  NotificationsClearHandler,
-} from '@/client/handlers/notificationsClear';
+import { NotificationsClearHandler } from '@/client/handlers/notificationsClear';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
+import { notificationsClear } from '@/client';
 import * as testsUtils from '../../utils';
 import ACL from '../../../src/acl/ACL';
 import Proxy from '../../../src/network/Proxy';

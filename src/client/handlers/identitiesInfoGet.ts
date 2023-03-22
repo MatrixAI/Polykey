@@ -3,18 +3,12 @@ import type { IdentityId, ProviderId } from 'ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { ProviderSearchMessage, IdentityInfoMessage } from './types';
 import type { IdentityData } from '../../identities/types';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
 import * as identitiesErrors from '../../identities/errors';
 import * as identitiesUtils from '../../identities/utils';
-
-const identitiesInfoGet = new ServerCaller<
-  ClientRPCRequestParams<ProviderSearchMessage>,
-  ClientRPCResponseResult<IdentityInfoMessage>
->();
 
 class IdentitiesInfoGetHandler extends ServerHandler<
   {
@@ -99,4 +93,4 @@ class IdentitiesInfoGetHandler extends ServerHandler<
   }
 }
 
-export { identitiesInfoGet, IdentitiesInfoGetHandler };
+export { IdentitiesInfoGetHandler };

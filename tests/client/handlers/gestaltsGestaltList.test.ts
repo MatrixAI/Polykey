@@ -11,16 +11,14 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsGestaltList,
-  GestaltsGestaltListHandler,
-} from '@/client/handlers/gestaltsGestaltList';
+import { GestaltsGestaltListHandler } from '@/client/handlers/gestaltsGestaltList';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as gestaltUtils from '@/gestalts/utils';
+import { gestaltsGestaltList } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('gestaltsGestaltList', () => {

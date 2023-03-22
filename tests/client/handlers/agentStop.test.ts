@@ -9,12 +9,13 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import { agentStop, AgentStopHandler } from '@/client/handlers/agentStop';
+import { AgentStopHandler } from '@/client/handlers/agentStop';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import config from '@/config';
 import PolykeyAgent from '@/PolykeyAgent';
+import { agentStop } from '@/client';
 import * as testsUtils from '../../utils';
 import Status from '../../../src/status/Status';
 
@@ -84,7 +85,7 @@ describe('agentStop', () => {
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
         agentStop: new AgentStopHandler({
-          pkAgent,
+          pkAgentProm: Promise.resolve(pkAgent),
         }),
       },
       logger,

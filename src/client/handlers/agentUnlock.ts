@@ -1,12 +1,6 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { ContainerType } from 'rpc/types';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const agentUnlock = new UnaryCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult
->();
 
 class AgentUnlockHandler extends UnaryHandler<
   ContainerType,
@@ -21,4 +15,4 @@ class AgentUnlockHandler extends UnaryHandler<
   }
 }
 
-export { agentUnlock, AgentUnlockHandler };
+export { AgentUnlockHandler };

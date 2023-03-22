@@ -2,12 +2,6 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type SessionManager from '../../sessions/SessionManager';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const agentLockAll = new UnaryCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult
->();
 
 class AgentLockAllHandler extends UnaryHandler<
   {
@@ -24,4 +18,4 @@ class AgentLockAllHandler extends UnaryHandler<
   }
 }
 
-export { agentLockAll, AgentLockAllHandler };
+export { AgentLockAllHandler };

@@ -16,10 +16,7 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsGestaltGetByNode,
-  GestaltsGestaltGetByNodeHandler,
-} from '@/client/handlers/gestaltsGestaltGetByNode';
+import { GestaltsGestaltGetByNodeHandler } from '@/client/handlers/gestaltsGestaltGetByNode';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -29,6 +26,7 @@ import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/ids/index';
 import Token from '@/tokens/Token';
 import * as gestaltUtils from '@/gestalts/utils';
+import { gestaltsGestaltGetByNode } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('gestaltsGestaltGetByNode', () => {

@@ -23,7 +23,9 @@ class CommandFind extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import('../../client/handlers');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const nodesUtils = await import('../../nodes/utils');
       const networkUtils = await import('../../network/utils');
       const nodesErrors = await import('../../nodes/errors');

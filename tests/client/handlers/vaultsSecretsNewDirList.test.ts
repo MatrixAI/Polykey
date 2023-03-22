@@ -11,19 +11,17 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  vaultsSecretsNewDir,
-  VaultsSecretsNewDirHandler,
-} from '@/client/handlers/vaultsSecretsNewDir';
-import {
-  vaultsSecretsList,
-  VaultsSecretsListHandler,
-} from '@/client/handlers/vaultsSecretsList';
+import { VaultsSecretsNewDirHandler } from '@/client/handlers/vaultsSecretsNewDir';
+import { VaultsSecretsListHandler } from '@/client/handlers/vaultsSecretsList';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsUtils from '@/vaults/utils';
+import {
+  vaultsSecretsList,
+  vaultsSecretsNewDir,
+} from '@/client/handlers/clientManifest';
 import * as testsUtils from '../../utils';
 
 describe('vaultsSecretsNewDirList', () => {

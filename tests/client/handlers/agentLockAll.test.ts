@@ -8,14 +8,12 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  agentLockAll,
-  AgentLockAllHandler,
-} from '@/client/handlers/agentLockAll';
+import { AgentLockAllHandler } from '@/client/handlers/agentLockAll';
 import RPCClient from '@/rpc/RPCClient';
 import { SessionManager } from '@/sessions';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
+import { agentLockAll } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('agentLockAll', () => {

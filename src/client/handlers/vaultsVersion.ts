@@ -4,13 +4,7 @@ import type { VaultsLatestVersionMessage, VaultsVersionMessage } from './types';
 import type { DB } from '@matrixai/db';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsVersion = new UnaryCaller<
-  ClientRPCRequestParams<VaultsVersionMessage>,
-  ClientRPCResponseResult<VaultsLatestVersionMessage>
->();
 
 class VaultsVersionHandler extends UnaryHandler<
   {
@@ -54,4 +48,4 @@ class VaultsVersionHandler extends UnaryHandler<
   }
 }
 
-export { vaultsVersion, VaultsVersionHandler };
+export { VaultsVersionHandler };

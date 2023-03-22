@@ -5,15 +5,13 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  keysKeyPairReset,
-  KeysKeyPairResethandler,
-} from '@/client/handlers/keysKeyPairReset';
+import { KeysKeyPairResethandler } from '@/client/handlers/keysKeyPairReset';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import PolykeyAgent from '@/PolykeyAgent';
 import { NodeManager } from '@/nodes';
+import { keysKeyPairReset } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('keysKeyPairReset', () => {

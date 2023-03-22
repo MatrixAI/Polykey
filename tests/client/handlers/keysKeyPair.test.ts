@@ -9,11 +9,12 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import { keysKeyPair, KeysKeyPairHandler } from '@/client/handlers/keysKeyPair';
+import { KeysKeyPairHandler } from '@/client/handlers/keysKeyPair';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
+import { keysKeyPair } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('keysKeyPair', () => {

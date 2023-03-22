@@ -2,18 +2,10 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { ProviderId } from 'ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage } from 'client/handlers/types';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const identitiesAuthenticatedGet = new ServerCaller<
-  ClientRPCRequestParams<{
-    providerId?: string;
-  }>,
-  ClientRPCResponseResult<IdentityMessage>
->();
 
 class IdentitiesAuthenticatedGetHandler extends ServerHandler<
   {
@@ -64,4 +56,4 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
   }
 }
 
-export { identitiesAuthenticatedGet, IdentitiesAuthenticatedGetHandler };
+export { IdentitiesAuthenticatedGetHandler };

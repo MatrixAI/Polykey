@@ -6,12 +6,6 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import { ServerHandler } from '../../rpc/handlers';
-import { ServerCaller } from '../../rpc/callers';
-
-const vaultsSecretsList = new ServerCaller<
-  ClientRPCRequestParams<VaultIdentifierMessage>,
-  ClientRPCResponseResult<SecretNameMessage>
->();
 
 class VaultsSecretsListHandler extends ServerHandler<
   {
@@ -51,4 +45,4 @@ class VaultsSecretsListHandler extends ServerHandler<
   }
 }
 
-export { vaultsSecretsList, VaultsSecretsListHandler };
+export { VaultsSecretsListHandler };

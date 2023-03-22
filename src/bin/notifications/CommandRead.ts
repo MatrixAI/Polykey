@@ -33,7 +33,9 @@ class CommandRead extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import('../../client/handlers');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const notificationsUtils = await import('../../notifications/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,

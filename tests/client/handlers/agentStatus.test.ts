@@ -5,12 +5,13 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import { agentStatus, AgentStatusHandler } from '@/client/handlers/agentStatus';
+import { AgentStatusHandler } from '@/client/handlers/agentStatus';
 import RPCClient from '@/rpc/RPCClient';
 import * as nodesUtils from '@/nodes/utils';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import PolykeyAgent from '@/PolykeyAgent';
+import { agentStatus } from '@/client/handlers/clientManifest';
 import * as testsUtils from '../../utils';
 
 describe('agentStatus', () => {
@@ -51,7 +52,7 @@ describe('agentStatus', () => {
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
         agentStatus: new AgentStatusHandler({
-          pkAgent,
+          pkAgentProm: Promise.resolve(pkAgent),
         }),
       },
       logger: logger.getChild('RPCServer'),

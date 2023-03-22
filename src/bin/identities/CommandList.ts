@@ -1,6 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
 import type WebSocketClient from '../../websockets/WebSocketClient';
-import { clientManifest } from '../../client/handlers';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -18,6 +17,9 @@ class CommandList extends CommandPolykey {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
       );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,

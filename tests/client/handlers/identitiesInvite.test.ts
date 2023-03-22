@@ -13,10 +13,7 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  identitiesInvite,
-  IdentitiesInviteHandler,
-} from '@/client/handlers/identitiesInvite';
+import { IdentitiesInviteHandler } from '@/client/handlers/identitiesInvite';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -24,6 +21,7 @@ import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/ids/index';
 import * as claimsUtils from '@/claims/utils';
+import { identitiesInvite } from '@/client';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import Token from '../../../src/tokens/Token';

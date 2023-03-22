@@ -6,13 +6,7 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const nodesFind = new UnaryCaller<
-  ClientRPCRequestParams<NodeIdMessage>,
-  ClientRPCResponseResult<AddressMessage>
->();
 
 class NodesFindHandler extends UnaryHandler<
   {
@@ -51,4 +45,4 @@ class NodesFindHandler extends UnaryHandler<
   }
 }
 
-export { nodesFind, NodesFindHandler };
+export { NodesFindHandler };

@@ -13,11 +13,12 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import { vaultsLog, VaultsLogHandler } from '@/client/handlers/vaultsLog';
+import { VaultsLogHandler } from '@/client/handlers/vaultsLog';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import VaultManager from '@/vaults/VaultManager';
+import { vaultsLog } from '@/client/handlers/clientManifest';
 import * as testsUtils from '../../utils';
 
 describe('vaultsLog', () => {

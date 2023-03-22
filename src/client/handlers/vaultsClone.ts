@@ -6,13 +6,7 @@ import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsClone = new UnaryCaller<
-  ClientRPCRequestParams<CloneMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsCloneHandler extends UnaryHandler<
   {
@@ -51,4 +45,4 @@ class VaultsCloneHandler extends UnaryHandler<
   }
 }
 
-export { vaultsClone, VaultsCloneHandler };
+export { VaultsCloneHandler };

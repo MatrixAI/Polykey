@@ -9,16 +9,14 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsDiscoveryByNode,
-  GestaltsDiscoveryByNodeHandler,
-} from '@/client/handlers/gestaltsDiscoveryByNode';
+import { GestaltsDiscoveryByNodeHandler } from '@/client/handlers/gestaltsDiscoveryByNode';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as nodesUtils from '@/nodes/utils';
+import { gestaltsDiscoveryByNode } from '@/client';
 import * as testsUtils from '../../utils';
 import Discovery from '../../../src/discovery/Discovery';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';

@@ -6,12 +6,6 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const vaultsSecretsRename = new UnaryCaller<
-  ClientRPCRequestParams<SecretRenameMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsSecretsRenameHandler extends UnaryHandler<
   {
@@ -53,4 +47,4 @@ class VaultsSecretsRenameHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsRename, VaultsSecretsRenameHandler };
+export { VaultsSecretsRenameHandler };

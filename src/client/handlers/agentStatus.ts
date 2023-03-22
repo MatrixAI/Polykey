@@ -4,12 +4,6 @@ import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const agentStatus = new UnaryCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<StatusResultMessage>
->();
 
 class AgentStatusHandler extends UnaryHandler<
   {
@@ -38,4 +32,4 @@ class AgentStatusHandler extends UnaryHandler<
   }
 }
 
-export { AgentStatusHandler, agentStatus };
+export { AgentStatusHandler };

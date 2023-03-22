@@ -9,7 +9,7 @@ import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import { agentUnlock, AgentUnlockHandler } from '@/client/handlers/agentUnlock';
+import { AgentUnlockHandler } from '@/client/handlers/agentUnlock';
 import RPCClient from '@/rpc/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as clientUtils from '@/client/utils';
@@ -17,6 +17,7 @@ import * as authMiddleware from '@/client/utils/authenticationMiddleware';
 import * as middlewareUtils from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
+import { agentUnlock } from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('agentUnlock', () => {

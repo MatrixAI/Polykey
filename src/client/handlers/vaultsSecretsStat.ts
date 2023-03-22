@@ -5,13 +5,7 @@ import type { DB } from '@matrixai/db';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsSecretsStat = new UnaryCaller<
-  ClientRPCRequestParams<SecretIdentifierMessage>,
-  ClientRPCResponseResult<SecretStatMessage>
->();
 
 class VaultsSecretsStatHandler extends UnaryHandler<
   {
@@ -65,4 +59,4 @@ class VaultsSecretsStatHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsStat, VaultsSecretsStatHandler };
+export { VaultsSecretsStatHandler };

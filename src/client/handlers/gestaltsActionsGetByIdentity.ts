@@ -4,18 +4,10 @@ import type { DB } from '@matrixai/db';
 import type { IdentityId, ProviderId } from 'ids/index';
 import type { GestaltAction } from 'gestalts/types';
 import type { IdentityMessage } from './types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const gestaltsActionsGetByIdentity = new UnaryCaller<
-  ClientRPCRequestParams<IdentityMessage>,
-  ClientRPCResponseResult<{
-    actionsList: Array<GestaltAction>;
-  }>
->();
 
 class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
   {
@@ -62,4 +54,4 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
   }
 }
 
-export { gestaltsActionsGetByIdentity, GestaltsActionsGetByIdentityHandler };
+export { GestaltsActionsGetByIdentityHandler };

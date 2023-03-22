@@ -13,15 +13,13 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  identitiesInfoConnectedGet,
-  IdentitiesInfoConnectedGetHandler,
-} from '@/client/handlers/identitiesInfoConnectedGet';
+import { IdentitiesInfoConnectedGetHandler } from '@/client/handlers/identitiesInfoConnectedGet';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as identitiesErrors from '@/identities/errors';
+import { identitiesInfoConnectedGet } from '@/client';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testsUtils from '../../utils';

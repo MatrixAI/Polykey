@@ -10,15 +10,13 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  identitiesAuthenticate,
-  IdentitiesAuthenticateHandler,
-} from '@/client/handlers/identitiesAuthenticate';
+import { IdentitiesAuthenticateHandler } from '@/client/handlers/identitiesAuthenticate';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as validationErrors from '@/validation/errors';
+import { identitiesAuthenticate } from '@/client';
 import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';

@@ -1,14 +1,6 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const identitiesProvidersList = new UnaryCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<{
-    providerIds: Array<string>;
-  }>
->();
 
 class IdentitiesProvidersListHandler extends UnaryHandler<
   {
@@ -32,4 +24,4 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
   }
 }
 
-export { identitiesProvidersList, IdentitiesProvidersListHandler };
+export { IdentitiesProvidersListHandler };

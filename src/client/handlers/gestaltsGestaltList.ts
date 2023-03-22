@@ -3,13 +3,7 @@ import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltMessage } from 'client/handlers/types';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const gestaltsGestaltList = new ServerCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<GestaltMessage>
->();
 
 class GestaltsGestaltListHandler extends ServerHandler<
   {
@@ -58,4 +52,4 @@ class GestaltsGestaltListHandler extends ServerHandler<
   }
 }
 
-export { gestaltsGestaltList, GestaltsGestaltListHandler };
+export { GestaltsGestaltListHandler };

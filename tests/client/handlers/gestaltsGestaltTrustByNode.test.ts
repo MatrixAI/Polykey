@@ -12,10 +12,7 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsGestaltTrustByNode,
-  GestaltsGestaltTrustByNodeHandler,
-} from '@/client/handlers/gestaltsGestaltTrustByNode';
+import { GestaltsGestaltTrustByNodeHandler } from '@/client/handlers/gestaltsGestaltTrustByNode';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -24,6 +21,7 @@ import ACL from '@/acl/ACL';
 import { encodeProviderIdentityId } from '@/ids/index';
 import * as nodesUtils from '@/nodes/utils';
 import PolykeyAgent from '@/PolykeyAgent';
+import { gestaltsGestaltTrustByNode } from '@/client';
 import * as testsUtils from '../../utils';
 import Discovery from '../../../src/discovery/Discovery';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';

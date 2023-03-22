@@ -1,13 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from 'keys/KeyRing';
 import type { DataMessage, SignatureMessage } from './types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const keysSign = new UnaryCaller<
-  ClientRPCRequestParams<DataMessage>,
-  ClientRPCResponseResult<SignatureMessage>
->();
 
 class KeysSignHandler extends UnaryHandler<
   {
@@ -27,4 +21,4 @@ class KeysSignHandler extends UnaryHandler<
   }
 }
 
-export { keysSign, KeysSignHandler };
+export { KeysSignHandler };

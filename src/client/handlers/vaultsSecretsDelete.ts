@@ -6,12 +6,6 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const vaultsSecretsDelete = new UnaryCaller<
-  ClientRPCRequestParams<SecretIdentifierMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsSecretsDeleteHandler extends UnaryHandler<
   {
@@ -49,4 +43,4 @@ class VaultsSecretsDeleteHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsDelete, VaultsSecretsDeleteHandler };
+export { VaultsSecretsDeleteHandler };

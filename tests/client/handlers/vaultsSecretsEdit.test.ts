@@ -11,15 +11,13 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  vaultsSecretsEdit,
-  VaultsSecretsEditHandler,
-} from '@/client/handlers/vaultsSecretsEdit';
+import { VaultsSecretsEditHandler } from '@/client/handlers/vaultsSecretsEdit';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsUtils from '@/vaults/utils';
+import { vaultsSecretsEdit } from '@/client/handlers/clientManifest';
 import * as testsUtils from '../../utils';
 
 describe('vaultsSecretsEdit', () => {

@@ -3,12 +3,6 @@ import type { DB } from '@matrixai/db';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { NotificationMessage, NotificationReadMessage } from './types';
 import { ServerHandler } from '../../rpc/handlers';
-import { ServerCaller } from '../../rpc/callers';
-
-const notificationsRead = new ServerCaller<
-  ClientRPCRequestParams<NotificationReadMessage>,
-  ClientRPCResponseResult<NotificationMessage>
->();
 
 class NotificationsReadHandler extends ServerHandler<
   {
@@ -39,4 +33,4 @@ class NotificationsReadHandler extends ServerHandler<
   }
 }
 
-export { notificationsRead, NotificationsReadHandler };
+export { NotificationsReadHandler };

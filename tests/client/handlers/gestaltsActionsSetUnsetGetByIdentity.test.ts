@@ -16,18 +16,9 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsActionsGetByIdentity,
-  GestaltsActionsGetByIdentityHandler,
-} from '@/client/handlers/gestaltsActionsGetByIdentity';
-import {
-  gestaltsActionsSetByIdentity,
-  GestaltsActionsSetByIdentityHandler,
-} from '@/client/handlers/gestaltsActionsSetByIdentity';
-import {
-  gestaltsActionsUnsetByIdentity,
-  GestaltsActionsUnsetByIdentityHandler,
-} from '@/client/handlers/gestaltsActionsUnsetByIdentity';
+import { GestaltsActionsGetByIdentityHandler } from '@/client/handlers/gestaltsActionsGetByIdentity';
+import { GestaltsActionsSetByIdentityHandler } from '@/client/handlers/gestaltsActionsSetByIdentity';
+import { GestaltsActionsUnsetByIdentityHandler } from '@/client/handlers/gestaltsActionsUnsetByIdentity';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -36,6 +27,11 @@ import ACL from '@/acl/ACL';
 import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/ids/index';
 import Token from '@/tokens/Token';
+import {
+  gestaltsActionsGetByIdentity,
+  gestaltsActionsSetByIdentity,
+  gestaltsActionsUnsetByIdentity,
+} from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('gestaltsActionsByIdentity', () => {

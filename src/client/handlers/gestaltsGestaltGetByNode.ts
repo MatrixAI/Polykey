@@ -4,16 +4,10 @@ import type { DB } from '@matrixai/db';
 import type { NodeId } from 'ids/index';
 import type { GestaltMessage, NodeIdMessage } from 'client/handlers/types';
 import * as nodesUtils from '../../nodes/utils';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const gestaltsGestaltGetByNode = new UnaryCaller<
-  ClientRPCRequestParams<NodeIdMessage>,
-  ClientRPCResponseResult<GestaltMessage>
->();
 
 class GestaltsGestaltGetByNodeHandler extends UnaryHandler<
   {
@@ -72,4 +66,4 @@ class GestaltsGestaltGetByNodeHandler extends UnaryHandler<
   }
 }
 
-export { gestaltsGestaltGetByNode, GestaltsGestaltGetByNodeHandler };
+export { GestaltsGestaltGetByNodeHandler };

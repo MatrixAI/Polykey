@@ -11,13 +11,7 @@ import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 import { validateSync } from '../../validation';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsPermissionUnset = new UnaryCaller<
-  ClientRPCRequestParams<PermissionSetMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsPermissionUnsetHandler extends UnaryHandler<
   {
@@ -91,4 +85,4 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
   }
 }
 
-export { vaultsPermissionUnset, VaultsPermissionUnsetHandler };
+export { VaultsPermissionUnsetHandler };

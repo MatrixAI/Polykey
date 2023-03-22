@@ -6,13 +6,7 @@ import type { FileSystem } from 'types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsSecretsNewDir = new UnaryCaller<
-  ClientRPCRequestParams<SecretDirMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsSecretsNewDirHandler extends UnaryHandler<
   {
@@ -51,4 +45,4 @@ class VaultsSecretsNewDirHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsNewDir, VaultsSecretsNewDirHandler };
+export { VaultsSecretsNewDirHandler };

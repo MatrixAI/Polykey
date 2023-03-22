@@ -12,14 +12,12 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  notificationsRead,
-  NotificationsReadHandler,
-} from '@/client/handlers/notificationsRead';
+import { NotificationsReadHandler } from '@/client/handlers/notificationsRead';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
+import { notificationsRead } from '@/client';
 import * as testsUtils from '../../utils';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';

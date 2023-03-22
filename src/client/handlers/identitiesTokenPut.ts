@@ -3,16 +3,10 @@ import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage, TokenMessage } from './types';
 import type { DB } from '@matrixai/db';
 import type { IdentityId, ProviderId } from 'ids/index';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const identitiesTokenPut = new UnaryCaller<
-  ClientRPCRequestParams<IdentityMessage & TokenMessage>,
-  ClientRPCResponseResult
->();
 
 class IdentitiesTokenPutHandler extends UnaryHandler<
   {
@@ -52,4 +46,4 @@ class IdentitiesTokenPutHandler extends UnaryHandler<
   }
 }
 
-export { identitiesTokenPut, IdentitiesTokenPutHandler };
+export { IdentitiesTokenPutHandler };

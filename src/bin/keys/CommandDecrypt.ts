@@ -20,7 +20,9 @@ class CommandDecrypt extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (filePath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const { clientManifest } = await import('../../client/handlers');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );

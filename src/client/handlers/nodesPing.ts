@@ -5,13 +5,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const nodesPing = new UnaryCaller<
-  ClientRPCRequestParams<NodeIdMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class NodesPingHandler extends UnaryHandler<
   {
@@ -46,4 +40,4 @@ class NodesPingHandler extends UnaryHandler<
   }
 }
 
-export { nodesPing, NodesPingHandler };
+export { NodesPingHandler };

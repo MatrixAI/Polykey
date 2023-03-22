@@ -1,13 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { CertMessage } from './types';
 import type CertManager from 'keys/CertManager';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const keysCertsChainGet = new ServerCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<CertMessage>
->();
 
 class KeysCertsChainGetHandler extends ServerHandler<
   {
@@ -26,4 +20,4 @@ class KeysCertsChainGetHandler extends ServerHandler<
   }
 }
 
-export { keysCertsChainGet, KeysCertsChainGetHandler };
+export { KeysCertsChainGetHandler };

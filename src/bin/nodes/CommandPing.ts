@@ -22,7 +22,9 @@ class CommandPing extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import('../../client/handlers');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,

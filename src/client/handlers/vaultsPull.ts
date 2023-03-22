@@ -9,13 +9,7 @@ import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsPull = new UnaryCaller<
-  ClientRPCRequestParams<VaultsPullMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsPullHandler extends UnaryHandler<
   {
@@ -73,4 +67,4 @@ class VaultsPullHandler extends UnaryHandler<
   }
 }
 
-export { vaultsPull, VaultsPullHandler };
+export { VaultsPullHandler };

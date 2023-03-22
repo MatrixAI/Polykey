@@ -11,22 +11,18 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  identitiesTokenPut,
-  IdentitiesTokenPutHandler,
-} from '@/client/handlers/identitiesTokenPut';
-import {
-  identitiesTokenDelete,
-  IdentitiesTokenDeleteHandler,
-} from '@/client/handlers/identitiesTokenDelete';
-import {
-  identitiesTokenGet,
-  IdentitiesTokenGetHandler,
-} from '@/client/handlers/identitiesTokenGet';
+import { IdentitiesTokenPutHandler } from '@/client/handlers/identitiesTokenPut';
+import { IdentitiesTokenDeleteHandler } from '@/client/handlers/identitiesTokenDelete';
+import { IdentitiesTokenGetHandler } from '@/client/handlers/identitiesTokenGet';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
+import {
+  identitiesTokenDelete,
+  identitiesTokenGet,
+  identitiesTokenPut,
+} from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('identitiesTokenPutDeleteGet', () => {

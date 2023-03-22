@@ -11,18 +11,9 @@ import GestaltGraph from '@/gestalts/GestaltGraph';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  vaultsPermissionSet,
-  VaultsPermissionSetHandler,
-} from '@/client/handlers/vaultsPermissionSet';
-import {
-  vaultsPermissionGet,
-  VaultsPermissionGetHandler,
-} from '@/client/handlers/vaultsPermissionGet';
-import {
-  vaultsPermissionUnset,
-  VaultsPermissionUnsetHandler,
-} from '@/client/handlers/vaultsPermissionUnset';
+import { VaultsPermissionSetHandler } from '@/client/handlers/vaultsPermissionSet';
+import { VaultsPermissionGetHandler } from '@/client/handlers/vaultsPermissionGet';
+import { VaultsPermissionUnsetHandler } from '@/client/handlers/vaultsPermissionUnset';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -30,6 +21,11 @@ import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
 import VaultManager from '@/vaults/VaultManager';
 import * as nodesUtils from '@/nodes/utils';
+import {
+  vaultsPermissionGet,
+  vaultsPermissionSet,
+  vaultsPermissionUnset,
+} from '@/client/handlers/clientManifest';
 import * as testsUtils from '../../utils';
 import * as testUtils from '../../utils/index';
 

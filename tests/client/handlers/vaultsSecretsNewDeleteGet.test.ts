@@ -11,24 +11,20 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  vaultsSecretsNew,
-  VaultsSecretsNewHandler,
-} from '@/client/handlers/vaultsSecretsNew';
-import {
-  vaultsSecretsDelete,
-  VaultsSecretsDeleteHandler,
-} from '@/client/handlers/vaultsSecretsDelete';
-import {
-  vaultsSecretsGet,
-  VaultsSecretsGetHandler,
-} from '@/client/handlers/vaultsSecretsGet';
+import { VaultsSecretsNewHandler } from '@/client/handlers/vaultsSecretsNew';
+import { VaultsSecretsDeleteHandler } from '@/client/handlers/vaultsSecretsDelete';
+import { VaultsSecretsGetHandler } from '@/client/handlers/vaultsSecretsGet';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
+import {
+  vaultsSecretsDelete,
+  vaultsSecretsGet,
+  vaultsSecretsNew,
+} from '@/client/handlers/clientManifest';
 import * as testUtils from '../../utils/index';
 import * as testsUtils from '../../utils';
 

@@ -1,13 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { CertMessage } from './types';
 import type CertManager from 'keys/CertManager';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const keysCertsGet = new UnaryCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<CertMessage>
->();
 
 class KeysCertsGetHandler extends UnaryHandler<
   {
@@ -25,4 +19,4 @@ class KeysCertsGetHandler extends UnaryHandler<
   }
 }
 
-export { keysCertsGet, KeysCertsGetHandler };
+export { KeysCertsGetHandler };

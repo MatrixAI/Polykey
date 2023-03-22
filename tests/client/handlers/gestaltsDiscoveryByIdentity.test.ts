@@ -11,15 +11,13 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsDiscoveryByIdentity,
-  GestaltsDiscoveryByIdentityHandler,
-} from '@/client/handlers/gestaltsDiscoveryByIdentity';
+import { GestaltsDiscoveryByIdentityHandler } from '@/client/handlers/gestaltsDiscoveryByIdentity';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
+import { gestaltsDiscoveryByIdentity } from '@/client';
 import * as testsUtils from '../../utils';
 import Discovery from '../../../src/discovery/Discovery';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';

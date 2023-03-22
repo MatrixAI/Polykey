@@ -3,12 +3,6 @@ import type KeyRing from '../../keys/KeyRing';
 import type { DataMessage } from './types';
 import { never } from '../../utils/index';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const keysDecrypt = new UnaryCaller<
-  ClientRPCRequestParams<DataMessage>,
-  ClientRPCResponseResult<DataMessage>
->();
 
 class KeysDecryptHandler extends UnaryHandler<
   {
@@ -29,4 +23,4 @@ class KeysDecryptHandler extends UnaryHandler<
   }
 }
 
-export { keysDecrypt, KeysDecryptHandler };
+export { KeysDecryptHandler };

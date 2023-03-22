@@ -4,16 +4,10 @@ import type { IdentityId, ProviderId } from 'ids/index';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from 'gestalts/GestaltGraph';
 import type { SetIdentityActionMessage } from 'client/handlers/types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const gestaltsActionsSetByIdentity = new UnaryCaller<
-  ClientRPCRequestParams<SetIdentityActionMessage>,
-  ClientRPCResponseResult
->();
 
 class GestaltsActionsSetByIdentityHandler extends UnaryHandler<
   {
@@ -61,4 +55,4 @@ class GestaltsActionsSetByIdentityHandler extends UnaryHandler<
   }
 }
 
-export { gestaltsActionsSetByIdentity, GestaltsActionsSetByIdentityHandler };
+export { GestaltsActionsSetByIdentityHandler };

@@ -21,7 +21,9 @@ class CommandLockAll extends CommandPolykey {
         '../../websockets/WebSocketClient'
       );
       const { default: Session } = await import('../../sessions/Session');
-      const { clientManifest } = await import('../../client/handlers');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,

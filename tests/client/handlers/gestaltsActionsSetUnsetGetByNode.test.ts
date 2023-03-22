@@ -9,24 +9,20 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
-import {
-  gestaltsActionsGetByNode,
-  GestaltsActionsGetByNodeHandler,
-} from '@/client/handlers/gestaltsActionsGetByNode';
-import {
-  gestaltsActionsSetByNode,
-  GestaltsActionsSetByNodeHandler,
-} from '@/client/handlers/gestaltsActionsSetByNode';
-import {
-  gestaltsActionsUnsetByNode,
-  GestaltsActionsUnsetByNodeHandler,
-} from '@/client/handlers/gestaltsActionsUnsetByNode';
+import { GestaltsActionsGetByNodeHandler } from '@/client/handlers/gestaltsActionsGetByNode';
+import { GestaltsActionsSetByNodeHandler } from '@/client/handlers/gestaltsActionsSetByNode';
+import { GestaltsActionsUnsetByNodeHandler } from '@/client/handlers/gestaltsActionsUnsetByNode';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as nodesUtils from '@/nodes/utils';
+import {
+  gestaltsActionsGetByNode,
+  gestaltsActionsSetByNode,
+  gestaltsActionsUnsetByNode,
+} from '@/client';
 import * as testsUtils from '../../utils';
 
 describe('gestaltsActionsByNode', () => {

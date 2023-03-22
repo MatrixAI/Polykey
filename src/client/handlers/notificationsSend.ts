@@ -6,13 +6,7 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const notificationsSend = new UnaryCaller<
-  ClientRPCRequestParams<NotificationSendMessage>,
-  ClientRPCResponseResult
->();
 
 class NotificationsSendHandler extends UnaryHandler<
   {
@@ -50,4 +44,4 @@ class NotificationsSendHandler extends UnaryHandler<
   }
 }
 
-export { notificationsSend, NotificationsSendHandler };
+export { NotificationsSendHandler };

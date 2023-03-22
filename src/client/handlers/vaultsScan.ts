@@ -5,13 +5,7 @@ import type { NodeIdMessage, VaultsScanMessage } from './types';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const vaultsScan = new ServerCaller<
-  ClientRPCRequestParams<NodeIdMessage>,
-  ClientRPCResponseResult<VaultsScanMessage>
->();
 
 class VaultsScanHandler extends ServerHandler<
   {
@@ -53,4 +47,4 @@ class VaultsScanHandler extends ServerHandler<
   }
 }
 
-export { vaultsScan, VaultsScanHandler };
+export { VaultsScanHandler };

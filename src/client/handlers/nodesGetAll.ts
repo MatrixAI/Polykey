@@ -5,13 +5,7 @@ import type NodeGraph from '../../nodes/NodeGraph';
 import type { NodesGetMessage } from '../handlers/types';
 import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const nodesGetAll = new ServerCaller<
-  ClientRPCRequestParams,
-  ClientRPCResponseResult<NodesGetMessage>
->();
 
 class NodesGetAllHandler extends ServerHandler<
   {
@@ -50,4 +44,4 @@ class NodesGetAllHandler extends ServerHandler<
   }
 }
 
-export { nodesGetAll, NodesGetAllHandler };
+export { NodesGetAllHandler };

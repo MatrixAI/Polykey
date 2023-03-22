@@ -5,13 +5,7 @@ import type { LogEntryMessage, VaultsLogMessage } from './types';
 import type { VaultName } from '../../vaults/types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { ServerCaller } from '../../rpc/callers';
 import { ServerHandler } from '../../rpc/handlers';
-
-const vaultsLog = new ServerCaller<
-  ClientRPCRequestParams<VaultsLogMessage>,
-  ClientRPCResponseResult<LogEntryMessage>
->();
 
 class VaultsLogHandler extends ServerHandler<
   {
@@ -55,4 +49,4 @@ class VaultsLogHandler extends ServerHandler<
   }
 }
 
-export { vaultsLog, VaultsLogHandler };
+export { VaultsLogHandler };

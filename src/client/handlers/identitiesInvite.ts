@@ -4,16 +4,10 @@ import type NotificationsManager from 'notifications/NotificationsManager';
 import type Logger from '@matrixai/logger';
 import type ACL from 'acl/ACL';
 import type { ClaimNodeMessage } from './types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
-
-const identitiesInvite = new UnaryCaller<
-  ClientRPCRequestParams<ClaimNodeMessage>,
-  ClientRPCResponseResult
->();
 
 class IdentitiesInviteHandler extends UnaryHandler<
   {
@@ -57,4 +51,4 @@ class IdentitiesInviteHandler extends UnaryHandler<
   }
 }
 
-export { identitiesInvite, IdentitiesInviteHandler };
+export { IdentitiesInviteHandler };

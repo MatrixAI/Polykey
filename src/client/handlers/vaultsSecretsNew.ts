@@ -5,13 +5,7 @@ import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const vaultsSecretsNew = new UnaryCaller<
-  ClientRPCRequestParams<SecretContentMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsSecretsNewHandler extends UnaryHandler<
   {
@@ -50,4 +44,4 @@ class VaultsSecretsNewHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsNew, VaultsSecretsNewHandler };
+export { VaultsSecretsNewHandler };

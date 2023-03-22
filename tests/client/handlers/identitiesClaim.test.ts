@@ -11,10 +11,7 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import {
-  identitiesClaim,
-  IdentitiesClaimHandler,
-} from '@/client/handlers/identitiesClaim';
+import { IdentitiesClaimHandler } from '@/client/handlers/identitiesClaim';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -23,6 +20,7 @@ import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/ids/index';
 import * as claimsUtils from '@/claims/utils';
 import * as validationErrors from '@/validation/errors';
+import { identitiesClaim } from '@/client';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import Token from '../../../src/tokens/Token';

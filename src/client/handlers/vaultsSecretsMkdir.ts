@@ -6,12 +6,6 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const vaultsSecretsMkdir = new UnaryCaller<
-  ClientRPCRequestParams<SecretMkdirMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class VaultsSecretsMkdirHandler extends UnaryHandler<
   {
@@ -51,4 +45,4 @@ class VaultsSecretsMkdirHandler extends UnaryHandler<
   }
 }
 
-export { vaultsSecretsMkdir, VaultsSecretsMkdirHandler };
+export { VaultsSecretsMkdirHandler };

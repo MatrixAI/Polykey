@@ -1,13 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type CertManager from 'keys/CertManager';
 import type { PasswordMessage } from './types';
-import { UnaryCaller } from '../../rpc/callers';
 import { UnaryHandler } from '../../rpc/handlers';
-
-const keysKeyPairReset = new UnaryCaller<
-  ClientRPCRequestParams<PasswordMessage>,
-  ClientRPCResponseResult
->();
 
 class KeysKeyPairResethandler extends UnaryHandler<
   {
@@ -27,4 +21,4 @@ class KeysKeyPairResethandler extends UnaryHandler<
   }
 }
 
-export { keysKeyPairReset, KeysKeyPairResethandler };
+export { KeysKeyPairResethandler };

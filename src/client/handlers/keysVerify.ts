@@ -6,12 +6,6 @@ import * as keysUtils from '../../keys/utils/index';
 import { never } from '../../utils/index';
 import * as keysErrors from '../../keys/errors';
 import { UnaryHandler } from '../../rpc/handlers';
-import { UnaryCaller } from '../../rpc/callers';
-
-const keysVerify = new UnaryCaller<
-  ClientRPCRequestParams<VerifySignatureMessage>,
-  ClientRPCResponseResult<SuccessMessage>
->();
 
 class KeysVerifyHandler extends UnaryHandler<
   {
@@ -43,4 +37,4 @@ class KeysVerifyHandler extends UnaryHandler<
   }
 }
 
-export { keysVerify, KeysVerifyHandler };
+export { KeysVerifyHandler };
