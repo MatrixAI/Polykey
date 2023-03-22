@@ -9,7 +9,7 @@ import type { ConnectionInfo, Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
 import type { ReadableWritablePair } from 'stream/web';
 import type { ContextCancellable } from '@/contexts/types';
-import type { RPCErrorEvent } from '@/rpc/utils';
+import type { RPCErrorEvent } from '@/rpc/events';
 import { TransformStream, ReadableStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -393,7 +393,7 @@ describe(`${RPCServer.name}`, () => {
         resolve = _resolve;
         reject = _reject;
       });
-      rpcServer.addEventListener('error', (thing) => {
+      rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -434,7 +434,7 @@ describe(`${RPCServer.name}`, () => {
         resolve = _resolve;
         reject = _reject;
       });
-      rpcServer.addEventListener('error', (thing) => {
+      rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -473,7 +473,7 @@ describe(`${RPCServer.name}`, () => {
       const errorProm = new Promise<RPCErrorEvent>((_resolve) => {
         resolve = _resolve;
       });
-      rpcServer.addEventListener('error', (thing) => {
+      rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
       });
       const passThroughStreamIn = new TransformStream<Uint8Array, Uint8Array>();
@@ -500,8 +500,8 @@ describe(`${RPCServer.name}`, () => {
       await reader.cancel(readerReason);
       // We should get an error event
       const event = await errorProm;
-      expect(event.detail.error.cause).toContain(writerReason);
-      expect(event.detail.error.cause).toContain(readerReason);
+      expect(event.detail.cause).toContain(writerReason);
+      expect(event.detail.cause).toContain(readerReason);
       await rpcServer.destroy();
     },
     { numRuns: 1 },

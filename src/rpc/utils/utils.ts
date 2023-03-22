@@ -401,23 +401,6 @@ function clientOutputTransformStream<O extends JSONValue>(
   });
 }
 
-class RPCErrorEvent extends Event {
-  public detail: {
-    error: any;
-  };
-
-  constructor(
-    options: EventInit & {
-      detail: {
-        error: any;
-      };
-    },
-  ) {
-    super('error', options);
-    this.detail = options.detail;
-  }
-}
-
 function extractFirstMessageTransform<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
@@ -504,7 +487,6 @@ export {
   toError,
   clientInputTransformStream,
   clientOutputTransformStream,
-  RPCErrorEvent,
   extractFirstMessageTransform,
   getHandlerTypes,
 };

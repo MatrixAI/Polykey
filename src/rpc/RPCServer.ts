@@ -26,15 +26,23 @@ import {
   ServerHandler,
   UnaryHandler,
 } from './handlers';
+import * as rpcEvents from './events';
 import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
 import * as middlewareUtils from './utils/middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
+/**
+ * You must provide a error handler `addEventListener('error')`.
+ * Otherwise errors will just be ignored.
+ *
+ * Events:
+ * - error
+ */
 interface RPCServer extends CreateDestroy {}
 @CreateDestroy()
-class RPCServer {
+class RPCServer extends EventTarget {
   /**
    * @param obj
    * @param obj.manifest - Server manifest used to define the rpc method
@@ -78,7 +86,6 @@ class RPCServer {
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
-  protected events: EventTarget = new EventTarget();
   protected middlewareFactory: MiddlewareFactory<
     JSONRPCRequest,
     Uint8Array,
@@ -102,6 +109,7 @@ class RPCServer {
     sensitive: boolean;
     logger: Logger;
   }) {
+    super();
     for (const [key, manifestItem] of Object.entries(manifest)) {
       if (manifestItem instanceof RawHandler) {
         this.registerRawStreamHandler(
@@ -184,7 +192,6 @@ class RPCServer {
       const middleware = this.middlewareFactory(header);
       const forwardStream = input.pipeThrough(middleware.forward);
       const reverseStream = middleware.reverse.writable;
-      const events = this.events;
       const outputGen = async function* (): AsyncGenerator<JSONRPCResponse> {
         if (ctx.signal.aborted) throw ctx.signal.reason;
         const dataGen = async function* (): AsyncIterable<I> {
@@ -229,13 +236,11 @@ class RPCServer {
             } else {
               // These errors are emitted to the event system
               // This contains the original error from enqueuing
-              events.dispatchEvent(
-                new rpcUtils.RPCErrorEvent({
-                  detail: {
-                    error: new rpcErrors.ErrorRPCSendErrorFailed(undefined, {
-                      cause: [e, reason],
-                    }),
-                  },
+              this.dispatchEvent(
+                new rpcEvents.RPCErrorEvent({
+                  detail: new rpcErrors.ErrorRPCSendErrorFailed(undefined, {
+                    cause: [e, reason],
+                  }),
                 }),
               );
             }
@@ -370,24 +375,6 @@ class RPCServer {
     );
     // Putting the PromiseCancellable into the active streams map
     this.activeStreams.add(handlerProm);
-  }
-
-  @ready(new rpcErrors.ErrorRPCDestroyed())
-  public addEventListener(
-    type: 'error',
-    callback: (event: rpcUtils.RPCErrorEvent) => void,
-    options?: boolean | AddEventListenerOptions | undefined,
-  ) {
-    this.events.addEventListener(type, callback, options);
-  }
-
-  @ready(new rpcErrors.ErrorRPCDestroyed())
-  public removeEventListener(
-    type: 'error',
-    callback: (event: rpcUtils.RPCErrorEvent) => void,
-    options?: boolean | AddEventListenerOptions | undefined,
-  ) {
-    this.events.removeEventListener(type, callback, options);
   }
 }
 
