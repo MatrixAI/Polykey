@@ -1,24 +1,24 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
-class ErrorRPCClient<T> extends ErrorPolykey<T> {}
+class ErrorClient<T> extends ErrorPolykey<T> {}
 
-class ErrorClientAuthMissing<T> extends ErrorRPCClient<T> {
+class ErrorClientAuthMissing<T> extends ErrorClient<T> {
   static description = 'Authorisation metadata is required but missing';
   exitCode = sysexits.NOPERM;
 }
 
-class ErrorClientAuthFormat<T> extends ErrorRPCClient<T> {
+class ErrorClientAuthFormat<T> extends ErrorClient<T> {
   static description = 'Authorisation metadata has invalid format';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorClientAuthDenied<T> extends ErrorRPCClient<T> {
+class ErrorClientAuthDenied<T> extends ErrorClient<T> {
   static description = 'Authorisation metadata is incorrect or expired';
   exitCode = sysexits.NOPERM;
 }
 
 export {
-  ErrorRPCClient,
+  ErrorClient,
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
