@@ -134,22 +134,27 @@ type HandlerImplementation<I, O> = (
   connectionInfo: ConnectionInfo,
   ctx: ContextCancellable,
 ) => O;
+
 type RawHandlerImplementation = HandlerImplementation<
   [ReadableStream<Uint8Array>, JSONRPCRequest],
   ReadableStream<Uint8Array>
 >;
+
 type DuplexHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
 > = HandlerImplementation<AsyncIterable<I>, AsyncIterable<O>>;
+
 type ServerHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
 > = HandlerImplementation<I, AsyncIterable<O>>;
+
 type ClientHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
 > = HandlerImplementation<AsyncIterable<I>, Promise<O>>;
+
 type UnaryHandlerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
