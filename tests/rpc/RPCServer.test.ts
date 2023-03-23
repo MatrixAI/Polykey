@@ -67,7 +67,7 @@ describe(`${RPCServer.name}`, () => {
           rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
       class TestHandler extends RawHandler {
-        public handle([input, _header]): ReadableStream<Uint8Array> {
+        public handle([_header, input]): ReadableStream<Uint8Array> {
           void (async () => {
             for await (const _ of input) {
               // No touch, only consume

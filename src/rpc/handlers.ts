@@ -20,7 +20,7 @@ abstract class RawHandler<
   Container extends ContainerType = ContainerType,
 > extends Handler<Container> {
   abstract handle(
-    input: [ReadableStream<Uint8Array>, JSONRPCRequest],
+    input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     connectionInfo: ConnectionInfo,
     ctx: ContextCancellable,
   ): ReadableStream<Uint8Array>;

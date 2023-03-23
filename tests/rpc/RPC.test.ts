@@ -40,9 +40,9 @@ describe('RPC', () => {
       let header: JSONRPCRequest | undefined;
       class TestMethod extends RawHandler {
         public handle(
-          input: [ReadableStream<Uint8Array>, JSONRPCRequest],
+          input: [JSONRPCRequest, ReadableStream<Uint8Array>],
         ): ReadableStream<Uint8Array> {
-          const [stream, header_] = input;
+          const [header_, stream] = input;
           header = header_;
           return stream;
         }

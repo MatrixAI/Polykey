@@ -15,6 +15,7 @@ import type {
 import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '../types';
 import type { MiddlewareFactory } from './types';
+import { TransformStream } from 'stream/web';
 import { ReadableStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
@@ -191,14 +192,24 @@ class RPCServer extends EventTarget {
     O extends JSONValue,
   >(method: string, handler: DuplexHandlerImplementation<I, O>): void {
     const rawSteamHandler: RawHandlerImplementation = (
-      [input, header],
+      [header, input],
       connectionInfo,
       ctx,
     ) => {
       // Setting up middleware
-      const middleware = this.middlewareFactory(header);
+      const middleware = this.middlewareFactory();
       // Forward from the client to the server
-      const forwardStream = input.pipeThrough(middleware.forward);
+      const headerStream = new TransformStream({
+        start(controller) {
+          controller.enqueue(Buffer.from(JSON.stringify(header)));
+        },
+        transform(chunk, controller) {
+          controller.enqueue(chunk);
+        },
+      });
+      const forwardStream = input
+        .pipeThrough(headerStream)
+        .pipeThrough(middleware.forward);
       // Reverse from the server to the client
       const reverseStream = middleware.reverse.writable;
       // Generator derived from handler
@@ -210,17 +221,22 @@ class RPCServer extends EventTarget {
             yield data.params as I;
           }
         };
-        for await (const response of handler(inputGen(), connectionInfo, ctx)) {
+        const handlerG = handler(inputGen(), connectionInfo, ctx);
+        for await (const response of handlerG) {
           const responseMessage: JSONRPCResponseResult = {
             jsonrpc: '2.0',
             result: response,
             id: null,
           };
-          yield responseMessage;
+          try {
+            yield responseMessage;
+          } catch(e) {
+            // This catches any exceptions thrown into the reverse stream
+            await handlerG.throw(e);
+          }
         }
       };
       const outputGenerator = outputGen();
-      let reason: any | undefined = undefined;
       const reverseMiddlewareStream = new ReadableStream<JSONRPCResponse>({
         pull: async (controller) => {
           try {
@@ -231,39 +247,46 @@ class RPCServer extends EventTarget {
             }
             controller.enqueue(value);
           } catch (e) {
-            if (reason == null) {
-              // We want to convert this error to an error message and pass it along
-              const rpcError: JSONRPCError = {
-                code: e.exitCode ?? sysexits.UNKNOWN,
-                message: e.description ?? '',
-                data: rpcUtils.fromError(e, this.sensitive),
-              };
-              const rpcErrorMessage: JSONRPCResponseError = {
-                jsonrpc: '2.0',
-                error: rpcError,
-                id: null,
-              };
-              controller.enqueue(rpcErrorMessage);
-            } else {
-              // These errors are emitted to the event system
-              // This contains the original error from enqueuing
-              this.dispatchEvent(
-                new rpcEvents.RPCErrorEvent({
-                  detail: new rpcErrors.ErrorRPCSendErrorFailed(undefined, {
-                    cause: [e, reason],
-                  }),
-                }),
-              );
-            }
+            const rpcError: JSONRPCError = {
+              code: e.exitCode ?? sysexits.UNKNOWN,
+              message: e.description ?? '',
+              data: rpcUtils.fromError(e, this.sensitive),
+            };
+            const rpcErrorMessage: JSONRPCResponseError = {
+              jsonrpc: '2.0',
+              error: rpcError,
+              id: null,
+            };
+            controller.enqueue(rpcErrorMessage);
             await forwardStream.cancel(
               new rpcErrors.ErrorRPCHandlerFailed('Error clean up'),
             );
             controller.close();
           }
         },
-        cancel: async (_reason) => {
-          reason = _reason;
-          await outputGenerator.throw(_reason);
+        cancel: async (reason) => {
+          try {
+            // Throw the reason into the reverse stream
+            await outputGenerator.throw(reason);
+          } catch (e) {
+            // If the e is the same as the reason
+            // then the handler did not care about the reason
+            // and we just discard it
+            if (e !== reason) {
+              this.dispatchEvent(
+                new rpcEvents.RPCErrorEvent({
+                  detail: new rpcErrors.ErrorRPCSendErrorFailed(
+                    'Stream has been cancelled',
+                    {
+                      cause: e,
+                    }
+                  ),
+                }),
+              );
+            }
+          }
+          // await outputGenerator.nexj
+          // handlerAbortController.abort(reason);
         },
       });
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
@@ -281,6 +304,9 @@ class RPCServer extends EventTarget {
       connectionInfo,
       ctx,
     ) {
+      // The `input` is expected to be an async iterable with only 1 value.
+      // Unlike generators, there is no `next()` method.
+      // So we use `break` after the first iteration.
       for await (const inputVal of input) {
         yield await handler(inputVal, connectionInfo, ctx);
         break;
@@ -369,7 +395,7 @@ class RPCServer extends EventTarget {
         return;
       }
       const outputStream = handler(
-        [inputStream, leadingMetadataMessage],
+        [leadingMetadataMessage, inputStream],
         connectionInfo,
         { signal: abortController.signal },
       );

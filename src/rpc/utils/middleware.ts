@@ -20,13 +20,10 @@ const jsonStreamParsers = require('@streamparser/json');
  *  specific type of message
  * @param byteLimit - sets the number of bytes buffered before throwing an
  *  error. This is used to avoid infinitely buffering the input.
- * @param firstMessage - This is a single message that is inserted into the
- *  front of the stream.
  */
 function binaryToJsonMessageStream<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
-  firstMessage?: T,
 ): TransformStream<Uint8Array, T> {
   const parser = new jsonStreamParsers.JSONParser({
     separator: '',
@@ -43,7 +40,6 @@ function binaryToJsonMessageStream<T extends JSONRPCMessage>(
       await waitP.p;
     },
     start: (controller) => {
-      if (firstMessage != null) controller.enqueue(firstMessage);
       parser.onValue = (value) => {
         const jsonMessage = messageParser(value.value);
         controller.enqueue(jsonMessage);
@@ -84,17 +80,12 @@ function jsonMessageToBinaryStream(): TransformStream<
  * This function is a factory for creating a pass-through streamPair. It is used
  * as the default middleware for the middleware wrappers.
  */
-const defaultMiddleware: MiddlewareFactory<
-  JSONRPCRequest,
-  JSONRPCRequest,
-  JSONRPCResponse,
-  JSONRPCResponse
-> = () => {
+function defaultMiddleware() {
   return {
-    forward: new TransformStream(),
-    reverse: new TransformStream(),
+    forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>(),
+    reverse: new TransformStream<JSONRPCResponse, JSONRPCResponse>(),
   };
-};
+}
 
 /**
  * This convenience factory for creating wrapping middleware with the basic
@@ -103,28 +94,26 @@ const defaultMiddleware: MiddlewareFactory<
  * JsonRPCMessages and pipe it through the provided middleware.
  * The reverse path will pipe the output stream through the provided middleware
  * and then transform it back to a binary stream.
- * @param middleware - The provided middleware
+ * @param middlewareFactory - The provided middleware
  */
-const defaultServerMiddlewareWrapper = (
-  middleware: MiddlewareFactory<
+function defaultServerMiddlewareWrapper(
+  middlewareFactory: MiddlewareFactory<
     JSONRPCRequest,
     JSONRPCRequest,
     JSONRPCResponse,
     JSONRPCResponse
   > = defaultMiddleware,
-) => {
-  return (header: JSONRPCRequest) => {
+): MiddlewareFactory<JSONRPCRequest, Uint8Array, Uint8Array, JSONRPCResponse> {
+  return () => {
     const inputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCRequest,
-      undefined,
-      header,
     );
     const outputTransformStream = new TransformStream<
       JSONRPCResponseResult,
       JSONRPCResponseResult
     >();
 
-    const middleMiddleware = middleware(header);
+    const middleMiddleware = middlewareFactory();
 
     const forwardReadable = inputTransformStream.readable.pipeThrough(
       middleMiddleware.forward,
@@ -144,7 +133,7 @@ const defaultServerMiddlewareWrapper = (
       },
     };
   };
-};
+}
 
 /**
  * This convenience factory for creating wrapping middleware with the basic
@@ -171,7 +160,7 @@ const defaultClientMiddlewareWrapper = (
   return () => {
     const outputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCResponse,
-      undefined,
+      // Undefined,
     );
     const inputTransformStream = new TransformStream<
       JSONRPCRequest,

@@ -182,7 +182,7 @@ type HandlerImplementation<I, O> = (
 ) => O;
 
 type RawHandlerImplementation = HandlerImplementation<
-  [ReadableStream<Uint8Array>, JSONRPCRequest],
+  [JSONRPCRequest, ReadableStream<Uint8Array>],
   ReadableStream<Uint8Array>
 >;
 
@@ -212,7 +212,18 @@ type StreamFactory = () => Promise<
   ReadableWritablePair<Uint8Array, Uint8Array>
 >;
 
-type MiddlewareFactory<FR, FW, RR, RW> = (header?: JSONRPCRequest) => {
+/**
+ * Middleware factory creates middlewares.
+ * Each middleware is a pair of forward and reverse.
+ * Each forward and reverse is a `ReadableWritablePair`.
+ * The forward pair is used transform input from client to server.
+ * The reverse pair is used to transform output from server to client.
+ * FR, FW is the readable and writable types of the forward pair.
+ * RR, RW is the readable and writable types of the reverse pair.
+ * FW -> FR is the direction of data flow from client to server.
+ * RW -> RR is the direction of data flow from server to client.
+ */
+type MiddlewareFactory<FR, FW, RR, RW> = () => {
   forward: ReadableWritablePair<FR, FW>;
   reverse: ReadableWritablePair<RR, RW>;
 };
