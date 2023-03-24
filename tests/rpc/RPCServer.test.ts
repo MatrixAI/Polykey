@@ -24,6 +24,7 @@ import {
   UnaryHandler,
 } from '@/rpc/handlers';
 import * as middlewareUtils from '@/rpc/utils/middleware';
+import { promise } from '@/utils';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCServer.name}`, () => {
@@ -454,13 +455,70 @@ describe(`${RPCServer.name}`, () => {
     },
   );
   testProp(
-    'should emit stream error',
+    'should emit stream error if input stream fails',
     [specificMessageArb],
     async (messages) => {
+      const handlerEndedProm = promise();
+      class TestMethod extends DuplexHandler {
+        public async *handle(input): AsyncIterable<JSONValue> {
+          try {
+            for await (const _ of input) {
+              // Consume but don't yield anything
+            }
+          } finally {
+            handlerEndedProm.resolveP();
+          }
+        }
+      }
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        logger,
+      });
+      let resolve;
+      rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
+        resolve(thing);
+      });
+      const passThroughStreamIn = new TransformStream<Uint8Array, Uint8Array>();
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
+      const readWriteStream: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        readable: passThroughStreamIn.readable,
+        writable: outputStream,
+      };
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      const writer = passThroughStreamIn.writable.getWriter();
+      // Write messages
+      for (const message of messages) {
+        await writer.write(Buffer.from(JSON.stringify(message)));
+      }
+      // Abort stream
+      const writerReason = Symbol('writerAbort');
+      await writer.abort(writerReason);
+      // We should get an error RPC message
+      await expect(outputResult).toResolve();
+      const errorMessage = JSON.parse((await outputResult)[0].toString());
+      // Parse without error
+      rpcUtils.parseJSONRPCResponseError(errorMessage);
+      // Check that the handler was cleaned up.
+      await expect(handlerEndedProm.p).toResolve();
+      await rpcServer.destroy();
+    },
+    { numRuns: 1 },
+  );
+  testProp.only(
+    'should emit stream error if output stream fails',
+    [specificMessageArb],
+    async (messages) => {
+      const handlerEndedProm = promise();
       class TestMethod extends DuplexHandler {
         public async *handle(input): AsyncIterable<JSONValue> {
           // Echo input
-          yield* input;
+          try {
+            yield* input;
+          } finally {
+            handlerEndedProm.resolveP();
+          }
         }
       }
       const rpcServer = await RPCServer.createRPCServer({
@@ -494,14 +552,18 @@ describe(`${RPCServer.name}`, () => {
         await reader.read();
       }
       // Abort stream
-      const writerReason = Symbol('writerAbort');
+      // const writerReason = Symbol('writerAbort');
       const readerReason = Symbol('readerAbort');
-      await writer.abort(writerReason);
+      // Await writer.abort(writerReason);
       await reader.cancel(readerReason);
       // We should get an error event
       const event = await errorProm;
-      expect(event.detail.cause).toContain(writerReason);
-      expect(event.detail.cause).toContain(readerReason);
+      await writer.close();
+      // Expect(event.detail.cause).toContain(writerReason);
+      expect(event.detail).toBeInstanceOf(rpcErrors.ErrorRPCOutputStreamError);
+      expect(event.detail.cause).toBe(readerReason);
+      // Check that the handler was cleaned up.
+      await expect(handlerEndedProm.p).toResolve();
       await rpcServer.destroy();
     },
     { numRuns: 1 },

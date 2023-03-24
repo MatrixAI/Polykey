@@ -228,12 +228,7 @@ class RPCServer extends EventTarget {
             result: response,
             id: null,
           };
-          try {
-            yield responseMessage;
-          } catch(e) {
-            // This catches any exceptions thrown into the reverse stream
-            await handlerG.throw(e);
-          }
+          yield responseMessage;
         }
       };
       const outputGenerator = outputGen();
@@ -258,35 +253,27 @@ class RPCServer extends EventTarget {
               id: null,
             };
             controller.enqueue(rpcErrorMessage);
-            await forwardStream.cancel(
-              new rpcErrors.ErrorRPCHandlerFailed('Error clean up'),
-            );
+            // Clean up the input stream here, ignore error if already ended
+            await forwardStream
+              .cancel(new rpcErrors.ErrorRPCHandlerFailed('Error clean up'))
+              .catch(() => {});
             controller.close();
           }
         },
         cancel: async (reason) => {
-          try {
-            // Throw the reason into the reverse stream
-            await outputGenerator.throw(reason);
-          } catch (e) {
-            // If the e is the same as the reason
-            // then the handler did not care about the reason
-            // and we just discard it
-            if (e !== reason) {
-              this.dispatchEvent(
-                new rpcEvents.RPCErrorEvent({
-                  detail: new rpcErrors.ErrorRPCSendErrorFailed(
-                    'Stream has been cancelled',
-                    {
-                      cause: e,
-                    }
-                  ),
-                }),
-              );
-            }
-          }
-          // await outputGenerator.nexj
-          // handlerAbortController.abort(reason);
+          this.dispatchEvent(
+            new rpcEvents.RPCErrorEvent({
+              detail: new rpcErrors.ErrorRPCOutputStreamError(
+                'Stream has been cancelled',
+                {
+                  cause: reason,
+                },
+              ),
+            }),
+          );
+          // If the output stream path fails then we need to end the generator
+          // early.
+          await outputGenerator.return(undefined);
         },
       });
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});

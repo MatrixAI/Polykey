@@ -38,8 +38,8 @@ class ErrorRPCMissingResponse<T> extends ErrorRPC<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorRPCSendErrorFailed<T> extends ErrorRPC<T> {
-  static description = 'Failed to send error message';
+class ErrorRPCOutputStreamError<T> extends ErrorRPC<T> {
+  static description = 'Output stream failed, unable to send data';
   exitCode = sysexits.UNAVAILABLE;
 }
 
@@ -102,6 +102,6 @@ export {
   ErrorRPCHandlerFailed,
   ErrorRPCMessageLength,
   ErrorRPCMissingResponse,
-  ErrorRPCSendErrorFailed,
+  ErrorRPCOutputStreamError,
   ErrorPolykeyRemote,
 };
