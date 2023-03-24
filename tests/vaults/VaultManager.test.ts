@@ -748,7 +748,7 @@ describe('VaultManager', () => {
           'pull',
         );
 
-        await testUtils.expectRemoteError(
+        await testUtils.expectRemoteErrorOLD(
           vaultManager.cloneVault(
             remoteKeynode1Id,
             'not-existing' as VaultName,
@@ -836,7 +836,7 @@ describe('VaultManager', () => {
       });
       try {
         // Should reject with no permissions set
-        await testUtils.expectRemoteError(
+        await testUtils.expectRemoteErrorOLD(
           vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -878,7 +878,7 @@ describe('VaultManager', () => {
           remoteVaultId,
         );
 
-        await testUtils.expectRemoteError(
+        await testUtils.expectRemoteErrorOLD(
           vaultManager.pullVault({ vaultId: clonedVaultId }),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -1565,7 +1565,7 @@ describe('VaultManager', () => {
           // Should throw
         }
       };
-      await testUtils.expectRemoteError(
+      await testUtils.expectRemoteErrorOLD(
         testFun(),
         vaultsErrors.ErrorVaultsPermissionDenied,
       );
@@ -1574,7 +1574,7 @@ describe('VaultManager', () => {
         ['node', nodeId1],
         'notify',
       );
-      await testUtils.expectRemoteError(
+      await testUtils.expectRemoteErrorOLD(
         testFun(),
         vaultsErrors.ErrorVaultsPermissionDenied,
       );

@@ -4,14 +4,14 @@ import type {
   WritableStreamDefaultController,
 } from 'stream/web';
 import type { FileSystem, PromiseDeconstructed } from 'types';
-import type { TLSConfig } from 'network/types';
+import type { Host, Port, TLSConfig } from 'network/types';
 import type {
   HttpRequest,
   HttpResponse,
   us_socket_context_t,
   WebSocket,
 } from 'uWebSockets.js';
-import type { ConnectionInfo } from '../RPC/types';
+import type { ConnectionInfo } from '../rpc/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';
@@ -19,7 +19,7 @@ import { startStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import uWebsocket from 'uWebSockets.js';
 import WebSocketStream from './WebSocketStream';
-import * as clientRPCErrors from './errors';
+import * as webSocketErrors from './errors';
 import * as webSocketEvents from './events';
 import { promise } from '../utils';
 
@@ -96,7 +96,8 @@ class WebSocketServer extends EventTarget {
 
   protected server: uWebsocket.TemplatedApp;
   protected listenSocket: uWebsocket.us_listen_socket;
-  protected host: string;
+  protected _port: number;
+  protected _host: string;
   protected connectionEventHandler: (
     event: webSocketEvents.ConnectionEvent,
   ) => void;
@@ -175,7 +176,7 @@ class WebSocketServer extends EventTarget {
         this.listenSocket = listenSocket;
         listenProm.resolveP();
       } else {
-        listenProm.rejectP(new clientRPCErrors.ErrorServerPortUnavailable());
+        listenProm.rejectP(new webSocketErrors.ErrorServerPortUnavailable());
       }
     };
     if (host != null) {
@@ -186,15 +187,14 @@ class WebSocketServer extends EventTarget {
       this.server.listen(port, listenCallback);
     }
     await listenProm.p;
-    this.logger.debug(
-      `Listening on port ${uWebsocket.us_socket_local_port(this.listenSocket)}`,
-    );
-    this.host = host ?? '127.0.0.1';
+    this._port = uWebsocket.us_socket_local_port(this.listenSocket);
+    this.logger.debug(`Listening on port ${this._port}`);
+    this._host = host ?? '127.0.0.1';
     this.dispatchEvent(
       new webSocketEvents.StartEvent({
         detail: {
-          host: this.host,
-          port: this.port,
+          host: this._host,
+          port: this._port,
         },
       }),
     );
@@ -222,8 +222,14 @@ class WebSocketServer extends EventTarget {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  get port() {
-    return uWebsocket.us_socket_local_port(this.listenSocket);
+  @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
+  public getPort(): Port {
+    return this._port as Port;
+  }
+
+  @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
+  public getHost(): Host {
+    return this._host as Host;
   }
 
   /**
@@ -237,9 +243,9 @@ class WebSocketServer extends EventTarget {
     // TODO: The key file needs to be in the encrypted format
     const keyFile = path.join(tmpDir, 'keyFile.pem');
     const certFile = path.join(tmpDir, 'certFile.pem');
+    await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
+    await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
     try {
-      await this.fs.promises.writeFile(keyFile, tlsConfig.keyPrivatePem);
-      await this.fs.promises.writeFile(certFile, tlsConfig.certChainPem);
       this.server = uWebsocket.SSLApp({
         key_file_name: keyFile,
         cert_file_name: certFile,
@@ -247,6 +253,7 @@ class WebSocketServer extends EventTarget {
     } finally {
       await this.fs.promises.rm(keyFile);
       await this.fs.promises.rm(certFile);
+      await this.fs.promises.rm(tmpDir, { recursive: true, force: true });
     }
   }
 
@@ -295,8 +302,8 @@ class WebSocketServer extends EventTarget {
     //  port from the `uWebsocket` library.
     const connectionInfo: ConnectionInfo = {
       remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
-      localHost: this.host,
-      localPort: this.port,
+      localHost: this._host,
+      localPort: this._port,
     };
     this.dispatchEvent(
       new webSocketEvents.ConnectionEvent({
@@ -368,7 +375,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
           case 2:
             // Write failure, emit error
             writableLogger.error('Send error');
-            controller.error(new clientRPCErrors.ErrorServerSendFailed());
+            controller.error(new webSocketErrors.ErrorServerSendFailed());
             break;
           case 0:
             writableLogger.info('Write backpressure');
@@ -395,11 +402,11 @@ class WebSocketStreamServerInternal extends WebSocketStream {
           ws.end();
         }
       },
-      abort: () => {
+      abort: (reason) => {
         writableLogger.info('Aborted');
         if (this.readableEnded_ && !this.webSocketEnded_) {
           writableLogger.debug('Ending socket');
-          this.signalWebSocketEnd(Error('TMP ERROR ABORTED'));
+          this.signalWebSocketEnd(reason);
           ws.end(4001, 'ABORTED');
         }
       },
@@ -429,7 +436,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             controller.enqueue(messageBuffer);
             if (controller.desiredSize != null && controller.desiredSize < 0) {
               readableLogger.error('Read stream buffer full');
-              const err = new clientRPCErrors.ErrorServerReadableBufferLimit();
+              const err = new webSocketErrors.ErrorServerReadableBufferLimit();
               if (!this.webSocketEnded_) {
                 this.signalWebSocketEnd(err);
                 ws.end(4001, 'Read stream buffer full');
@@ -438,8 +445,8 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             }
           };
         },
-        cancel: () => {
-          this.signalReadableEnd(Error('TMP READABLE CANCELLED'));
+        cancel: (reason) => {
+          this.signalReadableEnd(reason);
           if (this.writableEnded_ && !this.webSocketEnded_) {
             readableLogger.debug('Ending socket');
             this.signalWebSocketEnd();
@@ -473,7 +480,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       clearTimeout(pingTimeoutTimer);
       // Closing streams
       logger.debug('Cleaning streams');
-      const err = new clientRPCErrors.ErrorServerConnectionEndedEarly();
+      const err = new webSocketErrors.ErrorServerConnectionEndedEarly();
       if (!this.readableEnded_) {
         readableLogger.debug('Closing');
         this.signalReadableEnd(err);
@@ -492,7 +499,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
   }
 
   end(): void {
-    this.ws.end(4001, 'TMP ENDING CONNECTION');
+    this.ws.end(4001, 'Ending connection');
   }
 }
 

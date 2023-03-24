@@ -1,5 +1,6 @@
 import type PolykeyClient from '../../PolykeyClient';
-import type { JWK } from '../../keys/types';
+import type WebSocketClient from '../../websockets/WebSocketClient';
+import type { PublicKeyJWK } from '../../keys/types';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -21,7 +22,12 @@ class CommandEncypt extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (filePath, nodeIdOrJwkFile, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const nodesUtils = await import('../../nodes/utils');
       const keysUtils = await import('../../keys/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -32,23 +38,29 @@ class CommandEncypt extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const cryptoMessage = new keysPB.Crypto();
         let plainText: string;
         try {
           plainText = await this.fs.promises.readFile(filePath, {
@@ -65,7 +77,7 @@ class CommandEncypt extends CommandPolykey {
             cause: e,
           });
         }
-        let publicJWK: JWK;
+        let publicJWK: PublicKeyJWK;
         const nodeId = nodesUtils.decodeNodeId(nodeIdOrJwkFile);
         if (nodeId != null) {
           publicJWK = keysUtils.publicKeyToJWK(
@@ -77,7 +89,7 @@ class CommandEncypt extends CommandPolykey {
             const rawJWK = await this.fs.promises.readFile(nodeIdOrJwkFile, {
               encoding: 'utf-8',
             });
-            publicJWK = JSON.parse(rawJWK) as JWK;
+            publicJWK = JSON.parse(rawJWK) as PublicKeyJWK;
             // Checking if the JWK is valid
             keysUtils.publicKeyFromJWK(publicJWK);
           } catch (e) {
@@ -87,14 +99,17 @@ class CommandEncypt extends CommandPolykey {
             );
           }
         }
-        cryptoMessage.setData(plainText);
-        cryptoMessage.setPublicKeyJwk(JSON.stringify(publicJWK));
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysEncrypt(cryptoMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysEncrypt({
+              metadata: auth,
+              publicKeyJwk: publicJWK,
+              data: plainText,
+            }),
+          auth,
         );
         const result = {
-          encryptedData: response.getData(),
+          encryptedData: response.data,
         };
         let output: any = result;
         if (options.format === 'human') {
@@ -108,6 +123,7 @@ class CommandEncypt extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

@@ -11,10 +11,9 @@ import type {
 import type { SessionToken } from '../../sessions/types';
 import path from 'path';
 import prompts from 'prompts';
-import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
 import Status from '../../status/Status';
-import * as clientUtils from '../../client/utils';
+import * as clientUtils from '../../client/utils/utils';
 import * as binErrors from '../errors';
 import { arrayZip } from '../../utils';
 import config from '../../config';
@@ -375,8 +374,7 @@ async function processClientStatus(
 async function processAuthentication(
   passwordFile?: string,
   fs: FileSystem = require('fs'),
-): Promise<grpc.Metadata> {
-  let meta;
+): Promise<{ authorization?: string }> {
   if (passwordFile != null) {
     let password;
     try {
@@ -392,17 +390,24 @@ async function processAuthentication(
         cause: e,
       });
     }
-    meta = clientUtils.encodeAuthFromPassword(password);
+    return {
+      authorization: clientUtils.encodeAuthFromPassword(password),
+    };
   } else if (typeof process.env['PK_PASSWORD'] === 'string') {
-    meta = clientUtils.encodeAuthFromPassword(process.env['PK_PASSWORD']);
+    return {
+      authorization: clientUtils.encodeAuthFromPassword(
+        process.env['PK_PASSWORD'],
+      ),
+    };
   } else if (typeof process.env['PK_TOKEN'] === 'string') {
-    meta = clientUtils.encodeAuthFromSession(
-      process.env['PK_TOKEN'] as SessionToken,
-    );
+    return {
+      authorization: clientUtils.encodeAuthFromSession(
+        process.env['PK_TOKEN'] as SessionToken,
+      ),
+    };
   } else {
-    meta = new grpc.Metadata();
+    return {};
   }
-  return meta;
 }
 
 export {

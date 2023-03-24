@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import type { GestaltId } from '../../gestalts/types';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -21,10 +22,12 @@ class CommandPermissions extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (gestaltId: GestaltId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const identitiesPB = await import(
-        '../../proto/js/polykey/v1/identities/identities_pb'
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
       );
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const utils = await import('../../utils');
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -35,20 +38,27 @@ class CommandPermissions extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const [type, id] = gestaltId;
@@ -57,34 +67,30 @@ class CommandPermissions extends CommandPolykey {
           case 'node':
             {
               // Getting by Node
-              const nodeMessage = new nodesPB.Node();
-              nodeMessage.setNodeId(nodesUtils.encodeNodeId(id));
               const res = await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsActionsGetByNode(
-                    nodeMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsActionsGetByNode({
+                    metadata: auth,
+                    nodeIdEncoded: nodesUtils.encodeNodeId(id),
+                  }),
+                auth,
               );
-              actions = res.getActionList();
+              actions = res.actionsList;
             }
             break;
           case 'identity':
             {
               // Getting by Identity
-              const providerMessage = new identitiesPB.Provider();
-              providerMessage.setProviderId(id[0]);
-              providerMessage.setIdentityId(id[1]);
               const res = await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.grpcClient.gestaltsActionsGetByIdentity(
-                    providerMessage,
-                    auth,
-                  ),
-                meta,
+                  pkClient.rpcClient.methods.gestaltsActionsGetByIdentity({
+                    metadata: auth,
+                    providerId: id[0],
+                    identityId: id[1],
+                  }),
+                auth,
               );
-              actions = res.getActionList();
+              actions = res.actionsList;
             }
             break;
           default:
@@ -100,6 +106,7 @@ class CommandPermissions extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

@@ -1,4 +1,4 @@
-import type { FileSystem } from './types';
+import type { FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
@@ -10,6 +10,10 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import RPCServer from './rpc/RPCServer';
+import WebSocketServer from './websockets/WebSocketServer';
+import * as middlewareUtils from './rpc/utils/middleware';
+import * as authMiddleware from './client/utils/authenticationMiddleware';
 import { WorkerManager } from './workers';
 import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
@@ -32,7 +36,6 @@ import { providers } from './identities';
 import Proxy from './network/Proxy';
 import { EventBus, captureRejectionSymbol } from './events';
 import createAgentService, { AgentServiceService } from './agent/service';
-import createClientService, { ClientServiceService } from './client/service';
 import config from './config';
 import * as errors from './errors';
 import * as utils from './utils';
@@ -40,6 +43,7 @@ import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
+import { serverManifest } from './client/handlers';
 
 type NetworkConfig = {
   forwardHost?: Host;
@@ -49,9 +53,13 @@ type NetworkConfig = {
   // GRPCServer for agent service
   agentHost?: Host;
   agentPort?: Port;
-  // GRPCServer for client service
+  // RPCServer for client service
   clientHost?: Host;
   clientPort?: Port;
+  maxReadBufferBytes?: number;
+  idleTimeout?: number;
+  pingInterval?: number;
+  pingTimeout?: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -103,8 +111,9 @@ class PolykeyAgent {
     vaultManager,
     notificationsManager,
     sessionManager,
-    grpcServerClient,
+    rpcServerClient,
     grpcServerAgent,
+    webSocketServerClient,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -156,8 +165,9 @@ class PolykeyAgent {
     vaultManager?: VaultManager;
     notificationsManager?: NotificationsManager;
     sessionManager?: SessionManager;
-    grpcServerClient?: GRPCServer;
+    rpcServerClient?: RPCServer;
     grpcServerAgent?: GRPCServer;
+    webSocketServerClient?: WebSocketServer;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -183,6 +193,10 @@ class PolykeyAgent {
       ...config.defaults.nodeConnectionManagerConfig,
       ...utils.filterEmptyObject(nodeConnectionManagerConfig),
     };
+    const _networkConfig = {
+      ...config.defaults.networkConfig,
+      ...utils.filterEmptyObject(networkConfig),
+    };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
     const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
@@ -193,6 +207,7 @@ class PolykeyAgent {
     const events = new EventBus({
       captureRejections: true,
     });
+    let pkAgentProm: PromiseDeconstructed<PolykeyAgent> | undefined;
     try {
       status =
         status ??
@@ -401,11 +416,56 @@ class PolykeyAgent {
       // If a recovery code is provided then we reset any sessions in case the
       //  password changed.
       if (keyRingConfig.recoveryCode != null) await sessionManager.resetKey();
-      grpcServerClient =
-        grpcServerClient ??
-        new GRPCServer({
-          logger: logger.getChild(GRPCServer.name + 'Client'),
+      if (rpcServerClient == null) {
+        pkAgentProm = utils.promise();
+        rpcServerClient = await RPCServer.createRPCServer({
+          manifest: serverManifest({
+            acl: acl,
+            certManager: certManager,
+            db: db,
+            discovery: discovery,
+            fs: fs,
+            gestaltGraph: gestaltGraph,
+            identitiesManager: identitiesManager,
+            keyRing: keyRing,
+            logger: logger,
+            nodeConnectionManager: nodeConnectionManager,
+            nodeGraph: nodeGraph,
+            nodeManager: nodeManager,
+            notificationsManager: notificationsManager,
+            pkAgentProm: pkAgentProm.p,
+            sessionManager: sessionManager,
+            vaultManager: vaultManager,
+          }),
+          middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
+            authMiddleware.authenticationMiddlewareServer(
+              sessionManager,
+              keyRing,
+            ),
+          ),
+          sensitive: false,
+          logger: logger.getChild('RPCServerClient'),
         });
+      }
+      const tlsConfig: TLSConfig = {
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: await certManager.getCertPEMsChainPEM(),
+      };
+      webSocketServerClient =
+        webSocketServerClient ??
+        (await WebSocketServer.createWebSocketServer({
+          connectionCallback: (streamPair) =>
+            rpcServerClient!.handleStream(streamPair, {}),
+          fs,
+          host: _networkConfig.clientHost,
+          port: _networkConfig.clientPort,
+          tlsConfig,
+          maxReadBufferBytes: _networkConfig.maxReadBufferBytes,
+          idleTimeout: _networkConfig.idleTimeout,
+          pingInterval: _networkConfig.pingInterval,
+          pingTimeout: _networkConfig.pingTimeout,
+          logger: logger.getChild('WebSocketServer'),
+        }));
       grpcServerAgent =
         grpcServerAgent ??
         new GRPCServer({
@@ -413,6 +473,8 @@ class PolykeyAgent {
         });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
+      await rpcServerClient?.destroy();
+      await webSocketServerClient?.stop(true);
       await sessionManager?.stop();
       await notificationsManager?.stop();
       await vaultManager?.stop();
@@ -450,12 +512,14 @@ class PolykeyAgent {
       vaultManager,
       notificationsManager,
       sessionManager,
+      rpcServerClient,
       grpcServerAgent,
-      grpcServerClient,
+      webSocketServerClient,
       events,
       fs,
       logger,
     });
+    pkAgentProm?.resolveP(pkAgent);
     await pkAgent.start({
       password,
       networkConfig,
@@ -486,10 +550,11 @@ class PolykeyAgent {
   public readonly notificationsManager: NotificationsManager;
   public readonly sessionManager: SessionManager;
   public readonly grpcServerAgent: GRPCServer;
-  public readonly grpcServerClient: GRPCServer;
   public readonly events: EventBus;
   public readonly fs: FileSystem;
   public readonly logger: Logger;
+  public readonly rpcServerClient: RPCServer;
+  public readonly webSocketServerClient: WebSocketServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   constructor({
@@ -512,8 +577,9 @@ class PolykeyAgent {
     vaultManager,
     notificationsManager,
     sessionManager,
-    grpcServerClient,
+    rpcServerClient,
     grpcServerAgent,
+    webSocketServerClient,
     events,
     fs,
     logger,
@@ -537,8 +603,9 @@ class PolykeyAgent {
     vaultManager: VaultManager;
     notificationsManager: NotificationsManager;
     sessionManager: SessionManager;
-    grpcServerClient: GRPCServer;
+    rpcServerClient: RPCServer;
     grpcServerAgent: GRPCServer;
+    webSocketServerClient: WebSocketServer;
     events: EventBus;
     fs: FileSystem;
     logger: Logger;
@@ -563,7 +630,8 @@ class PolykeyAgent {
     this.vaultManager = vaultManager;
     this.notificationsManager = notificationsManager;
     this.sessionManager = sessionManager;
-    this.grpcServerClient = grpcServerClient;
+    this.rpcServerClient = rpcServerClient;
+    this.webSocketServerClient = webSocketServerClient;
     this.grpcServerAgent = grpcServerAgent;
     this.events = events;
     this.fs = fs;
@@ -614,7 +682,8 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
-          this.grpcServerClient.setTLSConfig(tlsConfig);
+          // FIXME: Can we even support updating TLS config anymore?
+          // this.grpcServerClient.setTLSConfig(tlsConfig);
           this.proxy.setTLSConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
         },
@@ -641,7 +710,7 @@ class PolykeyAgent {
           }
         },
       );
-      const networkConfig_ = {
+      const _networkConfig = {
         ...config.defaults.networkConfig,
         ...utils.filterEmptyObject(networkConfig),
       };
@@ -660,28 +729,6 @@ class PolykeyAgent {
         gestaltGraph: this.gestaltGraph,
         proxy: this.proxy,
         logger: this.logger.getChild('GRPCClientAgentService'),
-      });
-      const clientService = createClientService({
-        pkAgent: this,
-        db: this.db,
-        certManager: this.certManager,
-        discovery: this.discovery,
-        gestaltGraph: this.gestaltGraph,
-        identitiesManager: this.identitiesManager,
-        keyRing: this.keyRing,
-        nodeGraph: this.nodeGraph,
-        nodeConnectionManager: this.nodeConnectionManager,
-        nodeManager: this.nodeManager,
-        notificationsManager: this.notificationsManager,
-        sessionManager: this.sessionManager,
-        vaultManager: this.vaultManager,
-        sigchain: this.sigchain,
-        acl: this.acl,
-        grpcServerClient: this.grpcServerClient,
-        grpcServerAgent: this.grpcServerAgent,
-        proxy: this.proxy,
-        fs: this.fs,
-        logger: this.logger.getChild('GRPCClientClientService'),
       });
       // Starting modules
       await this.keyRing.start({
@@ -726,25 +773,26 @@ class PolykeyAgent {
         certChainPem: await this.certManager.getCertPEMsChainPEM(),
       };
       // Client server
-      await this.grpcServerClient.start({
-        services: [[ClientServiceService, clientService]],
-        host: networkConfig_.clientHost,
-        port: networkConfig_.clientPort,
+      await this.webSocketServerClient.start({
         tlsConfig,
+        host: _networkConfig.clientHost,
+        port: _networkConfig.clientPort,
+        connectionCallback: (streamPair) =>
+          this.rpcServerClient.handleStream(streamPair, {}),
       });
       // Agent server
       await this.grpcServerAgent.start({
         services: [[AgentServiceService, agentService]],
-        host: networkConfig_.agentHost,
-        port: networkConfig_.agentPort,
+        host: _networkConfig.agentHost,
+        port: _networkConfig.agentPort,
       });
       await this.proxy.start({
-        forwardHost: networkConfig_.forwardHost,
-        forwardPort: networkConfig_.forwardPort,
+        forwardHost: _networkConfig.forwardHost,
+        forwardPort: _networkConfig.forwardPort,
         serverHost: this.grpcServerAgent.getHost(),
         serverPort: this.grpcServerAgent.getPort(),
-        proxyHost: networkConfig_.proxyHost,
-        proxyPort: networkConfig_.proxyPort,
+        proxyHost: _networkConfig.proxyHost,
+        proxyPort: _networkConfig.proxyPort,
         tlsConfig,
       });
       await this.nodeManager.start();
@@ -768,10 +816,10 @@ class PolykeyAgent {
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyRing.getNodeId(),
-        clientHost: this.grpcServerClient.getHost(),
-        clientPort: this.grpcServerClient.getPort(),
+        clientHost: this.webSocketServerClient.getHost(),
+        clientPort: this.webSocketServerClient.getPort(),
         agentHost: this.grpcServerAgent.getHost(),
-        agentPort: this.grpcServerClient.getPort(),
+        agentPort: this.grpcServerAgent.getPort(),
         forwardHost: this.proxy.getForwardHost(),
         forwardPort: this.proxy.getForwardPort(),
         proxyHost: this.proxy.getProxyHost(),
@@ -793,7 +841,7 @@ class PolykeyAgent {
       await this.nodeManager?.stop();
       await this.proxy?.stop();
       await this.grpcServerAgent?.stop();
-      await this.grpcServerClient?.stop();
+      await this.webSocketServerClient.stop(true);
       await this.identitiesManager?.stop();
       await this.gestaltGraph?.stop();
       await this.acl?.stop();
@@ -829,7 +877,7 @@ class PolykeyAgent {
     await this.nodeManager.stop();
     await this.proxy.stop();
     await this.grpcServerAgent.stop();
-    await this.grpcServerClient.stop();
+    await this.webSocketServerClient.stop(true);
     await this.identitiesManager.stop();
     await this.gestaltGraph.stop();
     await this.acl.stop();
@@ -877,6 +925,7 @@ class PolykeyAgent {
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
+    await this.rpcServerClient.destroy();
     await this.identitiesManager.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();

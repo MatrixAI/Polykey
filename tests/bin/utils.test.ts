@@ -97,7 +97,7 @@ describe('bin/utils', () => {
         timestamp,
         data,
       });
-      const remoteError = new grpcErrors.ErrorPolykeyRemote<any>(
+      const remoteError = new grpcErrors.ErrorPolykeyRemoteOLD<any>(
         {
           nodeId,
           host,
@@ -107,7 +107,7 @@ describe('bin/utils', () => {
         'some remote error',
         { timestamp, cause: pkError },
       );
-      const twoRemoteErrors = new grpcErrors.ErrorPolykeyRemote<any>(
+      const twoRemoteErrors = new grpcErrors.ErrorPolykeyRemoteOLD<any>(
         {
           nodeId,
           host,
@@ -117,7 +117,7 @@ describe('bin/utils', () => {
         'remote error',
         {
           timestamp,
-          cause: new grpcErrors.ErrorPolykeyRemote(
+          cause: new grpcErrors.ErrorPolykeyRemoteOLD(
             {
               nodeId,
               host,

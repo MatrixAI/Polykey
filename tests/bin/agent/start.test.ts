@@ -380,14 +380,18 @@ describe('start', () => {
       });
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
       // It's either the first or second process
-      if (index === 0) {
-        testUtils.expectProcessError(exitCode!, stdErrLine1, [
-          errorStatusLocked,
-        ]);
+      try {
+        if (index === 0) {
+          testUtils.expectProcessError(exitCode!, stdErrLine1, [
+            errorStatusLocked,
+          ]);
+        } else {
+          testUtils.expectProcessError(exitCode!, stdErrLine2, [
+            errorStatusLocked,
+          ]);
+        }
+      } finally {
         bootstrapProcess.kill('SIGTERM');
-        testUtils.expectProcessError(exitCode!, stdErrLine2, [
-          errorStatusLocked,
-        ]);
         agentProcess.kill('SIGTERM');
       }
     },

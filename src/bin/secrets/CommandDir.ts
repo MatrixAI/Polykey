@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -19,11 +20,11 @@ class CommandDir extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (directoryPath, vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
       );
-      const secretsPB = await import(
-        '../../proto/js/polykey/v1/secrets/secrets_pb'
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
       );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -33,37 +34,41 @@ class CommandDir extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        const pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const secretDirectoryMessage = new secretsPB.Directory();
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
-        secretDirectoryMessage.setVault(vaultMessage);
-        secretDirectoryMessage.setSecretDirectory(directoryPath);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsNewDir(
-              secretDirectoryMessage,
-              auth,
-            ),
-          meta,
+            pkClient.rpcClient.methods.vaultsSecretsNewDir({
+              metadata: auth,
+              nameOrId: vaultName,
+              dirName: directoryPath,
+            }),
+          auth,
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

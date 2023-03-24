@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -19,7 +20,12 @@ class CommandDecrypt extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (filePath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,23 +34,29 @@ class CommandDecrypt extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const cryptoMessage = new keysPB.Crypto();
         let cipherText: string;
         try {
           cipherText = await this.fs.promises.readFile(filePath, {
@@ -61,13 +73,16 @@ class CommandDecrypt extends CommandPolykey {
             cause: e,
           });
         }
-        cryptoMessage.setData(cipherText);
         const response = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysDecrypt(cryptoMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysDecrypt({
+              metadata: auth,
+              data: cipherText,
+            }),
+          auth,
         );
         const result = {
-          decryptedData: response.getData(),
+          decryptedData: response.data,
         };
         let output: any = result;
         if (options.format === 'human') {
@@ -81,6 +96,7 @@ class CommandDecrypt extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import * as binProcessors from '../utils/processors';
 import * as binUtils from '../utils';
 import CommandPolykey from '../CommandPolykey';
@@ -16,8 +17,11 @@ class CommandPermissions extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (vaultName, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
       );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -31,34 +35,35 @@ class CommandPermissions extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
-
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vaultName);
-
-        await pkClient.start();
-
         const data: Array<string> = [];
         await binUtils.retryAuthentication(async (auth) => {
-          const permissionStream = pkClient.grpcClient.vaultsPermissionGet(
-            vaultMessage,
-            auth,
-          );
+          const permissionStream =
+            await pkClient.rpcClient.methods.vaultsPermissionGet({
+              metadata: auth,
+              nameOrId: vaultName,
+            });
           for await (const permission of permissionStream) {
-            const nodeId = permission.getNode()?.getNodeId();
-            const actions = permission.getVaultPermissionsList().join(', ');
+            const nodeId = permission.nodeIdEncoded;
+            const actions = permission.vaultPermissionList.join(', ');
             data.push(`${nodeId}: ${actions}`);
           }
           return true;
@@ -73,6 +78,7 @@ class CommandPermissions extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

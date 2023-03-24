@@ -10,6 +10,7 @@ import readline from 'readline';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as grpcErrors from '@/grpc/errors';
+import * as rpcErrors from '@/rpc/errors';
 import * as validationUtils from '@/validation/utils';
 import * as utils from '@/utils';
 import * as execUtils from './exec';
@@ -85,11 +86,23 @@ function generateRandomNodeId(): NodeId {
   return IdInternal.fromString<NodeId>(random);
 }
 
+const expectRemoteErrorOLD = async <T>(
+  promise: Promise<T>,
+  error,
+): Promise<T | undefined> => {
+  await expect(promise).rejects.toThrow(grpcErrors.ErrorPolykeyRemoteOLD);
+  try {
+    return await promise;
+  } catch (e) {
+    expect(e.cause).toBeInstanceOf(error);
+  }
+};
+
 const expectRemoteError = async <T>(
   promise: Promise<T>,
   error,
 ): Promise<T | undefined> => {
-  await expect(promise).rejects.toThrow(grpcErrors.ErrorPolykeyRemote);
+  await expect(promise).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
   try {
     return await promise;
   } catch (e) {
@@ -162,6 +175,7 @@ async function createTLSConfigWithChain(
 export {
   setupTestAgent,
   generateRandomNodeId,
+  expectRemoteErrorOLD,
   expectRemoteError,
   testIf,
   describeIf,

@@ -1167,6 +1167,10 @@ class NodeManager {
     logger.info('Syncing nodeGraph');
     // Getting the seed node connection information
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
+    if (seedNodes.length === 0) {
+      logger.debug(`No seed nodes provided, skipping discovery`);
+      return;
+    }
     const addresses = await Promise.all(
       await this.db.withTransactionF(async (tran) =>
         seedNodes.map(

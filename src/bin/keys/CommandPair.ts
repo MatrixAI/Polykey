@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -17,8 +18,11 @@ class CommandKeypair extends CommandPolykey {
     this.addOption(binOptions.passwordNewFile);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const sessionsPB = await import(
-        '../../proto/js/polykey/v1/sessions/sessions_pb'
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
       );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -28,7 +32,7 @@ class CommandKeypair extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
@@ -37,29 +41,36 @@ class CommandKeypair extends CommandPolykey {
         this.fs,
         true,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const passwordMessage = new sessionsPB.Password();
-        passwordMessage.setPassword(passwordNew);
         const keyPairJWK = await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysKeyPair(passwordMessage, auth),
-          meta,
+          (auth) =>
+            pkClient.rpcClient.methods.keysKeyPair({
+              metadata: auth,
+              password: passwordNew,
+            }),
+          auth,
         );
-        const publicKeyJWK = JSON.parse(keyPairJWK.getPublicKeyJwk());
-        const privateKeyJWE = JSON.parse(keyPairJWK.getPrivateKeyJwe());
         const pair = {
-          publicKey: publicKeyJWK,
-          privateKey: privateKeyJWE,
+          publicKey: keyPairJWK.publicKeyJwk,
+          privateKey: keyPairJWK.privateKeyJwe,
         };
         process.stdout.write(
           binUtils.outputFormatter({
@@ -69,6 +80,7 @@ class CommandKeypair extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

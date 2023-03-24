@@ -55,7 +55,7 @@ describe('lockall', () => {
     await session.stop();
   });
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
-    'lockall ensures reauthentication is required',
+    'lockall ensures re-authentication is required',
     async () => {
       const password = agentPassword;
       await testUtils.pkStdio(['agent', 'unlock'], {
@@ -69,7 +69,7 @@ describe('lockall', () => {
         env: { PK_NODE_PATH: agentDir },
         cwd: agentDir,
       });
-      // Token is deleted, reauthentication is required
+      // Token is deleted, re-authentication is required
       mockedPrompts.mockClear();
       mockedPrompts.mockImplementation(async (_opts: any) => {
         return { password };
@@ -83,46 +83,46 @@ describe('lockall', () => {
       mockedPrompts.mockClear();
     },
   );
-  testUtils.testIf(
-    testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
-  )('lockall causes old session tokens to fail', async () => {
-    await testUtils.pkExec(['agent', 'unlock'], {
-      env: {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
-      },
-      cwd: agentDir,
-      command: globalThis.testCmd,
-    });
-    const session = await Session.createSession({
-      sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
-      fs,
-      logger,
-    });
-    const token = await session.readToken();
-    await session.stop();
-    await testUtils.pkExec(['agent', 'lockall'], {
-      env: {
-        PK_NODE_PATH: agentDir,
-        PK_PASSWORD: agentPassword,
-      },
-      cwd: agentDir,
-      command: globalThis.testCmd,
-    });
-    // Old token is invalid
-    const { exitCode, stderr } = await testUtils.pkExec(
-      ['agent', 'status', '--format', 'json'],
-      {
+  testUtils
+    .testIf(testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker)
+    .only('lockall causes old session tokens to fail', async () => {
+      await testUtils.pkExec(['agent', 'unlock'], {
         env: {
           PK_NODE_PATH: agentDir,
-          PK_TOKEN: token,
+          PK_PASSWORD: agentPassword,
         },
         cwd: agentDir,
         command: globalThis.testCmd,
-      },
-    );
-    testUtils.expectProcessError(exitCode, stderr, [
-      new errors.ErrorClientAuthDenied(),
-    ]);
-  });
+      });
+      const session = await Session.createSession({
+        sessionTokenPath: path.join(agentDir, config.defaults.tokenBase),
+        fs,
+        logger,
+      });
+      const token = await session.readToken();
+      await session.stop();
+      await testUtils.pkExec(['agent', 'lockall'], {
+        env: {
+          PK_NODE_PATH: agentDir,
+          PK_PASSWORD: agentPassword,
+        },
+        cwd: agentDir,
+        command: globalThis.testCmd,
+      });
+      // Old token is invalid
+      const { exitCode, stderr } = await testUtils.pkExec(
+        ['agent', 'status', '--format', 'json'],
+        {
+          env: {
+            PK_NODE_PATH: agentDir,
+            PK_TOKEN: token,
+          },
+          cwd: agentDir,
+          command: globalThis.testCmd,
+        },
+      );
+      testUtils.expectProcessError(exitCode, stderr, [
+        new errors.ErrorClientAuthDenied(),
+      ]);
+    });
 });

@@ -7,6 +7,7 @@ import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils/index';
+import WebSocketClient from '@/websockets/WebSocketClient';
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -39,23 +40,6 @@ describe('PolykeyClient', () => {
       recursive: true,
     });
   });
-  test('create PolykeyClient and connect to PolykeyAgent', async () => {
-    const pkClient = await PolykeyClient.createPolykeyClient({
-      nodeId: pkAgent.keyRing.getNodeId(),
-      host: pkAgent.grpcServerClient.getHost(),
-      port: pkAgent.grpcServerClient.getPort(),
-      nodePath,
-      fs,
-      logger,
-    });
-    expect(pkClient.grpcClient.nodeId).toStrictEqual(
-      pkAgent.keyRing.getNodeId(),
-    );
-    expect(pkClient.grpcClient.host).toBe(pkAgent.grpcServerClient.getHost());
-    expect(pkClient.grpcClient.port).toBe(pkAgent.grpcServerClient.getPort());
-    expect(pkClient.grpcClient.secured).toBe(true);
-    await pkClient.stop();
-  });
   test('preserving and destroying session state', async () => {
     const session = await Session.createSession({
       sessionTokenPath: path.join(nodePath, config.defaults.tokenBase),
@@ -64,14 +48,19 @@ describe('PolykeyClient', () => {
     });
     await session.writeToken('dummy' as SessionToken);
     // Using fresh: true means that any token would be destroyed
+    const webSocketClient = await WebSocketClient.createWebSocketClient({
+      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
+      host: pkAgent.webSocketServerClient.getHost(),
+      port: pkAgent.webSocketServerClient.getPort(),
+      logger,
+    });
     const pkClient = await PolykeyClient.createPolykeyClient({
-      nodeId: pkAgent.keyRing.getNodeId(),
-      host: pkAgent.grpcServerClient.getHost(),
-      port: pkAgent.grpcServerClient.getPort(),
+      streamFactory: () => webSocketClient.startConnection(),
       nodePath,
       fs,
       logger,
       fresh: true,
+      manifest: {},
     });
     expect(await session.readToken()).toBeUndefined();
     await session.writeToken('abc' as SessionToken);
@@ -79,5 +68,6 @@ describe('PolykeyClient', () => {
     expect(await session.readToken()).toBeDefined();
     await pkClient.destroy();
     expect(await session.readToken()).toBeUndefined();
+    await webSocketClient.destroy(true);
   });
 });

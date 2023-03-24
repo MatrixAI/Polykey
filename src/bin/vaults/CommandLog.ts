@@ -1,5 +1,5 @@
-import type { Metadata } from '@grpc/grpc-js';
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -11,18 +11,18 @@ class CommandLog extends CommandPolykey {
     this.name('log');
     this.description('Get the Version History of a Vault');
     this.argument('<vaultName>', 'Name of the vault to obtain the log from');
-    this.option(
-      '-ci, --commit-id [commitId]',
-      'Id for a specific commit to read from',
-    );
-    this.option('-d, --depth [depth]', 'The number of commits to retreive');
+    this.addOption(binOptions.commitId);
+    this.addOption(binOptions.depth);
     this.addOption(binOptions.nodeId);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
     this.action(async (vault, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const vaultsPB = await import(
-        '../../proto/js/polykey/v1/vaults/vaults_pb'
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
       );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -36,43 +36,41 @@ class CommandLog extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const vaultMessage = new vaultsPB.Vault();
-        vaultMessage.setNameOrId(vault);
-        const vaultsLogMessage = new vaultsPB.Log();
-        vaultsLogMessage.setVault(vaultMessage);
-        vaultsLogMessage.setLogDepth(options.depth);
-        vaultsLogMessage.setCommitId(options.commitId ?? '');
-        const data = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
-            const data: Array<string> = [];
-            const stream = pkClient.grpcClient.vaultsLog(
-              vaultsLogMessage,
-              meta,
-            );
-            for await (const commit of stream) {
-              const timestamp = commit.getTimeStamp();
-              const date = timestamp!.toDate();
-              data.push(`commit ${commit.getOid()}`);
-              data.push(`committer ${commit.getCommitter()}`);
-              data.push(`Date: ${date.toDateString()}`);
-              data.push(`${commit.getMessage()}`);
-            }
-            return data;
-          },
-          meta,
-        );
+        const data = await binUtils.retryAuthentication(async (auth) => {
+          const data: Array<string> = [];
+          const logStream = await pkClient.rpcClient.methods.vaultsLog({
+            metadata: auth,
+            nameOrId: vault,
+            depth: options.depth,
+            commitId: options.commitId,
+          });
+          for await (const logEntryMessage of logStream) {
+            data.push(`commit ${logEntryMessage.commitId}`);
+            data.push(`committer ${logEntryMessage.committer}`);
+            data.push(`Date: ${logEntryMessage.timestamp}`);
+            data.push(`${logEntryMessage.message}`);
+          }
+          return data;
+        }, meta);
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -81,6 +79,7 @@ class CommandLog extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }

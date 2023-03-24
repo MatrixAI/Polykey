@@ -74,7 +74,7 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
     const pCall = unary(messageTo);
-    await expect(pCall).rejects.toThrow(grpcErrors.ErrorPolykeyRemote);
+    await expect(pCall).rejects.toThrow(grpcErrors.ErrorPolykeyRemoteOLD);
     try {
       await pCall;
     } catch (e) {
@@ -138,7 +138,7 @@ describe('GRPC utils', () => {
     messageTo.setChallenge(challenge);
     const stream = serverStream(messageTo);
     await expect(() => stream.next()).rejects.toThrow(
-      grpcErrors.ErrorPolykeyRemote,
+      grpcErrors.ErrorPolykeyRemoteOLD,
     );
     // The generator will have ended
     // the internal stream will be automatically destroyed
@@ -386,7 +386,7 @@ describe('GRPC utils', () => {
     messageTo.setChallenge('error');
     await genDuplex.write(messageTo);
     await expect(() => genDuplex.read()).rejects.toThrow(
-      grpcErrors.ErrorPolykeyRemote,
+      grpcErrors.ErrorPolykeyRemoteOLD,
     );
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
@@ -409,7 +409,7 @@ describe('GRPC utils', () => {
     const messageTo = new utilsPB.EchoMessage();
     messageTo.setChallenge('error');
     await expect(() => genDuplex.next(messageTo)).rejects.toThrow(
-      grpcErrors.ErrorPolykeyRemote,
+      grpcErrors.ErrorPolykeyRemoteOLD,
     );
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
@@ -446,7 +446,7 @@ describe('GRPC utils', () => {
         command: 'testCall',
       },
     );
-    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemote);
+    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemoteOLD);
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     const metadata = deserialisedError.metadata;
@@ -485,7 +485,7 @@ describe('GRPC utils', () => {
         command: 'testCall',
       },
     );
-    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemote);
+    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemoteOLD);
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     const metadata = deserialisedError.metadata;
@@ -518,7 +518,7 @@ describe('GRPC utils', () => {
         command: 'testCall',
       },
     );
-    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemote);
+    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemoteOLD);
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     const metadata = deserialisedError.metadata;
     expect(metadata.nodeId).toBe(nodeId);
@@ -569,7 +569,7 @@ describe('GRPC utils', () => {
         command: 'testCall',
       },
     );
-    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemote);
+    expect(deserialisedError).toBeInstanceOf(grpcErrors.ErrorPolykeyRemoteOLD);
     expect(deserialisedError.message).toBe('test error');
     // @ts-ignore - already checked above that error is ErrorPolykeyRemote
     const metadata = deserialisedError.metadata;

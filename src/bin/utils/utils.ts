@@ -1,16 +1,16 @@
 import type { POJO } from '../../types';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import { AbstractError } from '@matrixai/errors';
 import * as binProcessors from './processors';
 import ErrorPolykey from '../../ErrorPolykey';
 import * as binErrors from '../errors';
-import * as clientUtils from '../../client/utils';
+import * as clientUtils from '../../client/utils/utils';
 import * as clientErrors from '../../client/errors';
 import * as grpcErrors from '../../grpc/errors';
 import * as nodesUtils from '../../nodes/utils';
 import * as utils from '../../utils';
+import * as rpcErrors from '../../rpc/errors';
 
 /**
  * Convert verbosity to LogLevel
@@ -112,7 +112,10 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (currError instanceof grpcErrors.ErrorPolykeyRemote) {
+      if (
+        currError instanceof grpcErrors.ErrorPolykeyRemoteOLD ||
+        currError instanceof rpcErrors.ErrorPolykeyRemote
+      ) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
@@ -177,15 +180,15 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
  * Known as "privilege elevation"
  */
 async function retryAuthentication<T>(
-  f: (meta: grpc.Metadata) => Promise<T>,
-  meta: grpc.Metadata = new grpc.Metadata(),
+  f: (meta: { authorization?: string }) => Promise<T>,
+  meta: { authorization?: string } = {},
 ): Promise<T> {
   try {
     return await f(meta);
   } catch (e) {
-    // If it is unattended, throw the exception
-    // Don't enter into a retry loop when unattended
-    // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set
+    // If it is unattended, throw the exception.
+    // Don't enter into a retry loop when unattended.
+    // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set.
     if ('PK_PASSWORD' in process.env || 'PK_TOKEN' in process.env) {
       throw e;
     }
@@ -206,9 +209,11 @@ async function retryAuthentication<T>(
       throw new binErrors.ErrorCLIPasswordMissing();
     }
     // Augment existing metadata
-    clientUtils.encodeAuthFromPassword(password, meta);
+    const auth = {
+      authorization: clientUtils.encodeAuthFromPassword(password),
+    };
     try {
-      return await f(meta);
+      return await f(auth);
     } catch (e) {
       const [cause] = remoteErrorCause(e);
       // The auth cannot be missing, so when it is denied do we retry
@@ -222,7 +227,7 @@ async function retryAuthentication<T>(
 function remoteErrorCause(e: any): [any, number] {
   let errorCause = e;
   let depth = 0;
-  while (errorCause instanceof grpcErrors.ErrorPolykeyRemote) {
+  while (errorCause instanceof rpcErrors.ErrorPolykeyRemote) {
     errorCause = errorCause.cause;
     depth++;
   }

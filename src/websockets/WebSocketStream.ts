@@ -36,7 +36,7 @@ abstract class WebSocketStream
         result[2].status === 'rejected'
       ) {
         // Throw a compound error
-        throw Error('TMP Stream failed', { cause: result });
+        throw AggregateError(result, 'stream failed');
       }
       // Otherwise return nothing
     });

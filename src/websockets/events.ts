@@ -1,5 +1,5 @@
 import type WebSocketStream from 'websockets/WebSocketStream';
-import type { ConnectionInfo } from 'RPC/types';
+import type { ConnectionInfo } from 'rpc/types';
 
 class StartEvent extends Event {
   public detail: {

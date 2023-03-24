@@ -237,7 +237,7 @@ describe('notificationsSend', () => {
     const token = Token.fromPayload(notification1);
     const request1 = new notificationsPB.AgentNotification();
     request1.setContent(JSON.stringify(token.toJSON()));
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.notificationsSend(request1),
       notificationsErrors.ErrorNotificationsVerificationFailed,
     );
@@ -259,7 +259,7 @@ describe('notificationsSend', () => {
     );
     const request2 = new notificationsPB.AgentNotification();
     request2.setContent(signedNotification);
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.notificationsSend(request2),
       validationErrors.ErrorParse,
     );
@@ -287,7 +287,7 @@ describe('notificationsSend', () => {
     );
     const request = new notificationsPB.AgentNotification();
     request.setContent(signedNotification);
-    await testUtils.expectRemoteError(
+    await testUtils.expectRemoteErrorOLD(
       grpcClient.notificationsSend(request),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );

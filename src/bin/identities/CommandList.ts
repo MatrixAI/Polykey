@@ -1,4 +1,5 @@
 import type PolykeyClient from '../../PolykeyClient';
+import type WebSocketClient from '../../websockets/WebSocketClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
@@ -14,8 +15,12 @@ class CommandList extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+      const { default: WebSocketClient } = await import(
+        '../../websockets/WebSocketClient'
+      );
+      const { clientManifest } = await import(
+        '../../client/handlers/clientManifest'
+      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -24,32 +29,37 @@ class CommandList extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      const meta = await binProcessors.processAuthentication(
+      const auth = await binProcessors.processAuthentication(
         options.passwordFile,
         this.fs,
       );
-      let pkClient: PolykeyClient;
+      let webSocketClient: WebSocketClient;
+      let pkClient: PolykeyClient<typeof clientManifest>;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
+        if (webSocketClient != null) await webSocketClient.destroy(true);
       });
       try {
-        pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
+        webSocketClient = await WebSocketClient.createWebSocketClient({
+          expectedNodeIds: [clientOptions.nodeId],
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          logger: this.logger.getChild(WebSocketClient.name),
+        });
+        pkClient = await PolykeyClient.createPolykeyClient({
+          streamFactory: () => webSocketClient.startConnection(),
+          nodePath: options.nodePath,
+          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const emptyMessage = new utilsPB.EmptyMessage();
         let output: any;
         const gestalts = await binUtils.retryAuthentication(async (auth) => {
           const gestalts: Array<any> = [];
-          const stream = pkClient.grpcClient.gestaltsGestaltList(
-            emptyMessage,
-            auth,
-          );
-          for await (const val of stream) {
-            const gestalt = JSON.parse(val.getName());
+          const stream = await pkClient.rpcClient.methods.gestaltsGestaltList({
+            metadata: auth,
+          });
+          for await (const gestaltMessage of stream) {
+            const gestalt = gestaltMessage.gestalt;
             const newGestalt: any = {
               permissions: [],
               nodes: [],
@@ -67,20 +77,21 @@ class CommandList extends CommandPolykey {
               });
             }
             // Getting the permissions for the gestalt.
-            const nodeMessage = new nodesPB.Node();
-            nodeMessage.setNodeId(newGestalt.nodes[0].nodeId);
             const actionsMessage = await binUtils.retryAuthentication(
               (auth) =>
-                pkClient.grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
-              meta,
+                pkClient.rpcClient.methods.gestaltsActionsGetByNode({
+                  metadata: auth,
+                  nodeIdEncoded: newGestalt.nodes[0].nodeId,
+                }),
+              auth,
             );
-            const actionList = actionsMessage.getActionList();
+            const actionList = actionsMessage.actionsList;
             if (actionList.length === 0) newGestalt.permissions = null;
             else newGestalt.permissions = actionList;
             gestalts.push(newGestalt);
           }
           return gestalts;
-        }, meta);
+        }, auth);
         output = gestalts;
         if (options.format !== 'json') {
           // Convert to a human-readable list.
@@ -109,6 +120,7 @@ class CommandList extends CommandPolykey {
         );
       } finally {
         if (pkClient! != null) await pkClient.stop();
+        if (webSocketClient! != null) await webSocketClient.destroy();
       }
     });
   }
