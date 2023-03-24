@@ -196,6 +196,13 @@ class RPCServer extends EventTarget {
       connectionInfo,
       ctx,
     ) => {
+      // Setting up abort controller
+      const abortController = new AbortController();
+      if (ctx.signal.aborted) abortController.abort(ctx.signal.reason);
+      ctx.signal.addEventListener('abort', () => {
+        abortController.abort(ctx.signal.reason);
+      });
+      const signal = abortController.signal;
       // Setting up middleware
       const middleware = this.middlewareFactory();
       // Forward from the client to the server
@@ -214,14 +221,14 @@ class RPCServer extends EventTarget {
       const reverseStream = middleware.reverse.writable;
       // Generator derived from handler
       const outputGen = async function* (): AsyncGenerator<JSONRPCResponse> {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
+        if (signal.aborted) throw signal.reason;
         // Input generator derived from the forward stream
         const inputGen = async function* (): AsyncIterable<I> {
           for await (const data of forwardStream) {
             yield data.params as I;
           }
         };
-        const handlerG = handler(inputGen(), connectionInfo, ctx);
+        const handlerG = handler(inputGen(), connectionInfo, { signal });
         for await (const response of handlerG) {
           const responseMessage: JSONRPCResponseResult = {
             jsonrpc: '2.0',
@@ -271,6 +278,8 @@ class RPCServer extends EventTarget {
               ),
             }),
           );
+          // Abort with the reason
+          abortController.abort(reason);
           // If the output stream path fails then we need to end the generator
           // early.
           await outputGenerator.return(undefined);

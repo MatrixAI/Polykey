@@ -31,6 +31,11 @@ abstract class DuplexHandler<
   Input extends JSONValue = JSONValue,
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
+  /**
+   * Note that if the output has an error, the handler will not see this as an
+   * error. If you need to handle any clean up it should be handled in a
+   * `finally` block and check the abort signal for potential errors.
+   */
   abstract handle(
     input: AsyncIterable<Input>,
     connectionInfo: ConnectionInfo,

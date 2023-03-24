@@ -506,13 +506,15 @@ describe(`${RPCServer.name}`, () => {
     },
     { numRuns: 1 },
   );
-  testProp.only(
+  testProp(
     'should emit stream error if output stream fails',
     [specificMessageArb],
     async (messages) => {
       const handlerEndedProm = promise();
+      let ctx: ContextCancellable | undefined;
       class TestMethod extends DuplexHandler {
-        public async *handle(input): AsyncIterable<JSONValue> {
+        public async *handle(input, _, _ctx): AsyncIterable<JSONValue> {
+          ctx = _ctx;
           // Echo input
           try {
             yield* input;
@@ -564,6 +566,10 @@ describe(`${RPCServer.name}`, () => {
       expect(event.detail.cause).toBe(readerReason);
       // Check that the handler was cleaned up.
       await expect(handlerEndedProm.p).toResolve();
+      // Check that an abort signal happened
+      expect(ctx).toBeDefined();
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBe(readerReason);
       await rpcServer.destroy();
     },
     { numRuns: 1 },
