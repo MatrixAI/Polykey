@@ -7,8 +7,8 @@ import WebSocket from 'ws';
 import { Timer } from '@matrixai/timer';
 import { Validator } from 'ip-num';
 import WebSocketStream from './WebSocketStream';
-import * as clientRpcUtils from './utils';
-import * as clientRPCErrors from './errors';
+import * as webSocketUtils from './utils';
+import * as webSocketErrors from './errors';
 import { promise } from '../utils';
 
 const timeoutSymbol = Symbol('TimedOutSymbol');
@@ -68,7 +68,7 @@ class WebSocketClient {
     } else if (Validator.isValidIPv6String(host)[0]) {
       this.host = `[${host}]`;
     } else {
-      throw new clientRPCErrors.ErrorClientInvalidHost();
+      throw new webSocketErrors.ErrorClientInvalidHost();
     }
   }
 
@@ -85,7 +85,7 @@ class WebSocketClient {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @createDestroy.ready(new clientRPCErrors.ErrorClientDestroyed())
+  @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async stopConnections() {
     for (const activeConnection of this.activeConnections) {
       activeConnection.end();
@@ -95,7 +95,7 @@ class WebSocketClient {
     }
   }
 
-  @createDestroy.ready(new clientRPCErrors.ErrorClientDestroyed())
+  @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async startConnection({
     timeoutTimer,
   }: {
@@ -119,7 +119,7 @@ class WebSocketClient {
     // Handle connection failure
     const openErrorHandler = (e) => {
       connectProm.rejectP(
-        new clientRPCErrors.ErrorClientConnectionFailed(undefined, {
+        new webSocketErrors.ErrorClientConnectionFailed(undefined, {
           cause: e,
         }),
       );
@@ -129,10 +129,10 @@ class WebSocketClient {
     ws.once('upgrade', async (request) => {
       const tlsSocket = request.socket as TLSSocket;
       const peerCert = tlsSocket.getPeerCertificate(true);
-      clientRpcUtils
+      webSocketUtils
         .verifyServerCertificateChain(
           this.expectedNodeIds,
-          clientRpcUtils.detailedToCertChain(peerCert),
+          webSocketUtils.detailedToCertChain(peerCert),
         )
         .then(authenticateProm.resolveP, authenticateProm.rejectP);
     });
@@ -154,7 +154,7 @@ class WebSocketClient {
         await Promise.all([authenticateProm.p, connectProm.p]),
       ]);
       if (result === timeoutSymbol) {
-        throw new clientRPCErrors.ErrorClientConnectionTimedOut();
+        throw new webSocketErrors.ErrorClientConnectionTimedOut();
       }
     } catch (e) {
       // Clean up
@@ -244,7 +244,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
               readableLogger.debug(
                 `Closed early, ${code}, ${reason.toString()}`,
               );
-              const e = new clientRPCErrors.ErrorClientConnectionEndedEarly();
+              const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
               this.signalReadableEnd(e);
               controller.error(e);
             }
@@ -289,7 +289,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         ws.once('close', (code, reason) => {
           if (!this.writableEnded_) {
             writableLogger.debug(`Closed early, ${code}, ${reason.toString()}`);
-            const e = new clientRPCErrors.ErrorClientConnectionEndedEarly();
+            const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
             this.signalWritableEnd(e);
             controller.error(e);
           }
@@ -304,9 +304,9 @@ class WebSocketStreamClientInternal extends WebSocketStream {
           ws.close();
         }
       },
-      abort: () => {
+      abort: (reason) => {
         writableLogger.debug('Aborted');
-        this.signalWritableEnd(Error('TMP ABORTED'));
+        this.signalWritableEnd(reason);
         if (this.readableEnded_) {
           writableLogger.debug('Closing socket');
           ws.close();
@@ -321,7 +321,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             // Opting to debug message here and not log an error, sending
             //  failure is common if we send before the close event.
             writableLogger.debug('failed to send');
-            const err = new clientRPCErrors.ErrorClientConnectionEndedEarly(
+            const err = new webSocketErrors.ErrorClientConnectionEndedEarly(
               undefined,
               {
                 cause: e,
@@ -356,7 +356,9 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       logger.debug('WebSocket closed');
       const err =
         code !== 1000
-          ? Error(`TMP WebSocket ended with code ${code}, ${reason.toString()}`)
+          ? new webSocketErrors.ErrorClientConnectionEndedEarly(
+              `ended with code ${code}, ${reason.toString()}`,
+            )
           : undefined;
       this.signalWebSocketEnd(err);
       logger.debug('Cleaning up timers');
@@ -367,7 +369,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
   }
 
   end(): void {
-    this.ws.close(4001, 'TMP ENDING CONNECTION');
+    this.ws.close(4001, 'Ending connection');
   }
 }
 

@@ -402,11 +402,11 @@ class WebSocketStreamServerInternal extends WebSocketStream {
           ws.end();
         }
       },
-      abort: () => {
+      abort: (reason) => {
         writableLogger.info('Aborted');
         if (this.readableEnded_ && !this.webSocketEnded_) {
           writableLogger.debug('Ending socket');
-          this.signalWebSocketEnd(Error('TMP ERROR ABORTED'));
+          this.signalWebSocketEnd(reason);
           ws.end(4001, 'ABORTED');
         }
       },
@@ -445,8 +445,8 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             }
           };
         },
-        cancel: () => {
-          this.signalReadableEnd(Error('TMP READABLE CANCELLED'));
+        cancel: (reason) => {
+          this.signalReadableEnd(reason);
           if (this.writableEnded_ && !this.webSocketEnded_) {
             readableLogger.debug('Ending socket');
             this.signalWebSocketEnd();
@@ -499,7 +499,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
   }
 
   end(): void {
-    this.ws.end(4001, 'TMP ENDING CONNECTION');
+    this.ws.end(4001, 'Ending connection');
   }
 }
 
