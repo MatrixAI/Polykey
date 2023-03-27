@@ -12,6 +12,7 @@ import type {
   JSONRPCResponseResult,
 } from '../types';
 import type { JSONValue } from 'types';
+import type { Timer } from '@matrixai/timer';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from '../errors';
@@ -369,11 +370,21 @@ function toError(
   return remoteError;
 }
 
+/**
+ * This constructs a transformation stream that converts any input into a
+ * JSONRCPRequest message. It also refreshes a timer each time a message is processed if
+ * one is provided.
+ * @param method - Name of the method that was called, used to select the
+ * server side.
+ * @param timer - Timer that gets refreshed each time a message is provided.
+ */
 function clientInputTransformStream<I extends JSONValue>(
   method: string,
+  timer?: Timer,
 ): TransformStream<I, JSONRPCRequest> {
   return new TransformStream<I, JSONRPCRequest>({
     transform: (chunk, controller) => {
+      timer?.refresh();
       const message: JSONRPCRequest = {
         method,
         jsonrpc: '2.0',
@@ -385,11 +396,21 @@ function clientInputTransformStream<I extends JSONValue>(
   });
 }
 
+/**
+ * This constructs a transformation stream that converts any error messages
+ * into errors. It also refreshes a timer each time a message is processed if
+ * one is provided.
+ * @param clientMetadata - Metadata that is attached to an error when one is
+ * created.
+ * @param timer - Timer that gets refreshed each time a message is provided.
+ */
 function clientOutputTransformStream<O extends JSONValue>(
   clientMetadata: ClientMetadata,
+  timer?: Timer,
 ): TransformStream<JSONRPCResponse<O>, O> {
   return new TransformStream<JSONRPCResponse<O>, O>({
     transform: (chunk, controller) => {
+      timer?.refresh();
       // `error` indicates it's an error message
       if ('error' in chunk) {
         throw toError(chunk.error.data, clientMetadata);

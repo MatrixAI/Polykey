@@ -239,7 +239,7 @@ class RPCServer extends EventTarget {
       });
       const signal = abortController.signal;
       // Setting up middleware
-      const middleware = this.middlewareFactory();
+      const middleware = this.middlewareFactory(ctx);
       // Forward from the client to the server
       // Transparent TransformStream that re-inserts the header message into the
       // stream.

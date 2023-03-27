@@ -5,9 +5,11 @@ import type {
   JSONRPCRequestMessage,
   JSONRPCResponse,
 } from '@/rpc/types';
+import type { ContextTimed } from '@/contexts/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
+import { Timer } from '@matrixai/timer';
 import RPCClient from '@/rpc/RPCClient';
 import RPCServer from '@/rpc/RPCServer';
 import * as rpcErrors from '@/rpc/errors';
@@ -19,6 +21,7 @@ import {
   UnaryCaller,
 } from '@/rpc/callers';
 import * as middlewareUtils from '@/rpc/utils/middleware';
+import { promise, sleep } from '@/utils/index';
 import * as rpcTestUtils from './utils';
 
 describe(`${RPCClient.name}`, () => {
@@ -673,5 +676,468 @@ describe(`${RPCClient.name}`, () => {
     // @ts-ignore: ignoring type safety here
     expect(() => rpcClient.withMethods.someMethod()).toThrow();
     await rpcClient.destroy();
+  });
+  describe('raw caller', () => {
+    test('raw caller uses default timeout when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        defaultTimeout: 100,
+        logger,
+      });
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.rawStreamCaller('testMethod', {});
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toThrow(
+        rpcErrors.ErrorRpcTimedOut,
+      );
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('raw caller times out when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        logger,
+      });
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.rawStreamCaller(
+        'testMethod',
+        {},
+        { timer: new Timer({ delay: 100 }) },
+      );
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toThrow(
+        rpcErrors.ErrorRpcTimedOut,
+      );
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('raw caller handles abort when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        logger,
+      });
+      const abortController = new AbortController();
+      const rejectReason = Symbol('rejectReason');
+      abortController.abort(rejectReason);
+
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.rawStreamCaller(
+        'testMethod',
+        {},
+        { signal: abortController.signal },
+      );
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toBe(rejectReason);
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBe(rejectReason);
+    });
+    test('raw caller uses default timeout awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          return streamPair;
+        },
+        defaultTimeout: 200,
+        logger,
+      });
+
+      // Timing out on stream.
+      // Stream creation needs to read the header to complete.
+      await Promise.all([
+        rpcClient.rawStreamCaller('testMethod', {}),
+        forwardPassThroughStream.readable.getReader().read(),
+      ]);
+      await ctx?.timer;
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('raw caller times out awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          return streamPair;
+        },
+        logger,
+      });
+      // Timing out on stream
+      await Promise.all([
+        rpcClient.rawStreamCaller(
+          'testMethod',
+          {},
+          { timer: new Timer({ delay: 100 }) },
+        ),
+        forwardPassThroughStream.readable.getReader().read(),
+      ]);
+      await ctx?.timer;
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('raw caller handles abort awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      const ctxProm = promise<ContextTimed>();
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx) => {
+          ctxProm.resolveP(ctx);
+          return streamPair;
+        },
+        logger,
+      });
+      const abortController = new AbortController();
+      const rejectReason = Symbol('rejectReason');
+      // Timing out on stream
+      const reader = forwardPassThroughStream.readable.getReader();
+      await Promise.all([
+        rpcClient.rawStreamCaller(
+          'testMethod',
+          {},
+          { signal: abortController.signal },
+        ),
+        reader.read(),
+      ]);
+      const ctx = await ctxProm.p;
+      const abortProm = promise<void>();
+      if (ctx.signal.aborted) abortProm.resolveP();
+      ctx.signal.addEventListener('abort', () => {
+        abortProm.resolveP();
+      });
+      abortController.abort(rejectReason);
+      await abortProm.p;
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBe(rejectReason);
+    });
+  });
+  describe('duplex caller', () => {
+    test('duplex caller uses default timeout when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        defaultTimeout: 100,
+        logger,
+      });
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.duplexStreamCaller('testMethod');
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toThrow(
+        rpcErrors.ErrorRpcTimedOut,
+      );
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('duplex caller times out when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        logger,
+      });
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.duplexStreamCaller('testMethod', {
+        timer: new Timer({ delay: 100 }),
+      });
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toThrow(
+        rpcErrors.ErrorRpcTimedOut,
+      );
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('duplex caller handles abort when creating stream', async () => {
+      const holdProm = promise();
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          await holdProm.p;
+          // Should never reach this when testing
+          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+        },
+        logger,
+      });
+      const abortController = new AbortController();
+      const rejectReason = Symbol('rejectReason');
+      abortController.abort(rejectReason);
+
+      // Timing out on stream creation
+      const callerInterfaceProm = rpcClient.duplexStreamCaller('testMethod', {
+        signal: abortController.signal,
+      });
+      await expect(callerInterfaceProm).toReject();
+      await expect(callerInterfaceProm).rejects.toBe(rejectReason);
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBe(rejectReason);
+    });
+    test('duplex caller uses default timeout awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          return streamPair;
+        },
+        defaultTimeout: 100,
+        logger,
+      });
+
+      // Timing out on stream
+      await rpcClient.duplexStreamCaller('testMethod');
+      await ctx?.timer;
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('duplex caller times out awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      let ctx: ContextTimed | undefined;
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx_) => {
+          ctx = ctx_;
+          return streamPair;
+        },
+        logger,
+      });
+
+      // Timing out on stream
+      await rpcClient.duplexStreamCaller('testMethod', {
+        timer: new Timer({ delay: 100 }),
+      });
+      await ctx?.timer;
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    });
+    test('duplex caller handles abort awaiting stream', async () => {
+      const forwardPassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const reversePassThroughStream = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+        writable: forwardPassThroughStream.writable,
+        readable: reversePassThroughStream.readable,
+      };
+      const ctxProm = promise<ContextTimed>();
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {},
+        streamFactory: async (ctx) => {
+          ctxProm.resolveP(ctx);
+          return streamPair;
+        },
+        logger,
+      });
+      const abortController = new AbortController();
+      const rejectReason = Symbol('rejectReason');
+      abortController.abort(rejectReason);
+      // Timing out on stream
+      await rpcClient.duplexStreamCaller('testMethod', {
+        signal: abortController.signal,
+      });
+      const ctx = await ctxProm.p;
+      const abortProm = promise<void>();
+      if (ctx.signal.aborted) abortProm.resolveP();
+      ctx.signal.addEventListener('abort', () => {
+        abortProm.resolveP();
+      });
+      expect(ctx?.signal.aborted).toBeTrue();
+      expect(ctx?.signal.reason).toBe(rejectReason);
+    });
+    testProp(
+      'duplex caller timeout is refreshed when sending message',
+      [specificMessageArb],
+      async (messages) => {
+        const inputStream = rpcTestUtils.messagesToReadableStream(messages);
+        const [outputResult, outputStream] =
+          rpcTestUtils.streamToArray<Uint8Array>();
+        const streamPair: ReadableWritablePair = {
+          readable: inputStream,
+          writable: outputStream,
+        };
+        const ctxProm = promise<ContextTimed>();
+        const rpcClient = await RPCClient.createRPCClient({
+          manifest: {},
+          streamFactory: async (ctx) => {
+            ctxProm.resolveP(ctx);
+            return streamPair;
+          },
+          logger,
+        });
+        const callerInterface = await rpcClient.duplexStreamCaller<
+          JSONValue,
+          JSONValue
+        >(methodName);
+
+        const ctx = await ctxProm.p;
+        // Reading refreshes timer
+        const reader = callerInterface.readable.getReader();
+        await sleep(50);
+        let timeLeft = ctx.timer.getTimeout();
+        const message = await reader.read();
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(timeLeft);
+        reader.releaseLock();
+        for await (const _ of callerInterface.readable) {
+          // Do nothing
+        }
+
+        // Writing should refresh timer
+        const writer = callerInterface.writable.getWriter();
+        await sleep(50);
+        timeLeft = ctx.timer.getTimeout();
+        await writer.write(message.value);
+        expect(ctx.timer.getTimeout()).toBeGreaterThan(timeLeft);
+        await writer.close();
+
+        await outputResult;
+        await rpcClient.destroy();
+      },
+      { numRuns: 5 },
+    );
+    testProp(
+      'Check that ctx is provided to the middleWare and that the middleware can reset the timer',
+      [specificMessageArb],
+      async (messages) => {
+        const inputStream = rpcTestUtils.messagesToReadableStream(messages);
+        const [outputResult, outputStream] =
+          rpcTestUtils.streamToArray<Uint8Array>();
+        const streamPair: ReadableWritablePair = {
+          readable: inputStream,
+          writable: outputStream,
+        };
+        const ctxProm = promise<ContextTimed>();
+        const rpcClient = await RPCClient.createRPCClient({
+          manifest: {},
+          streamFactory: async (ctx) => {
+            ctxProm.resolveP(ctx);
+            return streamPair;
+          },
+          middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+            (ctx) => {
+              ctx.timer.reset(1000);
+              return {
+                forward: new TransformStream(),
+                reverse: new TransformStream(),
+              };
+            },
+          ),
+          logger,
+        });
+        const callerInterface = await rpcClient.duplexStreamCaller<
+          JSONValue,
+          JSONValue
+        >(methodName);
+
+        const ctx = await ctxProm.p;
+        // Writing should refresh timer engage the middleware
+        const writer = callerInterface.writable.getWriter();
+        await writer.write({});
+        expect(ctx.timer.delay).toBe(1000);
+        await writer.close();
+
+        await outputResult;
+        await rpcClient.destroy();
+      },
+      { numRuns: 1 },
+    );
   });
 });

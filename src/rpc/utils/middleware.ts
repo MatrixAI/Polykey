@@ -95,6 +95,7 @@ function defaultMiddleware() {
  * The reverse path will pipe the output stream through the provided middleware
  * and then transform it back to a binary stream.
  * @param middlewareFactory - The provided middleware
+ * @param ctx
  */
 function defaultServerMiddlewareWrapper(
   middlewareFactory: MiddlewareFactory<
@@ -104,7 +105,7 @@ function defaultServerMiddlewareWrapper(
     JSONRPCResponse
   > = defaultMiddleware,
 ): MiddlewareFactory<JSONRPCRequest, Uint8Array, Uint8Array, JSONRPCResponse> {
-  return () => {
+  return (ctx) => {
     const inputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCRequest,
     );
@@ -113,7 +114,7 @@ function defaultServerMiddlewareWrapper(
       JSONRPCResponseResult
     >();
 
-    const middleMiddleware = middlewareFactory();
+    const middleMiddleware = middlewareFactory(ctx);
 
     const forwardReadable = inputTransformStream.readable.pipeThrough(
       middleMiddleware.forward,
@@ -157,7 +158,7 @@ const defaultClientMiddlewareWrapper = (
   JSONRPCResponse,
   Uint8Array
 > => {
-  return () => {
+  return (ctx) => {
     const outputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCResponse,
       // Undefined,
@@ -167,7 +168,7 @@ const defaultClientMiddlewareWrapper = (
       JSONRPCRequest
     >();
 
-    const middleMiddleware = middleware();
+    const middleMiddleware = middleware(ctx);
     const forwardReadable = inputTransformStream.readable
       .pipeThrough(middleMiddleware.forward) // Usual middleware here
       .pipeThrough(jsonMessageToBinaryStream());

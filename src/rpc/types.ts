@@ -208,9 +208,9 @@ type UnaryHandlerImplementation<
 
 type ContainerType = Record<string, any>;
 
-type StreamFactory = () => Promise<
-  ReadableWritablePair<Uint8Array, Uint8Array>
->;
+type StreamFactory = (
+  ctx: ContextTimed,
+) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
 
 /**
  * Middleware factory creates middlewares.
@@ -223,7 +223,7 @@ type StreamFactory = () => Promise<
  * FW -> FR is the direction of data flow from client to server.
  * RW -> RR is the direction of data flow from server to client.
  */
-type MiddlewareFactory<FR, FW, RR, RW> = () => {
+type MiddlewareFactory<FR, FW, RR, RW> = (ctx: ContextTimed) => {
   forward: ReadableWritablePair<FR, FW>;
   reverse: ReadableWritablePair<RR, RW>;
 };
@@ -233,25 +233,28 @@ type MiddlewareFactory<FR, FW, RR, RW> = () => {
 type UnaryCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I) => Promise<O>;
+> = (parameters: I, ctx?: Partial<ContextTimed>) => Promise<O>;
 
 type ServerCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I) => Promise<ReadableStream<O>>;
+> = (parameters: I, ctx?: Partial<ContextTimed>) => Promise<ReadableStream<O>>;
 
 type ClientCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = () => Promise<{ output: Promise<O>; writable: WritableStream<I> }>;
+> = (
+  ctx?: Partial<ContextTimed>,
+) => Promise<{ output: Promise<O>; writable: WritableStream<I> }>;
 
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = () => Promise<ReadableWritablePair<O, I>>;
+> = (ctx?: Partial<ContextTimed>) => Promise<ReadableWritablePair<O, I>>;
 
 type RawCallerImplementation = (
   headerParams: JSONValue,
+  ctx?: Partial<ContextTimed>,
 ) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>
