@@ -19,6 +19,8 @@ class IdentitiesInfoGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<ProviderSearchMessage>,
+    _,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
     const { identitiesManager } = this.container;
     const {
@@ -55,6 +57,7 @@ class IdentitiesInfoGetHandler extends ServerHandler<
     }
     const identities: Array<IdentityData | undefined> = [];
     for (const providerId of providerIds) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       // Get provider from id
       const provider = identitiesManager.getProvider(providerId);
       if (provider === undefined) {
@@ -77,6 +80,7 @@ class IdentitiesInfoGetHandler extends ServerHandler<
       input.limit = identities.length;
     }
     for (let i = 0; i < input.limit; i++) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       const identity = identities[i];
       if (identity !== undefined) {
         if (identitiesUtils.matchIdentityData(identity, searchTerms)) {

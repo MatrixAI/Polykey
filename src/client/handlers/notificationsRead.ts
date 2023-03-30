@@ -14,6 +14,8 @@ class NotificationsReadHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<NotificationReadMessage>,
+    _,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NotificationMessage>> {
     const { db, notificationsManager } = this.container;
 
@@ -26,6 +28,7 @@ class NotificationsReadHandler extends ServerHandler<
       }),
     );
     for (const notification of notifications) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         notification: notification,
       };

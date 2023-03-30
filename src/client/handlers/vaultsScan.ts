@@ -16,6 +16,8 @@ class VaultsScanHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<NodeIdMessage>,
+    _,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager } = this.container;
     const {
@@ -38,6 +40,7 @@ class VaultsScanHandler extends ServerHandler<
       vaultName,
       vaultPermissions,
     } of vaultManager.scanVaults(nodeId)) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         vaultName,
         vaultIdEncoded,

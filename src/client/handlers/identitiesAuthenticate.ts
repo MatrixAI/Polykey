@@ -21,6 +21,8 @@ class IdentitiesAuthenticateHandler extends ServerHandler<
     input: ClientRPCRequestParams<{
       providerId: string;
     }>,
+    _,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<AuthProcessMessage>> {
     const { identitiesManager } = this.container;
     const {
@@ -42,7 +44,9 @@ class IdentitiesAuthenticateHandler extends ServerHandler<
     if (provider == null) {
       throw new identitiesErrors.ErrorProviderMissing();
     }
-    const authFlow = provider.authenticate();
+    if (ctx.signal.aborted) throw ctx.signal.reason;
+    const authFlow = provider.authenticate(ctx.timer.getTimeout());
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     let authFlowResult = await authFlow.next();
     if (authFlowResult.done) {
       never();
@@ -53,6 +57,7 @@ class IdentitiesAuthenticateHandler extends ServerHandler<
         dataMap: authFlowResult.value.data,
       },
     };
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     authFlowResult = await authFlow.next();
     if (!authFlowResult.done) {
       never();

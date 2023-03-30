@@ -13,14 +13,17 @@ class VaultsListHandler extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<VaultListMessage>
 > {
-  public async *handle(): AsyncGenerator<
-    ClientRPCResponseResult<VaultListMessage>
-  > {
+  public async *handle(
+    input_,
+    connectionInfo_,
+    ctx,
+  ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
     const { db, vaultManager } = this.container;
     const vaults = await db.withTransactionF((tran) =>
       vaultManager.listVaults(tran),
     );
     for await (const [vaultName, vaultId] of vaults) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         vaultName,
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),

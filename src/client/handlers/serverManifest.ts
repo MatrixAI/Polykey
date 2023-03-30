@@ -15,7 +15,7 @@ import type NodeGraph from '../../nodes/NodeGraph';
 import type VaultManager from '../../vaults/VaultManager';
 import type { FileSystem } from '../../types';
 import { VaultsCloneHandler } from './vaultsClone';
-import { VaultsCreatehandler } from './vaultsCreate';
+import { VaultsCreateHandler } from './vaultsCreate';
 import { VaultsDeleteHandler } from './vaultsDelete';
 import { VaultsListHandler } from './vaultsList';
 import { VaultsLogHandler } from './vaultsLog';
@@ -171,7 +171,7 @@ const serverManifest = (container: {
     notificationsRead: new NotificationsReadHandler(container),
     notificationsSend: new NotificationsSendHandler(container),
     vaultsClone: new VaultsCloneHandler(container),
-    vaultsCreate: new VaultsCreatehandler(container),
+    vaultsCreate: new VaultsCreateHandler(container),
     vaultsDelete: new VaultsDeleteHandler(container),
     vaultsList: new VaultsListHandler(container),
     vaultsLog: new VaultsLogHandler(container),

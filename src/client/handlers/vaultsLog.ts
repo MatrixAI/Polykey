@@ -17,6 +17,8 @@ class VaultsLogHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultsLogMessage>,
+    connectionInfo_,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<LogEntryMessage>> {
     const { db, vaultManager } = this.container;
     const log = await db.withTransactionF(async (tran) => {
@@ -39,6 +41,7 @@ class VaultsLogHandler extends ServerHandler<
       );
     });
     for (const entry of log) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         commitId: entry.commitId,
         committer: entry.committer.name,

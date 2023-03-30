@@ -17,6 +17,8 @@ class VaultsSecretsListHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
+    _,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<SecretNameMessage>> {
     const { vaultManager, db } = this.container;
     const secrets = await db.withTransactionF(async (tran) => {
@@ -38,6 +40,7 @@ class VaultsSecretsListHandler extends ServerHandler<
       );
     });
     for (const secret of secrets) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         secretName: secret,
       };
