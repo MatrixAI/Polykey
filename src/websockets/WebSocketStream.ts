@@ -91,7 +91,7 @@ abstract class WebSocketStream
   /**
    * Forces the active stream to end early
    */
-  abstract end(): void;
+  abstract end(e?: Error): void;
 
   /**
    * Signals the end of the ReadableStream. to be used with the extended class

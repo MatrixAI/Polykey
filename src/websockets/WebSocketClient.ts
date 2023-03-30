@@ -1,17 +1,20 @@
 import type { TLSSocket } from 'tls';
 import type { NodeId } from 'ids/index';
+import type { ContextTimed } from '../contexts/types';
+import type {
+  ReadableStreamController,
+  WritableStreamDefaultController,
+} from 'stream/web';
 import { WritableStream, ReadableStream } from 'stream/web';
 import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
-import { Timer } from '@matrixai/timer';
 import { Validator } from 'ip-num';
+import { Timer } from '@matrixai/timer';
 import WebSocketStream from './WebSocketStream';
 import * as webSocketUtils from './utils';
 import * as webSocketErrors from './errors';
 import { promise } from '../utils';
-
-const timeoutSymbol = Symbol('TimedOutSymbol');
 
 interface WebSocketClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
@@ -42,7 +45,7 @@ class WebSocketClient {
       port,
       maxReadableStreamBytes,
       expectedNodeIds,
-      connectionTimeout,
+      connectionTimeout ?? Infinity,
       pingInterval,
       pingTimeout,
     );
@@ -59,7 +62,7 @@ class WebSocketClient {
     protected port: number,
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
-    protected connectionTimeout: number | undefined,
+    protected connectionTimeout: number,
     protected pingInterval: number,
     protected pingTimeout: number,
   ) {
@@ -76,7 +79,11 @@ class WebSocketClient {
     this.logger.info(`Destroying ${this.constructor.name}`);
     if (force) {
       for (const activeConnection of this.activeConnections) {
-        activeConnection.end();
+        activeConnection.end(
+          new webSocketErrors.ErrorClientEndingConnections(
+            'Destroying WebSocketClient',
+          ),
+        );
       }
     }
     for (const activeConnection of this.activeConnections) {
@@ -88,7 +95,7 @@ class WebSocketClient {
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async stopConnections() {
     for (const activeConnection of this.activeConnections) {
-      activeConnection.end();
+      activeConnection.end(new webSocketErrors.ErrorClientEndingConnections());
     }
     for (const activeConnection of this.activeConnections) {
       await activeConnection.endedProm.catch(() => {}); // Ignore errors here
@@ -96,19 +103,40 @@ class WebSocketClient {
   }
 
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
-  public async startConnection({
-    timeoutTimer,
-  }: {
-    timeoutTimer?: Timer;
-  } = {}): Promise<WebSocketStreamClientInternal> {
-    // Use provided timer
-    let timer: Timer<void> | undefined = timeoutTimer;
-    // If no timer provided use provided default timeout
-    if (timeoutTimer == null && this.connectionTimeout != null) {
-      timer = new Timer({
+  public async startConnection(
+    ctx: Partial<ContextTimed> = {},
+  ): Promise<WebSocketStreamClientInternal> {
+    // Setting up abort/cancellation logic
+    const abortRaceProm = promise<never>();
+    // Ignore unhandled rejection
+    abortRaceProm.p.catch(() => {});
+    const timer =
+      ctx.timer ??
+      new Timer({
         delay: this.connectionTimeout,
       });
+    void timer.catch(() => {});
+    void timer
+      .then(() => {
+        abortRaceProm.rejectP(
+          new webSocketErrors.ErrorClientConnectionTimedOut(),
+        );
+      })
+      .catch(() => {});
+    const { signal } = ctx;
+    let abortHandler: () => void | undefined;
+    if (signal != null) {
+      abortHandler = () => {
+        abortRaceProm.rejectP(signal.reason);
+      };
+      if (signal.aborted) abortHandler();
+      else signal.addEventListener('abort', abortHandler);
     }
+    const cleanUp = () => {
+      // Cancel timer if it was internally created
+      if (ctx.timer == null) timer.cancel();
+      signal?.removeEventListener('abort', abortHandler);
+    };
     const address = `wss://${this.host}:${this.port}`;
     this.logger.info(`Connecting to ${address}`);
     const connectProm = promise<void>();
@@ -149,13 +177,10 @@ class WebSocketClient {
     //  2. connection error or authentication failure
     //  3. connection timed out
     try {
-      const result = await Promise.race([
-        timer?.then(() => timeoutSymbol) ?? new Promise(() => {}),
+      await Promise.race([
+        abortRaceProm.p,
         await Promise.all([authenticateProm.p, connectProm.p]),
       ]);
-      if (result === timeoutSymbol) {
-        throw new webSocketErrors.ErrorClientConnectionTimedOut();
-      }
     } catch (e) {
       // Clean up
       // unregister handlers
@@ -168,9 +193,11 @@ class WebSocketClient {
       //  returning.
       await earlyCloseProm.p;
       throw e;
+    } finally {
+      cleanUp();
+      // Cleaning up connection error
+      ws.removeEventListener('error', openErrorHandler);
     }
-    // Cleaning up connection error
-    ws.removeEventListener('error', openErrorHandler);
 
     // Constructing the `ReadableWritablePair`, the lifecycle is handed off to
     //  the webSocketStream at this point.
@@ -181,19 +208,35 @@ class WebSocketClient {
       this.pingTimeout,
       this.logger,
     );
+    const abortStream = () => {
+      webSocketStreamClient.end(
+        new webSocketErrors.ErrorClientStreamAborted(undefined, {
+          cause: signal?.reason,
+        }),
+      );
+    };
     // Setting up activeStream map lifecycle
     this.activeConnections.add(webSocketStreamClient);
     void webSocketStreamClient.endedProm
       .catch(() => {}) // Ignore errors
       .finally(() => {
         this.activeConnections.delete(webSocketStreamClient);
+        signal?.removeEventListener('abort', abortStream);
       });
+    // Abort connection on signal
+    if (signal?.aborted === true) abortStream();
+    else signal?.addEventListener('abort', abortStream);
     return webSocketStreamClient;
   }
 }
 
 // This is the internal implementation of the client's stream pair.
 class WebSocketStreamClientInternal extends WebSocketStream {
+  protected readableController:
+    | ReadableStreamController<Uint8Array>
+    | undefined;
+  protected writableController: WritableStreamDefaultController | undefined;
+
   constructor(
     protected ws: WebSocket,
     maxReadableStreamBytes: number,
@@ -204,9 +247,11 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     super();
     const readableLogger = logger.getChild('readable');
     const writableLogger = logger.getChild('writable');
+
     this.readable = new ReadableStream<Uint8Array>(
       {
         start: (controller) => {
+          this.readableController = controller;
           readableLogger.info('Starting');
           const messageHandler = (data) => {
             readableLogger.debug(`Received ${data.toString()}`);
@@ -278,6 +323,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     );
     this.writable = new WritableStream<Uint8Array>({
       start: (controller) => {
+        this.writableController = controller;
         writableLogger.info('Starting');
         ws.once('error', (e) => {
           if (!this.writableEnded_) {
@@ -368,8 +414,23 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     });
   }
 
-  end(): void {
-    this.ws.close(4001, 'Ending connection');
+  end(e?: Error): void {
+    // Default error
+    const err = e ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
+    // Close the streams with the given error,
+    if (!this.readableEnded_) {
+      this.readableController?.error(err);
+      this.signalReadableEnd(err);
+    }
+    if (!this.writableEnded_) {
+      this.writableController?.error(err);
+      this.signalWritableEnd(err);
+    }
+    // Then close the websocket
+    if (!this.webSocketEnded_) {
+      this.ws.close(4001, 'Ending connection');
+      this.signalWebSocketEnd(err);
+    }
   }
 }
 

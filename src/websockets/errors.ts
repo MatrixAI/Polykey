@@ -29,6 +29,16 @@ class ErrorClientConnectionEndedEarly<T> extends ErrorWebSocketClient<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorClientStreamAborted<T> extends ErrorWebSocketClient<T> {
+  static description = 'Stream was ended early with an abort signal';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorClientEndingConnections<T> extends ErrorWebSocketClient<T> {
+  static description = 'WebSocketClient is ending active connections';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorWebSocketServer<T> extends ErrorWebSocket<T> {}
 
 class ErrorWebSocketServerNotRunning<T> extends ErrorWebSocketServer<T> {
@@ -108,6 +118,8 @@ export {
   ErrorClientConnectionFailed,
   ErrorClientConnectionTimedOut,
   ErrorClientConnectionEndedEarly,
+  ErrorClientStreamAborted,
+  ErrorClientEndingConnections,
   ErrorWebSocketServer,
   ErrorWebSocketServerNotRunning,
   ErrorServerPortUnavailable,

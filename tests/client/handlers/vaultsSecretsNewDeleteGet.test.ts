@@ -29,6 +29,7 @@ import * as testUtils from '../../utils/index';
 import * as testsUtils from '../../utils';
 
 describe('vaultsSecretsNewDeleteGet', () => {
+  Error.stackTraceLimit = 100;
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,

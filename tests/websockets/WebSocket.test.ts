@@ -461,7 +461,6 @@ describe('WebSocket', () => {
     await expect(clientWritable.write(Buffer.from('test'))).rejects.toThrow();
     logger.info('ending');
   });
-
   // These describe blocks contains tests specific to either the client or server
   describe('WebSocketServer', () => {
     testProp(
@@ -827,7 +826,7 @@ describe('WebSocket', () => {
       await expect(webSocketClient.startConnection({})).rejects.toThrow();
       await expect(
         webSocketClient.startConnection({
-          timeoutTimer: new Timer({ delay: 0 }),
+          timer: new Timer({ delay: 0 }),
         }),
       ).rejects.toThrow();
       logger.info('ending');
@@ -853,6 +852,51 @@ describe('WebSocket', () => {
       });
       await webSocketClient.startConnection();
       await webSocketClient.destroy();
+      logger.info('ending');
+    });
+    test('Stream is aborted', async () => {
+      webSocketServer = await WebSocketServer.createWebSocketServer({
+        connectionCallback: (streamPair) => {
+          logger.info('inside callback');
+          void Promise.all([
+            (async () => {
+              for await (const _ of streamPair.readable) {
+                // Do nothing
+              }
+            })().catch(() => {}),
+            (async () => {
+              const message = Buffer.alloc(5, 123);
+              const writer = streamPair.writable.getWriter();
+              await writer.write(message);
+              await writer.write(message);
+              await writer.write(message);
+              await writer.close();
+            })().catch(() => {}),
+          ]);
+        },
+        basePath: dataDir,
+        tlsConfig,
+        host,
+        logger: logger.getChild('server'),
+      });
+      logger.info(`Server started on port ${webSocketServer.getPort()}`);
+      webSocketClient = await WebSocketClient.createWebSocketClient({
+        host,
+        port: webSocketServer.getPort(),
+        expectedNodeIds: [keyRing.getNodeId()],
+        logger: logger.getChild('clientClient'),
+      });
+      const abortController = new AbortController();
+      const websocket = await webSocketClient.startConnection({
+        signal: abortController.signal,
+      });
+      // Signal the connection to end
+      abortController.abort('SOME REASON');
+      await expect(async () => {
+        for await (const _ of websocket.readable) {
+          // Await error
+        }
+      }).rejects.toThrow(webSocketErrors.ErrorClientStreamAborted);
       logger.info('ending');
     });
   });
