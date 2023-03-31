@@ -125,7 +125,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
         vaultsSecretsDelete,
         vaultsSecretsGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

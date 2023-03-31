@@ -104,7 +104,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -157,7 +157,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -210,7 +210,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -287,7 +287,7 @@ describe('identitiesClaim', () => {
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

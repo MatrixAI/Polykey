@@ -98,7 +98,7 @@ describe('keysPasswordChange', () => {
       manifest: {
         keysPasswordChange,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -160,7 +160,7 @@ describe('nodesAdd', () => {
       manifest: {
         nodesAdd,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -209,7 +209,7 @@ describe('nodesAdd', () => {
       manifest: {
         nodesAdd,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

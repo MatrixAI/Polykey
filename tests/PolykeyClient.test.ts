@@ -55,7 +55,7 @@ describe('PolykeyClient', () => {
       logger,
     });
     const pkClient = await PolykeyClient.createPolykeyClient({
-      streamFactory: () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       nodePath,
       fs,
       logger,

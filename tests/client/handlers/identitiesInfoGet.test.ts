@@ -108,7 +108,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -174,7 +174,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -262,7 +262,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -345,7 +345,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -414,7 +414,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -497,7 +497,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -587,7 +587,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -134,7 +134,7 @@ describe('gestaltsActionsByIdentity', () => {
         gestaltsActionsSetByIdentity,
         gestaltsActionsUnsetByIdentity,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

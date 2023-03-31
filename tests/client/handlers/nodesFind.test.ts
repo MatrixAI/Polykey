@@ -153,7 +153,7 @@ describe('nodesFind', () => {
       manifest: {
         nodesFind,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -192,7 +192,7 @@ describe('nodesFind', () => {
       manifest: {
         nodesFind,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

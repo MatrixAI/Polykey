@@ -193,7 +193,7 @@ describe('gestaltsDiscoverByNode', () => {
       manifest: {
         gestaltsDiscoveryByNode,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

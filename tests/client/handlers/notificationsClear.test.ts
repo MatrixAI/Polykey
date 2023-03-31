@@ -169,7 +169,7 @@ describe('notificationsClear', () => {
       manifest: {
         notificationsClear,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

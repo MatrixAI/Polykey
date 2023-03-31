@@ -189,7 +189,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -256,7 +256,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -340,7 +340,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -424,7 +424,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -488,7 +488,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -565,7 +565,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       manifest: {
         notificationsRead,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

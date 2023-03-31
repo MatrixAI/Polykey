@@ -111,7 +111,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -197,7 +197,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -280,7 +280,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -371,7 +371,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -463,7 +463,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -543,7 +543,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -630,7 +630,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -721,7 +721,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -794,7 +794,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -879,7 +879,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -971,7 +971,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1050,7 +1050,7 @@ describe('identitiesInfoConnectedGet', () => {
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
