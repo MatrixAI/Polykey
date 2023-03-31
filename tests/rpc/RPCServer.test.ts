@@ -1034,4 +1034,48 @@ describe(`${RPCServer.name}`, () => {
     await expect(outputResult).toReject();
     await rpcServer.destroy();
   });
+  testProp(
+    'Middleware can update timeout timer',
+    [specificMessageArb],
+    async (messages) => {
+      const stream = rpcTestUtils.messagesToReadableStream(messages);
+      const ctxProm = promise<ContextTimed>();
+      class TestMethod extends DuplexHandler {
+        public async *handle(
+          input: AsyncIterable<JSONValue>,
+          _,
+          ctx,
+        ): AsyncIterable<JSONValue> {
+          ctxProm.resolveP(ctx);
+          yield* input;
+        }
+      }
+      const middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(
+        (ctx) => {
+          ctx.timer.reset(12345);
+          return {
+            forward: new TransformStream(),
+            reverse: new TransformStream(),
+          };
+        },
+      );
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        middlewareFactory: middlewareFactory,
+        logger,
+      });
+      const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+      const readWriteStream: ReadableWritablePair = {
+        readable: stream,
+        writable: outputStream,
+      };
+      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      await outputResult;
+      const ctx = await ctxProm.p;
+      expect(ctx.timer.delay).toBe(12345);
+      await rpcServer.destroy();
+    },
+  );
 });
