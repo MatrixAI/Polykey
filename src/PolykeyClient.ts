@@ -4,8 +4,8 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import RPCClient from './rpc/RPCClient';
-import * as middlewareUtils from './rpc/utils/middleware';
-import * as authMiddleware from './client/utils/authenticationMiddleware';
+import * as rpcMiddlewareUtils from './rpc/utils/middleware';
+import * as clientMiddleware from './client/utils/middleware';
 import { Session } from './sessions';
 import * as errors from './errors';
 import * as utils from './utils';
@@ -60,9 +60,10 @@ class PolykeyClient<M extends ClientManifest> {
         : await RPCClient.createRPCClient<M>({
             manifest,
             streamFactory,
-            middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
-              authMiddleware.authenticationMiddlewareClient(session),
-            ),
+            middlewareFactory:
+              rpcMiddlewareUtils.defaultClientMiddlewareWrapper(
+                clientMiddleware.middlewareClient(session),
+              ),
             logger: logger.getChild(RPCClient.name),
           });
     const pkClient = new this({
