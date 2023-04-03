@@ -146,6 +146,15 @@ class RPCClient<M extends ClientManifest> {
     return this.methodsProxy as MapCallers<M>;
   }
 
+  /**
+   * Generic caller for unary RPC calls.
+   * This returns the response in the provided type. No validation is done so
+   * make sure the types match the handler types.
+   * @param method - Method name of the RPC call
+   * @param parameters - Parameters to be provided with the RPC message. Matches
+   * the provided I type.
+   * @param ctx - ContextTimed used for timeouts and cancellation.
+   */
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
@@ -155,16 +164,32 @@ class RPCClient<M extends ClientManifest> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method, ctx);
     const reader = callerInterface.readable.getReader();
     const writer = callerInterface.writable.getWriter();
-    await writer.write(parameters);
-    const output = await reader.read();
-    if (output.done) {
-      throw new rpcErrors.ErrorRPCMissingResponse();
+    try {
+      await writer.write(parameters);
+      const output = await reader.read();
+      if (output.done) {
+        throw new rpcErrors.ErrorRPCMissingResponse();
+      }
+      await reader.cancel();
+      await writer.close();
+      return output.value;
+    } finally {
+      // Attempt clean up, ignore errors if already cleaned up
+      await reader.cancel().catch(() => {});
+      await writer.close().catch(() => {});
     }
-    await reader.cancel();
-    await writer.close();
-    return output.value;
   }
 
+  /**
+   * Generic caller for server streaming RPC calls.
+   * This returns a ReadableStream of the provided type. When finished, the
+   * readable needs to be cleaned up, otherwise cleanup happens mostly
+   * automatically.
+   * @param method - Method name of the RPC call
+   * @param parameters - Parameters to be provided with the RPC message. Matches
+   * the provided I type.
+   * @param ctx - ContextTimed used for timeouts and cancellation.
+   */
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
@@ -173,12 +198,26 @@ class RPCClient<M extends ClientManifest> {
   ): Promise<ReadableStream<O>> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method, ctx);
     const writer = callerInterface.writable.getWriter();
-    await writer.write(parameters);
-    await writer.close();
-
-    return callerInterface.readable;
+    try {
+      await writer.write(parameters);
+      await writer.close();
+      return callerInterface.readable;
+    } finally {
+      // Clean up if any problems, ignore errors if already closed
+      await writer.close().catch(() => {});
+    }
   }
 
+  /**
+   * Generic caller for Client streaming RPC calls.
+   * This returns a WritableStream for writing the input to and a Promise that
+   * resolves when the output is received.
+   * When finished the writable stream must be ended. Failing to do so will
+   * hold the connection open and result in a resource leak until the
+   * call times out.
+   * @param method - Method name of the RPC call
+   * @param ctx - ContextTimed used for timeouts and cancellation.
+   */
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
@@ -201,6 +240,17 @@ class RPCClient<M extends ClientManifest> {
     };
   }
 
+  /**
+   * Generic caller for duplex RPC calls.
+   * This returns a `ReadableWritablePair` of the types specified. No validation
+   * is applied to these types so make sure they match the types of the handler
+   * you are calling.
+   * When finished the streams must be ended manually. Failing to do so will
+   * hold the connection open and result in a resource leak until the
+   * call times out.
+   * @param method - Method name of the RPC call
+   * @param ctx - ContextTimed used for timeouts and cancellation.
+   */
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
@@ -290,6 +340,18 @@ class RPCClient<M extends ClientManifest> {
     };
   }
 
+  /**
+   * Generic caller for raw RPC calls.
+   * This returns a `ReadableWritablePair` of the raw RPC stream.
+   * When finished the streams must be ended manually. Failing to do so will
+   * hold the connection open and result in a resource leak until the
+   * call times out.
+   * @param method - Method name of the RPC call
+   * @param headerParams - Parameters for the header message. The header is a
+   * single RPC message that is sent to specify the method for the RPC call.
+   * Any metadata of extra parameters is provided here.
+   * @param ctx - ContextTimed used for timeouts and cancellation.
+   */
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async rawStreamCaller(
     method: string,
