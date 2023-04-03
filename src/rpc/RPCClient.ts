@@ -201,11 +201,12 @@ class RPCClient<M extends ClientManifest> {
     try {
       await writer.write(parameters);
       await writer.close();
-      return callerInterface.readable;
-    } finally {
+    } catch (e) {
       // Clean up if any problems, ignore errors if already closed
-      await writer.close().catch(() => {});
+      await callerInterface.readable.cancel(e);
+      throw e;
     }
+    return callerInterface.readable;
   }
 
   /**
