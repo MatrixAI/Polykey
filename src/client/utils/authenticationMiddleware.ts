@@ -41,7 +41,7 @@ function authenticationMiddlewareServer(
                 chunk,
               );
             } catch (e) {
-              controller.terminate();
+              controller.error(e);
               const rpcError: JSONRPCError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
@@ -53,7 +53,7 @@ function authenticationMiddlewareServer(
                 id: null,
               };
               reverseController.enqueue(rpcErrorMessage);
-              reverseController.end();
+              reverseController.error(e);
               return;
             }
           }

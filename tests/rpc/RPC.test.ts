@@ -2,8 +2,10 @@ import type { ContainerType, JSONRPCRequest } from '@/rpc/types';
 import type { ConnectionInfo } from '@/network/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONValue } from '@/types';
+import { TransformStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { sleep } from 'ix/asynciterable/_sleep';
 import RPCServer from '@/rpc/RPCServer';
 import RPCClient from '@/rpc/RPCClient';
 import {
@@ -21,6 +23,7 @@ import {
   UnaryCaller,
 } from '@/rpc/callers';
 import * as rpcErrors from '@/rpc/errors';
+import * as rpcMiddlewareUtils from '@/rpc/utils/middleware';
 import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {
@@ -352,4 +355,61 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
+  test('Middleware can end stream early', async () => {
+    const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+      Uint8Array,
+      Uint8Array
+    >();
+    class TestMethod extends DuplexHandler {
+      public async *handle(
+        input: AsyncIterable<JSONValue>,
+      ): AsyncIterable<JSONValue> {
+        yield* input;
+      }
+    }
+    const middleware = rpcMiddlewareUtils.defaultServerMiddlewareWrapper(() => {
+      return {
+        forward: new TransformStream({
+          start: (controller) => {
+            // Controller.terminate();
+            controller.error(Error('SOME ERROR'));
+          },
+        }),
+        reverse: new TransformStream({
+          start: (controller) => {
+            controller.error(Error('SOME ERROR'));
+          },
+        }),
+      };
+    });
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod: new TestMethod({}),
+      },
+      middlewareFactory: middleware,
+      logger,
+    });
+    rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+
+    const rpcClient = await RPCClient.createRPCClient({
+      manifest: {
+        testMethod: new DuplexCaller(),
+      },
+      streamFactory: async () => clientPair,
+      logger,
+    });
+
+    const callerInterface = await rpcClient.methods.testMethod();
+    const writer = callerInterface.writable.getWriter();
+    await writer.write({});
+    // Allow time to process buffer
+    await sleep(0);
+    await expect(writer.write({})).toReject();
+    const reader = callerInterface.readable.getReader();
+    await expect(reader.read()).toReject();
+    await expect(writer.closed).toReject();
+    await expect(reader.closed).toReject();
+    await expect(rpcServer.destroy(false)).toResolve();
+    await rpcClient.destroy();
+  });
 });
