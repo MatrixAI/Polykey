@@ -150,7 +150,7 @@ describe('WebSocket', () => {
     expect((await reader.read()).done).toBeTrue();
     logger.info('ending');
   });
-  test('Handles a connection and closes before message', async () => {
+  test('handles a connection and closes before message', async () => {
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
         logger.info('inside callback');
@@ -178,7 +178,7 @@ describe('WebSocket', () => {
     logger.info('ending');
   });
   testProp(
-    'Handles multiple connections',
+    'handles multiple connections',
     [streamsArb],
     async (streamsData) => {
       try {
@@ -297,7 +297,7 @@ describe('WebSocket', () => {
   });
   // Readable backpressure is not actually supported. We're dealing with it by
   //  using a buffer with a provided limit that can be very large.
-  test('Exceeding readable buffer limit causes error', async () => {
+  test('exceeding readable buffer limit causes error', async () => {
     const startReading = promise<void>();
     const handlingProm = promise<void>();
     webSocketServer = await WebSocketServer.createWebSocketServer({
@@ -409,7 +409,7 @@ describe('WebSocket', () => {
     await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
     logger.info('ending');
   });
-  test('Server ends connection abruptly', async () => {
+  test('server ends connection abruptly', async () => {
     const testProcess = await testsUtils.spawn(
       'ts-node',
       [
@@ -578,7 +578,7 @@ describe('WebSocket', () => {
         }
       },
     );
-    test('Destroying ClientServer stops all connections', async () => {
+    test('destroying ClientServer stops all connections', async () => {
       const streamPairProm =
         promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
       webSocketServer = await WebSocketServer.createWebSocketServer({
@@ -618,7 +618,7 @@ describe('WebSocket', () => {
       await expect(serverWritable.write(Buffer.from('test'))).rejects.toThrow();
       logger.info('ending');
     });
-    test('Server rejects normal HTTPS requests', async () => {
+    test('server rejects normal HTTPS requests', async () => {
       webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');
@@ -676,7 +676,7 @@ describe('WebSocket', () => {
     });
   });
   describe('WebSocketClient', () => {
-    test('Destroying ClientClient stops all connections', async () => {
+    test('destroying ClientClient stops all connections', async () => {
       const streamPairProm =
         promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
       webSocketServer = await WebSocketServer.createWebSocketServer({
@@ -718,7 +718,7 @@ describe('WebSocket', () => {
       await webSocketServer.stop();
       logger.info('ending');
     });
-    test('Authentication rejects bad server certificate', async () => {
+    test('authentication rejects bad server certificate', async () => {
       const invalidNodeId = testNodeUtils.generateRandomNodeId();
       webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
@@ -749,7 +749,7 @@ describe('WebSocket', () => {
       await webSocketServer.stop();
       logger.info('ending');
     });
-    test('Authenticates with multiple certs in chain', async () => {
+    test('authenticates with multiple certs in chain', async () => {
       const keyPairs: Array<KeyPair> = [
         keyRing.keyPair,
         keysUtils.generateKeyPair(),
@@ -787,7 +787,7 @@ describe('WebSocket', () => {
       expect(activeConnections.size).toBe(1);
       logger.info('ending');
     });
-    test('Authenticates with multiple expected nodes', async () => {
+    test('authenticates with multiple expected nodes', async () => {
       const alternativeNodeId = testNodeUtils.generateRandomNodeId();
       webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
@@ -815,7 +815,7 @@ describe('WebSocket', () => {
       expect(activeConnections.size).toBe(1);
       logger.info('ending');
     });
-    test('Connection times out', async () => {
+    test('connection times out', async () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: 12345,
@@ -854,7 +854,7 @@ describe('WebSocket', () => {
       await webSocketClient.destroy();
       logger.info('ending');
     });
-    test('Stream is aborted', async () => {
+    test('stream is aborted', async () => {
       webSocketServer = await WebSocketServer.createWebSocketServer({
         connectionCallback: (streamPair) => {
           logger.info('inside callback');

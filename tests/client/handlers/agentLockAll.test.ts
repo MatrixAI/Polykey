@@ -70,7 +70,7 @@ describe('agentLockAll', () => {
       recursive: true,
     });
   });
-  test('Locks all current sessions', async () => {
+  test('locks all current sessions', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {

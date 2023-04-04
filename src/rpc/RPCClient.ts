@@ -206,6 +206,7 @@ class RPCClient<M extends ClientManifest> {
       // Clean up if any problems, ignore errors if already closed
       await callerInterface.readable.cancel(e);
       throw e;
+
     }
     return callerInterface.readable;
   }

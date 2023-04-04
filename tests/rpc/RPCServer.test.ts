@@ -217,7 +217,7 @@ describe(`${RPCServer.name}`, () => {
     },
   );
   testProp(
-    'Handler is provided with container',
+    'handler is provided with container',
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
@@ -254,7 +254,7 @@ describe(`${RPCServer.name}`, () => {
     },
   );
   testProp(
-    'Handler is provided with connectionInfo',
+    'handler is provided with connectionInfo',
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
@@ -295,7 +295,7 @@ describe(`${RPCServer.name}`, () => {
       expect(handledConnectionInfo).toBe(connectionInfo);
     },
   );
-  testProp('Handler can be aborted', [specificMessageArb], async (messages) => {
+  testProp('handler can be aborted', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
       public async *handle(
@@ -346,7 +346,7 @@ describe(`${RPCServer.name}`, () => {
     ).not.toThrow();
     await rpcServer.destroy();
   });
-  testProp('Handler yields nothing', [specificMessageArb], async (messages) => {
+  testProp('handler yields nothing', [specificMessageArb], async (messages) => {
     const stream = rpcTestUtils.messagesToReadableStream(messages);
     class TestMethod extends DuplexHandler {
       public async *handle(
@@ -743,7 +743,7 @@ describe(`${RPCServer.name}`, () => {
       await rpcServer.destroy();
     },
   );
-  test('default timeout', async () => {
+  test('timeout with default time after handler selected', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
       public handle(_input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
@@ -793,7 +793,7 @@ describe(`${RPCServer.name}`, () => {
     await expect(outputResult).toReject();
     await rpcServer.destroy();
   });
-  test('default timeout before handler selected', async () => {
+  test('timeout with default time before handler selected', async () => {
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {},
       streamKeepAliveTimeoutTime: 100,
@@ -1037,7 +1037,7 @@ describe(`${RPCServer.name}`, () => {
     await rpcServer.destroy();
   });
   testProp(
-    'Middleware can update timeout timer',
+    'middleware can update timeout timer',
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);

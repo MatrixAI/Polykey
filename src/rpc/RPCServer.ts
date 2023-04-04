@@ -123,6 +123,7 @@ class RPCServer extends EventTarget {
     logger,
   }: {
     manifest: ServerManifest;
+
     middlewareFactory: MiddlewareFactory<
       JSONRPCRequest,
       Uint8Array,
@@ -157,7 +158,7 @@ class RPCServer extends EventTarget {
           key,
           manifestItem.handle.bind(manifestItem),
           manifestItem.timeout,
-        );
+       );
         continue;
       }
       if (manifestItem instanceof ClientHandler) {

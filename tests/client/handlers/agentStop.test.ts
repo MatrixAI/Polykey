@@ -80,7 +80,7 @@ describe('agentStop', () => {
       recursive: true,
     });
   });
-  test('Stops the agent', async () => {
+  test('stops the agent', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {

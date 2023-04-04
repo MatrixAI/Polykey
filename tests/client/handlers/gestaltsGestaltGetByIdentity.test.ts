@@ -90,7 +90,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       recursive: true,
     });
   });
-  test('getys gestalt by identity', async () => {
+  test('gets gestalt by identity', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {

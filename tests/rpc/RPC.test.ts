@@ -355,7 +355,7 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
-  test('Middleware can end stream early', async () => {
+  test('middleware can end stream early', async () => {
     const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
       Uint8Array,
       Uint8Array

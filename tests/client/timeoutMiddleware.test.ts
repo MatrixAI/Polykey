@@ -79,7 +79,7 @@ describe('timeoutMiddleware', () => {
       recursive: true,
     });
   });
-  test('Server side timeout updates', async () => {
+  test('server side timeout updates', async () => {
     // Setup
     const ctxProm = promise<ContextTimed>();
     class EchoHandler extends UnaryHandler<
