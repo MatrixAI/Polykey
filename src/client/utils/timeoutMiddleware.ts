@@ -9,6 +9,7 @@ import { TransformStream } from 'stream/web';
  */
 function timeoutMiddlewareServer(ctx: ContextTimed) {
   const currentTimeout = ctx.timer.delay;
+  // Flags for tracking if the first message has been processed
   let forwardFirst = true;
   let reverseFirst = true;
   return {
@@ -52,6 +53,7 @@ function timeoutMiddlewareServer(ctx: ContextTimed) {
  */
 function timeoutMiddlewareClient(ctx: ContextTimed) {
   const currentTimeout = ctx.timer.delay;
+  // Flags for tracking if the first message has been processed
   let forwardFirst = true;
   let reverseFirst = true;
   return {

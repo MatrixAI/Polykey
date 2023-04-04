@@ -24,6 +24,7 @@ function authenticationMiddlewareServer(
   JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
+    // Flag for tracking if the first message has been processed
     let forwardFirst = true;
     let reverseController;
     let outgoingToken: string | null = null;
@@ -92,6 +93,7 @@ function authenticationMiddlewareClient(
   JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
+    // Flag for tracking if the first message has been processed
     let forwardFirst = true;
     return {
       forward: new TransformStream<
