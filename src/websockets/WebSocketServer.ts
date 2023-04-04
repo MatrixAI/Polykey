@@ -49,17 +49,34 @@ type Context = {
 interface WebSocketServer extends startStop.StartStop {}
 @startStop.StartStop()
 class WebSocketServer extends EventTarget {
+  /**
+   * @param obj
+   * @param obj.connectionCallback -
+   * @param obj.tlsConfig - TLSConfig containing the private key and cert chain used for TLS.
+   * @param obj.basePath - Directory path used for storing temp cert files for starting the `uWebsocket` server.
+   * @param obj.host - Listen address to bind to.
+   * @param obj.port - Listen port to bind to.
+   * @param obj.connectionIdleTimeoutTime - Timeout time for when the connection is cleaned up after no activity.
+   * Default is 120 seconds.
+   * @param obj.pingIntervalTime - Time between pings for checking connection health and keep alive.
+   * Default is 1,000 milliseconds.
+   * @param obj.pingTimeoutTime - Time before connection is cleaned up after no ping responses.
+   * Default is 10,000 milliseconds.
+   * @param obj.fs - FileSystem interface used for creating files.
+   * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
+   * @param obj.logger
+   */
   static async createWebSocketServer({
     connectionCallback,
     tlsConfig,
     basePath,
     host,
     port,
-    idleTimeout,
-    pingInterval = 1000,
-    pingTimeout = 10000,
+    connectionIdleTimeoutTime = 120,
+    pingIntervalTime = 1_000,
+    pingTimeoutTime = 10_000,
     fs = require('fs'),
-    maxReadBufferBytes = 1_000_000_000, // About 1 GB
+    maxReadableStreamBytes = 1_000_000_000, // About 1 GB
     logger = new Logger(this.name),
   }: {
     connectionCallback: ConnectionCallback;
@@ -67,21 +84,21 @@ class WebSocketServer extends EventTarget {
     basePath?: string;
     host?: string;
     port?: number;
-    idleTimeout?: number;
-    pingInterval?: number;
-    pingTimeout?: number;
+    connectionIdleTimeoutTime?: number;
+    pingIntervalTime?: number;
+    pingTimeoutTime?: number;
     fs?: FileSystem;
-    maxReadBufferBytes?: number;
+    maxReadableStreamBytes?: number;
     logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
     const wsServer = new this(
       logger,
       fs,
-      maxReadBufferBytes,
-      idleTimeout,
-      pingInterval,
-      pingTimeout,
+      maxReadableStreamBytes,
+      connectionIdleTimeoutTime,
+      pingIntervalTime,
+      pingTimeoutTime,
     );
     await wsServer.start({
       connectionCallback,
@@ -108,18 +125,18 @@ class WebSocketServer extends EventTarget {
    *
    * @param logger
    * @param fs
-   * @param maxReadBufferBytes Max number of bytes stored in read buffer before error
-   * @param idleTimeout
-   * @param pingInterval
-   * @param pingTimeout
+   * @param maxReadableStreamBytes Max number of bytes stored in read buffer before error
+   * @param connectionIdleTimeoutTime
+   * @param pingIntervalTime
+   * @param pingTimeoutTime
    */
   constructor(
     protected logger: Logger,
     protected fs: FileSystem,
-    protected maxReadBufferBytes,
-    protected idleTimeout: number | undefined,
-    protected pingInterval: number,
-    protected pingTimeout: number,
+    protected maxReadableStreamBytes,
+    protected connectionIdleTimeoutTime: number | undefined,
+    protected pingIntervalTime: number,
+    protected pingTimeoutTime: number,
   ) {
     super();
   }
@@ -152,7 +169,7 @@ class WebSocketServer extends EventTarget {
     await this.setupServer(basePath, tlsConfig);
     this.server.ws('/*', {
       sendPingsAutomatically: true,
-      idleTimeout: this.idleTimeout,
+      idleTimeout: this.connectionIdleTimeoutTime,
       upgrade: this.upgrade,
       open: this.open,
       message: this.message,
@@ -286,9 +303,9 @@ class WebSocketServer extends EventTarget {
   protected open = (ws: WebSocket<Context>) => {
     const webSocketStream = new WebSocketStreamServerInternal(
       ws,
-      this.maxReadBufferBytes,
-      this.pingInterval,
-      this.pingTimeout,
+      this.maxReadableStreamBytes,
+      this.pingIntervalTime,
+      this.pingTimeoutTime,
     );
     // Adding socket to the active sockets map
     this.activeSockets.add(webSocketStream);

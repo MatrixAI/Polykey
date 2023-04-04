@@ -19,22 +19,37 @@ import { promise } from '../utils';
 interface WebSocketClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
 class WebSocketClient {
+  /**
+   * @param obj
+   * @param obj.host - Target host address to connect to
+   * @param obj.port - Target port to connect to
+   * @param obj.expectedNodeIds - Expected NodeIds you are trying to connect to. Will validate the cert chain of the
+   * sever. If none of these NodeIDs are found the connection will be rejected.
+   * @param obj.connectionTimeoutTime - Timeout time used when attempting the connection.
+   * Default is Infinity milliseconds.
+   * @param obj.pingIntervalTime - Time between pings for checking connection health and keep alive.
+   * Default is 1,000 milliseconds.
+   * @param obj.pingTimeoutTime - Time before connection is cleaned up after no ping responses.
+   * Default is 10,000 milliseconds.
+   * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
+   * @param obj.logger
+   */
   static async createWebSocketClient({
     host,
     port,
     expectedNodeIds,
-    connectionTimeout,
-    pingInterval = 1000,
-    pingTimeout = 10000,
-    maxReadableStreamBytes = 1000, // About 1kB
+    connectionTimeoutTime = Infinity,
+    pingIntervalTime = 1_000,
+    pingTimeoutTime = 10_000,
+    maxReadableStreamBytes = 1_000, // About 1kB
     logger = new Logger(this.name),
   }: {
     host: string;
     port: number;
     expectedNodeIds: Array<NodeId>;
-    connectionTimeout?: number;
-    pingInterval?: number;
-    pingTimeout?: number;
+    connectionTimeoutTime?: number;
+    pingIntervalTime?: number;
+    pingTimeoutTime?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<WebSocketClient> {
@@ -45,9 +60,9 @@ class WebSocketClient {
       port,
       maxReadableStreamBytes,
       expectedNodeIds,
-      connectionTimeout ?? Infinity,
-      pingInterval,
-      pingTimeout,
+      connectionTimeoutTime,
+      pingIntervalTime,
+      pingTimeoutTime,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -62,9 +77,9 @@ class WebSocketClient {
     protected port: number,
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
-    protected connectionTimeout: number,
-    protected pingInterval: number,
-    protected pingTimeout: number,
+    protected connectionTimeoutTime: number,
+    protected pingIntervalTime: number,
+    protected pingTimeoutTime: number,
   ) {
     if (Validator.isValidIPv4String(host)[0]) {
       this.host = host;
@@ -113,7 +128,7 @@ class WebSocketClient {
     const timer =
       ctx.timer ??
       new Timer({
-        delay: this.connectionTimeout,
+        delay: this.connectionTimeoutTime,
       });
     void timer.catch(() => {});
     void timer
@@ -204,8 +219,8 @@ class WebSocketClient {
     const webSocketStreamClient = new WebSocketStreamClientInternal(
       ws,
       this.maxReadableStreamBytes,
-      this.pingInterval,
-      this.pingTimeout,
+      this.pingIntervalTime,
+      this.pingTimeoutTime,
       this.logger,
     );
     const abortStream = () => {

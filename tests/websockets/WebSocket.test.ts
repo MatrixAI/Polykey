@@ -323,7 +323,7 @@ describe('WebSocket', () => {
       tlsConfig,
       host,
       // Setting a really low buffer limit
-      maxReadBufferBytes: 1500,
+      maxReadableStreamBytes: 1500,
       logger: logger.getChild('server'),
     });
     logger.info(`Server started on port ${webSocketServer.getPort()}`);
@@ -660,7 +660,7 @@ describe('WebSocket', () => {
         basePath: dataDir,
         tlsConfig,
         host,
-        pingTimeout: 100,
+        pingTimeoutTime: 100,
         logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${webSocketServer.getPort()}`);
@@ -820,7 +820,7 @@ describe('WebSocket', () => {
         host,
         port: 12345,
         expectedNodeIds: [keyRing.getNodeId()],
-        connectionTimeout: 0,
+        connectionTimeoutTime: 0,
         logger: logger.getChild('clientClient'),
       });
       await expect(webSocketClient.startConnection({})).rejects.toThrow();
@@ -847,7 +847,7 @@ describe('WebSocket', () => {
         host,
         port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
-        pingTimeout: 100,
+        pingTimeoutTime: 100,
         logger: logger.getChild('clientClient'),
       });
       await webSocketClient.startConnection();

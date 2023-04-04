@@ -57,9 +57,9 @@ type NetworkConfig = {
   clientHost?: Host;
   clientPort?: Port;
   maxReadBufferBytes?: number;
-  idleTimeout?: number;
-  pingInterval?: number;
-  pingTimeout?: number;
+  idleTimeoutTime?: number;
+  pingIntervalTime?: number;
+  pingTimeoutTime?: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -193,7 +193,7 @@ class PolykeyAgent {
       ...config.defaults.nodeConnectionManagerConfig,
       ...utils.filterEmptyObject(nodeConnectionManagerConfig),
     };
-    const _networkConfig = {
+    const networkConfig_ = {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
@@ -454,13 +454,13 @@ class PolykeyAgent {
           connectionCallback: (streamPair) =>
             rpcServerClient!.handleStream(streamPair, {}),
           fs,
-          host: _networkConfig.clientHost,
-          port: _networkConfig.clientPort,
+          host: networkConfig_.clientHost,
+          port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadBufferBytes: _networkConfig.maxReadBufferBytes,
-          idleTimeout: _networkConfig.idleTimeout,
-          pingInterval: _networkConfig.pingInterval,
-          pingTimeout: _networkConfig.pingTimeout,
+          maxReadableStreamBytes: networkConfig_.maxReadBufferBytes,
+          connectionIdleTimeoutTime: networkConfig_.idleTimeout,
+          pingIntervalTime: networkConfig_.pingIntervalTime,
+          pingTimeoutTime: networkConfig_.pingTimeoutTime,
           logger: logger.getChild('WebSocketServer'),
         }));
       grpcServerAgent =

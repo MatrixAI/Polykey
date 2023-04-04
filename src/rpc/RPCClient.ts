@@ -42,7 +42,8 @@ class RPCClient<M extends ClientManifest> {
    * The middlewareFactory needs to be a function that creates a pair of
    * transform streams that convert `JSONRPCRequest` to `Uint8Array` on the forward
    * path and `Uint8Array` to `JSONRPCResponse` on the reverse path.
-   * @param obj.defaultTimeout - default timeout to be used if none is provided
+   * @param obj.streamKeepAliveTimeoutTime - Timeout time used if no timeout timer was provided when making a call.
+   * Defaults to 60,000 milliseconds.
    * for a client call.
    * @param obj.logger
    */
@@ -50,7 +51,7 @@ class RPCClient<M extends ClientManifest> {
     manifest,
     streamFactory,
     middlewareFactory = middlewareUtils.defaultClientMiddlewareWrapper(),
-    defaultTimeout = 60_000, // 1 minuet
+    streamKeepAliveTimeoutTime = 60_000, // 1 minute
     logger = new Logger(this.name),
   }: {
     manifest: M;
@@ -61,7 +62,7 @@ class RPCClient<M extends ClientManifest> {
       JSONRPCResponse,
       Uint8Array
     >;
-    defaultTimeout?: number;
+    streamKeepAliveTimeoutTime?: number;
     logger?: Logger;
   }) {
     logger.info(`Creating ${this.name}`);
@@ -69,7 +70,7 @@ class RPCClient<M extends ClientManifest> {
       manifest,
       streamFactory,
       middlewareFactory,
-      defaultTimeout,
+      streamKeepAliveTimeoutTime: streamKeepAliveTimeoutTime,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -86,7 +87,7 @@ class RPCClient<M extends ClientManifest> {
   >;
   protected callerTypes: Record<string, HandlerType>;
   // Method proxies
-  public readonly defaultTimeout: number;
+  public readonly streamKeepAliveTimeoutTime: number;
   public readonly methodsProxy = new Proxy(
     {},
     {
@@ -115,7 +116,7 @@ class RPCClient<M extends ClientManifest> {
     manifest,
     streamFactory,
     middlewareFactory,
-    defaultTimeout,
+    streamKeepAliveTimeoutTime,
     logger,
   }: {
     manifest: M;
@@ -126,13 +127,13 @@ class RPCClient<M extends ClientManifest> {
       JSONRPCResponse,
       Uint8Array
     >;
-    defaultTimeout: number;
+    streamKeepAliveTimeoutTime: number;
     logger: Logger;
   }) {
     this.callerTypes = rpcUtils.getHandlerTypes(manifest);
     this.streamFactory = streamFactory;
     this.middlewareFactory = middlewareFactory;
-    this.defaultTimeout = defaultTimeout;
+    this.streamKeepAliveTimeoutTime = streamKeepAliveTimeoutTime;
     this.logger = logger;
   }
 
@@ -275,7 +276,7 @@ class RPCClient<M extends ClientManifest> {
     const timer =
       ctx.timer ??
       new Timer({
-        delay: this.defaultTimeout,
+        delay: this.streamKeepAliveTimeoutTime,
       });
     const cleanUp = () => {
       // Clean up the timer and signal
@@ -377,7 +378,7 @@ class RPCClient<M extends ClientManifest> {
     const timer =
       ctx.timer ??
       new Timer({
-        delay: this.defaultTimeout,
+        delay: this.streamKeepAliveTimeoutTime,
       });
     // Ignore unhandled rejections
     const cleanUp = () => {

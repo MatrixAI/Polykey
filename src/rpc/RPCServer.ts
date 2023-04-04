@@ -58,14 +58,21 @@ class RPCServer extends EventTarget {
    * path and `JSONRPCResponse` to `Uint8Array` on the reverse path.
    * @param obj.sensitive - If true, sanitises any rpc error messages of any
    * sensitive information.
+   * @param obj.streamKeepAliveTimeoutTime - Time before a connection is cleaned up due to no activity. This is the
+   * value used if the handler doesn't specify its own timeout time. This timeout is advisory and only results in a
+   * signal sent to the handler. Stream is forced to end after the timeoutForceCloseTime. Defaults to 60,000
+   * milliseconds.
+   * @param obj.timeoutForceCloseTime - Time before the stream is forced to end after the initial timeout time.
+   * The stream will be forced to close after this amount of time after the initial timeout. This is a grace period for
+   * the handler to handle timeout before it is forced to end. Defaults to 2,000 milliseconds.
    * @param obj.logger
    */
   public static async createRPCServer({
     manifest,
     middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(),
     sensitive = false,
-    defaultTimeout = 60_000, // 1 minuet
-    forceEndDelay = 2_000, // 2 seconds
+    streamKeepAliveTimeoutTime = 60_000, // 1 minute
+    timeoutForceCloseTime = 2_000, // 2 seconds
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;
@@ -76,8 +83,8 @@ class RPCServer extends EventTarget {
       JSONRPCResponse
     >;
     sensitive?: boolean;
-    defaultTimeout?: number;
-    forceEndDelay?: number;
+    streamKeepAliveTimeoutTime?: number;
+    timeoutForceCloseTime?: number;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
@@ -85,8 +92,8 @@ class RPCServer extends EventTarget {
       manifest,
       middlewareFactory,
       sensitive,
-      defaultTimeout,
-      forceEndDelay,
+      streamKeepAliveTimeoutTime: streamKeepAliveTimeoutTime,
+      timeoutForceCloseTime: timeoutForceCloseTime,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -96,8 +103,8 @@ class RPCServer extends EventTarget {
   protected logger: Logger;
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected defaultTimeoutMap: Map<string, number | undefined> = new Map();
-  protected defaultTimeout: number;
-  protected forceEndDelay: number;
+  protected streamKeepAliveTimeoutTime: number;
+  protected timeoutForceCloseTime: number;
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
   protected middlewareFactory: MiddlewareFactory<
@@ -111,8 +118,8 @@ class RPCServer extends EventTarget {
     manifest,
     middlewareFactory,
     sensitive,
-    defaultTimeout = 60_000, // 1 minuet
-    forceEndDelay = 2_000, // 2 seconds
+    streamKeepAliveTimeoutTime = 60_000, // 1 minuet
+    timeoutForceCloseTime = 2_000, // 2 seconds
     logger,
   }: {
     manifest: ServerManifest;
@@ -122,8 +129,8 @@ class RPCServer extends EventTarget {
       Uint8Array,
       JSONRPCResponseResult
     >;
-    defaultTimeout?: number;
-    forceEndDelay?: number;
+    streamKeepAliveTimeoutTime?: number;
+    timeoutForceCloseTime?: number;
     sensitive: boolean;
     logger: Logger;
   }) {
@@ -181,8 +188,8 @@ class RPCServer extends EventTarget {
     }
     this.middlewareFactory = middlewareFactory;
     this.sensitive = sensitive;
-    this.defaultTimeout = defaultTimeout;
-    this.forceEndDelay = forceEndDelay;
+    this.streamKeepAliveTimeoutTime = streamKeepAliveTimeoutTime;
+    this.timeoutForceCloseTime = timeoutForceCloseTime;
     this.logger = logger;
   }
 
@@ -406,13 +413,13 @@ class RPCServer extends EventTarget {
     const forceStreamEndController = new AbortController();
     // Setting up timeout timer logic
     const timer = new Timer({
-      delay: this.defaultTimeout,
+      delay: this.streamKeepAliveTimeoutTime,
       handler: (signal) => {
         abortController.abort(new rpcErrors.ErrorRpcTimedOut());
         if (signal.aborted) return;
         // Grace timer for force ending stream
         const graceTimer = new Timer({
-          delay: this.forceEndDelay,
+          delay: this.timeoutForceCloseTime,
           handler: () => {
             forceStreamEndController.abort();
           },
@@ -489,7 +496,7 @@ class RPCServer extends EventTarget {
       }
       // Setting up Timeout logic
       const timeout = this.defaultTimeoutMap.get(method);
-      if (timeout != null && timeout < this.defaultTimeout) {
+      if (timeout != null && timeout < this.streamKeepAliveTimeoutTime) {
         // Reset timeout with new delay if it is less than the default
         timer.reset(timeout);
       } else {

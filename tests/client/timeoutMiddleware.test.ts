@@ -163,7 +163,7 @@ describe('timeoutMiddleware', () => {
       middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareServer,
       ),
-      defaultTimeout: 100,
+      streamKeepAliveTimeoutTime: 100,
       logger,
     });
     clientServer = await WebSocketServer.createWebSocketServer({

@@ -102,8 +102,8 @@ const config = {
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
       maxReadBufferBytes: 1_000_000_000, // About 1 GB
-      pingInterval: 1_000, // 1 second
-      pingTimeout: 10_000, // 10 seconds
+      pingIntervalTime: 1_000, // 1 second
+      pingTimeoutTime: 10_000, // 10 seconds
     },
     proxyConfig: {
       connConnectTime: 2000,

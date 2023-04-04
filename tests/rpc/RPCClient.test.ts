@@ -689,7 +689,7 @@ describe(`${RPCClient.name}`, () => {
           // Should never reach this when testing
           return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
         },
-        defaultTimeout: 100,
+        streamKeepAliveTimeoutTime: 100,
         logger,
       });
       // Timing out on stream creation
@@ -775,7 +775,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           return streamPair;
         },
-        defaultTimeout: 200,
+        streamKeepAliveTimeoutTime: 200,
         logger,
       });
 
@@ -882,7 +882,7 @@ describe(`${RPCClient.name}`, () => {
           // Should never reach this when testing
           return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
         },
-        defaultTimeout: 100,
+        streamKeepAliveTimeoutTime: 100,
         logger,
       });
       // Timing out on stream creation
@@ -964,7 +964,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           return streamPair;
         },
-        defaultTimeout: 100,
+        streamKeepAliveTimeoutTime: 100,
         logger,
       });
 
