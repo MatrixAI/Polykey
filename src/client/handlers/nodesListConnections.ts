@@ -12,8 +12,8 @@ class NodesListConnectionsHandler extends ServerHandler<
   ClientRPCResponseResult<NodeConnectionMessage>
 > {
   public async *handle(
-    input_,
-    connectionInfo_,
+    _input,
+    _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NodeConnectionMessage>> {
     const { nodeConnectionManager } = this.container;

@@ -394,9 +394,9 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       },
       close: () => {
         writableLogger.info('Closed, sending null message');
-        if (!this.webSocketEnded_) ws.send(Buffer.from([]), true);
+        if (!this._webSocketEnded) ws.send(Buffer.from([]), true);
         this.signalWritableEnd();
-        if (this.readableEnded_ && !this.webSocketEnded_) {
+        if (this._readableEnded && !this._webSocketEnded) {
           writableLogger.debug('Ending socket');
           this.signalWebSocketEnd();
           ws.end();
@@ -404,7 +404,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       },
       abort: (reason) => {
         writableLogger.info('Aborted');
-        if (this.readableEnded_ && !this.webSocketEnded_) {
+        if (this._readableEnded && !this._webSocketEnded) {
           writableLogger.debug('Ending socket');
           this.signalWebSocketEnd(reason);
           ws.end(4001, 'ABORTED');
@@ -421,11 +421,11 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             readableLogger.debug(`Received ${messageBuffer.toString()}`);
             if (message.byteLength === 0) {
               readableLogger.debug('Null message received');
-              if (!this.readableEnded_) {
+              if (!this._readableEnded) {
                 readableLogger.debug('Closing');
                 this.signalReadableEnd();
                 controller.close();
-                if (this.writableEnded_ && !this.webSocketEnded_) {
+                if (this._writableEnded && !this._webSocketEnded) {
                   readableLogger.debug('Ending socket');
                   this.signalWebSocketEnd();
                   ws.end();
@@ -437,7 +437,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
             if (controller.desiredSize != null && controller.desiredSize < 0) {
               readableLogger.error('Read stream buffer full');
               const err = new webSocketErrors.ErrorServerReadableBufferLimit();
-              if (!this.webSocketEnded_) {
+              if (!this._webSocketEnded) {
                 this.signalWebSocketEnd(err);
                 ws.end(4001, 'Read stream buffer full');
               }
@@ -447,7 +447,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
         },
         cancel: (reason) => {
           this.signalReadableEnd(reason);
-          if (this.writableEnded_ && !this.webSocketEnded_) {
+          if (this._writableEnded && !this._webSocketEnded) {
             readableLogger.debug('Ending socket');
             this.signalWebSocketEnd();
             ws.end();
@@ -481,12 +481,12 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       // Closing streams
       logger.debug('Cleaning streams');
       const err = new webSocketErrors.ErrorServerConnectionEndedEarly();
-      if (!this.readableEnded_) {
+      if (!this._readableEnded) {
         readableLogger.debug('Closing');
         this.signalReadableEnd(err);
         readableController?.error(err);
       }
-      if (!this.writableEnded_) {
+      if (!this._writableEnded) {
         writableLogger.debug('Closing');
         this.signalWritableEnd(err);
         writableController?.error(err);

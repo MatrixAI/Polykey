@@ -270,9 +270,9 @@ describe(`${RPCServer.name}`, () => {
       class TestMethod extends DuplexHandler {
         public async *handle(
           input: AsyncIterable<JSONValue>,
-          connectionInfo_: ConnectionInfo,
+          connectionInfo: ConnectionInfo,
         ): AsyncIterable<JSONValue> {
-          handledConnectionInfo = connectionInfo_;
+          handledConnectionInfo = connectionInfo;
           for await (const val of input) {
             yield val;
           }
@@ -300,7 +300,7 @@ describe(`${RPCServer.name}`, () => {
     class TestMethod extends DuplexHandler {
       public async *handle(
         input: AsyncIterable<JSONValue>,
-        connectionInfo_: ConnectionInfo,
+        _connectionInfo: ConnectionInfo,
         ctx: ContextTimed,
       ): AsyncIterable<JSONValue> {
         for await (const val of input) {
@@ -390,9 +390,9 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       let resolve, reject;
-      const errorProm = new Promise((_resolve, _reject) => {
-        resolve = _resolve;
-        reject = _reject;
+      const errorProm = new Promise((resolve_, reject_) => {
+        resolve = resolve_;
+        reject = reject_;
       });
       rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
@@ -431,9 +431,9 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       let resolve, reject;
-      const errorProm = new Promise((_resolve, _reject) => {
-        resolve = _resolve;
-        reject = _reject;
+      const errorProm = new Promise((resolve_, reject_) => {
+        resolve = resolve_;
+        reject = reject_;
       });
       rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
@@ -513,8 +513,8 @@ describe(`${RPCServer.name}`, () => {
       const handlerEndedProm = promise();
       let ctx: ContextTimed | undefined;
       class TestMethod extends DuplexHandler {
-        public async *handle(input, _, _ctx): AsyncIterable<JSONValue> {
-          ctx = _ctx;
+        public async *handle(input, _, ctx_): AsyncIterable<JSONValue> {
+          ctx = ctx_;
           // Echo input
           try {
             yield* input;
@@ -530,8 +530,8 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       let resolve;
-      const errorProm = new Promise<RPCErrorEvent>((_resolve) => {
-        resolve = _resolve;
+      const errorProm = new Promise<RPCErrorEvent>((resolve_) => {
+        resolve = resolve_;
       });
       rpcServer.addEventListener('error', (thing: RPCErrorEvent) => {
         resolve(thing);
@@ -744,16 +744,16 @@ describe(`${RPCServer.name}`, () => {
   test('default timeout', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _connectionInfo, _ctx): ReadableStream<Uint8Array> {
-        ctxProm.resolveP(_ctx);
+      public handle(_input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+        ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         let controller: ReadableStreamController<Uint8Array>;
         const stream = new ReadableStream<Uint8Array>({
-          start: (_controller) => {
-            controller = _controller;
+          start: (controller_) => {
+            controller = controller_;
           },
         });
-        _ctx.signal.addEventListener('abort', () => {
+        ctx_.signal.addEventListener('abort', () => {
           controller!.error(Error('ending'));
         });
         return stream;
@@ -822,8 +822,8 @@ describe(`${RPCServer.name}`, () => {
       const ctxShortProm = promise<ContextTimed>();
       class TestMethodShortTimeout extends UnaryHandler {
         timeout = 25;
-        public async handle(input: JSONValue, _, _ctx): Promise<JSONValue> {
-          ctxShortProm.resolveP(_ctx);
+        public async handle(input: JSONValue, _, ctx_): Promise<JSONValue> {
+          ctxShortProm.resolveP(ctx_);
           await waitProm.p;
           return input;
         }
@@ -831,8 +831,8 @@ describe(`${RPCServer.name}`, () => {
       const ctxLongProm = promise<ContextTimed>();
       class TestMethodLongTimeout extends UnaryHandler {
         timeout = 100;
-        public async handle(input: JSONValue, _, _ctx): Promise<JSONValue> {
-          ctxLongProm.resolveP(_ctx);
+        public async handle(input: JSONValue, _, ctx_): Promise<JSONValue> {
+          ctxLongProm.resolveP(ctx_);
           await waitProm.p;
           return input;
         }
@@ -946,8 +946,8 @@ describe(`${RPCServer.name}`, () => {
   test('stream ending cleans up timer and abortSignal', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _connectionInfo, _ctx): ReadableStream<Uint8Array> {
-        ctxProm.resolveP(_ctx);
+      public handle(input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+        ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         void (async () => {
           for await (const _ of input[1]) {
@@ -992,8 +992,8 @@ describe(`${RPCServer.name}`, () => {
   test('Timeout has a grace period before forcing the streams closed', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _connectionInfo, _ctx): ReadableStream<Uint8Array> {
-        ctxProm.resolveP(_ctx);
+      public handle(_input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+        ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         return new ReadableStream<Uint8Array>();
       }

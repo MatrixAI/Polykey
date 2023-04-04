@@ -16,8 +16,8 @@ class NodesGetAllHandler extends ServerHandler<
   ClientRPCResponseResult<NodesGetMessage>
 > {
   public async *handle(
-    input_,
-    connectionUInfo_,
+    _input,
+    _connectionUInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
     const { nodeGraph, keyRing } = this.container;

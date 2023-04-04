@@ -17,7 +17,7 @@ class VaultsLogHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultsLogMessage>,
-    connectionInfo_,
+    _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<LogEntryMessage>> {
     const { db, vaultManager } = this.container;

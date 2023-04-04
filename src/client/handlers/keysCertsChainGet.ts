@@ -11,8 +11,8 @@ class KeysCertsChainGetHandler extends ServerHandler<
   ClientRPCResponseResult<CertMessage>
 > {
   public async *handle(
-    input_,
-    connectionInfo_,
+    _input,
+    _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<CertMessage>> {
     const { certManager } = this.container;

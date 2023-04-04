@@ -267,12 +267,12 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             if (message.length === 0) {
               readableLogger.debug('Null message received');
               ws.removeListener('message', messageHandler);
-              if (!this.readableEnded_) {
+              if (!this._readableEnded) {
                 this.signalReadableEnd();
                 readableLogger.debug('Closing');
                 controller.close();
               }
-              if (this.writableEnded_) {
+              if (this._writableEnded) {
                 logger.debug('Closing socket');
                 ws.close();
               }
@@ -285,7 +285,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
           ws.once('close', (code, reason) => {
             logger.info('Socket closed');
             ws.removeListener('message', messageHandler);
-            if (!this.readableEnded_) {
+            if (!this._readableEnded) {
               readableLogger.debug(
                 `Closed early, ${code}, ${reason.toString()}`,
               );
@@ -295,7 +295,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             }
           });
           ws.once('error', (e) => {
-            if (!this.readableEnded_) {
+            if (!this._readableEnded) {
               readableLogger.error(e);
               this.signalReadableEnd(e);
               controller.error(e);
@@ -305,7 +305,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         cancel: (reason) => {
           readableLogger.debug('Cancelled');
           this.signalReadableEnd(reason);
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             readableLogger.debug('Closing socket');
             this.signalWritableEnd(reason);
             ws.close();
@@ -326,14 +326,14 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         this.writableController = controller;
         writableLogger.info('Starting');
         ws.once('error', (e) => {
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             writableLogger.error(e);
             this.signalWritableEnd(e);
             controller.error(e);
           }
         });
         ws.once('close', (code, reason) => {
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             writableLogger.debug(`Closed early, ${code}, ${reason.toString()}`);
             const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
             this.signalWritableEnd(e);
@@ -345,7 +345,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         writableLogger.debug('Closing, sending null message');
         ws.send(Buffer.from([]));
         this.signalWritableEnd();
-        if (this.readableEnded_) {
+        if (this._readableEnded) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
@@ -353,17 +353,17 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       abort: (reason) => {
         writableLogger.debug('Aborted');
         this.signalWritableEnd(reason);
-        if (this.readableEnded_) {
+        if (this._readableEnded) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
       },
       write: async (chunk, controller) => {
-        if (this.writableEnded_) return;
+        if (this._writableEnded) return;
         writableLogger.debug(`Sending ${chunk?.toString()}`);
         const wait = promise<void>();
         ws.send(chunk, (e) => {
-          if (e != null && !this.writableEnded_) {
+          if (e != null && !this._writableEnded) {
             // Opting to debug message here and not log an error, sending
             //  failure is common if we send before the close event.
             writableLogger.debug('failed to send');
@@ -418,16 +418,16 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     // Default error
     const err = e ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
     // Close the streams with the given error,
-    if (!this.readableEnded_) {
+    if (!this._readableEnded) {
       this.readableController?.error(err);
       this.signalReadableEnd(err);
     }
-    if (!this.writableEnded_) {
+    if (!this._writableEnded) {
       this.writableController?.error(err);
       this.signalWritableEnd(err);
     }
     // Then close the websocket
-    if (!this.webSocketEnded_) {
+    if (!this._webSocketEnded) {
       this.ws.close(4001, 'Ending connection');
       this.signalWebSocketEnd(err);
     }

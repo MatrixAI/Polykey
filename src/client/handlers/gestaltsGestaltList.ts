@@ -14,8 +14,8 @@ class GestaltsGestaltListHandler extends ServerHandler<
   ClientRPCResponseResult<GestaltMessage>
 > {
   public async *handle(
-    input_,
-    connectionInfo_,
+    _input,
+    _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
     const { db, gestaltGraph } = this.container;

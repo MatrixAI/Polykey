@@ -14,8 +14,8 @@ class VaultsListHandler extends ServerHandler<
   ClientRPCResponseResult<VaultListMessage>
 > {
   public async *handle(
-    input_,
-    connectionInfo_,
+    _input,
+    _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
     const { db, vaultManager } = this.container;
