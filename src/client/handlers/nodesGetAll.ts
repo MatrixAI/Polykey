@@ -20,13 +20,11 @@ class NodesGetAllHandler extends ServerHandler<
     _connectionUInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { nodeGraph, keyRing } = this.container;
-
     for await (const bucket of nodeGraph.getBuckets()) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       let index;
       for (const id of Object.keys(bucket)) {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
         const encodedId = nodesUtils.encodeNodeId(
           IdInternal.fromString<NodeId>(id),
         );
@@ -37,6 +35,7 @@ class NodesGetAllHandler extends ServerHandler<
             IdInternal.fromString<NodeId>(id),
           );
         }
+        if (ctx.signal.aborted) throw ctx.signal.reason;
         yield {
           bucketIndex: index,
           nodeIdEncoded: encodedId,

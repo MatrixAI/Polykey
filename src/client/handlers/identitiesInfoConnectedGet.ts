@@ -21,6 +21,7 @@ class IdentitiesInfoConnectedGetHandler extends ServerHandler<
     _,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager } = this.container;
     const {
       providerIds,
@@ -64,7 +65,6 @@ class IdentitiesInfoConnectedGetHandler extends ServerHandler<
     }
     const identities: Array<AsyncGenerator<IdentityData>> = [];
     for (const providerId of providerIds) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       // Get provider from id
       const provider = identitiesManager.getProvider(providerId);
       if (provider === undefined) {

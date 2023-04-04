@@ -22,8 +22,8 @@ class GestaltsGestaltListHandler extends ServerHandler<
     yield* db.withTransactionG(async function* (
       tran,
     ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       for await (const gestalt of gestaltGraph.getGestalts(tran)) {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
         const gestaltMessage: GestaltMessage = {
           gestalt: {
             matrix: {},
@@ -35,13 +35,11 @@ class GestaltsGestaltListHandler extends ServerHandler<
         const newGestalt = gestaltMessage.gestalt;
         newGestalt.identities = gestalt.identities;
         for (const [key, value] of Object.entries(gestalt.nodes)) {
-          if (ctx.signal.aborted) throw ctx.signal.reason;
           newGestalt.nodes[key] = {
             nodeId: nodesUtils.encodeNodeId(value.nodeId),
           };
         }
         for (const keyA of Object.keys(gestalt.matrix)) {
-          if (ctx.signal.aborted) throw ctx.signal.reason;
           let record = newGestalt.matrix[keyA];
           if (record == null) {
             record = {};
@@ -51,6 +49,7 @@ class GestaltsGestaltListHandler extends ServerHandler<
             record[keyB] = null;
           }
         }
+        if (ctx.signal.aborted) throw ctx.signal.reason;
         yield gestaltMessage;
       }
     });

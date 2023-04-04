@@ -23,6 +23,7 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
     _,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager } = this.container;
     let providerId: ProviderId | undefined;
     if (input.providerId != null) {
@@ -43,7 +44,6 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
         ? (Object.keys(identitiesManager.getProviders()) as Array<ProviderId>)
         : [providerId];
     for (const providerId of providerIds) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       const provider = identitiesManager.getProvider(providerId);
       if (provider == null) {
         continue;

@@ -19,6 +19,7 @@ class VaultsScanHandler extends ServerHandler<
     _,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { vaultManager } = this.container;
     const {
       nodeId,

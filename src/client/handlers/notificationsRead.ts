@@ -17,8 +17,8 @@ class NotificationsReadHandler extends ServerHandler<
     _,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NotificationMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, notificationsManager } = this.container;
-
     const notifications = await db.withTransactionF((tran) =>
       notificationsManager.readNotifications({
         unread: input.unread,

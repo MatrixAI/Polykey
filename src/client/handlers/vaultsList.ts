@@ -18,6 +18,7 @@ class VaultsListHandler extends ServerHandler<
     _connectionInfo,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, vaultManager } = this.container;
     const vaults = await db.withTransactionF((tran) =>
       vaultManager.listVaults(tran),

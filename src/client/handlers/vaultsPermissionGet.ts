@@ -25,6 +25,7 @@ class VaultsPermissionGetHandler extends ServerHandler<
     _,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultPermissionMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, vaultManager, acl } = this.container;
     const [rawPermissions, vaultId] = await db.withTransactionF(
       async (tran) => {
@@ -44,16 +45,15 @@ class VaultsPermissionGetHandler extends ServerHandler<
     const permissionList: Record<NodeIdEncoded, VaultActions> = {};
     // Getting the relevant information
     for (const nodeId in rawPermissions) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       permissionList[nodeId] = rawPermissions[nodeId].vaults[vaultId];
     }
     // Constructing the message
     for (const nodeIdString in permissionList) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
       const actions = Object.keys(
         permissionList[nodeIdString],
       ) as Array<VaultAction>;
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
         nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
