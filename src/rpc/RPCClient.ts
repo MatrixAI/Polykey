@@ -283,7 +283,7 @@ class RPCClient<M extends ClientManifest> {
       if (ctx.timer == null) timer.cancel(Error('TMP Clean up reason'));
       signal.removeEventListener('abort', abortHandler);
     };
-    const timeoutError = new rpcErrors.ErrorRpcTimedOut();
+    const timeoutError = new rpcErrors.ErrorRPCTimedOut();
     void timer.then(
       () => {
         abortController.abort(timeoutError);
@@ -386,7 +386,7 @@ class RPCClient<M extends ClientManifest> {
       if (ctx.timer == null) timer.cancel(Error('TMP Clean up reason'));
       signal.removeEventListener('abort', abortHandler);
     };
-    const timeoutError = new rpcErrors.ErrorRpcTimedOut();
+    const timeoutError = new rpcErrors.ErrorRPCTimedOut();
     void timer.then(
       () => {
         abortController.abort(timeoutError);

@@ -787,7 +787,7 @@ describe(`${RPCServer.name}`, () => {
     const ctx = await ctxProm.p;
     expect(ctx.timer.delay).toEqual(100);
     await ctx.timer;
-    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     await expect(outputResult).toReject();
     await rpcServer.destroy();
   });
@@ -984,7 +984,7 @@ describe(`${RPCServer.name}`, () => {
     await outputResult;
     await rpcServer.destroy(false);
     expect(ctx.signal.aborted).toBeTrue();
-    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcStreamEnded);
+    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCStreamEnded);
     // If the timer has already resolved then it was cancelled
     await expect(ctx.timer).toReject();
     await rpcServer.destroy();
@@ -1027,7 +1027,7 @@ describe(`${RPCServer.name}`, () => {
     const ctx = await ctxProm.p;
     await ctx.timer;
     const then = Date.now();
-    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     // Should end after grace period
     await expect(outputResult).rejects.toThrow();
     expect(Date.now() - then).toBeGreaterThanOrEqual(100);

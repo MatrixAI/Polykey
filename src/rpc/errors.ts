@@ -94,12 +94,12 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   }
 }
 
-class ErrorRpcStreamEnded<T> extends ErrorRPC<T> {
+class ErrorRPCStreamEnded<T> extends ErrorRPC<T> {
   static description = 'Handled stream has ended';
   exitCode = sysexits.NOINPUT;
 }
 
-class ErrorRpcTimedOut<T> extends ErrorRPC<T> {
+class ErrorRPCTimedOut<T> extends ErrorRPC<T> {
   static description = 'RPC handler has timed out';
   exitCode = sysexits.UNAVAILABLE;
 }
@@ -114,6 +114,6 @@ export {
   ErrorRPCMissingResponse,
   ErrorRPCOutputStreamError,
   ErrorPolykeyRemote,
-  ErrorRpcStreamEnded,
-  ErrorRpcTimedOut,
+  ErrorRPCStreamEnded,
+  ErrorRPCTimedOut,
 };

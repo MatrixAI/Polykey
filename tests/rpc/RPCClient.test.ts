@@ -696,10 +696,10 @@ describe(`${RPCClient.name}`, () => {
       const callerInterfaceProm = rpcClient.rawStreamCaller('testMethod', {});
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
-        rpcErrors.ErrorRpcTimedOut,
+        rpcErrors.ErrorRPCTimedOut,
       );
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('raw caller times out when creating stream', async () => {
       const holdProm = promise();
@@ -722,10 +722,10 @@ describe(`${RPCClient.name}`, () => {
       );
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
-        rpcErrors.ErrorRpcTimedOut,
+        rpcErrors.ErrorRPCTimedOut,
       );
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('raw caller handles abort when creating stream', async () => {
       const holdProm = promise();
@@ -787,7 +787,7 @@ describe(`${RPCClient.name}`, () => {
       ]);
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('raw caller times out awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<
@@ -822,7 +822,7 @@ describe(`${RPCClient.name}`, () => {
       ]);
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('raw caller handles abort awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<
@@ -889,10 +889,10 @@ describe(`${RPCClient.name}`, () => {
       const callerInterfaceProm = rpcClient.duplexStreamCaller('testMethod');
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
-        rpcErrors.ErrorRpcTimedOut,
+        rpcErrors.ErrorRPCTimedOut,
       );
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('duplex caller times out when creating stream', async () => {
       const holdProm = promise();
@@ -913,10 +913,10 @@ describe(`${RPCClient.name}`, () => {
       });
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
-        rpcErrors.ErrorRpcTimedOut,
+        rpcErrors.ErrorRPCTimedOut,
       );
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('duplex caller handles abort when creating stream', async () => {
       const holdProm = promise();
@@ -972,7 +972,7 @@ describe(`${RPCClient.name}`, () => {
       await rpcClient.duplexStreamCaller('testMethod');
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('duplex caller times out awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<
@@ -1003,7 +1003,7 @@ describe(`${RPCClient.name}`, () => {
       });
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRpcTimedOut);
+      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
     test('duplex caller handles abort awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<

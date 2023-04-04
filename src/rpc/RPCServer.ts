@@ -415,7 +415,7 @@ class RPCServer extends EventTarget {
     const timer = new Timer({
       delay: this.streamKeepAliveTimeoutTime,
       handler: (signal) => {
-        abortController.abort(new rpcErrors.ErrorRpcTimedOut());
+        abortController.abort(new rpcErrors.ErrorRPCTimedOut());
         if (signal.aborted) return;
         // Grace timer for force ending stream
         const graceTimer = new Timer({
@@ -516,7 +516,7 @@ class RPCServer extends EventTarget {
       await Promise.allSettled([inputStreamEndProm, outputStreamEndProm]);
       // Cleaning up abort and timer
       timer.cancel(cleanupReason);
-      abortController.abort(new rpcErrors.ErrorRpcStreamEnded());
+      abortController.abort(new rpcErrors.ErrorRPCStreamEnded());
     })();
     const handlerProm = PromiseCancellable.from(prom, abortController).finally(
       () => this.activeStreams.delete(handlerProm),
