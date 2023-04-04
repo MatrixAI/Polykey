@@ -3,7 +3,7 @@ import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import * as rpcUtils from '@/rpc/utils';
 import 'ix/add/asynciterable-operators/toarray';
 import * as rpcErrors from '@/rpc/errors';
-import * as middleware from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import * as rpcTestUtils from '../utils';
 
 describe('Middleware tests', () => {
@@ -21,7 +21,9 @@ describe('Middleware tests', () => {
       const parsedStream = rpcTestUtils
         .messagesToReadableStream(messages)
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
+          rpcUtilsMiddleware.binaryToJsonMessageStream(
+            rpcUtils.parseJSONRPCMessage,
+          ),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -44,7 +46,7 @@ describe('Middleware tests', () => {
         .messagesToReadableStream(messages)
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([10]))
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(
+          rpcUtilsMiddleware.binaryToJsonMessageStream(
             rpcUtils.parseJSONRPCMessage,
             50,
           ),
@@ -67,7 +69,9 @@ describe('Middleware tests', () => {
         .messagesToReadableStream(messages)
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
+          rpcUtilsMiddleware.binaryToJsonMessageStream(
+            rpcUtils.parseJSONRPCMessage,
+          ),
         ); // Converting back.
 
       const asd = await AsyncIterable.as(parsedStream).toArray();
@@ -84,7 +88,9 @@ describe('Middleware tests', () => {
         .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream(snippattern)) // Imaginary internet here
         .pipeThrough(rpcTestUtils.binaryStreamToNoisyStream(noise)) // Adding bad data to the stream
         .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
+          rpcUtilsMiddleware.binaryToJsonMessageStream(
+            rpcUtils.parseJSONRPCMessage,
+          ),
         ); // Converting back.
 
       await expect(AsyncIterable.as(parsedStream).toArray()).rejects.toThrow(

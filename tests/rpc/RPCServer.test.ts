@@ -23,7 +23,7 @@ import {
   ServerHandler,
   UnaryHandler,
 } from '@/rpc/handlers';
-import * as middlewareUtils from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import { promise, sleep } from '@/utils';
 import * as rpcTestUtils from './utils';
 
@@ -583,7 +583,7 @@ describe(`${RPCServer.name}`, () => {
         yield* input;
       }
     }
-    const middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(
+    const middlewareFactory = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
       () => {
         return {
           forward: new TransformStream({
@@ -630,7 +630,7 @@ describe(`${RPCServer.name}`, () => {
         yield* input;
       }
     }
-    const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
+    const middleware = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream(),
         reverse: new TransformStream({
@@ -678,36 +678,38 @@ describe(`${RPCServer.name}`, () => {
           yield* input;
         }
       }
-      const middleware = middlewareUtils.defaultServerMiddlewareWrapper(() => {
-        let first = true;
-        let reverseController: TransformStreamDefaultController<JSONRPCResponse>;
-        return {
-          forward: new TransformStream<
-            JSONRPCRequest<TestType>,
-            JSONRPCRequest<TestType>
-          >({
-            transform: (chunk, controller) => {
-              if (first && chunk.params?.metadata.token !== validToken) {
-                reverseController.enqueue(failureMessage);
-                // Closing streams early
-                controller.terminate();
-                reverseController.terminate();
-              }
-              first = false;
-              controller.enqueue(chunk);
-            },
-          }),
-          reverse: new TransformStream({
-            start: (controller) => {
-              // Kidnapping reverse controller
-              reverseController = controller;
-            },
-            transform: (chunk, controller) => {
-              controller.enqueue(chunk);
-            },
-          }),
-        };
-      });
+      const middleware = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+        () => {
+          let first = true;
+          let reverseController: TransformStreamDefaultController<JSONRPCResponse>;
+          return {
+            forward: new TransformStream<
+              JSONRPCRequest<TestType>,
+              JSONRPCRequest<TestType>
+            >({
+              transform: (chunk, controller) => {
+                if (first && chunk.params?.metadata.token !== validToken) {
+                  reverseController.enqueue(failureMessage);
+                  // Closing streams early
+                  controller.terminate();
+                  reverseController.terminate();
+                }
+                first = false;
+                controller.enqueue(chunk);
+              },
+            }),
+            reverse: new TransformStream({
+              start: (controller) => {
+                // Kidnapping reverse controller
+                reverseController = controller;
+              },
+              transform: (chunk, controller) => {
+                controller.enqueue(chunk);
+              },
+            }),
+          };
+        },
+      );
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
           testMethod: new TestMethod({}),
@@ -1050,15 +1052,14 @@ describe(`${RPCServer.name}`, () => {
           yield* input;
         }
       }
-      const middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(
-        (ctx) => {
+      const middlewareFactory =
+        rpcUtilsMiddleware.defaultServerMiddlewareWrapper((ctx) => {
           ctx.timer.reset(12345);
           return {
             forward: new TransformStream(),
             reverse: new TransformStream(),
           };
-        },
-      );
+        });
       const rpcServer = await RPCServer.createRPCServer({
         manifest: {
           testMethod: new TestMethod({}),

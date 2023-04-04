@@ -12,8 +12,8 @@ import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import RPCServer from './rpc/RPCServer';
 import WebSocketServer from './websockets/WebSocketServer';
-import * as rpcMiddlewareUtils from './rpc/utils/middleware';
-import * as clientMiddleware from './client/utils/middleware';
+import * as rpcUtilsMiddleware from './rpc/utils/middleware';
+import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
@@ -437,8 +437,8 @@ class PolykeyAgent {
             sessionManager: sessionManager,
             vaultManager: vaultManager,
           }),
-          middlewareFactory: rpcMiddlewareUtils.defaultServerMiddlewareWrapper(
-            clientMiddleware.middlewareServer(sessionManager, keyRing),
+          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+            clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
           ),
           sensitive: false,
           logger: logger.getChild('RPCServerClient'),

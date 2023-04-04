@@ -20,7 +20,7 @@ import {
   ServerCaller,
   UnaryCaller,
 } from '@/rpc/callers';
-import * as middlewareUtils from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import { promise, sleep } from '@/utils/index';
 import * as rpcTestUtils from './utils';
 
@@ -364,7 +364,7 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async () => streamPair,
-        middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+        middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
           () => {
             return {
               forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>({
@@ -430,7 +430,7 @@ describe(`${RPCClient.name}`, () => {
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async () => streamPair,
-        middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+        middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
           () => {
             return {
               forward: new TransformStream(),
@@ -1111,7 +1111,7 @@ describe(`${RPCClient.name}`, () => {
             ctxProm.resolveP(ctx);
             return streamPair;
           },
-          middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+          middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
             (ctx) => {
               ctx.timer.reset(1000);
               return {

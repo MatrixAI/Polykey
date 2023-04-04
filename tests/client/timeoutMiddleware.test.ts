@@ -19,7 +19,7 @@ import RPCClient from '@/rpc/RPCClient';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
 import { UnaryCaller } from '@/rpc/callers';
 import { UnaryHandler } from '@/rpc/handlers';
-import * as middlewareUtils from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import { promise } from '@/utils';
@@ -100,7 +100,7 @@ describe('timeoutMiddleware', () => {
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareServer,
       ),
       logger,
@@ -127,7 +127,7 @@ describe('timeoutMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.startConnection(),
-      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
       logger,
@@ -160,7 +160,7 @@ describe('timeoutMiddleware', () => {
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareServer,
       ),
       streamKeepAliveTimeoutTime: 100,
@@ -188,7 +188,7 @@ describe('timeoutMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.startConnection(),
-      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
       logger,

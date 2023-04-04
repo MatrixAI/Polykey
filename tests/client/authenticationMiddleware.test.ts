@@ -19,7 +19,7 @@ import * as clientRPCUtils from '@/client/utils';
 import * as authMiddleware from '@/client/utils/authenticationMiddleware';
 import { UnaryCaller } from '@/rpc/callers';
 import { UnaryHandler } from '@/rpc/handlers';
-import * as middlewareUtils from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as testsUtils from '../utils';
@@ -107,7 +107,7 @@ describe('authenticationMiddleware', () => {
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
       ),
       logger,
@@ -134,7 +134,7 @@ describe('authenticationMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.startConnection(),
-      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),
       logger,

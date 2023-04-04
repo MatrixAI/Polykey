@@ -30,7 +30,7 @@ import {
 import * as rpcEvents from './events';
 import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
-import * as middlewareUtils from './utils/middleware';
+import * as rpcUtilsMiddleware from './utils/middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
@@ -69,7 +69,7 @@ class RPCServer extends EventTarget {
    */
   public static async createRPCServer({
     manifest,
-    middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(),
+    middlewareFactory = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(),
     sensitive = false,
     streamKeepAliveTimeoutTime = 60_000, // 1 minute
     timeoutForceCloseTime = 2_000, // 2 seconds
@@ -435,7 +435,7 @@ class RPCServer extends EventTarget {
     });
 
     const prom = (async () => {
-      const headTransformStream = middlewareUtils.binaryToJsonMessageStream(
+      const headTransformStream = rpcUtilsMiddleware.binaryToJsonMessageStream(
         rpcUtils.parseJSONRPCRequest,
       );
       // Transparent transform used as a point to cancel the input stream from

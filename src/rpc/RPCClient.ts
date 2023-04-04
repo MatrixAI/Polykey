@@ -23,7 +23,7 @@ import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { Timer } from '@matrixai/timer';
-import * as middlewareUtils from './utils/middleware';
+import * as rpcUtilsMiddleware from './utils/middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils/utils';
 import { never, promise } from '../utils';
@@ -50,7 +50,7 @@ class RPCClient<M extends ClientManifest> {
   static async createRPCClient<M extends ClientManifest>({
     manifest,
     streamFactory,
-    middlewareFactory = middlewareUtils.defaultClientMiddlewareWrapper(),
+    middlewareFactory = rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
     streamKeepAliveTimeoutTime = 60_000, // 1 minute
     logger = new Logger(this.name),
   }: {

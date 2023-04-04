@@ -23,7 +23,7 @@ import {
   UnaryCaller,
 } from '@/rpc/callers';
 import * as rpcErrors from '@/rpc/errors';
-import * as rpcMiddlewareUtils from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import * as rpcTestUtils from './utils';
 
 describe('RPC', () => {
@@ -367,7 +367,7 @@ describe('RPC', () => {
         yield* input;
       }
     }
-    const middleware = rpcMiddlewareUtils.defaultServerMiddlewareWrapper(() => {
+    const middleware = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(() => {
       return {
         forward: new TransformStream({
           start: (controller) => {
