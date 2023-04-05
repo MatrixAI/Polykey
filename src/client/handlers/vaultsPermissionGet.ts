@@ -22,7 +22,8 @@ class VaultsPermissionGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultPermissionMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

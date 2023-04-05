@@ -91,39 +91,39 @@ abstract class WebSocketStream
   /**
    * Forces the active stream to end early
    */
-  abstract end(e?: Error): void;
+  abstract cancel(reason?: any): void;
 
   /**
    * Signals the end of the ReadableStream. to be used with the extended class
    * to track the streams state.
    */
-  protected signalReadableEnd(e?: Error) {
+  protected signalReadableEnd(reason?: any) {
     if (this._readableEnded) return;
     this._readableEnded = true;
-    if (e == null) this._readableEndedProm.resolveP();
-    else this._readableEndedProm.rejectP(e);
+    if (reason == null) this._readableEndedProm.resolveP();
+    else this._readableEndedProm.rejectP(reason);
   }
 
   /**
    * Signals the end of the WritableStream. to be used with the extended class
    * to track the streams state.
    */
-  protected signalWritableEnd(e?: Error) {
+  protected signalWritableEnd(reason?: any) {
     if (this._writableEnded) return;
     this._writableEnded = true;
-    if (e == null) this._writableEndedProm.resolveP();
-    else this._writableEndedProm.rejectP(e);
+    if (reason == null) this._writableEndedProm.resolveP();
+    else this._writableEndedProm.rejectP(reason);
   }
 
   /**
    * Signals the end of the WebSocket. to be used with the extended class
    * to track the streams state.
    */
-  protected signalWebSocketEnd(e?: Error) {
+  protected signalWebSocketEnd(reason?: any) {
     if (this._webSocketEnded) return;
     this._webSocketEnded = true;
-    if (e == null) this._webSocketEndedProm.resolveP();
-    else this._webSocketEndedProm.rejectP(e);
+    if (reason == null) this._webSocketEndedProm.resolveP();
+    else this._webSocketEndedProm.rejectP(reason);
   }
 }
 

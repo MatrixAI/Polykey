@@ -3,25 +3,20 @@ import type {
   JSONRPCRequestMessage,
   StreamFactory,
   ClientManifest,
+  RPCStream,
 } from './types';
 import type { JSONValue } from 'types';
-import type {
-  ReadableWritablePair,
-  WritableStream,
-  ReadableStream,
-} from 'stream/web';
+import type { WritableStream, ReadableStream } from 'stream/web';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
   MapCallers,
 } from './types';
-import type { NodeId } from 'ids/index';
 import type { ContextTimed } from '../contexts/types';
 import { TransformStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
-import { IdInternal } from '@matrixai/id';
 import { Timer } from '@matrixai/timer';
 import * as rpcUtilsMiddleware from './utils/middleware';
 import * as rpcErrors from './errors';
@@ -206,7 +201,6 @@ class RPCClient<M extends ClientManifest> {
       // Clean up if any problems, ignore errors if already closed
       await callerInterface.readable.cancel(e);
       throw e;
-
     }
     return callerInterface.readable;
   }
@@ -258,11 +252,12 @@ class RPCClient<M extends ClientManifest> {
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     ctx: Partial<ContextTimed> = {},
-  ): Promise<ReadableWritablePair<O, I>> {
+  ): Promise<RPCStream<O, I>> {
     const abortController = new AbortController();
     const signal = abortController.signal;
     // A promise that will reject if there is an abort signal or timeout
     const abortRaceProm = promise<never>();
+    // Prevent unhandled rejection when we're done with the promise
     abortRaceProm.p.catch(() => {});
     let abortHandler: () => void;
     if (ctx.signal != null) {
@@ -284,38 +279,19 @@ class RPCClient<M extends ClientManifest> {
       if (ctx.timer == null) timer.cancel(Error('TMP Clean up reason'));
       signal.removeEventListener('abort', abortHandler);
     };
+    // Setting up abort events for timeout
     const timeoutError = new rpcErrors.ErrorRPCTimedOut();
     void timer.then(
       () => {
         abortController.abort(timeoutError);
         abortRaceProm.rejectP(timeoutError);
       },
-      () => {},
+      () => {}, // Ignore cancellation error
     );
-    // Deciding if we want to allow refreshing
-    // We want to refresh timer if none was provided
-    const refreshingTimer: Timer | undefined =
-      ctx.timer == null ? timer : undefined;
-    // Providing empty metadata here. we don't support it yet.
-    const outputMessageTransformStream =
-      rpcUtils.clientOutputTransformStream<O>(
-        {
-          nodeId: IdInternal.fromBuffer<NodeId>(Buffer.alloc(32, 0)), // FIXME
-          host: '',
-          port: 0,
-          command: method,
-        },
-        refreshingTimer,
-      );
-    const inputMessageTransformStream = rpcUtils.clientInputTransformStream<I>(
-      method,
-      refreshingTimer,
-    );
-    const middleware = this.middlewareFactory({ signal, timer });
     // Hooking up agnostic stream side
-    let streamPair: ReadableWritablePair<Uint8Array, Uint8Array>;
+    let rpcStream: RPCStream<Uint8Array, Uint8Array>;
     try {
-      streamPair = await Promise.race([
+      rpcStream = await Promise.race([
         this.streamFactory({ signal, timer }),
         abortRaceProm.p,
       ]);
@@ -323,14 +299,45 @@ class RPCClient<M extends ClientManifest> {
       cleanUp();
       throw e;
     }
+    // Setting up event for stream timeout
+    void timer.then(
+      () => {
+        rpcStream.cancel(new rpcErrors.ErrorRPCTimedOut());
+      },
+      () => {}, // Ignore cancellation error
+    );
+    // Deciding if we want to allow refreshing
+    // We want to refresh timer if none was provided
+    const refreshingTimer: Timer | undefined =
+      ctx.timer == null ? timer : undefined;
+    // Composing stream transforms and middleware
+    const metadata = {
+      ...(rpcStream.meta ?? {}),
+      command: method,
+    };
+    const outputMessageTransformStream =
+      rpcUtils.clientOutputTransformStream<O>(metadata, refreshingTimer);
+    const inputMessageTransformStream = rpcUtils.clientInputTransformStream<I>(
+      method,
+      refreshingTimer,
+    );
+    const middleware = this.middlewareFactory(
+      { signal, timer },
+      rpcStream.cancel,
+      metadata,
+    );
+    // This `Promise.allSettled` is used to asynchronously track the state
+    // of the streams. When both have finished we can clean up resources.
     void Promise.allSettled([
-      streamPair.readable
+      rpcStream.readable
         .pipeThrough(middleware.reverse)
         .pipeTo(outputMessageTransformStream.writable)
+        // Ignore any errors, we only care about stream ending
         .catch(() => {}),
       inputMessageTransformStream.readable
         .pipeThrough(middleware.forward)
-        .pipeTo(streamPair.writable)
+        .pipeTo(rpcStream.writable)
+        // Ignore any errors, we only care about stream ending
         .catch(() => {}),
     ]).finally(() => {
       cleanUp();
@@ -340,9 +347,13 @@ class RPCClient<M extends ClientManifest> {
     return {
       readable: outputMessageTransformStream.readable,
       writable: inputMessageTransformStream.writable,
+      cancel: rpcStream.cancel,
+      meta: metadata,
     };
   }
 
+  // FIXME: the CTX timeout here is just for stream creation. We can't/wont do
+  // keep alive timeout for raw streams.
   /**
    * Generic caller for raw RPC calls.
    * This returns a `ReadableWritablePair` of the raw RPC stream.
@@ -360,7 +371,7 @@ class RPCClient<M extends ClientManifest> {
     method: string,
     headerParams: JSONValue,
     ctx: Partial<ContextTimed> = {},
-  ): Promise<ReadableWritablePair<Uint8Array, Uint8Array>> {
+  ): Promise<RPCStream<Uint8Array, Uint8Array>> {
     const abortController = new AbortController();
     const signal = abortController.signal;
     // A promise that will reject if there is an abort signal or timeout
@@ -395,10 +406,10 @@ class RPCClient<M extends ClientManifest> {
       },
       () => {},
     );
-    let streamPair: ReadableWritablePair<Uint8Array, Uint8Array>;
+    let rpcStream: RPCStream<Uint8Array, Uint8Array>;
     const setupStream = async () => {
-      const streamPair = await this.streamFactory({ signal, timer });
-      const tempWriter = streamPair.writable.getWriter();
+      const rpcStream = await this.streamFactory({ signal, timer });
+      const tempWriter = rpcStream.writable.getWriter();
       const header: JSONRPCRequestMessage = {
         jsonrpc: '2.0',
         method,
@@ -407,10 +418,10 @@ class RPCClient<M extends ClientManifest> {
       };
       await tempWriter.write(Buffer.from(JSON.stringify(header)));
       tempWriter.releaseLock();
-      return streamPair;
+      return rpcStream;
     };
     try {
-      streamPair = await Promise.race([setupStream(), abortRaceProm.p]);
+      rpcStream = await Promise.race([setupStream(), abortRaceProm.p]);
     } catch (e) {
       cleanUp();
       throw e;
@@ -420,15 +431,20 @@ class RPCClient<M extends ClientManifest> {
     const reverseStream = new TransformStream<Uint8Array, Uint8Array>();
 
     void Promise.all([
-      streamPair.readable.pipeTo(reverseStream.writable),
-      forwardStream.readable.pipeTo(streamPair.writable),
+      rpcStream.readable.pipeTo(reverseStream.writable),
+      forwardStream.readable.pipeTo(rpcStream.writable),
     ]).finally(() => {
       cleanUp();
     });
-
+    const metadata = {
+      ...(rpcStream.meta ?? {}),
+      command: method,
+    };
     return {
       writable: forwardStream.writable,
       readable: reverseStream.readable,
+      cancel: rpcStream.cancel,
+      meta: metadata,
     };
   }
 }

@@ -17,7 +17,8 @@ class VaultsSecretsListHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<SecretNameMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

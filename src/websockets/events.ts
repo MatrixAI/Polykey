@@ -1,5 +1,4 @@
 import type WebSocketStream from 'websockets/WebSocketStream';
-import type { ConnectionInfo } from 'rpc/types';
 
 class StartEvent extends Event {
   public detail: {
@@ -28,13 +27,11 @@ class StopEvent extends Event {
 class ConnectionEvent extends Event {
   public detail: {
     webSocketStream: WebSocketStream;
-    connectionInfo: ConnectionInfo;
   };
   constructor(
     options: EventInit & {
       detail: {
         webSocketStream: WebSocketStream;
-        connectionInfo: ConnectionInfo;
       };
     },
   ) {

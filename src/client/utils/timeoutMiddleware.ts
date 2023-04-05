@@ -1,13 +1,18 @@
 import type { JSONRPCRequest, JSONRPCResponse } from '../../rpc/types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { ContextTimed } from '../../contexts/types';
+import type { JSONValue } from '../../types';
 import { TransformStream } from 'stream/web';
 
 /**
  * This adds its timeout to the reverse metadata and updates it's timeout based
  * on the forward metadata.
  */
-function timeoutMiddlewareServer(ctx: ContextTimed) {
+function timeoutMiddlewareServer(
+  ctx: ContextTimed,
+  _cancel: (reason?: any) => void,
+  _meta: Record<string, JSONValue> | undefined,
+) {
   const currentTimeout = ctx.timer.delay;
   // Flags for tracking if the first message has been processed
   let forwardFirst = true;
@@ -50,8 +55,14 @@ function timeoutMiddlewareServer(ctx: ContextTimed) {
  * This adds its own timeout to the forward metadata and updates it's timeout
  * based on the reverse metadata.
  * @param ctx
+ * @param _cancel
+ * @param _meta
  */
-function timeoutMiddlewareClient(ctx: ContextTimed) {
+function timeoutMiddlewareClient(
+  ctx: ContextTimed,
+  _cancel: (reason?: any) => void,
+  _meta: Record<string, JSONValue> | undefined,
+) {
   const currentTimeout = ctx.timer.delay;
   // Flags for tracking if the first message has been processed
   let forwardFirst = true;

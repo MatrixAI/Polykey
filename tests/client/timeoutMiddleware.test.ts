@@ -89,7 +89,8 @@ describe('timeoutMiddleware', () => {
     > {
       public async handle(
         input: ClientRPCRequestParams,
-        _,
+        _cancel,
+        _meta,
         ctx,
       ): Promise<ClientRPCResponseResult> {
         ctxProm.resolveP(ctx);
@@ -106,8 +107,8 @@ describe('timeoutMiddleware', () => {
       logger,
     });
     clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) => {
-        rpcServer.handleStream(streamPair, connectionInfo);
+      connectionCallback: (streamPair) => {
+        rpcServer.handleStream(streamPair);
       },
       host,
       tlsConfig,
@@ -167,8 +168,8 @@ describe('timeoutMiddleware', () => {
       logger,
     });
     clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) => {
-        rpcServer.handleStream(streamPair, connectionInfo);
+      connectionCallback: (streamPair) => {
+        rpcServer.handleStream(streamPair);
       },
       host,
       tlsConfig,

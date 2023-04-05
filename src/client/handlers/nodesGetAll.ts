@@ -17,7 +17,8 @@ class NodesGetAllHandler extends ServerHandler<
 > {
   public async *handle(
     _input,
-    _connectionUInfo,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

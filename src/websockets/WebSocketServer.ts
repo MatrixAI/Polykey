@@ -1,9 +1,8 @@
 import type {
   ReadableStreamController,
-  ReadableWritablePair,
   WritableStreamDefaultController,
 } from 'stream/web';
-import type { FileSystem, PromiseDeconstructed } from 'types';
+import type { FileSystem, JSONValue, PromiseDeconstructed } from 'types';
 import type { Host, Port, TLSConfig } from 'network/types';
 import type {
   HttpRequest,
@@ -11,7 +10,6 @@ import type {
   us_socket_context_t,
   WebSocket,
 } from 'uWebSockets.js';
-import type { ConnectionInfo } from '../rpc/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';
@@ -23,10 +21,7 @@ import * as webSocketErrors from './errors';
 import * as webSocketEvents from './events';
 import { promise } from '../utils';
 
-type ConnectionCallback = (
-  streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
-  connectionInfo: ConnectionInfo,
-) => void;
+type ConnectionCallback = (streamPair: WebSocketStream) => void;
 
 type Context = {
   message: (
@@ -159,10 +154,7 @@ class WebSocketServer extends EventTarget {
       this.connectionEventHandler = (
         event: webSocketEvents.ConnectionEvent,
       ) => {
-        connectionCallback(
-          event.detail.webSocketStream,
-          event.detail.connectionInfo,
-        );
+        connectionCallback(event.detail.webSocketStream);
       };
       this.addEventListener('connection', this.connectionEventHandler);
     }
@@ -225,7 +217,7 @@ class WebSocketServer extends EventTarget {
     // Shutting down active websockets
     if (force) {
       for (const webSocketStream of this.activeSockets) {
-        webSocketStream.end();
+        webSocketStream.cancel();
       }
     }
     // Wait for all active websockets to close
@@ -306,6 +298,7 @@ class WebSocketServer extends EventTarget {
       this.maxReadableStreamBytes,
       this.pingIntervalTime,
       this.pingTimeoutTime,
+      {}, // TODO: fill in connection metadata
     );
     // Adding socket to the active sockets map
     this.activeSockets.add(webSocketStream);
@@ -317,16 +310,10 @@ class WebSocketServer extends EventTarget {
 
     // There is not nodeId or certs for the client, and we can't get the remote
     //  port from the `uWebsocket` library.
-    const connectionInfo: ConnectionInfo = {
-      remoteHost: Buffer.from(ws.getRemoteAddressAsText()).toString(),
-      localHost: this._host,
-      localPort: this._port,
-    };
     this.dispatchEvent(
       new webSocketEvents.ConnectionEvent({
         detail: {
           webSocketStream,
-          connectionInfo,
         },
       }),
     );
@@ -364,25 +351,28 @@ class WebSocketServer extends EventTarget {
 class WebSocketStreamServerInternal extends WebSocketStream {
   protected backPressure: PromiseDeconstructed<void> | null = null;
   protected writeBackpressure: boolean = false;
+  protected writableController: WritableStreamDefaultController | undefined;
+  protected readableController:
+    | ReadableStreamController<Uint8Array>
+    | undefined;
 
   constructor(
     protected ws: WebSocket<Context>,
     maxReadBufferBytes: number,
     pingInterval: number,
     pingTimeout: number,
+    protected metadata: Record<string, JSONValue>,
   ) {
     super();
     const context = ws.getUserData();
     const logger = context.logger;
     logger.info('WS opened');
-    let writableController: WritableStreamDefaultController | undefined;
-    let readableController: ReadableStreamController<Uint8Array> | undefined;
     const writableLogger = logger.getChild('Writable');
     const readableLogger = logger.getChild('Readable');
     // Setting up the writable stream
     this.writable = new WritableStream<Uint8Array>({
       start: (controller) => {
-        writableController = controller;
+        this.writableController = controller;
       },
       write: async (chunk, controller) => {
         await this.backPressure?.p;
@@ -432,7 +422,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
     this.readable = new ReadableStream<Uint8Array>(
       {
         start: (controller) => {
-          readableController = controller;
+          this.readableController = controller;
           context.message = (ws, message, _) => {
             const messageBuffer = Buffer.from(message);
             readableLogger.debug(`Received ${messageBuffer.toString()}`);
@@ -501,12 +491,12 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       if (!this._readableEnded) {
         readableLogger.debug('Closing');
         this.signalReadableEnd(err);
-        readableController?.error(err);
+        this.readableController?.error(err);
       }
       if (!this._writableEnded) {
         writableLogger.debug('Closing');
         this.signalWritableEnd(err);
-        writableController?.error(err);
+        this.writableController?.error(err);
       }
     };
     context.drain = () => {
@@ -515,8 +505,29 @@ class WebSocketStreamServerInternal extends WebSocketStream {
     };
   }
 
-  end(): void {
-    this.ws.end(4001, 'Ending connection');
+  get meta(): Record<string, JSONValue> {
+    return {
+      ...this.metadata,
+    };
+  }
+
+  cancel(reason?: any): void {
+    // Default error
+    const err = reason ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
+    // Close the streams with the given error,
+    if (!this._readableEnded) {
+      this.readableController?.error(err);
+      this.signalReadableEnd(err);
+    }
+    if (!this._writableEnded) {
+      this.writableController?.error(err);
+      this.signalWritableEnd(err);
+    }
+    // Then close the websocket
+    if (!this._webSocketEnded) {
+      this.ws.end(4001, 'Ending connection');
+      this.signalWebSocketEnd(err);
+    }
   }
 }
 

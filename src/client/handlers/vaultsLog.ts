@@ -17,7 +17,8 @@ class VaultsLogHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<VaultsLogMessage>,
-    _connectionInfo,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<LogEntryMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

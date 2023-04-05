@@ -10,9 +10,8 @@ import type {
   RawHandlerImplementation,
   ServerHandlerImplementation,
   UnaryHandlerImplementation,
-  ConnectionInfo,
+  RPCStream,
 } from './types';
-import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '../types';
 import type { MiddlewareFactory } from './types';
 import { ReadableStream, TransformStream } from 'stream/web';
@@ -158,7 +157,7 @@ class RPCServer extends EventTarget {
           key,
           manifestItem.handle.bind(manifestItem),
           manifestItem.timeout,
-       );
+        );
         continue;
       }
       if (manifestItem instanceof ClientHandler) {
@@ -236,7 +235,8 @@ class RPCServer extends EventTarget {
   ): void {
     const rawSteamHandler: RawHandlerImplementation = (
       [header, input],
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) => {
       // Setting up abort controller
@@ -247,7 +247,7 @@ class RPCServer extends EventTarget {
       });
       const signal = abortController.signal;
       // Setting up middleware
-      const middleware = this.middlewareFactory(ctx);
+      const middleware = this.middlewareFactory(ctx, cancel, meta);
       // Forward from the client to the server
       // Transparent TransformStream that re-inserts the header message into the
       // stream.
@@ -274,7 +274,7 @@ class RPCServer extends EventTarget {
             yield data.params as I;
           }
         };
-        const handlerG = handler(inputGen(), connectionInfo, {
+        const handlerG = handler(inputGen(), cancel, meta, {
           signal,
           timer: ctx.timer,
         });
@@ -348,14 +348,15 @@ class RPCServer extends EventTarget {
   ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
       // The `input` is expected to be an async iterable with only 1 value.
       // Unlike generators, there is no `next()` method.
       // So we use `break` after the first iteration.
       for await (const inputVal of input) {
-        yield await handler(inputVal, connectionInfo, ctx);
+        yield await handler(inputVal, cancel, meta, ctx);
         break;
       }
     };
@@ -372,11 +373,12 @@ class RPCServer extends EventTarget {
   ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
       for await (const inputVal of input) {
-        yield* handler(inputVal, connectionInfo, ctx);
+        yield* handler(inputVal, cancel, meta, ctx);
         break;
       }
     };
@@ -393,47 +395,46 @@ class RPCServer extends EventTarget {
   ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
-      yield await handler(input, connectionInfo, ctx);
+      yield await handler(input, cancel, meta, ctx);
     };
     this.registerDuplexStreamHandler(method, wrapperDuplex, timeout);
   }
 
   @ready(new rpcErrors.ErrorRPCDestroyed())
-  public handleStream(
-    streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
-    connectionInfo: ConnectionInfo,
-  ) {
+  public handleStream(rpcStream: RPCStream<Uint8Array, Uint8Array>) {
     // This will take a buffer stream of json messages and set up service
     //  handling for it.
     // Constructing the PromiseCancellable for tracking the active stream
     const abortController = new AbortController();
-    // This controller will be used to force end the streams directly
-    const forceStreamEndController = new AbortController();
     // Setting up timeout timer logic
     const timer = new Timer({
       delay: this.streamKeepAliveTimeoutTime,
-      handler: (signal) => {
+      handler: () => {
         abortController.abort(new rpcErrors.ErrorRPCTimedOut());
-        if (signal.aborted) return;
-        // Grace timer for force ending stream
-        const graceTimer = new Timer({
-          delay: this.timeoutForceCloseTime,
-          handler: () => {
-            forceStreamEndController.abort();
-          },
-        });
-        if (signal.aborted) {
-          graceTimer.cancel(signal.reason);
-          return;
-        }
-        signal.addEventListener('abort', () => {
-          graceTimer.cancel(signal.reason);
-        });
       },
     });
+    // Grace timer is triggered with any abort signal.
+    // If grace timer completes then it will cause the RPCStream to end with
+    // `RPCStream.cancel(reason)`.
+    let graceTimer: Timer<void> | undefined;
+    const handleAbort = () => {
+      const graceTimer = new Timer({
+        delay: this.timeoutForceCloseTime,
+        handler: () => {
+          rpcStream.cancel(abortController.signal.reason);
+        },
+      });
+      void graceTimer
+        .catch(() => {}) // Ignore cancellation error
+        .finally(() => {
+          abortController.signal.removeEventListener('abort', handleAbort);
+        });
+    };
+    abortController.signal.addEventListener('abort', handleAbort);
 
     const prom = (async () => {
       const headTransformStream = rpcUtilsMiddleware.binaryToJsonMessageStream(
@@ -445,10 +446,8 @@ class RPCServer extends EventTarget {
         Uint8Array
       >();
       const inputStream = passthroughTransform.readable;
-      const inputStreamEndProm = streamPair.readable
-        .pipeTo(passthroughTransform.writable, {
-          signal: forceStreamEndController.signal,
-        })
+      const inputStreamEndProm = rpcStream.readable
+        .pipeTo(passthroughTransform.writable)
         // Ignore any errors here, we only care that it ended
         .catch(() => {});
       void inputStream
@@ -457,10 +456,11 @@ class RPCServer extends EventTarget {
           preventClose: true,
           preventCancel: true,
         })
+        // Ignore any errors here, we only care that it ended
         .catch(() => {});
       const cleanUp = async (reason: any) => {
         await inputStream.cancel(reason);
-        await streamPair.writable.abort(reason);
+        await rpcStream.writable.abort(reason);
         await inputStreamEndProm;
       };
       // Read a single empty value to consume the first message
@@ -468,7 +468,10 @@ class RPCServer extends EventTarget {
       // Allows timing out when waiting for the first message
       const headerMessage = await Promise.race([
         reader.read(),
-        timer.then(() => undefined),
+        timer.then(
+          () => undefined,
+          () => {},
+        ),
       ]);
       // Downgrade back to the raw stream
       await reader.cancel();
@@ -506,17 +509,18 @@ class RPCServer extends EventTarget {
       }
       const outputStream = handler(
         [headerMessage.value, inputStream],
-        connectionInfo,
+        rpcStream.cancel,
+        rpcStream.meta,
         { signal: abortController.signal, timer },
       );
       const outputStreamEndProm = outputStream
-        .pipeTo(streamPair.writable, {
-          signal: forceStreamEndController.signal,
-        })
+        .pipeTo(rpcStream.writable)
         .catch(() => {});
       await Promise.allSettled([inputStreamEndProm, outputStreamEndProm]);
       // Cleaning up abort and timer
       timer.cancel(cleanupReason);
+      abortController.signal.removeEventListener('abort', handleAbort);
+      graceTimer?.cancel(cleanupReason);
       abortController.abort(new rpcErrors.ErrorRPCStreamEnded());
     })();
     const handlerProm = PromiseCancellable.from(prom, abortController).finally(

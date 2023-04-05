@@ -3,11 +3,11 @@ import type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCResponseError,
+  RPCStream,
 } from '@/rpc/types';
 import type { JSONValue } from '@/types';
-import type { ConnectionInfo, Host, Port } from '@/network/types';
+import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids';
-import type { ReadableWritablePair } from 'stream/web';
 import type { ContextTimed } from '@/contexts/types';
 import type { RPCErrorEvent } from '@/rpc/events';
 import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
@@ -89,11 +89,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -121,11 +122,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -153,11 +155,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -181,11 +184,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -207,11 +211,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -244,11 +249,12 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
     },
@@ -258,7 +264,7 @@ describe(`${RPCServer.name}`, () => {
     [specificMessageArb],
     async (messages) => {
       const stream = rpcTestUtils.messagesToReadableStream(messages);
-      const connectionInfo: ConnectionInfo = {
+      const meta = {
         localHost: 'hostA' as Host,
         localPort: 12341 as Port,
         remoteCertificates: [],
@@ -266,13 +272,14 @@ describe(`${RPCServer.name}`, () => {
         remoteNodeId: 'asd' as unknown as NodeId,
         remotePort: 12341 as Port,
       };
-      let handledConnectionInfo;
+      let handledMeta;
       class TestMethod extends DuplexHandler {
         public async *handle(
           input: AsyncIterable<JSONValue>,
-          connectionInfo: ConnectionInfo,
+          _cancel,
+          meta,
         ): AsyncIterable<JSONValue> {
-          handledConnectionInfo = connectionInfo;
+          handledMeta = meta;
           for await (const val of input) {
             yield val;
           }
@@ -285,14 +292,16 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta,
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, connectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       await rpcServer.destroy();
-      expect(handledConnectionInfo).toBe(connectionInfo);
+      expect(handledMeta).toBe(meta);
     },
   );
   testProp('handler can be aborted', [specificMessageArb], async (messages) => {
@@ -300,7 +309,8 @@ describe(`${RPCServer.name}`, () => {
     class TestMethod extends DuplexHandler {
       public async *handle(
         input: AsyncIterable<JSONValue>,
-        _connectionInfo: ConnectionInfo,
+        _cancel,
+        _meta,
         ctx: ContextTimed,
       ): AsyncIterable<JSONValue> {
         for await (const val of input) {
@@ -332,11 +342,12 @@ describe(`${RPCServer.name}`, () => {
       },
     );
     void tapStream.readable.pipeTo(outputStream).catch(() => {});
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: tapStream.writable,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const result = await outputResult;
     const lastMessage = result[result.length - 1];
     await expect(thing).toResolve();
@@ -364,11 +375,12 @@ describe(`${RPCServer.name}`, () => {
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     await outputResult;
     // We're just expecting no errors
     await rpcServer.destroy();
@@ -398,11 +410,12 @@ describe(`${RPCServer.name}`, () => {
         resolve(thing);
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       const rawErrorMessage = (await outputResult)[0]!.toString();
       expect(rawErrorMessage).toInclude('stack');
       const errorMessage = JSON.parse(rawErrorMessage);
@@ -439,11 +452,12 @@ describe(`${RPCServer.name}`, () => {
         resolve(thing);
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       const rawErrorMessage = (await outputResult)[0]!.toString();
       expect(rawErrorMessage).not.toInclude('stack');
       const errorMessage = JSON.parse(rawErrorMessage);
@@ -482,11 +496,12 @@ describe(`${RPCServer.name}`, () => {
       });
       const passThroughStreamIn = new TransformStream<Uint8Array, Uint8Array>();
       const [outputResult, outputStream] = rpcTestUtils.streamToArray<Buffer>();
-      const readWriteStream: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: passThroughStreamIn.readable,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       const writer = passThroughStreamIn.writable.getWriter();
       // Write messages
       for (const message of messages) {
@@ -513,7 +528,12 @@ describe(`${RPCServer.name}`, () => {
       const handlerEndedProm = promise();
       let ctx: ContextTimed | undefined;
       class TestMethod extends DuplexHandler {
-        public async *handle(input, _, ctx_): AsyncIterable<JSONValue> {
+        public async *handle(
+          input,
+          _cancel,
+          _meta,
+          ctx_,
+        ): AsyncIterable<JSONValue> {
           ctx = ctx_;
           // Echo input
           try {
@@ -541,11 +561,12 @@ describe(`${RPCServer.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const readWriteStream: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: passThroughStreamIn.readable,
         writable: passThroughStreamOut.writable,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       const writer = passThroughStreamIn.writable.getWriter();
       const reader = passThroughStreamOut.readable.getReader();
       // Write messages
@@ -604,11 +625,12 @@ describe(`${RPCServer.name}`, () => {
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const out = await outputResult;
     expect(out.map((v) => v!.toString())).toStrictEqual(
       messages.map(() => {
@@ -649,11 +671,12 @@ describe(`${RPCServer.name}`, () => {
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const out = await outputResult;
     expect(out.map((v) => v!.toString())).toStrictEqual(
       messages.map(() => {
@@ -718,7 +741,8 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
@@ -736,7 +760,7 @@ describe(`${RPCServer.name}`, () => {
           message: 'failure of some kind',
         },
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       expect((await outputResult).toString()).toEqual(
         JSON.stringify(failureMessage),
       );
@@ -746,7 +770,7 @@ describe(`${RPCServer.name}`, () => {
   test('timeout with default time after handler selected', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+      public handle(_input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         let controller: ReadableStreamController<Uint8Array>;
@@ -781,11 +805,12 @@ describe(`${RPCServer.name}`, () => {
         params: null,
       },
     ]);
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const ctx = await ctxProm.p;
     expect(ctx.timer.delay).toEqual(100);
     await ctx.timer;
@@ -799,7 +824,8 @@ describe(`${RPCServer.name}`, () => {
       streamKeepAliveTimeoutTime: 100,
       logger,
     });
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: new ReadableStream({
         // Ignore
         cancel: () => {},
@@ -809,7 +835,7 @@ describe(`${RPCServer.name}`, () => {
         abort: () => {},
       }),
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     // With no handler we can only check alive connections through the server
     // @ts-ignore: kidnap protected property
     const activeStreams = rpcServer.activeStreams;
@@ -824,7 +850,12 @@ describe(`${RPCServer.name}`, () => {
       const ctxShortProm = promise<ContextTimed>();
       class TestMethodShortTimeout extends UnaryHandler {
         timeout = 25;
-        public async handle(input: JSONValue, _, ctx_): Promise<JSONValue> {
+        public async handle(
+          input: JSONValue,
+          _cancel,
+          _meta,
+          ctx_,
+        ): Promise<JSONValue> {
           ctxShortProm.resolveP(ctx_);
           await waitProm.p;
           return input;
@@ -833,7 +864,12 @@ describe(`${RPCServer.name}`, () => {
       const ctxLongProm = promise<ContextTimed>();
       class TestMethodLongTimeout extends UnaryHandler {
         timeout = 100;
-        public async handle(input: JSONValue, _, ctx_): Promise<JSONValue> {
+        public async handle(
+          input: JSONValue,
+          _cancel,
+          _meta,
+          ctx_,
+        ): Promise<JSONValue> {
           ctxLongProm.resolveP(ctx_);
           await waitProm.p;
           return input;
@@ -854,11 +890,12 @@ describe(`${RPCServer.name}`, () => {
           params: null,
         },
       ]);
-      const readWriteStreamShort: ReadableWritablePair = {
+      const readWriteStreamShort: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: streamShort,
         writable: new WritableStream(),
       };
-      rpcServer.handleStream(readWriteStreamShort, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStreamShort);
       // Shorter timeout is updated
       const ctxShort = await ctxShortProm.p;
       expect(ctxShort.timer.delay).toEqual(25);
@@ -869,11 +906,12 @@ describe(`${RPCServer.name}`, () => {
           params: null,
         },
       ]);
-      const readWriteStreamLong: ReadableWritablePair = {
+      const readWriteStreamLong: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: streamLong,
         writable: new WritableStream(),
       };
-      rpcServer.handleStream(readWriteStreamLong, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStreamLong);
 
       // Longer timeout is set to server's default
       const ctxLong = await ctxLongProm.p;
@@ -890,7 +928,8 @@ describe(`${RPCServer.name}`, () => {
     class TestHandler extends DuplexHandler {
       public async *handle(
         input: AsyncIterable<number>,
-        _,
+        _cancel,
+        _meta,
         ctx,
       ): AsyncIterable<number> {
         contextProm.resolveP(ctx);
@@ -917,11 +956,12 @@ describe(`${RPCServer.name}`, () => {
         params: 1,
       }),
     );
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: passthroughStream.readable,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const writer = passthroughStream.writable.getWriter();
     await writer.write(requestMessage);
     const ctx = await contextProm.p;
@@ -948,7 +988,7 @@ describe(`${RPCServer.name}`, () => {
   test('stream ending cleans up timer and abortSignal', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+      public handle(input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         void (async () => {
@@ -977,11 +1017,12 @@ describe(`${RPCServer.name}`, () => {
         params: null,
       },
     ]);
-    const readWriteStream: ReadableWritablePair = {
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const ctx = await ctxProm.p;
     await outputResult;
     await rpcServer.destroy(false);
@@ -994,7 +1035,7 @@ describe(`${RPCServer.name}`, () => {
   test('Timeout has a grace period before forcing the streams closed', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _connectionInfo, ctx_): ReadableStream<Uint8Array> {
+      public handle(_input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         return new ReadableStream<Uint8Array>();
@@ -1008,7 +1049,7 @@ describe(`${RPCServer.name}`, () => {
       timeoutForceCloseTime: 100,
       logger,
     });
-    const [outputResult, outputStream] = rpcTestUtils.streamToArray();
+    const [, outputStream] = rpcTestUtils.streamToArray();
     const stream = rpcTestUtils.messagesToReadableStream([
       {
         jsonrpc: '2.0',
@@ -1021,20 +1062,22 @@ describe(`${RPCServer.name}`, () => {
         params: null,
       },
     ]);
-    const readWriteStream: ReadableWritablePair = {
+    const cancelProm = promise<any>();
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: (reason) => cancelProm.resolveP(reason),
       readable: stream,
       writable: outputStream,
     };
-    rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+    rpcServer.handleStream(readWriteStream);
     const ctx = await ctxProm.p;
     await ctx.timer;
     const then = Date.now();
     expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     // Should end after grace period
-    await expect(outputResult).rejects.toThrow();
-    expect(Date.now() - then).toBeGreaterThanOrEqual(100);
-    await expect(outputResult).toReject();
-    await rpcServer.destroy();
+    await expect(cancelProm.p).resolves.toBeInstanceOf(
+      rpcErrors.ErrorRPCTimedOut,
+    );
+    expect(Date.now() - then).toBeGreaterThanOrEqual(90);
   });
   testProp(
     'middleware can update timeout timer',
@@ -1045,7 +1088,8 @@ describe(`${RPCServer.name}`, () => {
       class TestMethod extends DuplexHandler {
         public async *handle(
           input: AsyncIterable<JSONValue>,
-          _,
+          _cancel,
+          _meta,
           ctx,
         ): AsyncIterable<JSONValue> {
           ctxProm.resolveP(ctx);
@@ -1068,15 +1112,60 @@ describe(`${RPCServer.name}`, () => {
         logger,
       });
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const readWriteStream: ReadableWritablePair = {
+      const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: stream,
         writable: outputStream,
       };
-      rpcServer.handleStream(readWriteStream, {} as ConnectionInfo);
+      rpcServer.handleStream(readWriteStream);
       await outputResult;
       const ctx = await ctxProm.p;
       expect(ctx.timer.delay).toBe(12345);
-      await rpcServer.destroy();
     },
   );
+  test('destroying the `RPCServer` sends an abort signal and closes connection', async () => {
+    const ctxProm = promise<ContextTimed>();
+    class TestHandler extends RawHandler {
+      public handle(input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
+        ctxProm.resolveP(ctx_);
+        // Echo messages
+        return input[1];
+      }
+    }
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod: new TestHandler({}),
+      },
+      timeoutForceCloseTime: 0,
+      logger,
+    });
+    const [, outputStream] = rpcTestUtils.streamToArray();
+    const message = Buffer.from(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'testMethod',
+        params: null,
+      }),
+    );
+    const forwardStream = new TransformStream<Uint8Array, Uint8Array>();
+    const cancelProm = promise<any>();
+    const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: (reason) => cancelProm.resolveP(reason),
+      readable: forwardStream.readable,
+      writable: outputStream,
+    };
+    rpcServer.handleStream(readWriteStream);
+    const writer = forwardStream.writable.getWriter();
+    await writer.write(message);
+    const ctx = await ctxProm.p;
+    void rpcServer.destroy(true).then(
+      () => {},
+      () => {},
+    );
+    await expect(cancelProm.p).resolves.toBeInstanceOf(
+      rpcErrors.ErrorRPCStopping,
+    );
+    expect(ctx.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCStopping);
+    await writer.close();
+  });
 });

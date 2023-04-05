@@ -105,7 +105,7 @@ function defaultServerMiddlewareWrapper(
     JSONRPCResponse
   > = defaultMiddleware,
 ): MiddlewareFactory<JSONRPCRequest, Uint8Array, Uint8Array, JSONRPCResponse> {
-  return (ctx) => {
+  return (ctx, cancel, meta) => {
     const inputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCRequest,
     );
@@ -114,7 +114,7 @@ function defaultServerMiddlewareWrapper(
       JSONRPCResponseResult
     >();
 
-    const middleMiddleware = middlewareFactory(ctx);
+    const middleMiddleware = middlewareFactory(ctx, cancel, meta);
 
     const forwardReadable = inputTransformStream.readable.pipeThrough(
       middleMiddleware.forward,
@@ -158,7 +158,7 @@ const defaultClientMiddlewareWrapper = (
   JSONRPCResponse,
   Uint8Array
 > => {
-  return (ctx) => {
+  return (ctx, cancel, meta) => {
     const outputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCResponse,
       // Undefined,
@@ -168,7 +168,7 @@ const defaultClientMiddlewareWrapper = (
       JSONRPCRequest
     >();
 
-    const middleMiddleware = middleware(ctx);
+    const middleMiddleware = middleware(ctx, cancel, meta);
     const forwardReadable = inputTransformStream.readable
       .pipeThrough(middleMiddleware.forward) // Usual middleware here
       .pipeThrough(jsonMessageToBinaryStream());

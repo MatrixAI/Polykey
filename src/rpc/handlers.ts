@@ -2,7 +2,6 @@ import type { JSONValue } from 'types';
 import type { ContainerType } from 'rpc/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONRPCRequest } from 'rpc/types';
-import type { ConnectionInfo } from './types';
 import type { ContextTimed } from '../contexts/types';
 
 abstract class Handler<
@@ -22,7 +21,8 @@ abstract class RawHandler<
 > extends Handler<Container> {
   abstract handle(
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-    connectionInfo: ConnectionInfo,
+    cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): ReadableStream<Uint8Array>;
 }
@@ -39,7 +39,8 @@ abstract class DuplexHandler<
    */
   abstract handle(
     input: AsyncIterable<Input>,
-    connectionInfo: ConnectionInfo,
+    cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): AsyncIterable<Output>;
 }
@@ -51,7 +52,8 @@ abstract class ServerHandler<
 > extends Handler<Container, Input, Output> {
   abstract handle(
     input: Input,
-    connectionInfo: ConnectionInfo,
+    cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): AsyncIterable<Output>;
 }
@@ -63,7 +65,8 @@ abstract class ClientHandler<
 > extends Handler<Container, Input, Output> {
   abstract handle(
     input: AsyncIterable<Input>,
-    connectionInfo: ConnectionInfo,
+    cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): Promise<Output>;
 }
@@ -75,7 +78,8 @@ abstract class UnaryHandler<
 > extends Handler<Container, Input, Output> {
   abstract handle(
     input: Input,
-    connectionInfo: ConnectionInfo,
+    cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): Promise<Output>;
 }

@@ -1,9 +1,9 @@
-import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '@/types';
 import type {
   JSONRPCRequest,
   JSONRPCRequestMessage,
   JSONRPCResponse,
+  RPCStream,
 } from '@/rpc/types';
 import type { ContextTimed } from '@/contexts/types';
 import { TransformStream, ReadableStream } from 'stream/web';
@@ -48,7 +48,9 @@ describe(`${RPCClient.name}`, () => {
         rpcTestUtils.streamToArray<Uint8Array>();
       const [outputResult, outputWritableStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: new ReadableStream<Uint8Array>({
           start: (controller) => {
             for (const datum of outputData) {
@@ -92,7 +94,9 @@ describe(`${RPCClient.name}`, () => {
     const inputStream = rpcTestUtils.messagesToReadableStream(messages);
     const [outputResult, outputStream] =
       rpcTestUtils.streamToArray<Uint8Array>();
-    const streamPair: ReadableWritablePair = {
+    const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+      cancel: () => {},
+      meta: undefined,
       readable: inputStream,
       writable: outputStream,
     };
@@ -132,7 +136,9 @@ describe(`${RPCClient.name}`, () => {
     async (messages, params) => {
       const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -172,7 +178,9 @@ describe(`${RPCClient.name}`, () => {
       const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -211,7 +219,9 @@ describe(`${RPCClient.name}`, () => {
     async (message, params) => {
       const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -249,7 +259,8 @@ describe(`${RPCClient.name}`, () => {
       ]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
         readable: inputStream,
         writable: outputStream,
       };
@@ -286,7 +297,9 @@ describe(`${RPCClient.name}`, () => {
       ]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -326,7 +339,9 @@ describe(`${RPCClient.name}`, () => {
       ]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -357,7 +372,9 @@ describe(`${RPCClient.name}`, () => {
       const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -423,7 +440,9 @@ describe(`${RPCClient.name}`, () => {
       const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -473,8 +492,11 @@ describe(`${RPCClient.name}`, () => {
     [specificMessageArb, fc.string()],
     async (messages, params) => {
       const inputStream = rpcTestUtils.messagesToReadableStream(messages);
-      const [outputResult, outputStream] = rpcTestUtils.streamToArray<string>();
-      const streamPair: ReadableWritablePair = {
+      const [outputResult, outputStream] =
+        rpcTestUtils.streamToArray<Uint8Array>();
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -513,7 +535,9 @@ describe(`${RPCClient.name}`, () => {
       const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -551,7 +575,9 @@ describe(`${RPCClient.name}`, () => {
     async (message, params) => {
       const inputStream = rpcTestUtils.messagesToReadableStream([message]);
       const [outputResult, outputStream] = rpcTestUtils.streamToArray();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -587,7 +613,9 @@ describe(`${RPCClient.name}`, () => {
         rpcTestUtils.streamToArray<Uint8Array>();
       const [outputResult, outputWritableStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: new ReadableStream<Uint8Array>({
           start: (controller) => {
             for (const datum of outputData) {
@@ -637,7 +665,9 @@ describe(`${RPCClient.name}`, () => {
       const inputStream = rpcTestUtils.messagesToReadableStream(messages);
       const [outputResult, outputStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
-      const streamPair: ReadableWritablePair = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         readable: inputStream,
         writable: outputStream,
       };
@@ -667,7 +697,7 @@ describe(`${RPCClient.name}`, () => {
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {},
       streamFactory: async () => {
-        return {} as ReadableWritablePair;
+        return {} as RPCStream<Uint8Array, Uint8Array>;
       },
       logger,
     });
@@ -687,7 +717,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         streamKeepAliveTimeoutTime: 100,
         logger,
@@ -710,7 +740,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         logger,
       });
@@ -736,7 +766,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         logger,
       });
@@ -764,7 +794,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -798,7 +830,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -833,7 +867,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -880,7 +916,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         streamKeepAliveTimeoutTime: 100,
         logger,
@@ -903,7 +939,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         logger,
       });
@@ -927,7 +963,7 @@ describe(`${RPCClient.name}`, () => {
           ctx = ctx_;
           await holdProm.p;
           // Should never reach this when testing
-          return {} as ReadableWritablePair<Uint8Array, Uint8Array>;
+          return {} as RPCStream<Uint8Array, Uint8Array>;
         },
         logger,
       });
@@ -953,7 +989,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -983,7 +1021,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -1014,7 +1054,9 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array,
         Uint8Array
       >();
-      const streamPair: ReadableWritablePair<Uint8Array, Uint8Array> = {
+      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+        cancel: () => {},
+        meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
@@ -1050,7 +1092,9 @@ describe(`${RPCClient.name}`, () => {
         const inputStream = rpcTestUtils.messagesToReadableStream(messages);
         const [outputResult, outputStream] =
           rpcTestUtils.streamToArray<Uint8Array>();
-        const streamPair: ReadableWritablePair = {
+        const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+          cancel: () => {},
+          meta: undefined,
           readable: inputStream,
           writable: outputStream,
         };
@@ -1100,7 +1144,9 @@ describe(`${RPCClient.name}`, () => {
         const inputStream = rpcTestUtils.messagesToReadableStream(messages);
         const [outputResult, outputStream] =
           rpcTestUtils.streamToArray<Uint8Array>();
-        const streamPair: ReadableWritablePair = {
+        const streamPair: RPCStream<Uint8Array, Uint8Array> = {
+          cancel: () => {},
+          meta: undefined,
           readable: inputStream,
           writable: outputStream,
         };

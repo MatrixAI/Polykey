@@ -19,7 +19,8 @@ class IdentitiesInfoGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<ProviderSearchMessage>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

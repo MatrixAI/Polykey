@@ -452,7 +452,7 @@ class PolykeyAgent {
         webSocketServerClient ??
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (streamPair) =>
-            rpcServerClient!.handleStream(streamPair, {}),
+            rpcServerClient!.handleStream(streamPair),
           fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
@@ -775,7 +775,7 @@ class PolykeyAgent {
         host: _networkConfig.clientHost,
         port: _networkConfig.clientPort,
         connectionCallback: (streamPair) =>
-          this.rpcServerClient.handleStream(streamPair, {}),
+          this.rpcServerClient.handleStream(streamPair),
       });
       // Agent server
       await this.grpcServerAgent.start({

@@ -1,10 +1,11 @@
 import type { TLSSocket } from 'tls';
-import type { NodeId } from 'ids/index';
+import type { NodeId, NodeIdEncoded } from 'ids/index';
 import type { ContextTimed } from '../contexts/types';
 import type {
   ReadableStreamController,
   WritableStreamDefaultController,
 } from 'stream/web';
+import type { JSONValue } from '../types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
@@ -15,6 +16,7 @@ import WebSocketStream from './WebSocketStream';
 import * as webSocketUtils from './utils';
 import * as webSocketErrors from './errors';
 import { promise } from '../utils';
+import * as nodesUtils from '../nodes/utils';
 
 interface WebSocketClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
@@ -94,7 +96,7 @@ class WebSocketClient {
     this.logger.info(`Destroying ${this.constructor.name}`);
     if (force) {
       for (const activeConnection of this.activeConnections) {
-        activeConnection.end(
+        activeConnection.cancel(
           new webSocketErrors.ErrorClientEndingConnections(
             'Destroying WebSocketClient',
           ),
@@ -110,7 +112,9 @@ class WebSocketClient {
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async stopConnections() {
     for (const activeConnection of this.activeConnections) {
-      activeConnection.end(new webSocketErrors.ErrorClientEndingConnections());
+      activeConnection.cancel(
+        new webSocketErrors.ErrorClientEndingConnections(),
+      );
     }
     for (const activeConnection of this.activeConnections) {
       await activeConnection.endedProm.catch(() => {}); // Ignore errors here
@@ -221,10 +225,15 @@ class WebSocketClient {
       this.maxReadableStreamBytes,
       this.pingIntervalTime,
       this.pingTimeoutTime,
+      {
+        host: this.host,
+        nodeId: nodesUtils.encodeNodeId(await authenticateProm.p),
+        port: this.port,
+      },
       this.logger,
     );
     const abortStream = () => {
-      webSocketStreamClient.end(
+      webSocketStreamClient.cancel(
         new webSocketErrors.ErrorClientStreamAborted(undefined, {
           cause: signal?.reason,
         }),
@@ -257,6 +266,11 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     maxReadableStreamBytes: number,
     pingInterval: number,
     pingTimeout: number,
+    protected clientMetadata: {
+      nodeId: NodeIdEncoded;
+      host: string;
+      port: number;
+    },
     logger: Logger,
   ) {
     super();
@@ -429,9 +443,16 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     });
   }
 
-  end(e?: Error): void {
+  get meta(): Record<string, JSONValue> {
+    // Spreading to avoid modifying the data
+    return {
+      ...this.clientMetadata,
+    };
+  }
+
+  cancel(reason?: any): void {
     // Default error
-    const err = e ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
+    const err = reason ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
     // Close the streams with the given error,
     if (!this._readableEnded) {
       this.readableController?.error(err);

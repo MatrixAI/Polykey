@@ -16,7 +16,8 @@ class VaultsScanHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<NodeIdMessage>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

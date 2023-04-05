@@ -11,7 +11,6 @@ import type {
   UnaryCaller,
 } from './callers';
 import type { NodeId } from '../nodes/types';
-import type { Certificate } from '../keys/types';
 import type { POJO } from '../types';
 
 /**
@@ -156,28 +155,11 @@ type JSONRPCMessage<T extends JSONValue = JSONValue> =
   | JSONRPCRequest<T>
   | JSONRPCResponse<T>;
 
-/**
- * Proxy connection information
- * @property remoteNodeId - NodeId of the remote connecting node
- * @property remoteCertificates - Certificate chain of the remote connecting node
- * @property localHost - Proxy host of the local connecting node
- * @property localPort - Proxy port of the local connecting node
- * @property remoteHost - Proxy host of the remote connecting node
- * @property remotePort - Proxy port of the remote connecting node
- */
-type ConnectionInfo = Partial<{
-  remoteNodeId: NodeId;
-  remoteCertificates: Array<Certificate>;
-  localHost: string;
-  localPort: number;
-  remoteHost: string;
-  remotePort: number;
-}>;
-
 // Handler types
 type HandlerImplementation<I, O> = (
   input: I,
-  connectionInfo: ConnectionInfo,
+  cancel: (reason?: any) => void,
+  meta: Record<string, JSONValue> | undefined,
   ctx: ContextTimed,
 ) => O;
 
@@ -208,9 +190,30 @@ type UnaryHandlerImplementation<
 
 type ContainerType = Record<string, any>;
 
+/**
+ * This interface extends the `ReadableWritablePair` with a method to cancel
+ * the connection. It also includes some optional generic metadata. This is
+ * mainly used as the return type for the `StreamFactory`. But the interface
+ * can be propagated across the RPC system.
+ */
+interface RPCStream<
+  R,
+  W,
+  M extends Record<string, JSONValue> = Record<string, JSONValue>,
+> extends ReadableWritablePair<R, W> {
+  cancel: (reason?: any) => void;
+  meta?: M;
+}
+
+/**
+ * This is a factory for creating a `RPCStream` when making a RPC call.
+ * The transport mechanism is a black box to the RPC system. So long as it is
+ * provided as a RPCStream the RPC system should function. It is assumed that
+ * the RPCStream communicates with an `RPCServer`.
+ */
 type StreamFactory = (
   ctx: ContextTimed,
-) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
+) => PromiseLike<RPCStream<Uint8Array, Uint8Array>>;
 
 /**
  * Middleware factory creates middlewares.
@@ -223,7 +226,11 @@ type StreamFactory = (
  * FW -> FR is the direction of data flow from client to server.
  * RW -> RR is the direction of data flow from server to client.
  */
-type MiddlewareFactory<FR, FW, RR, RW> = (ctx: ContextTimed) => {
+type MiddlewareFactory<FR, FW, RR, RW> = (
+  ctx: ContextTimed,
+  cancel: (reason?: any) => void,
+  meta: Record<string, JSONValue> | undefined,
+) => {
   forward: ReadableWritablePair<FR, FW>;
   reverse: ReadableWritablePair<RR, RW>;
 };
@@ -250,12 +257,12 @@ type ClientCallerImplementation<
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (ctx?: Partial<ContextTimed>) => Promise<ReadableWritablePair<O, I>>;
+> = (ctx?: Partial<ContextTimed>) => Promise<RPCStream<O, I>>;
 
 type RawCallerImplementation = (
   headerParams: JSONValue,
   ctx?: Partial<ContextTimed>,
-) => Promise<ReadableWritablePair<Uint8Array, Uint8Array>>;
+) => Promise<RPCStream<Uint8Array, Uint8Array>>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>
   ? DuplexCallerImplementation<I, O>
@@ -310,7 +317,6 @@ export type {
   JSONRPCRequest,
   JSONRPCResponse,
   JSONRPCMessage,
-  ConnectionInfo,
   HandlerImplementation,
   RawHandlerImplementation,
   DuplexHandlerImplementation,
@@ -318,6 +324,7 @@ export type {
   ClientHandlerImplementation,
   UnaryHandlerImplementation,
   ContainerType,
+  RPCStream,
   StreamFactory,
   MiddlewareFactory,
   ServerManifest,

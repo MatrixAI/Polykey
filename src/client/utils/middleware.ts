@@ -24,10 +24,13 @@ function middlewareServer(
       sessionManager,
       keyRing,
     );
-  return (ctx) => {
-    const authMiddleware = authMiddlewareFactory(ctx);
-    const timeoutMiddleware =
-      timeoutMiddlewareUtils.timeoutMiddlewareServer(ctx);
+  return (ctx, cancel, meta) => {
+    const authMiddleware = authMiddlewareFactory(ctx, cancel, meta);
+    const timeoutMiddleware = timeoutMiddlewareUtils.timeoutMiddlewareServer(
+      ctx,
+      cancel,
+      meta,
+    );
     // Order is auth -> timeout
     return {
       forward: {
@@ -56,10 +59,13 @@ function middlewareClient(
 > {
   const authMiddlewareFactory =
     authenticationMiddlewareUtils.authenticationMiddlewareClient(session);
-  return (ctx) => {
-    const authMiddleware = authMiddlewareFactory(ctx);
-    const timeoutMiddleware =
-      timeoutMiddlewareUtils.timeoutMiddlewareClient(ctx);
+  return (ctx, cancel, meta) => {
+    const authMiddleware = authMiddlewareFactory(ctx, cancel, meta);
+    const timeoutMiddleware = timeoutMiddlewareUtils.timeoutMiddlewareClient(
+      ctx,
+      cancel,
+      meta,
+    );
     // Order is timeout -> auth
     return {
       forward: {

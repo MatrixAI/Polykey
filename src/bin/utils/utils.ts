@@ -112,10 +112,7 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (
-        currError instanceof grpcErrors.ErrorPolykeyRemoteOLD ||
-        currError instanceof rpcErrors.ErrorPolykeyRemote
-      ) {
+      if (currError instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;
@@ -127,6 +124,20 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
         )}\n`;
         output += `${indent}host\t${currError.metadata.host}\n`;
         output += `${indent}port\t${currError.metadata.port}\n`;
+        output += `${indent}timestamp\t${currError.timestamp}\n`;
+        output += `${indent}cause: `;
+        currError = currError.cause;
+      } else if (currError instanceof rpcErrors.ErrorPolykeyRemote) {
+        output += `${currError.name}: ${currError.description}`;
+        if (currError.message && currError.message !== '') {
+          output += ` - ${currError.message}`;
+        }
+        if (currError.metadata != null) {
+          output += '\n';
+          for (const [key, value] of Object.entries(currError.metadata)) {
+            output += `${indent}${key}\t${value}\n`;
+          }
+        }
         output += `${indent}timestamp\t${currError.timestamp}\n`;
         output += `${indent}cause: `;
         currError = currError.cause;

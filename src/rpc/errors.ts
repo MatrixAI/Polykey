@@ -1,5 +1,6 @@
 import type { Class } from '@matrixai/errors';
 import type { ClientMetadata } from './types';
+import type { JSONValue } from '../types';
 import * as nodesUtils from '../nodes/utils';
 import { ErrorPolykey, sysexits } from '../errors';
 
@@ -46,9 +47,9 @@ class ErrorRPCOutputStreamError<T> extends ErrorRPC<T> {
 class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
   static description = 'Remote error from RPC call';
   exitCode: number = sysexits.UNAVAILABLE;
-  metadata: ClientMetadata;
+  metadata: JSONValue | undefined;
 
-  constructor(metadata: ClientMetadata, message?: string, options?) {
+  constructor(metadata?: JSONValue, message?: string, options?) {
     super(message, options);
     this.metadata = metadata;
   }
@@ -86,10 +87,7 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
 
   public toJSON(): any {
     const json = super.toJSON();
-    json.data.metadata = {
-      ...this.metadata,
-      nodeId: nodesUtils.encodeNodeId(this.metadata.nodeId),
-    };
+    json.data.metadata = this.metadata;
     return json;
   }
 }

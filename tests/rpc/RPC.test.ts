@@ -1,5 +1,4 @@
 import type { ContainerType, JSONRPCRequest } from '@/rpc/types';
-import type { ConnectionInfo } from '@/network/types';
 import type { ReadableStream } from 'stream/web';
 import type { JSONValue } from '@/types';
 import { TransformStream } from 'stream/web';
@@ -56,13 +55,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new RawCaller(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -109,13 +116,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new DuplexCaller(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -157,13 +172,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new ServerCaller<number, number>(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -202,13 +225,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new ClientCaller<number, number>(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -244,13 +275,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -283,13 +322,21 @@ describe('RPC', () => {
         },
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -331,13 +378,21 @@ describe('RPC', () => {
         sensitive: true,
         logger,
       });
-      rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
 
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {
           testMethod: new UnaryCaller(),
         },
-        streamFactory: async () => clientPair,
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
         logger,
       });
 
@@ -389,13 +444,21 @@ describe('RPC', () => {
       middlewareFactory: middleware,
       logger,
     });
-    rpcServer.handleStream(serverPair, {} as ConnectionInfo);
+    rpcServer.handleStream({
+      ...serverPair,
+      cancel: () => {},
+    });
 
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
         testMethod: new DuplexCaller(),
       },
-      streamFactory: async () => clientPair,
+      streamFactory: async () => {
+        return {
+          ...clientPair,
+          cancel: () => {},
+        };
+      },
       logger,
     });
 

@@ -1,6 +1,5 @@
 import type {
   ClientManifest,
-  ClientMetadata,
   HandlerType,
   JSONRPCError,
   JSONRPCMessage,
@@ -351,7 +350,7 @@ function reviver(key: string, value: any): any {
 
 function toError(
   errorData,
-  metadata: ClientMetadata,
+  metadata?: JSONValue,
 ): rpcErrors.ErrorPolykeyRemote<unknown> {
   if (errorData == null) {
     return new rpcErrors.ErrorPolykeyRemote(metadata);
@@ -405,7 +404,7 @@ function clientInputTransformStream<I extends JSONValue>(
  * @param timer - Timer that gets refreshed each time a message is provided.
  */
 function clientOutputTransformStream<O extends JSONValue>(
-  clientMetadata: ClientMetadata,
+  clientMetadata?: JSONValue,
   timer?: Timer,
 ): TransformStream<JSONRPCResponse<O>, O> {
   return new TransformStream<JSONRPCResponse<O>, O>({

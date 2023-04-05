@@ -20,7 +20,8 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
     input: ClientRPCRequestParams<{
       providerId?: string;
     }>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

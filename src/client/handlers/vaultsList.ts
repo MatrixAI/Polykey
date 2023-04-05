@@ -15,7 +15,8 @@ class VaultsListHandler extends ServerHandler<
 > {
   public async *handle(
     _input,
-    _connectionInfo,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;

@@ -14,7 +14,8 @@ class NotificationsReadHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<NotificationReadMessage>,
-    _,
+    _cancel,
+    _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NotificationMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
