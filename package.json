@@ -128,7 +128,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.13.10",
     "@fast-check/jest": "^1.1.0",
-    "@streamparser/json": "^0.0.12",
+    "@streamparser/json": "^0.0.13",
     "@swc/core": "^1.2.215",
     "@types/cross-spawn": "^6.0.2",
     "@types/google-protobuf": "^3.7.4",

@@ -6,10 +6,10 @@ import type {
   MiddlewareFactory,
 } from '../types';
 import { TransformStream } from 'stream/web';
+import { JSONParser } from '@streamparser/json';
 import * as rpcUtils from './utils';
 import * as rpcErrors from '../errors';
 import { promise } from '../../utils/index';
-const jsonStreamParsers = require('@streamparser/json');
 
 /**
  * This function is a factory to create a TransformStream that will
@@ -25,7 +25,7 @@ function binaryToJsonMessageStream<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
   byteLimit: number = 1024 * 1024,
 ): TransformStream<Uint8Array, T> {
-  const parser = new jsonStreamParsers.JSONParser({
+  const parser = new JSONParser({
     separator: '',
     paths: ['$'],
   });
