@@ -104,7 +104,8 @@ class WebSocketClient {
       }
     }
     for (const activeConnection of this.activeConnections) {
-      await activeConnection.endedProm.catch(() => {}); // Ignore errors here
+      // Ignore errors here, we only care that it finishes
+      await activeConnection.endedProm.catch(() => {});
     }
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
@@ -117,7 +118,8 @@ class WebSocketClient {
       );
     }
     for (const activeConnection of this.activeConnections) {
-      await activeConnection.endedProm.catch(() => {}); // Ignore errors here
+      // Ignore errors here, we only care that it finished
+      await activeConnection.endedProm.catch(() => {});
     }
   }
 
@@ -134,14 +136,14 @@ class WebSocketClient {
       new Timer({
         delay: this.connectionTimeoutTime,
       });
-    void timer.catch(() => {});
-    void timer
-      .then(() => {
+    void timer.then(
+      () => {
         abortRaceProm.rejectP(
           new webSocketErrors.ErrorClientConnectionTimedOut(),
         );
-      })
-      .catch(() => {});
+      },
+      () => {}, // Ignore cancellation errors
+    );
     const { signal } = ctx;
     let abortHandler: () => void | undefined;
     if (signal != null) {
@@ -242,7 +244,8 @@ class WebSocketClient {
     // Setting up activeStream map lifecycle
     this.activeConnections.add(webSocketStreamClient);
     void webSocketStreamClient.endedProm
-      .catch(() => {}) // Ignore errors
+      // Ignore errors, we only care that it finished
+      .catch(() => {})
       .finally(() => {
         this.activeConnections.delete(webSocketStreamClient);
         signal?.removeEventListener('abort', abortStream);

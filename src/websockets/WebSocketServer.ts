@@ -222,7 +222,8 @@ class WebSocketServer extends EventTarget {
     }
     // Wait for all active websockets to close
     for (const webSocketStream of this.activeSockets) {
-      webSocketStream.endedProm.catch(() => {}); // Ignore errors
+      // Ignore errors, we only care that it finished
+      webSocketStream.endedProm.catch(() => {});
     }
     if (this.connectionEventHandler != null) {
       this.removeEventListener('connection', this.connectionEventHandler);
@@ -303,7 +304,8 @@ class WebSocketServer extends EventTarget {
     // Adding socket to the active sockets map
     this.activeSockets.add(webSocketStream);
     webSocketStream.endedProm
-      .catch(() => {}) // Ignore errors here
+      // Ignore errors, we only care that it finished
+      .catch(() => {})
       .finally(() => {
         this.activeSockets.delete(webSocketStream);
       });

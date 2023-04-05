@@ -335,6 +335,7 @@ class RPCServer extends EventTarget {
           await outputGenerator.return(undefined);
         },
       });
+      // Ignore any errors here, it should propagate to the ends of the stream
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
       return middleware.reverse.readable;
     };
@@ -515,7 +516,7 @@ class RPCServer extends EventTarget {
       );
       const outputStreamEndProm = outputStream
         .pipeTo(rpcStream.writable)
-        .catch(() => {});
+        .catch(() => {}); // Ignore any errors, we only care that it finished
       await Promise.allSettled([inputStreamEndProm, outputStreamEndProm]);
       // Cleaning up abort and timer
       timer.cancel(cleanupReason);

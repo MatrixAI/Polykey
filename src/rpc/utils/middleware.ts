@@ -95,7 +95,6 @@ function defaultMiddleware() {
  * The reverse path will pipe the output stream through the provided middleware
  * and then transform it back to a binary stream.
  * @param middlewareFactory - The provided middleware
- * @param ctx
  */
 function defaultServerMiddlewareWrapper(
   middlewareFactory: MiddlewareFactory<

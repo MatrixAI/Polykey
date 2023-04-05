@@ -376,6 +376,7 @@ class RPCClient<M extends ClientManifest> {
     const signal = abortController.signal;
     // A promise that will reject if there is an abort signal or timeout
     const abortRaceProm = promise<never>();
+    // Prevent unhandled rejection when we're don with the promise
     abortRaceProm.p.catch(() => {});
     let abortHandler: () => void;
     if (ctx.signal != null) {
