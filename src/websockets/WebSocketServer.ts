@@ -416,7 +416,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
         if (this._readableEnded && !this._webSocketEnded) {
           writableLogger.debug('Ending socket');
           this.signalWebSocketEnd(reason);
-          ws.end(4001, 'ABORTED');
+          ws.end(4000, 'Aborting connection');
         }
       },
     });
@@ -448,7 +448,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
               const err = new webSocketErrors.ErrorServerReadableBufferLimit();
               if (!this._webSocketEnded) {
                 this.signalWebSocketEnd(err);
-                ws.end(4001, 'Read stream buffer full');
+                ws.end(4000, 'Read stream buffer full');
               }
               controller.error(err);
             }
@@ -527,7 +527,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
     }
     // Then close the websocket
     if (!this._webSocketEnded) {
-      this.ws.end(4001, 'Ending connection');
+      this.ws.end(4000, 'Ending connection');
       this.signalWebSocketEnd(err);
     }
   }

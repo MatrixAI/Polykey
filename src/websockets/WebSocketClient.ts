@@ -467,7 +467,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     }
     // Then close the websocket
     if (!this._webSocketEnded) {
-      this.ws.close(4001, 'Ending connection');
+      this.ws.close(4000, 'Ending connection');
       this.signalWebSocketEnd(err);
     }
   }
