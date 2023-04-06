@@ -18,7 +18,11 @@ class IdentitiesInfoConnectedGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: ClientRPCRequestParams<ProviderSearchMessage>,
+    _cancel,
+    _meta,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager } = this.container;
     const {
       providerIds,
@@ -85,6 +89,7 @@ class IdentitiesInfoConnectedGetHandler extends ServerHandler<
     let count = 0;
     for (const gen of identities) {
       for await (const identity of gen) {
+        if (ctx.signal.aborted) throw ctx.signal.reason;
         if (input.limit !== undefined && count >= input.limit) break;
         yield {
           providerId: identity.providerId,

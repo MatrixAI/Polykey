@@ -10,16 +10,15 @@ import type {
   RawHandlerImplementation,
   ServerHandlerImplementation,
   UnaryHandlerImplementation,
-  ConnectionInfo,
+  RPCStream,
 } from './types';
-import type { ReadableWritablePair } from 'stream/web';
 import type { JSONValue } from '../types';
 import type { MiddlewareFactory } from './types';
-import { TransformStream } from 'stream/web';
-import { ReadableStream } from 'stream/web';
+import { ReadableStream, TransformStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { Timer } from '@matrixai/timer';
 import {
   ClientHandler,
   DuplexHandler,
@@ -30,9 +29,11 @@ import {
 import * as rpcEvents from './events';
 import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
-import * as middlewareUtils from './utils/middleware';
+import * as rpcUtilsMiddleware from './utils/middleware';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
+
+const cleanupReason = Symbol('CleanupReason');
 
 /**
  * You must provide a error handler `addEventListener('error')`.
@@ -56,12 +57,21 @@ class RPCServer extends EventTarget {
    * path and `JSONRPCResponse` to `Uint8Array` on the reverse path.
    * @param obj.sensitive - If true, sanitises any rpc error messages of any
    * sensitive information.
+   * @param obj.streamKeepAliveTimeoutTime - Time before a connection is cleaned up due to no activity. This is the
+   * value used if the handler doesn't specify its own timeout time. This timeout is advisory and only results in a
+   * signal sent to the handler. Stream is forced to end after the timeoutForceCloseTime. Defaults to 60,000
+   * milliseconds.
+   * @param obj.timeoutForceCloseTime - Time before the stream is forced to end after the initial timeout time.
+   * The stream will be forced to close after this amount of time after the initial timeout. This is a grace period for
+   * the handler to handle timeout before it is forced to end. Defaults to 2,000 milliseconds.
    * @param obj.logger
    */
   public static async createRPCServer({
     manifest,
-    middlewareFactory = middlewareUtils.defaultServerMiddlewareWrapper(),
+    middlewareFactory = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(),
     sensitive = false,
+    handlerTimeoutTime = 60_000, // 1 minute
+    handlerTimeoutGraceTime = 2_000, // 2 seconds
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;
@@ -72,6 +82,8 @@ class RPCServer extends EventTarget {
       JSONRPCResponse
     >;
     sensitive?: boolean;
+    handlerTimeoutTime?: number;
+    handlerTimeoutGraceTime?: number;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
@@ -79,6 +91,8 @@ class RPCServer extends EventTarget {
       manifest,
       middlewareFactory,
       sensitive,
+      handlerTimeoutTime,
+      handlerTimeoutGraceTime,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -87,6 +101,9 @@ class RPCServer extends EventTarget {
 
   protected logger: Logger;
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
+  protected defaultTimeoutMap: Map<string, number | undefined> = new Map();
+  protected handlerTimeoutTime: number;
+  protected handlerTimeoutGraceTime: number;
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
   protected middlewareFactory: MiddlewareFactory<
@@ -100,15 +117,20 @@ class RPCServer extends EventTarget {
     manifest,
     middlewareFactory,
     sensitive,
+    handlerTimeoutTime = 60_000, // 1 minuet
+    handlerTimeoutGraceTime = 2_000, // 2 seconds
     logger,
   }: {
     manifest: ServerManifest;
+
     middlewareFactory: MiddlewareFactory<
       JSONRPCRequest,
       Uint8Array,
       Uint8Array,
       JSONRPCResponseResult
     >;
+    handlerTimeoutTime?: number;
+    handlerTimeoutGraceTime?: number;
     sensitive: boolean;
     logger: Logger;
   }) {
@@ -118,6 +140,7 @@ class RPCServer extends EventTarget {
         this.registerRawStreamHandler(
           key,
           manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
         );
         continue;
       }
@@ -125,6 +148,7 @@ class RPCServer extends EventTarget {
         this.registerDuplexStreamHandler(
           key,
           manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
         );
         continue;
       }
@@ -132,6 +156,7 @@ class RPCServer extends EventTarget {
         this.registerServerStreamHandler(
           key,
           manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
         );
         continue;
       }
@@ -139,6 +164,7 @@ class RPCServer extends EventTarget {
         this.registerClientStreamHandler(
           key,
           manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
         );
         continue;
       }
@@ -146,25 +172,34 @@ class RPCServer extends EventTarget {
         this.registerClientStreamHandler(
           key,
           manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
         );
         continue;
       }
       if (manifestItem instanceof UnaryHandler) {
-        this.registerUnaryHandler(key, manifestItem.handle.bind(manifestItem));
+        this.registerUnaryHandler(
+          key,
+          manifestItem.handle.bind(manifestItem),
+          manifestItem.timeout,
+        );
         continue;
       }
       never();
     }
     this.middlewareFactory = middlewareFactory;
     this.sensitive = sensitive;
+    this.handlerTimeoutTime = handlerTimeoutTime;
+    this.handlerTimeoutGraceTime = handlerTimeoutGraceTime;
     this.logger = logger;
   }
 
-  public async destroy(): Promise<void> {
+  public async destroy(force: boolean = true): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     // Stopping any active steams
-    for await (const [activeStream] of this.activeStreams.entries()) {
-      activeStream.cancel(new rpcErrors.ErrorRPCStopping());
+    if (force) {
+      for await (const [activeStream] of this.activeStreams.entries()) {
+        activeStream.cancel(new rpcErrors.ErrorRPCStopping());
+      }
     }
     for await (const [activeStream] of this.activeStreams.entries()) {
       await activeStream;
@@ -172,11 +207,19 @@ class RPCServer extends EventTarget {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  /**
+   * Registers a raw stream handler. This is the basis for all handlers as
+   * handling the streams is done with raw streams only.
+   * The raw streams do not automatically refresh the timeout timer when
+   * messages are sent or received.
+   */
   protected registerRawStreamHandler(
     method: string,
     handler: RawHandlerImplementation,
+    timeout: number | undefined,
   ) {
     this.handlerMap.set(method, handler);
+    this.defaultTimeoutMap.set(method, timeout);
   }
 
   /**
@@ -186,14 +229,20 @@ class RPCServer extends EventTarget {
    *
    * @param method - The rpc method name.
    * @param handler - The handler takes an input async iterable and returns an output async iterable.
+   * @param timeout
    */
   protected registerDuplexStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: DuplexHandlerImplementation<I, O>): void {
+  >(
+    method: string,
+    handler: DuplexHandlerImplementation<I, O>,
+    timeout: number | undefined,
+  ): void {
     const rawSteamHandler: RawHandlerImplementation = (
       [header, input],
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) => {
       // Setting up abort controller
@@ -204,8 +253,10 @@ class RPCServer extends EventTarget {
       });
       const signal = abortController.signal;
       // Setting up middleware
-      const middleware = this.middlewareFactory();
+      const middleware = this.middlewareFactory(ctx, cancel, meta);
       // Forward from the client to the server
+      // Transparent TransformStream that re-inserts the header message into the
+      // stream.
       const headerStream = new TransformStream({
         start(controller) {
           controller.enqueue(Buffer.from(JSON.stringify(header)));
@@ -225,11 +276,16 @@ class RPCServer extends EventTarget {
         // Input generator derived from the forward stream
         const inputGen = async function* (): AsyncIterable<I> {
           for await (const data of forwardStream) {
+            ctx.timer.refresh();
             yield data.params as I;
           }
         };
-        const handlerG = handler(inputGen(), connectionInfo, { signal });
+        const handlerG = handler(inputGen(), cancel, meta, {
+          signal,
+          timer: ctx.timer,
+        });
         for await (const response of handlerG) {
+          ctx.timer.refresh();
           const responseMessage: JSONRPCResponseResult = {
             jsonrpc: '2.0',
             result: response,
@@ -285,122 +341,196 @@ class RPCServer extends EventTarget {
           await outputGenerator.return(undefined);
         },
       });
+      // Ignore any errors here, it should propagate to the ends of the stream
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
       return middleware.reverse.readable;
     };
-    this.registerRawStreamHandler(method, rawSteamHandler);
+    this.registerRawStreamHandler(method, rawSteamHandler, timeout);
   }
 
   protected registerUnaryHandler<I extends JSONValue, O extends JSONValue>(
     method: string,
     handler: UnaryHandlerImplementation<I, O>,
+    timeout: number | undefined,
   ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
       // The `input` is expected to be an async iterable with only 1 value.
       // Unlike generators, there is no `next()` method.
       // So we use `break` after the first iteration.
       for await (const inputVal of input) {
-        yield await handler(inputVal, connectionInfo, ctx);
+        yield await handler(inputVal, cancel, meta, ctx);
         break;
       }
     };
-    this.registerDuplexStreamHandler(method, wrapperDuplex);
+    this.registerDuplexStreamHandler(method, wrapperDuplex, timeout);
   }
 
   protected registerServerStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: ServerHandlerImplementation<I, O>) {
+  >(
+    method: string,
+    handler: ServerHandlerImplementation<I, O>,
+    timeout: number | undefined,
+  ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
       for await (const inputVal of input) {
-        yield* handler(inputVal, connectionInfo, ctx);
+        yield* handler(inputVal, cancel, meta, ctx);
         break;
       }
     };
-    this.registerDuplexStreamHandler(method, wrapperDuplex);
+    this.registerDuplexStreamHandler(method, wrapperDuplex, timeout);
   }
 
   protected registerClientStreamHandler<
     I extends JSONValue,
     O extends JSONValue,
-  >(method: string, handler: ClientHandlerImplementation<I, O>) {
+  >(
+    method: string,
+    handler: ClientHandlerImplementation<I, O>,
+    timeout: number | undefined,
+  ) {
     const wrapperDuplex: DuplexHandlerImplementation<I, O> = async function* (
       input,
-      connectionInfo,
+      cancel,
+      meta,
       ctx,
     ) {
-      yield await handler(input, connectionInfo, ctx);
+      yield await handler(input, cancel, meta, ctx);
     };
-    this.registerDuplexStreamHandler(method, wrapperDuplex);
+    this.registerDuplexStreamHandler(method, wrapperDuplex, timeout);
   }
 
   @ready(new rpcErrors.ErrorRPCDestroyed())
-  public handleStream(
-    streamPair: ReadableWritablePair<Uint8Array, Uint8Array>,
-    connectionInfo: ConnectionInfo,
-  ) {
+  public handleStream(rpcStream: RPCStream<Uint8Array, Uint8Array>) {
     // This will take a buffer stream of json messages and set up service
     //  handling for it.
     // Constructing the PromiseCancellable for tracking the active stream
     const abortController = new AbortController();
+    // Setting up timeout timer logic
+    const timer = new Timer({
+      delay: this.handlerTimeoutTime,
+      handler: () => {
+        abortController.abort(new rpcErrors.ErrorRPCTimedOut());
+      },
+    });
+    // Grace timer is triggered with any abort signal.
+    // If grace timer completes then it will cause the RPCStream to end with
+    // `RPCStream.cancel(reason)`.
+    let graceTimer: Timer<void> | undefined;
+    const handleAbort = () => {
+      const graceTimer = new Timer({
+        delay: this.handlerTimeoutGraceTime,
+        handler: () => {
+          rpcStream.cancel(abortController.signal.reason);
+        },
+      });
+      void graceTimer
+        .catch(() => {}) // Ignore cancellation error
+        .finally(() => {
+          abortController.signal.removeEventListener('abort', handleAbort);
+        });
+    };
+    abortController.signal.addEventListener('abort', handleAbort);
+
     const prom = (async () => {
-      const { firstMessageProm, headTransformStream } =
-        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJSONRPCRequest);
-      const inputStreamEndProm = streamPair.readable
-        .pipeTo(headTransformStream.writable)
+      const headTransformStream = rpcUtilsMiddleware.binaryToJsonMessageStream(
+        rpcUtils.parseJSONRPCRequest,
+      );
+      // Transparent transform used as a point to cancel the input stream from
+      const passthroughTransform = new TransformStream<
+        Uint8Array,
+        Uint8Array
+      >();
+      const inputStream = passthroughTransform.readable;
+      const inputStreamEndProm = rpcStream.readable
+        .pipeTo(passthroughTransform.writable)
+        // Ignore any errors here, we only care that it ended
         .catch(() => {});
-      const inputStream = headTransformStream.readable;
-      // Read a single empty value to consume the first message
-      const reader = inputStream.getReader();
-      await reader.read();
-      reader.releaseLock();
-      const leadingMetadataMessage = await firstMessageProm;
-      // If the stream ends early then we just stop processing
-      if (leadingMetadataMessage == null) {
-        await inputStream.cancel(
-          new rpcErrors.ErrorRPCHandlerFailed('Missing header'),
-        );
-        await streamPair.writable.close();
+      void inputStream
+        // Allow us to re-use the readable after reading the first message
+        .pipeTo(headTransformStream.writable, {
+          preventClose: true,
+          preventCancel: true,
+        })
+        // Ignore any errors here, we only care that it ended
+        .catch(() => {});
+      const cleanUp = async (reason: any) => {
+        await inputStream.cancel(reason);
+        await rpcStream.writable.abort(reason);
         await inputStreamEndProm;
+      };
+      // Read a single empty value to consume the first message
+      const reader = headTransformStream.readable.getReader();
+      // Allows timing out when waiting for the first message
+      const headerMessage = await Promise.race([
+        reader.read(),
+        timer.then(
+          () => undefined,
+          () => {},
+        ),
+      ]);
+      // Downgrade back to the raw stream
+      await reader.cancel();
+      // There are 2 conditions where we just end here
+      //  1. The timeout timer resolves before the first message
+      //  2. the stream ends before the first message
+      if (headerMessage == null) {
+        await cleanUp(
+          new rpcErrors.ErrorRPCHandlerFailed('Timed out waiting for header'),
+        );
         return;
       }
-      const method = leadingMetadataMessage.method;
+      if (headerMessage.done) {
+        await cleanUp(new rpcErrors.ErrorRPCHandlerFailed('Missing header'));
+        return;
+      }
+      const method = headerMessage.value.method;
       const handler = this.handlerMap.get(method);
       if (handler == null) {
-        await inputStream.cancel(
-          new rpcErrors.ErrorRPCHandlerFailed('Missing handler'),
-        );
-        await streamPair.writable.close();
-        await inputStreamEndProm;
+        await cleanUp(new rpcErrors.ErrorRPCHandlerFailed('Missing handler'));
         return;
       }
       if (abortController.signal.aborted) {
-        await inputStream.cancel(
-          new rpcErrors.ErrorRPCHandlerFailed('Aborted'),
-        );
-        await streamPair.writable.close();
-        await inputStreamEndProm;
+        await cleanUp(new rpcErrors.ErrorRPCHandlerFailed('Aborted'));
         return;
       }
+      // Setting up Timeout logic
+      const timeout = this.defaultTimeoutMap.get(method);
+      if (timeout != null && timeout < this.handlerTimeoutTime) {
+        // Reset timeout with new delay if it is less than the default
+        timer.reset(timeout);
+      } else {
+        // Otherwise refresh
+        timer.refresh();
+      }
       const outputStream = handler(
-        [leadingMetadataMessage, inputStream],
-        connectionInfo,
-        { signal: abortController.signal },
+        [headerMessage.value, inputStream],
+        rpcStream.cancel,
+        rpcStream.meta,
+        { signal: abortController.signal, timer },
       );
-      await Promise.allSettled([
-        inputStreamEndProm,
-        outputStream.pipeTo(streamPair.writable),
-      ]);
+      const outputStreamEndProm = outputStream
+        .pipeTo(rpcStream.writable)
+        .catch(() => {}); // Ignore any errors, we only care that it finished
+      await Promise.allSettled([inputStreamEndProm, outputStreamEndProm]);
+      // Cleaning up abort and timer
+      timer.cancel(cleanupReason);
+      abortController.signal.removeEventListener('abort', handleAbort);
+      graceTimer?.cancel(cleanupReason);
+      abortController.abort(new rpcErrors.ErrorRPCStreamEnded());
     })();
-    const handlerProm = PromiseCancellable.from(prom).finally(
+    const handlerProm = PromiseCancellable.from(prom, abortController).finally(
       () => this.activeStreams.delete(handlerProm),
       abortController,
     );

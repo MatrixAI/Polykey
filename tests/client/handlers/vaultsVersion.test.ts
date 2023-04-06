@@ -106,8 +106,7 @@ describe('vaultsVersion', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -122,7 +121,7 @@ describe('vaultsVersion', () => {
       manifest: {
         vaultsVersion,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -170,8 +169,7 @@ describe('vaultsVersion', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -186,7 +184,7 @@ describe('vaultsVersion', () => {
       manifest: {
         vaultsVersion,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

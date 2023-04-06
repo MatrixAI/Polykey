@@ -68,8 +68,7 @@ describe('keysKeyPairReset', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -84,7 +83,7 @@ describe('keysKeyPairReset', () => {
       manifest: {
         keysKeyPairReset,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

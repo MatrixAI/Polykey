@@ -5,7 +5,7 @@ import type { VaultIdMessage, VaultNameMessage } from './types';
 import * as vaultsUtils from '../../vaults/utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
-class VaultsCreatehandler extends UnaryHandler<
+class VaultsCreateHandler extends UnaryHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -28,4 +28,4 @@ class VaultsCreatehandler extends UnaryHandler<
   }
 }
 
-export { VaultsCreatehandler };
+export { VaultsCreateHandler };

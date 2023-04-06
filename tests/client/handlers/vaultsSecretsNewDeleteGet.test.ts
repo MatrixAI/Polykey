@@ -29,6 +29,7 @@ import * as testUtils from '../../utils/index';
 import * as testsUtils from '../../utils';
 
 describe('vaultsSecretsNewDeleteGet', () => {
+  Error.stackTraceLimit = 100;
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -106,8 +107,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -124,7 +124,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
         vaultsSecretsDelete,
         vaultsSecretsGet,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

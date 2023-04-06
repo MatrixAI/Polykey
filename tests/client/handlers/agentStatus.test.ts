@@ -58,8 +58,8 @@ describe('agentStatus', () => {
       logger: logger.getChild('RPCServer'),
     });
     clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) => {
-        rpcServer.handleStream(streamPair, connectionInfo);
+      connectionCallback: (streamPair) => {
+        rpcServer.handleStream(streamPair);
       },
       host,
       tlsConfig,

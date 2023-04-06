@@ -15,11 +15,14 @@ class NodesGetAllHandler extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<NodesGetMessage>
 > {
-  public async *handle(): AsyncGenerator<
-    ClientRPCResponseResult<NodesGetMessage>
-  > {
+  public async *handle(
+    _input,
+    _cancel,
+    _meta,
+    ctx,
+  ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { nodeGraph, keyRing } = this.container;
-
     for await (const bucket of nodeGraph.getBuckets()) {
       let index;
       for (const id of Object.keys(bucket)) {
@@ -33,6 +36,7 @@ class NodesGetAllHandler extends ServerHandler<
             IdInternal.fromString<NodeId>(id),
           );
         }
+        if (ctx.signal.aborted) throw ctx.signal.reason;
         yield {
           bucketIndex: index,
           nodeIdEncoded: encodedId,

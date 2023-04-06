@@ -1,8 +1,6 @@
-import { testProp } from '@fast-check/jest';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
+import { testProp, fc } from '@fast-check/jest';
 import * as rpcUtils from '@/rpc/utils';
 import 'ix/add/asynciterable-operators/toarray';
-import * as middleware from '@/rpc/utils/middleware';
 import * as rpcTestUtils from '../utils';
 
 describe('utils tests', () => {
@@ -14,29 +12,14 @@ describe('utils tests', () => {
     },
     { numRuns: 1000 },
   );
-
   testProp(
-    'can get the head message',
-    [rpcTestUtils.jsonMessagesArb],
-    async (messages) => {
-      const { firstMessageProm, headTransformStream } =
-        rpcUtils.extractFirstMessageTransform(rpcUtils.parseJSONRPCRequest);
-      const parsedStream = rpcTestUtils
-        .messagesToReadableStream(messages)
-        .pipeThrough(rpcTestUtils.binaryStreamToSnippedStream([7]))
-        .pipeThrough(headTransformStream)
-        .pipeThrough(
-          middleware.binaryToJsonMessageStream(rpcUtils.parseJSONRPCMessage),
-        ); // Converting back.
-
-      expect(await firstMessageProm).toStrictEqual(messages[0]);
-      expect(await AsyncIterable.as(parsedStream).toArray()).toStrictEqual(
-        messages.slice(1),
-      );
+    'malformed data cases parsing errors',
+    [fc.json()],
+    async (message) => {
+      expect(() =>
+        rpcUtils.parseJSONRPCMessage(Buffer.from(JSON.stringify(message))),
+      ).toThrow();
     },
     { numRuns: 1000 },
   );
-
-  // TODO:
-  //  - Test for badly structured data
 });

@@ -3,28 +3,29 @@ import type {
   ClientRPCResponseResult,
 } from '@/client/types';
 import type { TLSConfig } from '../../src/network/types';
+import type { ContextTimed } from '@/contexts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { Timer } from '@matrixai/timer';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
 import RPCClient from '@/rpc/RPCClient';
-import { Session, SessionManager } from '@/sessions';
-import * as clientRPCUtils from '@/client/utils';
-import * as authMiddleware from '@/client/utils/authenticationMiddleware';
+import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
 import { UnaryCaller } from '@/rpc/callers';
 import { UnaryHandler } from '@/rpc/handlers';
 import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
+import { promise } from '@/utils';
 import * as testsUtils from '../utils';
 
-describe('authenticationMiddleware', () => {
+describe('timeoutMiddleware', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -35,8 +36,6 @@ describe('authenticationMiddleware', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let session: Session;
-  let sessionManager: SessionManager;
   let clientServer: WebSocketServer;
   let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
@@ -47,7 +46,6 @@ describe('authenticationMiddleware', () => {
     );
     const keysPath = path.join(dataDir, 'keys');
     const dbPath = path.join(dataDir, 'db');
-    const sessionPath = path.join(dataDir, 'session');
     db = await DB.createDB({
       dbPath,
       logger,
@@ -67,15 +65,6 @@ describe('authenticationMiddleware', () => {
       taskManager,
       logger,
     });
-    session = await Session.createSession({
-      sessionTokenPath: sessionPath,
-      logger,
-    });
-    sessionManager = await SessionManager.createSessionManager({
-      db,
-      keyRing,
-      logger,
-    });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
@@ -90,8 +79,9 @@ describe('authenticationMiddleware', () => {
       recursive: true,
     });
   });
-  test('middleware', async () => {
+  test('server side timeout updates', async () => {
     // Setup
+    const ctxProm = promise<ContextTimed>();
     class EchoHandler extends UnaryHandler<
       { logger: Logger },
       ClientRPCRequestParams,
@@ -99,7 +89,11 @@ describe('authenticationMiddleware', () => {
     > {
       public async handle(
         input: ClientRPCRequestParams,
+        _cancel,
+        _meta,
+        ctx,
       ): Promise<ClientRPCResponseResult> {
+        ctxProm.resolveP(ctx);
         return input;
       }
     }
@@ -108,7 +102,7 @@ describe('authenticationMiddleware', () => {
         testHandler: new EchoHandler({ logger }),
       },
       middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
+        timeoutMiddleware.timeoutMiddlewareServer,
       ),
       logger,
     });
@@ -135,27 +129,77 @@ describe('authenticationMiddleware', () => {
       },
       streamFactory: async () => clientClient.startConnection(),
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareClient(session),
+        timeoutMiddleware.timeoutMiddlewareClient,
       ),
       logger,
     });
 
     // Doing the test
-    const result = await rpcClient.methods.testHandler({
-      metadata: {
-        authorization: clientRPCUtils.encodeAuthFromPassword(password),
-      },
+    const timer = new Timer({
+      delay: 100,
     });
-    expect(result).toMatchObject({
-      metadata: {
-        authorization: expect.any(String),
+    await rpcClient.methods.testHandler({}, { timer });
+
+    const ctx = await ctxProm.p;
+    expect(ctx.timer.delay).toBe(100);
+  });
+  test('client side timeout updates', async () => {
+    // Setup
+    class EchoHandler extends UnaryHandler<
+      { logger: Logger },
+      ClientRPCRequestParams,
+      ClientRPCResponseResult
+    > {
+      public async handle(
+        input: ClientRPCRequestParams,
+        _,
+      ): Promise<ClientRPCResponseResult> {
+        return input;
+      }
+    }
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testHandler: new EchoHandler({ logger }),
       },
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+        timeoutMiddleware.timeoutMiddlewareServer,
+      ),
+      handlerTimeoutTime: 100,
+      logger,
     });
-    const result2 = await rpcClient.methods.testHandler({});
-    expect(result2).toMatchObject({
-      metadata: {
-        authorization: expect.any(String),
+    clientServer = await WebSocketServer.createWebSocketServer({
+      connectionCallback: (streamPair) => {
+        rpcServer.handleStream(streamPair);
       },
+      host,
+      tlsConfig,
+      logger,
     });
+    clientClient = await WebSocketClient.createWebSocketClient({
+      expectedNodeIds: [keyRing.getNodeId()],
+      host,
+      port: clientServer.getPort(),
+      logger,
+    });
+    const rpcClient = await RPCClient.createRPCClient({
+      manifest: {
+        testHandler: new UnaryCaller<
+          ClientRPCRequestParams,
+          ClientRPCResponseResult
+        >(),
+      },
+      streamFactory: async () => clientClient.startConnection(),
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
+        timeoutMiddleware.timeoutMiddlewareClient,
+      ),
+      logger,
+    });
+
+    // Doing the test
+    const timer = new Timer({
+      delay: 1000,
+    });
+    await rpcClient.methods.testHandler({}, { timer });
+    expect(timer.delay).toBe(100);
   });
 });

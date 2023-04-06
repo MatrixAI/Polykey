@@ -90,7 +90,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       recursive: true,
     });
   });
-  test('getys gestalt by identity', async () => {
+  test('gets gestalt by identity', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
@@ -102,8 +102,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -118,7 +117,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
       manifest: {
         gestaltsGestaltGetByIdentity,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -12,8 +12,8 @@ import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import RPCServer from './rpc/RPCServer';
 import WebSocketServer from './websockets/WebSocketServer';
-import * as middlewareUtils from './rpc/utils/middleware';
-import * as authMiddleware from './client/utils/authenticationMiddleware';
+import * as rpcUtilsMiddleware from './rpc/utils/middleware';
+import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
@@ -56,10 +56,13 @@ type NetworkConfig = {
   // RPCServer for client service
   clientHost?: Host;
   clientPort?: Port;
-  maxReadBufferBytes?: number;
-  idleTimeout?: number;
-  pingInterval?: number;
-  pingTimeout?: number;
+  maxReadableStreamBytes?: number;
+  connectionIdleTimeoutTime?: number;
+  pingIntervalTime?: number;
+  pingTimeoutTime?: number;
+  handlerTimeoutTime?: number;
+  handlerTimeoutGraceTime?: number;
+  clientParserBufferByteLimit?: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -193,7 +196,7 @@ class PolykeyAgent {
       ...config.defaults.nodeConnectionManagerConfig,
       ...utils.filterEmptyObject(nodeConnectionManagerConfig),
     };
-    const _networkConfig = {
+    const networkConfig_ = {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
@@ -437,13 +440,13 @@ class PolykeyAgent {
             sessionManager: sessionManager,
             vaultManager: vaultManager,
           }),
-          middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
-            authMiddleware.authenticationMiddlewareServer(
-              sessionManager,
-              keyRing,
-            ),
+          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+            clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
+            networkConfig_.clientParserBufferByteLimit,
           ),
           sensitive: false,
+          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
+          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
           logger: logger.getChild('RPCServerClient'),
         });
       }
@@ -454,16 +457,16 @@ class PolykeyAgent {
       webSocketServerClient =
         webSocketServerClient ??
         (await WebSocketServer.createWebSocketServer({
-          connectionCallback: (streamPair) =>
-            rpcServerClient!.handleStream(streamPair, {}),
+          connectionCallback: (rpcStream) =>
+            rpcServerClient!.handleStream(rpcStream),
           fs,
-          host: _networkConfig.clientHost,
-          port: _networkConfig.clientPort,
+          host: networkConfig_.clientHost,
+          port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadBufferBytes: _networkConfig.maxReadBufferBytes,
-          idleTimeout: _networkConfig.idleTimeout,
-          pingInterval: _networkConfig.pingInterval,
-          pingTimeout: _networkConfig.pingTimeout,
+          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
+          connectionIdleTimeoutTime: networkConfig_.connectionIdleTimeoutTime,
+          pingIntervalTime: networkConfig_.pingIntervalTime,
+          pingTimeoutTime: networkConfig_.pingTimeoutTime,
           logger: logger.getChild('WebSocketServer'),
         }));
       grpcServerAgent =
@@ -778,7 +781,7 @@ class PolykeyAgent {
         host: _networkConfig.clientHost,
         port: _networkConfig.clientPort,
         connectionCallback: (streamPair) =>
-          this.rpcServerClient.handleStream(streamPair, {}),
+          this.rpcServerClient.handleStream(streamPair),
       });
       // Agent server
       await this.grpcServerAgent.start({

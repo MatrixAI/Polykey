@@ -12,7 +12,7 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
-import { VaultsCreatehandler } from '@/client/handlers/vaultsCreate';
+import { VaultsCreateHandler } from '@/client/handlers/vaultsCreate';
 import { VaultsDeleteHandler } from '@/client/handlers/vaultsDelete';
 import { VaultsListHandler } from '@/client/handlers/vaultsList';
 import RPCClient from '@/rpc/RPCClient';
@@ -88,7 +88,7 @@ describe('vaultsCreateDeleteList', () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
-        vaultsCreate: new VaultsCreatehandler({
+        vaultsCreate: new VaultsCreateHandler({
           vaultManager,
           db,
         }),
@@ -104,8 +104,7 @@ describe('vaultsCreateDeleteList', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -122,7 +121,7 @@ describe('vaultsCreateDeleteList', () => {
         vaultsDelete,
         vaultsList,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

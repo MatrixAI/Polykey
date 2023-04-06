@@ -53,7 +53,7 @@ class CommandPassword extends CommandPolykey {
           logger: this.logger.getChild(WebSocketClient.name),
         });
         pkClient = await PolykeyClient.createPolykeyClient({
-          streamFactory: () => webSocketClient.startConnection(),
+          streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
           manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),

@@ -80,7 +80,7 @@ describe('agentStop', () => {
       recursive: true,
     });
   });
-  test('Stops the agent', async () => {
+  test('stops the agent', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
@@ -91,8 +91,7 @@ describe('agentStop', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -107,7 +106,7 @@ describe('agentStop', () => {
       manifest: {
         agentStop,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

@@ -13,8 +13,8 @@ import { AgentUnlockHandler } from '@/client/handlers/agentUnlock';
 import RPCClient from '@/rpc/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import * as clientUtils from '@/client/utils';
-import * as authMiddleware from '@/client/utils/authenticationMiddleware';
-import * as middlewareUtils from '@/rpc/utils/middleware';
+import * as clientUtilsAuthMiddleware from '@/client/utils/authenticationMiddleware';
+import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import { agentUnlock } from '@/client';
@@ -92,14 +92,16 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock: new AgentUnlockHandler({}),
       },
-      middlewareFactory: middlewareUtils.defaultServerMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+        clientUtilsAuthMiddleware.authenticationMiddlewareServer(
+          sessionManager,
+          keyRing,
+        ),
       ),
       logger,
     });
     clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger,
@@ -115,8 +117,8 @@ describe('agentUnlock', () => {
         agentUnlock,
       },
       streamFactory: async () => clientClient.startConnection(),
-      middlewareFactory: middlewareUtils.defaultClientMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareClient(session),
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
+        clientUtilsAuthMiddleware.authenticationMiddlewareClient(session),
       ),
       logger,
     });

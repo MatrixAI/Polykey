@@ -10,9 +10,15 @@ class KeysCertsChainGetHandler extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<CertMessage>
 > {
-  public async *handle(): AsyncGenerator<ClientRPCResponseResult<CertMessage>> {
+  public async *handle(
+    _input,
+    _cancel,
+    _meta,
+    ctx,
+  ): AsyncGenerator<ClientRPCResponseResult<CertMessage>> {
     const { certManager } = this.container;
     for (const certPEM of await certManager.getCertPEMsChain()) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         cert: certPEM,
       };

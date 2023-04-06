@@ -24,6 +24,7 @@ function authenticationMiddlewareServer(
   JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
+    // Flag for tracking if the first message has been processed
     let forwardFirst = true;
     let reverseController;
     let outgoingToken: string | null = null;
@@ -41,7 +42,7 @@ function authenticationMiddlewareServer(
                 chunk,
               );
             } catch (e) {
-              controller.terminate();
+              controller.error(e);
               const rpcError: JSONRPCError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
@@ -53,7 +54,7 @@ function authenticationMiddlewareServer(
                 id: null,
               };
               reverseController.enqueue(rpcErrorMessage);
-              reverseController.end();
+              reverseController.error(e);
               return;
             }
           }
@@ -92,6 +93,7 @@ function authenticationMiddlewareClient(
   JSONRPCResponse<ClientRPCResponseResult>
 > {
   return () => {
+    // Flag for tracking if the first message has been processed
     let forwardFirst = true;
     return {
       forward: new TransformStream<

@@ -20,7 +20,11 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
     input: ClientRPCRequestParams<{
       providerId?: string;
     }>,
+    _cancel,
+    _meta,
+    ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityMessage>> {
+    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager } = this.container;
     let providerId: ProviderId | undefined;
     if (input.providerId != null) {
@@ -47,6 +51,7 @@ class IdentitiesAuthenticatedGetHandler extends ServerHandler<
       }
       const identities = await provider.getAuthIdentityIds();
       for (const identityId of identities) {
+        if (ctx.signal.aborted) throw ctx.signal.reason;
         yield {
           providerId: provider.id,
           identityId: identityId,

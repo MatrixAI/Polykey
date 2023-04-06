@@ -70,7 +70,7 @@ describe('agentLockAll', () => {
       recursive: true,
     });
   });
-  test('Locks all current sessions', async () => {
+  test('locks all current sessions', async () => {
     // Setup
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {
@@ -82,8 +82,7 @@ describe('agentLockAll', () => {
       logger,
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair, connectionInfo) =>
-        rpcServer.handleStream(streamPair, connectionInfo),
+      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
       host,
       tlsConfig,
       logger: logger.getChild('server'),
@@ -98,7 +97,7 @@ describe('agentLockAll', () => {
       manifest: {
         agentLockAll,
       },
-      streamFactory: async () => webSocketClient.startConnection(),
+      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
       logger: logger.getChild('clientRPC'),
     });
 

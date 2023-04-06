@@ -1,6 +1,5 @@
 import type {
   ClientManifest,
-  ClientMetadata,
   HandlerType,
   JSONRPCError,
   JSONRPCMessage,
@@ -12,14 +11,13 @@ import type {
   JSONRPCResponseResult,
 } from '../types';
 import type { JSONValue } from 'types';
+import type { Timer } from '@matrixai/timer';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from '../errors';
-import * as utils from '../../utils/index';
-import { promise } from '../../utils/index';
+import * as utils from '../../utils';
 import * as validationErrors from '../../validation/errors';
 import * as errors from '../../errors';
-const jsonStreamParsers = require('@streamparser/json');
 
 function parseJSONRPCRequest<T extends JSONValue>(
   message: unknown,
@@ -352,7 +350,7 @@ function reviver(key: string, value: any): any {
 
 function toError(
   errorData,
-  metadata: ClientMetadata,
+  metadata?: JSONValue,
 ): rpcErrors.ErrorPolykeyRemote<unknown> {
   if (errorData == null) {
     return new rpcErrors.ErrorPolykeyRemote(metadata);
@@ -371,11 +369,21 @@ function toError(
   return remoteError;
 }
 
+/**
+ * This constructs a transformation stream that converts any input into a
+ * JSONRCPRequest message. It also refreshes a timer each time a message is processed if
+ * one is provided.
+ * @param method - Name of the method that was called, used to select the
+ * server side.
+ * @param timer - Timer that gets refreshed each time a message is provided.
+ */
 function clientInputTransformStream<I extends JSONValue>(
   method: string,
+  timer?: Timer,
 ): TransformStream<I, JSONRPCRequest> {
   return new TransformStream<I, JSONRPCRequest>({
     transform: (chunk, controller) => {
+      timer?.refresh();
       const message: JSONRPCRequest = {
         method,
         jsonrpc: '2.0',
@@ -387,11 +395,21 @@ function clientInputTransformStream<I extends JSONValue>(
   });
 }
 
+/**
+ * This constructs a transformation stream that converts any error messages
+ * into errors. It also refreshes a timer each time a message is processed if
+ * one is provided.
+ * @param clientMetadata - Metadata that is attached to an error when one is
+ * created.
+ * @param timer - Timer that gets refreshed each time a message is provided.
+ */
 function clientOutputTransformStream<O extends JSONValue>(
-  clientMetadata: ClientMetadata,
+  clientMetadata?: JSONValue,
+  timer?: Timer,
 ): TransformStream<JSONRPCResponse<O>, O> {
   return new TransformStream<JSONRPCResponse<O>, O>({
     transform: (chunk, controller) => {
+      timer?.refresh();
       // `error` indicates it's an error message
       if ('error' in chunk) {
         throw toError(chunk.error.data, clientMetadata);
@@ -399,70 +417,6 @@ function clientOutputTransformStream<O extends JSONValue>(
       controller.enqueue(chunk.result);
     },
   });
-}
-
-function extractFirstMessageTransform<T extends JSONRPCMessage>(
-  messageParser: (message: unknown) => T,
-  byteLimit: number = 1024 * 1024,
-): {
-  headTransformStream: TransformStream<Uint8Array, Uint8Array>;
-  firstMessageProm: Promise<T | undefined>;
-} {
-  const parser = new jsonStreamParsers.JSONParser({
-    separator: '',
-    paths: ['$'],
-  });
-  const messageProm = promise<T | undefined>();
-  let bytesWritten = 0;
-  let lastChunk: Uint8Array | null = null;
-  let passThrough = false;
-  const headTransformStream = new TransformStream<Uint8Array, Uint8Array>({
-    start: (controller) => {
-      parser.onValue = (value) => {
-        let jsonMessage: T;
-        try {
-          jsonMessage = messageParser(value.value);
-        } catch (e) {
-          const error = new rpcErrors.ErrorRPCParse(undefined, { cause: e });
-          messageProm.rejectP(error);
-          controller.error(error);
-          return;
-        }
-        messageProm.resolveP(jsonMessage);
-        const firstMessageBuffer = Buffer.from(JSON.stringify(jsonMessage));
-        const difference = bytesWritten - firstMessageBuffer.length;
-        // Write empty value for the first read that initializes the stream
-        controller.enqueue(new Uint8Array());
-        if (difference > 0) {
-          controller.enqueue(
-            lastChunk?.slice(lastChunk?.byteLength - difference),
-          );
-        }
-        parser.end();
-        passThrough = true;
-      };
-    },
-    transform: (chunk, controller) => {
-      if (passThrough) {
-        controller.enqueue(chunk);
-        return;
-      }
-      try {
-        bytesWritten += chunk.byteLength;
-        lastChunk = chunk;
-        parser.write(chunk);
-      } catch (e) {
-        // Ignore error
-      }
-      if (bytesWritten > byteLimit) {
-        messageProm.rejectP(new rpcErrors.ErrorRPCMessageLength());
-      }
-    },
-    flush: () => {
-      messageProm.resolveP(undefined);
-    },
-  });
-  return { headTransformStream, firstMessageProm: messageProm.p };
 }
 
 function getHandlerTypes(
@@ -487,6 +441,5 @@ export {
   toError,
   clientInputTransformStream,
   clientOutputTransformStream,
-  extractFirstMessageTransform,
   getHandlerTypes,
 };

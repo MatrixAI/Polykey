@@ -1,37 +1,57 @@
 import type { TLSSocket } from 'tls';
-import type { NodeId } from 'ids/index';
+import type { NodeId, NodeIdEncoded } from 'ids/index';
+import type { ContextTimed } from '../contexts/types';
+import type {
+  ReadableStreamController,
+  WritableStreamDefaultController,
+} from 'stream/web';
+import type { JSONValue } from '../types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
-import { Timer } from '@matrixai/timer';
 import { Validator } from 'ip-num';
+import { Timer } from '@matrixai/timer';
 import WebSocketStream from './WebSocketStream';
 import * as webSocketUtils from './utils';
 import * as webSocketErrors from './errors';
 import { promise } from '../utils';
-
-const timeoutSymbol = Symbol('TimedOutSymbol');
+import * as nodesUtils from '../nodes/utils';
 
 interface WebSocketClient extends createDestroy.CreateDestroy {}
 @createDestroy.CreateDestroy()
 class WebSocketClient {
+  /**
+   * @param obj
+   * @param obj.host - Target host address to connect to
+   * @param obj.port - Target port to connect to
+   * @param obj.expectedNodeIds - Expected NodeIds you are trying to connect to. Will validate the cert chain of the
+   * sever. If none of these NodeIDs are found the connection will be rejected.
+   * @param obj.connectionTimeoutTime - Timeout time used when attempting the connection.
+   * Default is Infinity milliseconds.
+   * @param obj.pingIntervalTime - Time between pings for checking connection health and keep alive.
+   * Default is 1,000 milliseconds.
+   * @param obj.pingTimeoutTime - Time before connection is cleaned up after no ping responses.
+   * Default is 10,000 milliseconds.
+   * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
+   * @param obj.logger
+   */
   static async createWebSocketClient({
     host,
     port,
     expectedNodeIds,
-    connectionTimeout,
-    pingInterval = 1000,
-    pingTimeout = 10000,
-    maxReadableStreamBytes = 1000, // About 1kB
+    connectionTimeoutTime = Infinity,
+    pingIntervalTime = 1_000,
+    pingTimeoutTime = 10_000,
+    maxReadableStreamBytes = 1_000, // About 1kB
     logger = new Logger(this.name),
   }: {
     host: string;
     port: number;
     expectedNodeIds: Array<NodeId>;
-    connectionTimeout?: number;
-    pingInterval?: number;
-    pingTimeout?: number;
+    connectionTimeoutTime?: number;
+    pingIntervalTime?: number;
+    pingTimeoutTime?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<WebSocketClient> {
@@ -42,9 +62,9 @@ class WebSocketClient {
       port,
       maxReadableStreamBytes,
       expectedNodeIds,
-      connectionTimeout,
-      pingInterval,
-      pingTimeout,
+      connectionTimeoutTime,
+      pingIntervalTime,
+      pingTimeoutTime,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -59,9 +79,9 @@ class WebSocketClient {
     protected port: number,
     protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
-    protected connectionTimeout: number | undefined,
-    protected pingInterval: number,
-    protected pingTimeout: number,
+    protected connectionTimeoutTime: number,
+    protected pingIntervalTime: number,
+    protected pingTimeoutTime: number,
   ) {
     if (Validator.isValidIPv4String(host)[0]) {
       this.host = host;
@@ -76,11 +96,16 @@ class WebSocketClient {
     this.logger.info(`Destroying ${this.constructor.name}`);
     if (force) {
       for (const activeConnection of this.activeConnections) {
-        activeConnection.end();
+        activeConnection.cancel(
+          new webSocketErrors.ErrorClientEndingConnections(
+            'Destroying WebSocketClient',
+          ),
+        );
       }
     }
     for (const activeConnection of this.activeConnections) {
-      await activeConnection.endedProm.catch(() => {}); // Ignore errors here
+      // Ignore errors here, we only care that it finishes
+      await activeConnection.endedProm.catch(() => {});
     }
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
@@ -88,27 +113,51 @@ class WebSocketClient {
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async stopConnections() {
     for (const activeConnection of this.activeConnections) {
-      activeConnection.end();
+      activeConnection.cancel(
+        new webSocketErrors.ErrorClientEndingConnections(),
+      );
     }
     for (const activeConnection of this.activeConnections) {
-      await activeConnection.endedProm.catch(() => {}); // Ignore errors here
+      // Ignore errors here, we only care that it finished
+      await activeConnection.endedProm.catch(() => {});
     }
   }
 
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
-  public async startConnection({
-    timeoutTimer,
-  }: {
-    timeoutTimer?: Timer;
-  } = {}): Promise<WebSocketStreamClientInternal> {
-    // Use provided timer
-    let timer: Timer<void> | undefined = timeoutTimer;
-    // If no timer provided use provided default timeout
-    if (timeoutTimer == null && this.connectionTimeout != null) {
-      timer = new Timer({
-        delay: this.connectionTimeout,
+  public async startConnection(
+    ctx: Partial<ContextTimed> = {},
+  ): Promise<WebSocketStreamClientInternal> {
+    // Setting up abort/cancellation logic
+    const abortRaceProm = promise<never>();
+    // Ignore unhandled rejection
+    abortRaceProm.p.catch(() => {});
+    const timer =
+      ctx.timer ??
+      new Timer({
+        delay: this.connectionTimeoutTime,
       });
+    void timer.then(
+      () => {
+        abortRaceProm.rejectP(
+          new webSocketErrors.ErrorClientConnectionTimedOut(),
+        );
+      },
+      () => {}, // Ignore cancellation errors
+    );
+    const { signal } = ctx;
+    let abortHandler: () => void | undefined;
+    if (signal != null) {
+      abortHandler = () => {
+        abortRaceProm.rejectP(signal.reason);
+      };
+      if (signal.aborted) abortHandler();
+      else signal.addEventListener('abort', abortHandler);
     }
+    const cleanUp = () => {
+      // Cancel timer if it was internally created
+      if (ctx.timer == null) timer.cancel();
+      signal?.removeEventListener('abort', abortHandler);
+    };
     const address = `wss://${this.host}:${this.port}`;
     this.logger.info(`Connecting to ${address}`);
     const connectProm = promise<void>();
@@ -149,13 +198,10 @@ class WebSocketClient {
     //  2. connection error or authentication failure
     //  3. connection timed out
     try {
-      const result = await Promise.race([
-        timer?.then(() => timeoutSymbol) ?? new Promise(() => {}),
+      await Promise.race([
+        abortRaceProm.p,
         await Promise.all([authenticateProm.p, connectProm.p]),
       ]);
-      if (result === timeoutSymbol) {
-        throw new webSocketErrors.ErrorClientConnectionTimedOut();
-      }
     } catch (e) {
       // Clean up
       // unregister handlers
@@ -168,45 +214,76 @@ class WebSocketClient {
       //  returning.
       await earlyCloseProm.p;
       throw e;
+    } finally {
+      cleanUp();
+      // Cleaning up connection error
+      ws.removeEventListener('error', openErrorHandler);
     }
-    // Cleaning up connection error
-    ws.removeEventListener('error', openErrorHandler);
 
     // Constructing the `ReadableWritablePair`, the lifecycle is handed off to
     //  the webSocketStream at this point.
     const webSocketStreamClient = new WebSocketStreamClientInternal(
       ws,
       this.maxReadableStreamBytes,
-      this.pingInterval,
-      this.pingTimeout,
+      this.pingIntervalTime,
+      this.pingTimeoutTime,
+      {
+        host: this.host,
+        nodeId: nodesUtils.encodeNodeId(await authenticateProm.p),
+        port: this.port,
+      },
       this.logger,
     );
+    const abortStream = () => {
+      webSocketStreamClient.cancel(
+        new webSocketErrors.ErrorClientStreamAborted(undefined, {
+          cause: signal?.reason,
+        }),
+      );
+    };
     // Setting up activeStream map lifecycle
     this.activeConnections.add(webSocketStreamClient);
     void webSocketStreamClient.endedProm
-      .catch(() => {}) // Ignore errors
+      // Ignore errors, we only care that it finished
+      .catch(() => {})
       .finally(() => {
         this.activeConnections.delete(webSocketStreamClient);
+        signal?.removeEventListener('abort', abortStream);
       });
+    // Abort connection on signal
+    if (signal?.aborted === true) abortStream();
+    else signal?.addEventListener('abort', abortStream);
     return webSocketStreamClient;
   }
 }
 
 // This is the internal implementation of the client's stream pair.
 class WebSocketStreamClientInternal extends WebSocketStream {
+  protected readableController:
+    | ReadableStreamController<Uint8Array>
+    | undefined;
+  protected writableController: WritableStreamDefaultController | undefined;
+
   constructor(
     protected ws: WebSocket,
     maxReadableStreamBytes: number,
     pingInterval: number,
     pingTimeout: number,
+    protected clientMetadata: {
+      nodeId: NodeIdEncoded;
+      host: string;
+      port: number;
+    },
     logger: Logger,
   ) {
     super();
     const readableLogger = logger.getChild('readable');
     const writableLogger = logger.getChild('writable');
+
     this.readable = new ReadableStream<Uint8Array>(
       {
         start: (controller) => {
+          this.readableController = controller;
           readableLogger.info('Starting');
           const messageHandler = (data) => {
             readableLogger.debug(`Received ${data.toString()}`);
@@ -222,12 +299,12 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             if (message.length === 0) {
               readableLogger.debug('Null message received');
               ws.removeListener('message', messageHandler);
-              if (!this.readableEnded_) {
+              if (!this._readableEnded) {
                 this.signalReadableEnd();
                 readableLogger.debug('Closing');
                 controller.close();
               }
-              if (this.writableEnded_) {
+              if (this._writableEnded) {
                 logger.debug('Closing socket');
                 ws.close();
               }
@@ -240,7 +317,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
           ws.once('close', (code, reason) => {
             logger.info('Socket closed');
             ws.removeListener('message', messageHandler);
-            if (!this.readableEnded_) {
+            if (!this._readableEnded) {
               readableLogger.debug(
                 `Closed early, ${code}, ${reason.toString()}`,
               );
@@ -250,7 +327,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
             }
           });
           ws.once('error', (e) => {
-            if (!this.readableEnded_) {
+            if (!this._readableEnded) {
               readableLogger.error(e);
               this.signalReadableEnd(e);
               controller.error(e);
@@ -260,7 +337,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         cancel: (reason) => {
           readableLogger.debug('Cancelled');
           this.signalReadableEnd(reason);
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             readableLogger.debug('Closing socket');
             this.signalWritableEnd(reason);
             ws.close();
@@ -278,16 +355,17 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     );
     this.writable = new WritableStream<Uint8Array>({
       start: (controller) => {
+        this.writableController = controller;
         writableLogger.info('Starting');
         ws.once('error', (e) => {
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             writableLogger.error(e);
             this.signalWritableEnd(e);
             controller.error(e);
           }
         });
         ws.once('close', (code, reason) => {
-          if (!this.writableEnded_) {
+          if (!this._writableEnded) {
             writableLogger.debug(`Closed early, ${code}, ${reason.toString()}`);
             const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
             this.signalWritableEnd(e);
@@ -299,7 +377,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
         writableLogger.debug('Closing, sending null message');
         ws.send(Buffer.from([]));
         this.signalWritableEnd();
-        if (this.readableEnded_) {
+        if (this._readableEnded) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
@@ -307,17 +385,17 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       abort: (reason) => {
         writableLogger.debug('Aborted');
         this.signalWritableEnd(reason);
-        if (this.readableEnded_) {
+        if (this._readableEnded) {
           writableLogger.debug('Closing socket');
           ws.close();
         }
       },
       write: async (chunk, controller) => {
-        if (this.writableEnded_) return;
+        if (this._writableEnded) return;
         writableLogger.debug(`Sending ${chunk?.toString()}`);
         const wait = promise<void>();
         ws.send(chunk, (e) => {
-          if (e != null && !this.writableEnded_) {
+          if (e != null && !this._writableEnded) {
             // Opting to debug message here and not log an error, sending
             //  failure is common if we send before the close event.
             writableLogger.debug('failed to send');
@@ -368,8 +446,30 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     });
   }
 
-  end(): void {
-    this.ws.close(4001, 'Ending connection');
+  get meta(): Record<string, JSONValue> {
+    // Spreading to avoid modifying the data
+    return {
+      ...this.clientMetadata,
+    };
+  }
+
+  cancel(reason?: any): void {
+    // Default error
+    const err = reason ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
+    // Close the streams with the given error,
+    if (!this._readableEnded) {
+      this.readableController?.error(err);
+      this.signalReadableEnd(err);
+    }
+    if (!this._writableEnded) {
+      this.writableController?.error(err);
+      this.signalWritableEnd(err);
+    }
+    // Then close the websocket
+    if (!this._webSocketEnded) {
+      this.ws.close(4000, 'Ending connection');
+      this.signalWebSocketEnd(err);
+    }
   }
 }
 

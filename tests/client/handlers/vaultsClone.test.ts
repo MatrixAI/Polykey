@@ -82,8 +82,8 @@ describe('notificationsSend', () => {
   //       logger,
   //     });
   //     webSocketServer = await WebSocketServer.createWebSocketServer({
-  //       connectionCallback: (streamPair, connectionInfo) =>
-  //         rpcServer.handleStream(streamPair, connectionInfo),
+  //       connectionCallback: (streamPair) =>
+  //         rpcServer.handleStream(streamPair),
   //       host,
   //       tlsConfig,
   //       logger: logger.getChild('server'),
@@ -98,7 +98,7 @@ describe('notificationsSend', () => {
   //       manifest: {
   //         notificationsSend,
   //       },
-  //       streamFactory: async () => webSocketClient.startConnection(),
+  //       streamFactory: (ctx) => webSocketClient.startConnection(ctx),
   //       logger: logger.getChild('clientRPC'),
   //     });
   //

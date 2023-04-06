@@ -11,12 +11,16 @@ class NodesListConnectionsHandler extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<NodeConnectionMessage>
 > {
-  public async *handle(): AsyncGenerator<
-    ClientRPCResponseResult<NodeConnectionMessage>
-  > {
+  public async *handle(
+    _input,
+    _cancel,
+    _meta,
+    ctx,
+  ): AsyncGenerator<ClientRPCResponseResult<NodeConnectionMessage>> {
     const { nodeConnectionManager } = this.container;
     const connections = nodeConnectionManager.listConnections();
     for (const connection of connections) {
+      if (ctx.signal.aborted) throw ctx.signal.reason;
       yield {
         host: connection.address.host,
         hostname: connection.address.hostname ?? '',
