@@ -14,7 +14,6 @@ import type {
   MapCallers,
 } from './types';
 import type { ContextTimed } from '../contexts/types';
-import { TransformStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
@@ -22,6 +21,8 @@ import * as rpcUtilsMiddleware from './utils/middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils/utils';
 import { never, promise } from '../utils';
+
+const timerCleanupReasonSymbol = Symbol('timerCleanUpReasonSymbol');
 
 // eslint-disable-next-line
 interface RPCClient<M extends ClientManifest> extends CreateDestroy {}
@@ -276,7 +277,7 @@ class RPCClient<M extends ClientManifest> {
       });
     const cleanUp = () => {
       // Clean up the timer and signal
-      if (ctx.timer == null) timer.cancel(Error('TMP Clean up reason'));
+      if (ctx.timer == null) timer.cancel(timerCleanupReasonSymbol);
       signal.removeEventListener('abort', abortHandler);
     };
     // Setting up abort events for timeout
@@ -352,14 +353,14 @@ class RPCClient<M extends ClientManifest> {
     };
   }
 
-  // FIXME: the CTX timeout here is just for stream creation. We can't/wont do
-  // keep alive timeout for raw streams.
   /**
    * Generic caller for raw RPC calls.
    * This returns a `ReadableWritablePair` of the raw RPC stream.
    * When finished the streams must be ended manually. Failing to do so will
    * hold the connection open and result in a resource leak until the
    * call times out.
+   * Raw streams don't support the keep alive timeout. Timeout will only apply\
+   * to the creation of the stream.
    * @param method - Method name of the RPC call
    * @param headerParams - Parameters for the header message. The header is a
    * single RPC message that is sent to specify the method for the RPC call.
@@ -376,7 +377,7 @@ class RPCClient<M extends ClientManifest> {
     const signal = abortController.signal;
     // A promise that will reject if there is an abort signal or timeout
     const abortRaceProm = promise<never>();
-    // Prevent unhandled rejection when we're don with the promise
+    // Prevent unhandled rejection when we're done with the promise
     abortRaceProm.p.catch(() => {});
     let abortHandler: () => void;
     if (ctx.signal != null) {
@@ -393,10 +394,9 @@ class RPCClient<M extends ClientManifest> {
       new Timer({
         delay: this.streamKeepAliveTimeoutTime,
       });
-    // Ignore unhandled rejections
     const cleanUp = () => {
       // Clean up the timer and signal
-      if (ctx.timer == null) timer.cancel(Error('TMP Clean up reason'));
+      if (ctx.timer == null) timer.cancel(timerCleanupReasonSymbol);
       signal.removeEventListener('abort', abortHandler);
     };
     const timeoutError = new rpcErrors.ErrorRPCTimedOut();
@@ -423,27 +423,16 @@ class RPCClient<M extends ClientManifest> {
     };
     try {
       rpcStream = await Promise.race([setupStream(), abortRaceProm.p]);
-    } catch (e) {
+    } finally {
       cleanUp();
-      throw e;
     }
-    // Need to tell when a stream has ended to clean up the timer
-    const forwardStream = new TransformStream<Uint8Array, Uint8Array>();
-    const reverseStream = new TransformStream<Uint8Array, Uint8Array>();
-
-    void Promise.all([
-      rpcStream.readable.pipeTo(reverseStream.writable),
-      forwardStream.readable.pipeTo(rpcStream.writable),
-    ]).finally(() => {
-      cleanUp();
-    });
     const metadata = {
       ...(rpcStream.meta ?? {}),
       command: method,
     };
     return {
-      writable: forwardStream.writable,
-      readable: reverseStream.readable,
+      writable: rpcStream.writable,
+      readable: rpcStream.readable,
       cancel: rpcStream.cancel,
       meta: metadata,
     };

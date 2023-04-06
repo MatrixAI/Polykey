@@ -785,42 +785,6 @@ describe(`${RPCClient.name}`, () => {
       expect(ctx?.signal.aborted).toBeTrue();
       expect(ctx?.signal.reason).toBe(rejectReason);
     });
-    test('raw caller uses default timeout awaiting stream', async () => {
-      const forwardPassThroughStream = new TransformStream<
-        Uint8Array,
-        Uint8Array
-      >();
-      const reversePassThroughStream = new TransformStream<
-        Uint8Array,
-        Uint8Array
-      >();
-      const streamPair: RPCStream<Uint8Array, Uint8Array> = {
-        cancel: () => {},
-        meta: undefined,
-        writable: forwardPassThroughStream.writable,
-        readable: reversePassThroughStream.readable,
-      };
-      let ctx: ContextTimed | undefined;
-      const rpcClient = await RPCClient.createRPCClient({
-        manifest: {},
-        streamFactory: async (ctx_) => {
-          ctx = ctx_;
-          return streamPair;
-        },
-        streamKeepAliveTimeoutTime: 200,
-        logger,
-      });
-
-      // Timing out on stream.
-      // Stream creation needs to read the header to complete.
-      await Promise.all([
-        rpcClient.rawStreamCaller('testMethod', {}),
-        forwardPassThroughStream.readable.getReader().read(),
-      ]);
-      await ctx?.timer;
-      expect(ctx?.signal.aborted).toBeTrue();
-      expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
-    });
     test('raw caller times out awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<
         Uint8Array,

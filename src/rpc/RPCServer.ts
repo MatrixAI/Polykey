@@ -207,6 +207,12 @@ class RPCServer extends EventTarget {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
+  /**
+   * Registers a raw stream handler. This is the basis for all handlers as
+   * handling the streams is done with raw streams only.
+   * The raw streams do not automatically refresh the timeout timer when
+   * messages are sent or received.
+   */
   protected registerRawStreamHandler(
     method: string,
     handler: RawHandlerImplementation,

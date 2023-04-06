@@ -1,4 +1,4 @@
-import { testProp } from '@fast-check/jest';
+import { testProp, fc } from '@fast-check/jest';
 import * as rpcUtils from '@/rpc/utils';
 import 'ix/add/asynciterable-operators/toarray';
 import * as rpcTestUtils from '../utils';
@@ -12,6 +12,14 @@ describe('utils tests', () => {
     },
     { numRuns: 1000 },
   );
-  // TODO:
-  //  - Test for badly structured data
+  testProp(
+    'malformed data cases parsing errors',
+    [fc.json()],
+    async (message) => {
+      expect(() =>
+        rpcUtils.parseJSONRPCMessage(Buffer.from(JSON.stringify(message))),
+      ).toThrow();
+    },
+    { numRuns: 1000 },
+  );
 });
