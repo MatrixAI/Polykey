@@ -18,12 +18,12 @@ import { promise } from '../../utils/index';
  * also infers the type of the stream output.
  * @param messageParser - Validates the JSONRPC messages, so you can select for a
  *  specific type of message
- * @param byteLimit - sets the number of bytes buffered before throwing an
+ * @param bufferByteLimit - sets the number of bytes buffered before throwing an
  *  error. This is used to avoid infinitely buffering the input.
  */
 function binaryToJsonMessageStream<T extends JSONRPCMessage>(
   messageParser: (message: unknown) => T,
-  byteLimit: number = 1024 * 1024,
+  bufferByteLimit: number = 1024 * 1024,
 ): TransformStream<Uint8Array, T> {
   const parser = new JSONParser({
     separator: '',
@@ -53,7 +53,7 @@ function binaryToJsonMessageStream<T extends JSONRPCMessage>(
       } catch (e) {
         throw new rpcErrors.ErrorRPCParse(undefined, { cause: e });
       }
-      if (bytesWritten > byteLimit) {
+      if (bytesWritten > bufferByteLimit) {
         throw new rpcErrors.ErrorRPCMessageLength();
       }
     },
@@ -95,6 +95,7 @@ function defaultMiddleware() {
  * The reverse path will pipe the output stream through the provided middleware
  * and then transform it back to a binary stream.
  * @param middlewareFactory - The provided middleware
+ * @param parserBufferByteLimit
  */
 function defaultServerMiddlewareWrapper(
   middlewareFactory: MiddlewareFactory<
@@ -103,10 +104,12 @@ function defaultServerMiddlewareWrapper(
     JSONRPCResponse,
     JSONRPCResponse
   > = defaultMiddleware,
+  parserBufferByteLimit: number = 1024 * 1024,
 ): MiddlewareFactory<JSONRPCRequest, Uint8Array, Uint8Array, JSONRPCResponse> {
   return (ctx, cancel, meta) => {
     const inputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCRequest,
+      parserBufferByteLimit,
     );
     const outputTransformStream = new TransformStream<
       JSONRPCResponseResult,
@@ -143,6 +146,8 @@ function defaultServerMiddlewareWrapper(
  * The reverse path will parse and validate the output and pipe it through the
  * provided middleware.
  * @param middleware - the provided middleware
+ * @param parserBufferByteLimit - Max number of bytes to buffer when parsing the stream. Exceeding this results in an
+ * `ErrorRPCMessageLength` error.
  */
 const defaultClientMiddlewareWrapper = (
   middleware: MiddlewareFactory<
@@ -151,6 +156,7 @@ const defaultClientMiddlewareWrapper = (
     JSONRPCResponse,
     JSONRPCResponse
   > = defaultMiddleware,
+  parserBufferByteLimit?: number,
 ): MiddlewareFactory<
   Uint8Array,
   JSONRPCRequest,
@@ -160,7 +166,7 @@ const defaultClientMiddlewareWrapper = (
   return (ctx, cancel, meta) => {
     const outputTransformStream = binaryToJsonMessageStream(
       rpcUtils.parseJSONRPCResponse,
-      // Undefined,
+      parserBufferByteLimit,
     );
     const inputTransformStream = new TransformStream<
       JSONRPCRequest,

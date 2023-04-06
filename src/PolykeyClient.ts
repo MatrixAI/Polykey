@@ -29,6 +29,8 @@ class PolykeyClient<M extends ClientManifest> {
     session,
     manifest,
     streamFactory,
+    streamKeepAliveTimeoutTime,
+    parserBufferByteLimit,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -37,6 +39,8 @@ class PolykeyClient<M extends ClientManifest> {
     session?: Session;
     manifest: RPCClient<M> | M;
     streamFactory: StreamFactory;
+    streamKeepAliveTimeoutTime?: number;
+    parserBufferByteLimit?: number;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -63,7 +67,9 @@ class PolykeyClient<M extends ClientManifest> {
             middlewareFactory:
               rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
                 clientUtilsMiddleware.middlewareClient(session),
+                parserBufferByteLimit,
               ),
+            streamKeepAliveTimeoutTime,
             logger: logger.getChild(RPCClient.name),
           });
     const pkClient = new this({

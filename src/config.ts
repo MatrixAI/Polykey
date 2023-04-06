@@ -98,12 +98,17 @@ const config = {
       // GRPCServer for agent service
       agentHost: '127.0.0.1' as Host,
       agentPort: 0 as Port,
-      // GRPCServer for client service
+      // RPCServer for client service
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
-      maxReadBufferBytes: 1_000_000_000, // About 1 GB
+      // Times and limits for client communication
+      connectionIdleTimeoutTime: 120, // 2 minutes
       pingIntervalTime: 1_000, // 1 second
       pingTimeoutTime: 10_000, // 10 seconds
+      handlerTimeoutTime: 60_000, // 1 minute
+      handlerTimeoutGraceTime: 2_000, // 2 seconds
+      maxReadableStreamBytes: 1_000_000_000, // About 1 GB
+      clientParserBufferByteLimit: 1_000_000, // About 1MB
     },
     proxyConfig: {
       connConnectTime: 2000,

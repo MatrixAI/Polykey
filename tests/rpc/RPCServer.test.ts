@@ -789,7 +789,7 @@ describe(`${RPCServer.name}`, () => {
       manifest: {
         testMethod: new TestHandler({}),
       },
-      streamKeepAliveTimeoutTime: 100,
+      handlerTimeoutTime: 100,
       logger,
     });
     const [outputResult, outputStream] = rpcTestUtils.streamToArray();
@@ -821,7 +821,7 @@ describe(`${RPCServer.name}`, () => {
   test('timeout with default time before handler selected', async () => {
     const rpcServer = await RPCServer.createRPCServer({
       manifest: {},
-      streamKeepAliveTimeoutTime: 100,
+      handlerTimeoutTime: 100,
       logger,
     });
     const readWriteStream: RPCStream<Uint8Array, Uint8Array> = {
@@ -880,7 +880,7 @@ describe(`${RPCServer.name}`, () => {
           testShort: new TestMethodShortTimeout({}),
           testLong: new TestMethodLongTimeout({}),
         },
-        streamKeepAliveTimeoutTime: 50,
+        handlerTimeoutTime: 50,
         logger,
       });
       const streamShort = rpcTestUtils.messagesToReadableStream([
@@ -1045,8 +1045,8 @@ describe(`${RPCServer.name}`, () => {
       manifest: {
         testMethod: new TestHandler({}),
       },
-      streamKeepAliveTimeoutTime: 50,
-      timeoutForceCloseTime: 100,
+      handlerTimeoutTime: 50,
+      handlerTimeoutGraceTime: 100,
       logger,
     });
     const [, outputStream] = rpcTestUtils.streamToArray();
@@ -1136,7 +1136,7 @@ describe(`${RPCServer.name}`, () => {
       manifest: {
         testMethod: new TestHandler({}),
       },
-      timeoutForceCloseTime: 0,
+      handlerTimeoutGraceTime: 0,
       logger,
     });
     const [, outputStream] = rpcTestUtils.streamToArray();

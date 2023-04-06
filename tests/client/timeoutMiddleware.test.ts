@@ -164,7 +164,7 @@ describe('timeoutMiddleware', () => {
       middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareServer,
       ),
-      streamKeepAliveTimeoutTime: 100,
+      handlerTimeoutTime: 100,
       logger,
     });
     clientServer = await WebSocketServer.createWebSocketServer({

@@ -70,8 +70,8 @@ class RPCServer extends EventTarget {
     manifest,
     middlewareFactory = rpcUtilsMiddleware.defaultServerMiddlewareWrapper(),
     sensitive = false,
-    streamKeepAliveTimeoutTime = 60_000, // 1 minute
-    timeoutForceCloseTime = 2_000, // 2 seconds
+    handlerTimeoutTime = 60_000, // 1 minute
+    handlerTimeoutGraceTime = 2_000, // 2 seconds
     logger = new Logger(this.name),
   }: {
     manifest: ServerManifest;
@@ -82,8 +82,8 @@ class RPCServer extends EventTarget {
       JSONRPCResponse
     >;
     sensitive?: boolean;
-    streamKeepAliveTimeoutTime?: number;
-    timeoutForceCloseTime?: number;
+    handlerTimeoutTime?: number;
+    handlerTimeoutGraceTime?: number;
     logger?: Logger;
   }): Promise<RPCServer> {
     logger.info(`Creating ${this.name}`);
@@ -91,8 +91,8 @@ class RPCServer extends EventTarget {
       manifest,
       middlewareFactory,
       sensitive,
-      streamKeepAliveTimeoutTime: streamKeepAliveTimeoutTime,
-      timeoutForceCloseTime: timeoutForceCloseTime,
+      handlerTimeoutTime,
+      handlerTimeoutGraceTime,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -102,8 +102,8 @@ class RPCServer extends EventTarget {
   protected logger: Logger;
   protected handlerMap: Map<string, RawHandlerImplementation> = new Map();
   protected defaultTimeoutMap: Map<string, number | undefined> = new Map();
-  protected streamKeepAliveTimeoutTime: number;
-  protected timeoutForceCloseTime: number;
+  protected handlerTimeoutTime: number;
+  protected handlerTimeoutGraceTime: number;
   protected activeStreams: Set<PromiseCancellable<void>> = new Set();
   protected sensitive: boolean;
   protected middlewareFactory: MiddlewareFactory<
@@ -117,8 +117,8 @@ class RPCServer extends EventTarget {
     manifest,
     middlewareFactory,
     sensitive,
-    streamKeepAliveTimeoutTime = 60_000, // 1 minuet
-    timeoutForceCloseTime = 2_000, // 2 seconds
+    handlerTimeoutTime = 60_000, // 1 minuet
+    handlerTimeoutGraceTime = 2_000, // 2 seconds
     logger,
   }: {
     manifest: ServerManifest;
@@ -129,8 +129,8 @@ class RPCServer extends EventTarget {
       Uint8Array,
       JSONRPCResponseResult
     >;
-    streamKeepAliveTimeoutTime?: number;
-    timeoutForceCloseTime?: number;
+    handlerTimeoutTime?: number;
+    handlerTimeoutGraceTime?: number;
     sensitive: boolean;
     logger: Logger;
   }) {
@@ -188,8 +188,8 @@ class RPCServer extends EventTarget {
     }
     this.middlewareFactory = middlewareFactory;
     this.sensitive = sensitive;
-    this.streamKeepAliveTimeoutTime = streamKeepAliveTimeoutTime;
-    this.timeoutForceCloseTime = timeoutForceCloseTime;
+    this.handlerTimeoutTime = handlerTimeoutTime;
+    this.handlerTimeoutGraceTime = handlerTimeoutGraceTime;
     this.logger = logger;
   }
 
@@ -413,7 +413,7 @@ class RPCServer extends EventTarget {
     const abortController = new AbortController();
     // Setting up timeout timer logic
     const timer = new Timer({
-      delay: this.streamKeepAliveTimeoutTime,
+      delay: this.handlerTimeoutTime,
       handler: () => {
         abortController.abort(new rpcErrors.ErrorRPCTimedOut());
       },
@@ -424,7 +424,7 @@ class RPCServer extends EventTarget {
     let graceTimer: Timer<void> | undefined;
     const handleAbort = () => {
       const graceTimer = new Timer({
-        delay: this.timeoutForceCloseTime,
+        delay: this.handlerTimeoutGraceTime,
         handler: () => {
           rpcStream.cancel(abortController.signal.reason);
         },
@@ -501,7 +501,7 @@ class RPCServer extends EventTarget {
       }
       // Setting up Timeout logic
       const timeout = this.defaultTimeoutMap.get(method);
-      if (timeout != null && timeout < this.streamKeepAliveTimeoutTime) {
+      if (timeout != null && timeout < this.handlerTimeoutTime) {
         // Reset timeout with new delay if it is less than the default
         timer.reset(timeout);
       } else {

@@ -56,10 +56,13 @@ type NetworkConfig = {
   // RPCServer for client service
   clientHost?: Host;
   clientPort?: Port;
-  maxReadBufferBytes?: number;
-  idleTimeoutTime?: number;
+  maxReadableStreamBytes?: number;
+  connectionIdleTimeoutTime?: number;
   pingIntervalTime?: number;
   pingTimeoutTime?: number;
+  handlerTimeoutTime?: number;
+  handlerTimeoutGraceTime?: number;
+  clientParserBufferByteLimit?: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -439,8 +442,11 @@ class PolykeyAgent {
           }),
           middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
             clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
+            networkConfig_.clientParserBufferByteLimit,
           ),
           sensitive: false,
+          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
+          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
           logger: logger.getChild('RPCServerClient'),
         });
       }
@@ -451,14 +457,14 @@ class PolykeyAgent {
       webSocketServerClient =
         webSocketServerClient ??
         (await WebSocketServer.createWebSocketServer({
-          connectionCallback: (streamPair) =>
-            rpcServerClient!.handleStream(streamPair),
+          connectionCallback: (rpcStream) =>
+            rpcServerClient!.handleStream(rpcStream),
           fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadableStreamBytes: networkConfig_.maxReadBufferBytes,
-          connectionIdleTimeoutTime: networkConfig_.idleTimeout,
+          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
+          connectionIdleTimeoutTime: networkConfig_.connectionIdleTimeoutTime,
           pingIntervalTime: networkConfig_.pingIntervalTime,
           pingTimeoutTime: networkConfig_.pingTimeoutTime,
           logger: logger.getChild('WebSocketServer'),
