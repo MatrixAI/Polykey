@@ -98,7 +98,6 @@
     "@scure/bip39": "^1.1.0",
     "@types/ws": "^8.5.4",
     "ajv": "^7.0.4",
-    "bip39": "^3.0.3",
     "canonicalize": "^1.0.5",
     "cheerio": "^1.0.0-rc.5",
     "commander": "^8.3.0",
