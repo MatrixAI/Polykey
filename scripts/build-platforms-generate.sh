@@ -131,7 +131,7 @@ cat << "EOF"
     - .\scripts\choco-install.ps1
     - refreshenv
     - npm install --ignore-scripts
-    - $env:Path = "$(npm bin);" + $env:Path
+    - $env:Path = "$(npm root)\.bin;" + $env:Path
     - npm test -- --ci --coverage --shard="$CI_NODE_INDEX/$CI_NODE_TOTAL" --maxWorkers=50%
   artifacts:
     when: always
@@ -159,7 +159,7 @@ cat << "EOF"
     - ./scripts/brew-install.sh
     - hash -r
     - npm install --ignore-scripts
-    - export PATH="$(npm bin):$PATH"
+    - export PATH="$(npm root)/.bin:$PATH"
     - npm test -- --ci --coverage --shard="$CI_NODE_INDEX/$CI_NODE_TOTAL" --maxWorkers=50%
   artifacts:
     when: always
