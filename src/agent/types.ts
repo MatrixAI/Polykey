@@ -1,14 +1,24 @@
-import type { ServerSurfaceCall } from '@grpc/grpc-js/build/src/server-call';
-import type { Class } from '@matrixai/errors';
-import type { ConnectionInfo } from '../network/types';
-import type ErrorPolykey from '../ErrorPolykey';
+import type { JSONValue } from '../types';
 
-type ConnectionInfoGet = (
-  call: ServerSurfaceCall,
-) => ConnectionInfo | undefined;
+// eslint-disable-next-line
+type NoData = {};
 
-type AgentClientErrors = Array<
-  Class<ErrorPolykey<any>> | Array<Class<ErrorPolykey<any>>>
->;
+type AgentRPCRequestParams<T extends Record<string, JSONValue> = NoData> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{
+    authorization: string;
+    timeout: number;
+  }>;
+} & Omit<T, 'metadata'>;
 
-export type { ConnectionInfoGet, AgentClientErrors };
+type AgentRPCResponseResult<T extends Record<string, JSONValue> = NoData> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{
+    authorization: string;
+    timeout: number;
+  }>;
+} & Omit<T, 'metadata'>;
+
+export type { AgentRPCRequestParams, AgentRPCResponseResult, NoData };
