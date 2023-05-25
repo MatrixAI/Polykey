@@ -1,7 +1,6 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed } from '@matrixai/contexts';
 import type KeyRing from '../keys/KeyRing';
-import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
 import type NodeGraph from './NodeGraph';
 import type TaskManager from '../tasks/TaskManager';
@@ -26,17 +25,19 @@ import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
-import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import { never, promise } from '../utils';
 import { resolveHostnames } from '../network/utils';
+import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 
 // TODO: check all locking and add cancellation for it.
 
+type AgentClientManifest = typeof clientManifest;
+
 type ConnectionAndTimer = {
-  connection: NodeConnection<GRPCClientAgent>;
+  connection: NodeConnection<AgentClientManifest>;
   timer: Timer | null;
   usageCount: number;
 };
@@ -68,7 +69,6 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
   protected keyRing: KeyRing;
-  protected proxy: Proxy;
   protected taskManager: TaskManager;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
@@ -92,12 +92,10 @@ class NodeConnectionManager {
   > = new Map();
   protected backoffDefault: number = 300; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
-  protected ncDestroyTimeout: number;
 
   public constructor({
     keyRing,
     nodeGraph,
-    proxy,
     taskManager,
     seedNodes = {},
     initialClosestNodes = 3,
@@ -109,7 +107,6 @@ class NodeConnectionManager {
   }: {
     nodeGraph: NodeGraph;
     keyRing: KeyRing;
-    proxy: Proxy;
     taskManager: TaskManager;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
@@ -122,7 +119,6 @@ class NodeConnectionManager {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
-    this.proxy = proxy;
     this.taskManager = taskManager;
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
@@ -175,7 +171,7 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     ctx?: Partial<ContextTimed>,
-  ): Promise<ResourceAcquire<NodeConnection<GRPCClientAgent>>> {
+  ): Promise<ResourceAcquire<NodeConnection<AgentClientManifest>>> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
@@ -221,7 +217,7 @@ class NodeConnectionManager {
    */
   public withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -232,7 +228,7 @@ class NodeConnectionManager {
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<GRPCClientAgent>) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
@@ -254,7 +250,7 @@ class NodeConnectionManager {
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
     g: (
-      conn: NodeConnection<GRPCClientAgent>,
+      conn: NodeConnection<AgentClientManifest>,
     ) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
@@ -352,27 +348,23 @@ class NodeConnectionManager {
         const nodeConnectionProms = targetAddresses.map((address, index) => {
           const destroyCallbackProm = promise<void>();
           destroyCallbackProms[index] = destroyCallbackProm;
-          const nodeConnectionProm = NodeConnection.createNodeConnection(
-            {
-              targetNodeId: targetNodeId,
-              targetHost: address.host,
-              targetHostname: targetHostname,
-              targetPort: address.port,
-              proxy: this.proxy,
-              destroyTimeout: this.ncDestroyTimeout,
-              destroyCallback: async () => {
-                destroyCallbackProm.resolveP();
-              },
-              logger: this.logger.getChild(
-                `${NodeConnection.name} [${nodesUtils.encodeNodeId(
-                  targetNodeId,
-                )}@${address.host}:${address.port}]`,
-              ),
-              clientFactory: async (args) =>
-                GRPCClientAgent.createGRPCClientAgent(args),
+          const nodeConnectionProm = NodeConnection.createNodeConnection({
+            destroyCallback(): Promise<void> {
+              return Promise.resolve(undefined);
             },
-            ctx,
-          );
+            destroyTimeout: 0,
+            manifest: agentClientManifest,
+            quicClientConfig: {},
+            targetHost: address.host,
+            targetPort: address.port,
+            targetHostname: targetHostname,
+            targetNodeId: targetNodeId,
+            logger: this.logger.getChild(
+              `${NodeConnection.name} [${nodesUtils.encodeNodeId(
+                targetNodeId,
+              )}@${address.host}:${address.port}]`,
+            ),
+          });
           void nodeConnectionProm.then(
             () => firstConnectionIndexProm.resolveP(index),
             (e) => {
@@ -389,7 +381,7 @@ class NodeConnectionManager {
           );
           return nodeConnectionProm;
         });
-        let newConnection: NodeConnection<GRPCClientAgent>;
+        let newConnection: NodeConnection<AgentClientManifest>;
         try {
           newConnection = await Promise.any(nodeConnectionProms);
         } catch (e) {
@@ -417,7 +409,7 @@ class NodeConnectionManager {
             if (index === successfulIndex) return;
             nodeConnectionProm.cancel(cleanUpReason);
             return nodeConnectionProm.then(async (nodeConnection) => {
-              await nodeConnection.destroy({ timeout: this.ncDestroyTimeout });
+              await nodeConnection.destroy(); // TODO: force?
             });
           }),
         );
@@ -504,30 +496,8 @@ class NodeConnectionManager {
     proxyPort: Port,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void> {
-    return this.proxy.openConnectionReverse(proxyHost, proxyPort, ctx);
-  }
-
-  /**
-   * Treat this node as the client.
-   * Instruct the forward proxy to send hole-punching packets back to the target's
-   * reverse proxy, in order to open a connection from this client to the server.
-   * A connection is established if the client node's reverse proxy is sending
-   * hole punching packets at the same time as this node (acting as the client)
-   * sends hole-punching packets back to the server's reverse proxy.
-   * This is not needed to be called when doing hole punching since the
-   * ForwardProxy automatically starts the process.
-   * @param nodeId Node ID of the node we are connecting to
-   * @param proxyHost Proxy host of the reverse proxy
-   * @param proxyPort Proxy port of the reverse proxy
-   * @param ctx
-   */
-  public async holePunchForward(
-    nodeId: NodeId,
-    proxyHost: Host,
-    proxyPort: Port,
-    ctx?: ContextTimed,
-  ): Promise<void> {
-    await this.proxy.openConnectionForward([nodeId], proxyHost, proxyPort, ctx);
+    // TODO: tell the server to hole punch reverse
+    throw Error('TMP IMP');
   }
 
   /**
@@ -915,6 +885,9 @@ class NodeConnectionManager {
     });
   }
 
+  // FIXME: How do we handle pinging now? Previously this was done on the proxy level.
+  //  Now I think we need to actually establish a connection. Pinging should just be establishing a connection now.
+  //  I'll keep this but have it wrap normal connection establishment.
   /**
    * Checks if a connection can be made to the target. Returns true if the
    * connection can be authenticated, it's certificate matches the nodeId and

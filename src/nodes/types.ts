@@ -1,5 +1,8 @@
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
+import type { Crypto } from '@matrixai/quic';
+import type { Host as QUICHost, Port as QUICPort } from '@matrixai/quic';
+import type { QUICConfig } from '@matrixai/quic/dist/config';
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -26,6 +29,19 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
+type QUICClientConfig = {
+  crypto: {
+    key: ArrayBuffer;
+    ops: Crypto;
+  };
+  localHost?: QUICHost;
+  localPort?: QUICPort;
+  config?: QUICConfig;
+  keepaliveIntervalTime?: number;
+  maxReadableStreamBytes?: number;
+  maxWritableStreamBytes?: number;
+};
+
 export type {
   NodeId,
   NodeIdString,
@@ -37,4 +53,5 @@ export type {
   NodeBucket,
   NodeData,
   NodeGraphSpace,
+  QUICClientConfig,
 };
