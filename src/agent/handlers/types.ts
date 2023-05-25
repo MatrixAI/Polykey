@@ -29,7 +29,7 @@ export type NodeAddressMessage = NodeIdMessage & AddressMessage;
 export type HolePunchRelayMessage = {
   srcIdEncoded: NodeIdEncoded;
   dstIdEncoded: NodeIdEncoded;
-  address: AddressMessage;
+  address?: AddressMessage;
 };
 
 export type SignedNotificationEncoded = {

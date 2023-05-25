@@ -14,6 +14,7 @@ import { QUICClient } from '@matrixai/quic';
 import RPCClient from '@/rpc/RPCClient';import * as nodesErrors from './errors';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
+import * as nodesEvents from './events';
 
 // TODO: extend an event system, use events for cleaning up.
 /**
@@ -21,7 +22,7 @@ import * as rpcUtils from '../rpc/utils';
  */
 interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
 @CreateDestroy()
-class NodeConnection<M extends ClientManifest> {
+class NodeConnection<M extends ClientManifest> extends EventTarget {
   public readonly host: Host;
   public readonly port: Port;
   /**
@@ -128,6 +129,7 @@ class NodeConnection<M extends ClientManifest> {
     rpcClient: RPCClient<M>;
     logger: Logger;
   }) {
+    super();
     this.logger = logger;
     this.host = host;
     this.port = port;
@@ -145,7 +147,7 @@ class NodeConnection<M extends ClientManifest> {
     await this.quicClient.destroy({ force });
     await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
-    // TODO: trigger destroy event
+    this.dispatchEvent(new nodesEvents.NodeConnectionDestroyEvent())
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
