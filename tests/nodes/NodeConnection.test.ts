@@ -360,7 +360,7 @@ describe(`${NodeConnection.name} test`, () => {
   test('session readiness', async () => {
     logger.debug('session readiness start');
     const nodeConnection = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
+      targetNodeIds: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
       proxy: clientProxy,
@@ -382,7 +382,7 @@ describe(`${NodeConnection.name} test`, () => {
   });
   test('connects to its target (via direct connection)', async () => {
     const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
+      targetNodeIds: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
       proxy: clientProxy,
@@ -420,7 +420,7 @@ describe(`${NodeConnection.name} test`, () => {
       targetPort,
     );
     const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
+      targetNodeIds: targetNodeId,
       targetHost: localHost,
       targetPort: targetPort,
       proxy: clientProxy,
@@ -476,7 +476,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyRing.getNodeId(),
+          targetNodeIds: polykeyAgent.keyRing.getNodeId(),
           targetPort: polykeyAgent.proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -502,7 +502,7 @@ describe(`${NodeConnection.name} test`, () => {
     await expect(
       NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: '128.0.0.1' as Host,
           targetPort: 12345 as Port,
           proxy: clientProxy,
@@ -518,7 +518,7 @@ describe(`${NodeConnection.name} test`, () => {
     let timedOut = false;
     const connProm = NodeConnection.createNodeConnection(
       {
-        targetNodeId: targetNodeId,
+        targetNodeIds: targetNodeId,
         targetHost: localHost,
         targetPort: 55556 as Port,
         proxy: clientProxy,
@@ -544,7 +544,7 @@ describe(`${NodeConnection.name} test`, () => {
     let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
     try {
       nodeConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
+        targetNodeIds: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
         proxy: clientProxy,
@@ -584,7 +584,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: proxy.getProxyHost(),
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetPort: proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -626,7 +626,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: proxy.getProxyHost(),
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetPort: proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -669,7 +669,7 @@ describe(`${NodeConnection.name} test`, () => {
           logger: logger,
           destroyCallback: killSelf,
           targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyRing.getNodeId(),
+          targetNodeIds: polykeyAgent.keyRing.getNodeId(),
           targetPort: polykeyAgent.proxy.getProxyPort(),
           clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
         },
@@ -738,7 +738,7 @@ describe(`${NodeConnection.name} test`, () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
             },
-            targetNodeId: serverKeyRing.getNodeId(),
+            targetNodeIds: serverKeyRing.getNodeId(),
             targetHost: testProxy.getProxyHost(),
             targetPort: testProxy.getProxyPort(),
             clientFactory: (args) =>
@@ -815,7 +815,7 @@ describe(`${NodeConnection.name} test`, () => {
               await killSelfCheck();
               killSelfP.resolveP(null);
             },
-            targetNodeId: serverKeyRing.getNodeId(),
+            targetNodeIds: serverKeyRing.getNodeId(),
             targetHost: testProxy.getProxyHost(),
             targetPort: testProxy.getProxyPort(),
             clientFactory: (args) =>
@@ -851,7 +851,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -881,7 +881,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -911,7 +911,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -941,7 +941,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -971,7 +971,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1001,7 +1001,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1036,7 +1036,7 @@ describe(`${NodeConnection.name} test`, () => {
 
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1064,7 +1064,7 @@ describe(`${NodeConnection.name} test`, () => {
 
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1092,7 +1092,7 @@ describe(`${NodeConnection.name} test`, () => {
 
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: targetNodeId,
+          targetNodeIds: targetNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,
@@ -1117,7 +1117,7 @@ describe(`${NodeConnection.name} test`, () => {
     const newNodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
     const connProm = NodeConnection.createNodeConnection(
       {
-        targetNodeId: targetNodeId,
+        targetNodeIds: targetNodeId,
         targetHost: localHost,
         targetPort: targetPort,
         proxy: clientProxy,
@@ -1138,7 +1138,7 @@ describe(`${NodeConnection.name} test`, () => {
     try {
       conn = await NodeConnection.createNodeConnection(
         {
-          targetNodeId: newNodeId,
+          targetNodeIds: newNodeId,
           targetHost: localHost,
           targetPort: targetPort,
           proxy: clientProxy,

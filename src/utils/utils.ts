@@ -441,6 +441,16 @@ const structuredClone =
         return v8.deserialize(v8.serialize(value));
       };
 
+// TODO: expand on this.
+const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
+  return 0;
+};
+
+// TODO: expand on this.
+const codeToReason = (type: 'recv' | 'send', code: number): any => {
+  return Error(`${type} ${code}`);
+};
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -477,4 +487,6 @@ export {
   bufferWrap,
   isBufferSource,
   structuredClone,
+  reasonToCode,
+  codeToReason,
 };

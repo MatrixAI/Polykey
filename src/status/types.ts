@@ -18,10 +18,6 @@ type StatusLive = {
     clientPort: Port;
     agentHost: Host;
     agentPort: Port;
-    forwardHost: Host;
-    forwardPort: Port;
-    proxyHost: Host;
-    proxyPort: Port;
     [key: string]: any;
   };
 };

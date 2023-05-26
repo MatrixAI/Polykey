@@ -1,25 +1,32 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from './types';
-import type { Host, Hostname, Port } from '../network/types';
-import type { Certificate } from '../keys/types';
-import type { ClientManifest } from '@/rpc/types';
-import type { Host as QUICHost, Port as QUICPort } from '@matrixai/quic';
+import type { ConnectionInfo, Host, Hostname, Port } from '../network/types';
+import type { Certificate, CertificatePEM } from '../keys/types';
+import type { ClientManifest } from '../rpc/types';
+import type {
+  Host as QUICHost,
+  Port as QUICPort,
+  QUICSocket,
+} from '@matrixai/quic';
 import type { QUICClientConfig } from './types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as asyncInit from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { QUICClient } from '@matrixai/quic';
-import RPCClient from '@/rpc/RPCClient';import * as nodesErrors from './errors';
+import * as nodesErrors from './errors';
+import RPCClient from '../rpc/RPCClient';
+import * as nodesEvents from './events';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
-import * as nodesEvents from './events';
+import * as keysUtils from '../keys/utils';
+import { never } from '../utils';
 
-// TODO: extend an event system, use events for cleaning up.
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
 @CreateDestroy()
 class NodeConnection<M extends ClientManifest> extends EventTarget {
@@ -37,61 +44,67 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
 
   static createNodeConnection<M extends ClientManifest>(
     {
-      targetNodeId,
+      _targetNodeIds,
       targetHost,
       targetPort,
       targetHostname,
       quicClientConfig,
+      quicSocket,
       manifest,
       logger,
     }: {
-      targetNodeId: NodeId;
+      _targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
+      quicSocket: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
-    ctx?: Partial<ContextTimed>,
+    _ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeConnection<M>>;
   @timedCancellable(true, 20000)
   static async createNodeConnection<M extends ClientManifest>(
     {
-      targetNodeId,
+      _targetNodeIds,
       targetHost,
       targetPort,
       targetHostname,
       quicClientConfig,
+      quicSocket,
       manifest,
       logger = new Logger(this.name),
     }: {
-      targetNodeId: NodeId;
+      _targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
+      quicSocket: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
-    @context ctx: ContextTimed,
+    @context _ctx: ContextTimed,
   ): Promise<NodeConnection<M>> {
     logger.info(`Creating ${this.name}`);
     // Checking if attempting to connect to a wildcard IP
     if (networkUtils.isHostWildcard(targetHost)) {
       throw new nodesErrors.ErrorNodeConnectionHostWildcard();
     }
-    // TODO: this needs to be updated to take a context,
-    //  still uses old timer style.
     const clientLogger = logger.getChild(RPCClient.name);
     // TODO: Custom TLS validation with NodeId
     // TODO: Idle timeout and connection timeout is the same thing from the `quic` perspective.
-    //  THis means we need to race our timeout timer
+    //  This means we need to race our timeout timer
     const quicClient = await QUICClient.createQUICClient({
-      host: targetHost as unknown as QUICHost, // FIXME: better type conversion?
-      port: targetPort as unknown as QUICPort, // FIXME: better type conversion?
+      host: targetHost as unknown as QUICHost,
+      port: targetPort as unknown as QUICPort,
+      socket: quicSocket,
       ...quicClientConfig,
       logger: logger.getChild(QUICClient.name),
+    }).catch((e) => {
+      logger.debug(`Failed ${this.name} creation with ${e}`);
+      throw e;
     });
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
@@ -147,7 +160,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     await this.quicClient.destroy({ force });
     await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
-    this.dispatchEvent(new nodesEvents.NodeConnectionDestroyEvent())
+    this.dispatchEvent(new nodesEvents.NodeConnectionDestroyEvent());
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
@@ -165,10 +178,34 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
    */
   @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
   public getRootCertChain(): Array<Certificate> {
-    const connInfo = this.quicClient.connection.remoteInfo;
-    // TODO:
-    throw Error('TMP IMP');
-    // Return connInfo.remoteCertificates;
+    return this.getConnectionInfo().remoteCertificates;
+  }
+
+  @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
+  public getConnectionInfo(): ConnectionInfo {
+    const remoteInfo = this.quicClient.connection.remoteInfo;
+    const remoteCertificates = remoteInfo.remoteCertificates?.map((pem) => {
+      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+      if (cert == null) never();
+      return cert;
+    });
+    // FIXME: This LIKELY will fail, tls handshake completes after quic handshake.
+    if (remoteCertificates == null) never();
+    const remoteNodeId = keysUtils.certNodeId(remoteCertificates[0]);
+    if (remoteNodeId == null) never();
+    return {
+      remoteNodeId,
+      remoteCertificates,
+      remoteHost: remoteInfo.remoteHost as unknown as Host,
+      remotePort: remoteInfo.remotePort as unknown as Port,
+      localHost: remoteInfo.localHost as unknown as Host,
+      localPort: remoteInfo.localPort as unknown as Port,
+    };
+  }
+
+  @ready(new nodesErrors.ErrorNodeConnectionDestroyed())
+  public getNodeId(): NodeId {
+    return this.getConnectionInfo().remoteNodeId;
   }
 }
 

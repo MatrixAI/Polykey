@@ -499,11 +499,12 @@ async function verifyClientCertificateChain(
  * Takes an array of host or hostnames and resolves them to the host addresses.
  * It will also filter out any duplicates or IPV6 addresses.
  * @param addresses
+ * @param existingAddresses
  */
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
+  existingAddresses: Set<string> = new Set(),
 ): Promise<Array<{ host: Host; port: Port }>> {
-  const existingAddresses: Set<string> = new Set();
   const final: Array<{ host: Host; port: Port }> = [];
   for (const address of addresses) {
     if (isHost(address.host)) {
