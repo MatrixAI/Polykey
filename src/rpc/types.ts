@@ -1,6 +1,5 @@
-import type { JSONValue } from '../types';
-import type { ContextTimed } from '../contexts/types';
 import type { ReadableStream, ReadableWritablePair } from 'stream/web';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { Handler } from './handlers';
 import type {
   Caller,
@@ -11,7 +10,7 @@ import type {
   UnaryCaller,
 } from './callers';
 import type { NodeId } from '../nodes/types';
-import type { POJO } from '../types';
+import type { POJO, JSONValue } from '../types';
 
 /**
  * This is the JSON RPC request object. this is the generic message type used for the RPC.

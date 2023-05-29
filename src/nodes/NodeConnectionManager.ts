@@ -1,4 +1,5 @@
 import type { ResourceAcquire } from '@matrixai/resources';
+import type { ContextTimed } from '@matrixai/contexts';
 import type KeyRing from '../keys/KeyRing';
 import type Proxy from '../network/Proxy';
 import type { Host, Hostname, Port } from '../network/types';
@@ -12,7 +13,6 @@ import type {
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
-import type { ContextTimed } from 'contexts/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { PromiseDeconstructed } from '../types';
 import { withF } from '@matrixai/resources';
@@ -22,10 +22,10 @@ import { IdInternal } from '@matrixai/id';
 import { status } from '@matrixai/async-init';
 import { LockBox, Lock, Semaphore } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
-import { context, timedCancellable } from '../contexts';
 import GRPCClientAgent from '../agent/GRPCClientAgent';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';

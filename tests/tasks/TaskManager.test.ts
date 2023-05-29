@@ -1,5 +1,5 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimed } from '@/contexts/types';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { Task, TaskHandlerId, TaskPath } from '@/tasks/types';
 import fs from 'fs';
 import path from 'path';

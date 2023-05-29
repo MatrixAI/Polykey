@@ -19,7 +19,7 @@ import type {
 import type TaskManager from '../tasks/TaskManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
-import type { ContextTimed } from 'contexts/types';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port } from '../network/types';
 import type {
@@ -34,10 +34,10 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { Timer } from '@matrixai/timer';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as tasksErrors from '../tasks/errors';
-import { timedCancellable, context } from '../contexts';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';

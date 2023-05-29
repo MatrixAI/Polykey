@@ -1,6 +1,6 @@
 import type { Certificate } from 'keys/types';
 import type { DetailedPeerCertificate } from 'tls';
-import type { NodeId } from 'ids/index';
+import type { NodeId } from '../ids';
 import * as x509 from '@peculiar/x509';
 import * as webSocketErrors from './errors';
 import * as keysUtils from '../keys/utils/index';

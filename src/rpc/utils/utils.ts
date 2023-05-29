@@ -10,7 +10,7 @@ import type {
   JSONRPCResponseError,
   JSONRPCResponseResult,
 } from '../types';
-import type { JSONValue } from 'types';
+import type { JSONValue } from '../../types';
 import type { Timer } from '@matrixai/timer';
 import { TransformStream } from 'stream/web';
 import { AbstractError } from '@matrixai/errors';

@@ -1,8 +1,7 @@
-import type { JSONValue } from 'types';
-import type { ContainerType } from 'rpc/types';
 import type { ReadableStream } from 'stream/web';
-import type { JSONRPCRequest } from 'rpc/types';
-import type { ContextTimed } from '../contexts/types';
+import type { ContextTimed } from '@matrixai/contexts';
+import type { ContainerType, JSONRPCRequest } from './types';
+import type { JSONValue } from '../types';
 
 abstract class Handler<
   Container extends ContainerType = ContainerType,

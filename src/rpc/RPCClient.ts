@@ -1,3 +1,5 @@
+import type { WritableStream, ReadableStream } from 'stream/web';
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   HandlerType,
   JSONRPCRequestMessage,
@@ -5,15 +7,13 @@ import type {
   ClientManifest,
   RPCStream,
 } from './types';
-import type { JSONValue } from 'types';
-import type { WritableStream, ReadableStream } from 'stream/web';
+import type { JSONValue } from '../types';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
   MapCallers,
 } from './types';
-import type { ContextTimed } from '../contexts/types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';

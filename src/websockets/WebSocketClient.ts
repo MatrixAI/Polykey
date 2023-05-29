@@ -1,10 +1,10 @@
 import type { TLSSocket } from 'tls';
-import type { NodeId, NodeIdEncoded } from 'ids/index';
-import type { ContextTimed } from '../contexts/types';
 import type {
   ReadableStreamController,
   WritableStreamDefaultController,
 } from 'stream/web';
+import type { ContextTimed } from '@matrixai/contexts';
+import type { NodeId, NodeIdEncoded } from '../ids';
 import type { JSONValue } from '../types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import { createDestroy } from '@matrixai/async-init';

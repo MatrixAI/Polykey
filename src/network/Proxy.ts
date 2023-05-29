@@ -1,5 +1,6 @@
 import type { AddressInfo, Socket } from 'net';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   Host,
   Port,
@@ -11,20 +12,19 @@ import type { ConnectionsForward } from './ConnectionForward';
 import type { NodeId } from '../ids/types';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { ConnectionsReverse } from './ConnectionReverse';
-import type { ContextTimed } from '../contexts/types';
 import http from 'http';
 import UTP from 'utp-native';
 import Logger from '@matrixai/logger';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Timer } from '@matrixai/timer';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import ConnectionReverse from './ConnectionReverse';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as nodesUtils from '../nodes/utils';
 import { promisify } from '../utils';
-import { timedCancellable, context } from '../contexts';
 
 const clientConnectionClosedReason = Symbol('clientConnectionClosedReason');
 

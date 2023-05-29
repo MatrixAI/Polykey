@@ -83,6 +83,7 @@
     "@matrixai/async-cancellable": "^1.0.6",
     "@matrixai/async-init": "^1.8.2",
     "@matrixai/async-locks": "^3.2.0",
+    "@matrixai/contexts": "^1.0.0",
     "@matrixai/db": "^5.1.0",
     "@matrixai/errors": "^1.1.7",
     "@matrixai/id": "^3.3.3",

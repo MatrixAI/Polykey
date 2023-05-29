@@ -1,9 +1,9 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
 } from '@/client/types';
 import type { TLSConfig } from '../../src/network/types';
-import type { ContextTimed } from '@/contexts/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';

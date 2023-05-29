@@ -2,20 +2,20 @@ import type { Socket, AddressInfo } from 'net';
 import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { Certificate } from '../keys/types';
 import type { Address, Host, NetworkMessage, Port } from './types';
 import type { NodeId } from '../ids/types';
 import type { AbstractConstructorParameters } from '../types';
-import type { ContextTimed } from '../contexts/types';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { errors as contextsErrors } from '@matrixai/contexts';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { promise } from '../utils';
-import * as contextsErrors from '../contexts/errors';
-import { timedCancellable, context } from '../contexts/index';
 
 type ConnectionsForward = {
   proxy: Map<Address, ConnectionForward>;

@@ -1,5 +1,5 @@
-import type { JSONValue } from 'types';
 import type { HandlerType } from './types';
+import type { JSONValue } from '../types';
 
 abstract class Caller<
   Input extends JSONValue = JSONValue,

@@ -5,8 +5,8 @@ import type {
   TaskIdEncoded,
 } from '../ids/types';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { Opaque } from '../types';
-import type { ContextTimed } from '../contexts/types';
 
 type TaskHandler = (
   ctx: ContextTimed,

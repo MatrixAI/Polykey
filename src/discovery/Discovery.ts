@@ -1,5 +1,6 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
@@ -19,7 +20,6 @@ import type {
 import type KeyRing from '../keys/KeyRing';
 import type { ClaimId, ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
-import type { ContextTimed } from '../contexts/types';
 import type { TaskHandler, TaskHandlerId } from '../tasks/types';
 import type {
   ClaimLinkIdentity,
@@ -31,14 +31,13 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { Timer } from '@matrixai/timer';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
-import { context } from '../contexts/index';
-import TimedCancellable from '../contexts/decorators/timedCancellable';
 import Token from '../tokens/Token';
 import { decodeClaimId } from '../ids/index';
 
@@ -242,7 +241,7 @@ class Discovery {
     connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @TimedCancellable(true)
+  @timedCancellable(true)
   protected async processVertex(
     vertex: GestaltIdEncoded,
     connectionTimeout: number | undefined,
@@ -631,7 +630,7 @@ class Discovery {
     identityId: IdentityId,
     ctx: Partial<ContextTimed>,
   ): Promise<IdentityData | undefined>;
-  @TimedCancellable(true, 20000)
+  @timedCancellable(true, 20000)
   protected async getIdentityInfo(
     providerId: ProviderId,
     identityId: IdentityId,

@@ -2,14 +2,14 @@ import type {
   ReadableStreamController,
   WritableStreamDefaultController,
 } from 'stream/web';
-import type { FileSystem, JSONValue, PromiseDeconstructed } from 'types';
-import type { Host, Port, TLSConfig } from 'network/types';
 import type {
   HttpRequest,
   HttpResponse,
   us_socket_context_t,
   WebSocket,
 } from 'uWebSockets.js';
+import type { FileSystem, JSONValue, PromiseDeconstructed } from '../types';
+import type { Host, Port, TLSConfig } from '../network/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';

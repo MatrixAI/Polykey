@@ -11,9 +11,9 @@ import type {
   ServerHandlerImplementation,
   UnaryHandlerImplementation,
   RPCStream,
+  MiddlewareFactory,
 } from './types';
 import type { JSONValue } from '../types';
-import type { MiddlewareFactory } from './types';
 import { ReadableStream, TransformStream } from 'stream/web';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';

@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { JSONValue } from '@/types';
 import type {
   JSONRPCRequest,
@@ -5,7 +6,6 @@ import type {
   JSONRPCResponse,
   RPCStream,
 } from '@/rpc/types';
-import type { ContextTimed } from '@/contexts/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
