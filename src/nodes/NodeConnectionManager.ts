@@ -4,7 +4,6 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type KeyRing from '../keys/KeyRing';
 import type { Host, Hostname, Port } from '../network/types';
 import type NodeGraph from './NodeGraph';
-import type TaskManager from '../tasks/TaskManager';
 import type {
   NodeAddress,
   NodeData,
@@ -15,7 +14,8 @@ import type {
 import type NodeManager from './NodeManager';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { MultiLockRequest } from '@matrixai/async-locks/dist/types';
-import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import type { QUICClientConfig } from './types';
+import type { HolePunchRelayMessage } from '../agent/handlers/types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -68,7 +68,6 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
   protected keyRing: KeyRing;
-  protected taskManager: TaskManager;
   protected quicSocket: QUICSocket;
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
@@ -90,14 +89,15 @@ class NodeConnectionManager {
     string,
     { lastAttempt: number; delay: number }
   > = new Map();
-  protected backoffDefault: number = 300; // 5 min
+  protected backoffDefault: number = 1000 * 60 * 5; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
+  protected quicClientConfig: QUICClientConfig;
 
   public constructor({
     keyRing,
     nodeGraph,
-    taskManager,
     quicSocket,
+    quicClientConfig,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 2000,
@@ -107,8 +107,8 @@ class NodeConnectionManager {
   }: {
     nodeGraph: NodeGraph;
     keyRing: KeyRing;
-    taskManager: TaskManager;
     quicSocket: QUICSocket;
+    quicClientConfig: QUICClientConfig;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
@@ -119,8 +119,8 @@ class NodeConnectionManager {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
-    this.taskManager = taskManager;
     this.quicSocket = quicSocket;
+    this.quicClientConfig = quicClientConfig;
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
@@ -149,12 +149,17 @@ class NodeConnectionManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.nodeManager = undefined;
+    const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndLock] of this.connections) {
       if (connAndLock == null) continue;
       if (connAndLock.connection == null) continue;
       // It exists so we want to destroy it
-      await this.destroyConnection(IdInternal.fromString<NodeId>(nodeId));
+      const destroyProm = this.destroyConnection(
+        IdInternal.fromString<NodeId>(nodeId),
+      );
+      destroyProms.push(destroyProm);
     }
+    await Promise.all(destroyProms);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -410,7 +415,6 @@ class NodeConnectionManager {
       // Cleaning up
       abortController.abort(cleanUpReason);
       const results = await Promise.allSettled(connProms);
-      console.log(results);
     }
     // TODO: This needs to throw if none were established.
     //  The usual use case is a single node, this shouldn't be a aggregate error type.
@@ -434,16 +438,16 @@ class NodeConnectionManager {
     connectionsResults: Map<NodeIdString, ConnectionAndTimer>,
     ctx: ContextTimed,
   ) {
-    // TODO: do we bother with a concurrency limit for now? It's simple to add locking.
-    // TODO: add ICE.
+    // TODO: do we bother with a concurrency limit for now? It's simple to use a semaphore.
+    // TODO: if all connections fail then this needs to throw. Or does it? Do we just report the allSettled result?
+    // TODO: add ICE. Create hole punch relay proms.
     // 1. attempt connection to an address
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
-          targetNodeIds: nodeIds,
-          destroyTimeout: 0,
+          _targetNodeIds: nodeIds,
           manifest: agentClientManifest,
-          quicClientConfig: {},
+          quicClientConfig: this.quicClientConfig,
           targetHost: address.host,
           targetPort: address.port,
           quicSocket: this.quicSocket,
@@ -543,6 +547,9 @@ class NodeConnectionManager {
     _ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void> {
     // TODO: tell the server to hole punch reverse
+    // This needs to make the call to the QUICServer.initHolePunch.
+    // Or maybe implement the logic directly on the socket since we have access here.
+    // Mimic the dialing procedure, 1sec delay ping with doubling backoff.
     throw Error('TMP IMP');
   }
 
@@ -768,39 +775,39 @@ class NodeConnectionManager {
   ): Promise<Array<[NodeId, NodeData]>> {
     try {
       // Send through client
-      const response = await this.withConnF(
+      return await this.withConnF(
         nodeId,
         async (connection) => {
           const client = connection.getClient();
-          return await client.methods.nodesClosestLocalNodesGet(
+          const closestNodes = await client.methods.nodesClosestLocalNodesGet(
             { nodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId) },
             ctx,
           );
+          const localNodeId = this.keyRing.getNodeId();
+          const nodes: Array<[NodeId, NodeData]> = [];
+          for await (const result of closestNodes) {
+            const nodeId = nodesUtils.decodeNodeId(result.nodeIdEncoded);
+            // If the nodeId is not valid we don't add it to the list of nodes
+            // Our own nodeId is considered not valid here
+            if (nodeId != null && !localNodeId.equals(nodeId)) {
+              nodes.push([
+                nodeId,
+                {
+                  address: {
+                    host: result.host as Host | Hostname,
+                    port: result.port as Port,
+                  },
+                  // Not really needed
+                  // But if it's needed then we need to add the information to the proto definition
+                  lastUpdated: 0,
+                },
+              ]);
+            }
+          }
+          return nodes;
         },
         ctx,
       );
-      const localNodeId = this.keyRing.getNodeId();
-      const nodes: Array<[NodeId, NodeData]> = [];
-      for await (const result of response) {
-        const nodeId = nodesUtils.decodeNodeId(result.nodeIdEncoded);
-        // If the nodeId is not valid we don't add it to the list of nodes
-        // Our own nodeId is considered not valid here
-        if (nodeId != null && !localNodeId.equals(nodeId)) {
-          nodes.push([
-            nodeId,
-            {
-              address: {
-                host: result.host as Host | Hostname,
-                port: result.port as Port,
-              },
-              // Not really needed
-              // But if it's needed then we need to add the information to the proto definition
-              lastUpdated: 0,
-            },
-          ]);
-        }
-      }
-      return nodes;
     } catch (e) {
       if (nodesUtils.isConnectionError(e)) {
         return [];
@@ -886,7 +893,7 @@ class NodeConnectionManager {
    * @param ctx
    */
   public relaySignalingMessage(
-    message: nodesPB.Relay,
+    message: HolePunchRelayMessage,
     sourceAddress: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
@@ -897,18 +904,18 @@ class NodeConnectionManager {
       nodeConnectionManager.connConnectTime,
   )
   public async relaySignalingMessage(
-    message: nodesPB.Relay,
+    message: HolePunchRelayMessage,
     sourceAddress: NodeAddress,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // First check if we already have an existing ID -> address record
     // If we're relaying then we trust our own node graph records over
     // what was provided in the message
-    const sourceNode = validationUtils.parseNodeId(message.getSrcId());
+    const sourceNode = validationUtils.parseNodeId(message.srcIdEncoded);
     await this.sendSignalingMessage(
-      validationUtils.parseNodeId(message.getTargetId()),
+      validationUtils.parseNodeId(message.dstIdEncoded),
       sourceNode,
-      validationUtils.parseNodeId(message.getTargetId()),
+      validationUtils.parseNodeId(message.dstIdEncoded),
       sourceAddress,
       ctx,
     );
@@ -983,6 +990,15 @@ class NodeConnectionManager {
   }
 
   // FIXME: rename this maybe? We have establishX and getX. Need to review and standardize names here.
+  /**
+   * Used to start connections to multiple nodes and hosts at the same time.
+   * The main use-case is to connect to multiple seed nodes on the same hostname.
+   * @param nodeIds
+   * @param addresses
+   * @param connectionTimeout
+   * @param limit
+   * @param ctx
+   */
   public establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
@@ -995,7 +1011,7 @@ class NodeConnectionManager {
   public async establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    connectionTimeout: number = 2000,
+    _connectionTimeout: number = 2000, // TODO: apply or remove
     limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Array<NodeId>> {

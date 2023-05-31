@@ -13,7 +13,6 @@ import lexi from 'lexicographic-integer';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as grpcErrors from '../grpc/errors';
-import * as agentErrors from '../agent/errors';
 import { encodeNodeId, decodeNodeId, decodeClaimId } from '../ids';
 import { bytes2BigInt } from '../utils';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
@@ -307,7 +306,7 @@ function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
     e instanceof grpcErrors.ErrorGRPC ||
-    e instanceof agentErrors.ErrorAgentClientDestroyed ||
+    // E instanceof agentErrors.ErrorAgentClientDestroyed || // FIXME: Remove? Review?
     e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
     e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed
   );

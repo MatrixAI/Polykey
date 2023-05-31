@@ -36,7 +36,7 @@ type QUICClientConfig = {
   };
   localHost?: QUICHost;
   localPort?: QUICPort;
-  config?: QUICConfig;
+  config?: Partial<QUICConfig>;
   keepaliveIntervalTime?: number;
   maxReadableStreamBytes?: number;
   maxWritableStreamBytes?: number;

@@ -20,7 +20,7 @@ const echo = new UnaryCaller<
   AgentRPCResponseResult<EchoMessage>
 >();
 
-const nodeChainDataGet = new ServerCaller<
+const nodesChainDataGet = new ServerCaller<
   AgentRPCRequestParams<ClaimIdMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 >();
@@ -35,10 +35,9 @@ const nodesClosestLocalNodesGet = new ServerCaller<
   AgentRPCResponseResult<NodeAddressMessage>
 >();
 
-// TODO: still to be completed
 const nodesCrossSignClaim = new DuplexCaller<
-  AgentRPCRequestParams<EchoMessage>,
-  AgentRPCResponseResult<EchoMessage>
+  AgentRPCRequestParams<AgentClaimMessage>,
+  AgentRPCResponseResult<AgentClaimMessage>
 >();
 
 // TODO: still to be completed
@@ -70,7 +69,7 @@ const vaultsScan = new ServerCaller<
 // No type used here, it will override type inference
 const clientManifest = {
   echo,
-  nodeChainDataGet,
+  nodesChainDataGet,
   // NodeClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
@@ -84,7 +83,7 @@ const clientManifest = {
 export {
   clientManifest,
   echo,
-  nodeChainDataGet,
+  nodesChainDataGet,
   // NodeClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,

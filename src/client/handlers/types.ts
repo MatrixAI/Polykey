@@ -19,12 +19,8 @@ export type StatusResultMessage = {
   PublicKeyMessage & {
     clientHost: Host;
     clientPort: Port;
-    proxyHost: Host;
-    proxyPort: Port;
     agentHost: Host;
     agentPort: Port;
-    forwardHost: Host;
-    forwardPort: Port;
     certChainPEM: CertificatePEMChain;
   };
 

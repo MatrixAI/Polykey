@@ -1,149 +1,146 @@
-import type { NodeId, NodeIdString, SeedNodes } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
-import type { Key } from '@/keys/types';
-import type NodeManager from 'nodes/NodeManager';
-import fs from 'fs';
+import type { Host, Port, TLSConfig } from '@/network/types';
+import type {
+  Crypto as QUICCrypto,
+  Host as QUICHost,
+} from '@matrixai/quic/dist/types';
+import type { NodeAddress } from '@/nodes/types';
+import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
 import path from 'path';
+import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { withF } from '@matrixai/resources';
-import { IdInternal } from '@matrixai/id';
-import { Timer } from '@matrixai/timer';
-import TaskManager from '@/tasks/TaskManager';
-import PolykeyAgent from '@/PolykeyAgent';
+import { QUICServer, QUICSocket } from '@matrixai/quic';
+import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import Proxy from '@/network/Proxy';
+import NodeManager from '@/nodes/NodeManager';
+import ACL from '@/acl/ACL';
+import GestaltGraph from '@/gestalts/GestaltGraph';
+import Sigchain from '@/sigchain/Sigchain';
+import TaskManager from '@/tasks/TaskManager';
 import * as nodesUtils from '@/nodes/utils';
-import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
-import * as grpcUtils from '@/grpc/utils';
-import * as networkUtils from '@/network/utils';
-import * as utils from '@/utils';
-import * as testsUtils from '../utils';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import { promise, sleep } from '@/utils';
+import * as nodesErrors from '@/nodes/errors';
+import * as testNodesUtils from './utils';
+import NodeConnection from '../../src/nodes/NodeConnection';
+import RPCServer from '../../src/rpc/RPCServer';
+import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
-  const logger = new Logger(
-    `${NodeConnectionManager.name} test`,
-    LogLevel.WARN,
-    [new StreamHandler()],
-  );
-  grpcUtils.setLogger(logger.getChild('grpc'));
-
-  const nodeConnectionManagerLogger = logger.getChild(
-    'nodeConnectionManagerUT',
-  );
-  // Constants
-  const password = 'password';
-  const nodeId1 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 5,
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
   ]);
-  const nodeId2 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 8,
-  ]);
-  const nodeId3 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 124,
-  ]);
-  const dummyNodeId = nodesUtils.decodeNodeId(
-    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
-  )!;
-
   const localHost = '127.0.0.1' as Host;
-  const serverHost = '127.0.0.1' as Host;
-  const serverPort = 55555 as Port;
+  const password = 'password';
 
-  const dummySeedNodes: SeedNodes = {};
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId1)] = {
-    host: serverHost,
-    port: serverPort,
+  const ops: QUICCrypto = {
+    randomBytes: async (data: ArrayBuffer) => {
+      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+      const dataBuf = Buffer.from(data);
+      // FIXME: is there a better way?
+      dataBuf.write(randomBytes.toString('binary'), 'binary');
+    },
+    sign: testNodesUtils.sign,
+    verify: testNodesUtils.verify,
   };
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId2)] = {
-    host: serverHost,
-    port: serverPort,
-  };
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId3)] = {
-    host: serverHost,
-    port: serverPort,
-  };
-
-  const nop = async () => {};
 
   let dataDir: string;
-  let dataDir2: string;
+
+  let key: ArrayBuffer;
+  let serverTlsConfig: TLSConfig;
+  let serverNodeId: NodeId;
+  let clientNodeId: NodeId;
+  let serverNodeIdEncoded: NodeIdEncoded;
+  let serverSocket: QUICSocket;
+  let quicServer: QUICServer;
+  let rpcServer: RPCServer;
+  let serverAddress: NodeAddress;
+  let clientSocket: QUICSocket;
+
   let keyRing: KeyRing;
   let db: DB;
-  let proxy: Proxy;
-
+  let acl: ACL;
+  let gestaltGraph: GestaltGraph;
   let nodeGraph: NodeGraph;
+  let sigchain: Sigchain;
   let taskManager: TaskManager;
-
-  let remoteNode1: PolykeyAgent;
-  let remoteNode2: PolykeyAgent;
-  let remoteNodeId1: NodeId;
-  let remoteNodeIdString1: NodeIdString;
-  let remoteNodeId2: NodeId;
-
-  const resolveHostnameMock = jest.spyOn(networkUtils, 'resolveHostnames');
-
-  const dummyNodeManager = { setNode: jest.fn() } as unknown as NodeManager;
-
-  beforeAll(async () => {
-    dataDir2 = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    // Creating remotes, they just exist to start connections or fail them if needed
-    remoteNode1 = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath: path.join(dataDir2, 'remoteNode1'),
-      networkConfig: {
-        proxyHost: serverHost,
-      },
-      logger: logger.getChild('remoteNode1'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
-    });
-    remoteNodeId1 = remoteNode1.keyRing.getNodeId();
-    remoteNodeIdString1 = remoteNodeId1.toString() as NodeIdString;
-    remoteNode2 = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath: path.join(dataDir2, 'remoteNode2'),
-      networkConfig: {
-        proxyHost: serverHost,
-      },
-      logger: logger.getChild('remoteNode2'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
-    });
-    remoteNodeId2 = remoteNode2.keyRing.getNodeId();
-  });
-
-  afterAll(async () => {
-    await remoteNode1.stop();
-    await remoteNode2.stop();
-    await fs.promises.rm(dataDir2, { force: true, recursive: true });
-  });
+  let nodeManager: NodeManager;
 
   beforeEach(async () => {
-    resolveHostnameMock.mockRestore();
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    key = keysUtils.generateKey();
+    const serverKeyPair = keysUtils.generateKeyPair();
+    const clientKeyPair = keysUtils.generateKeyPair();
+    serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
+    clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
+    serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
+    serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
+    serverSocket = new QUICSocket({
+      crypto: {
+        key,
+        ops,
+      },
+      logger: logger.getChild('serverSocket'),
+    });
+    await serverSocket.start({
+      host: localHost as unknown as QUICHost,
+    });
+    quicServer = new QUICServer({
+      config: {
+        tlsConfig: {
+          privKeyPem: serverTlsConfig.keyPrivatePem,
+          certChainPem: serverTlsConfig.certChainPem,
+        },
+      },
+      crypto: {
+        key,
+        ops,
+      },
+      socket: serverSocket,
+      logger: logger.getChild(`${QUICServer.name}`),
+    });
+    rpcServer = await RPCServer.createRPCServer({
+      handlerTimeoutGraceTime: 1000,
+      handlerTimeoutTime: 5000,
+      logger: logger.getChild(`${RPCServer.name}`),
+      manifest: {}, // TODO: test server manifest
+      sensitive: false,
+    });
+    // Setting up handling
+    // logger.info('Setting up connection handling for server');
+    // quicServer.addEventListener('connection', handleConnection);
+    // quicServer.addEventListener(
+    //   'stop',
+    //   () => {
+    //     quicServer.removeEventListener('connection', handleConnection);
+    //   },
+    //   { once: true },
+    // );
+
+    await quicServer.start();
+    clientSocket = new QUICSocket({
+      crypto: {
+        key,
+        ops,
+      },
+      logger: logger.getChild('clientSocket'),
+    });
+    await clientSocket.start({
+      host: localHost as unknown as QUICHost,
+    });
+
+    // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      logger: logger.getChild('keyRing'),
+      logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
@@ -151,492 +148,663 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
-      logger: nodeConnectionManagerLogger,
-      crypto: {
-        key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
-      },
+      logger,
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
-      logger: logger.getChild('NodeGraph'),
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
-      lazy: true,
       logger,
     });
-    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    proxy = new Proxy({
-      authToken: 'auth',
-      logger: logger.getChild('proxy'),
-    });
-    await proxy.start({
-      tlsConfig,
-      serverHost,
-      proxyHost: localHost,
-      serverPort,
-    });
-    await nodeGraph.setNode(remoteNodeId1, {
-      host: remoteNode1.proxy.getProxyHost(),
-      port: remoteNode1.proxy.getProxyPort(),
-    });
-    await nodeGraph.setNode(remoteNodeId2, {
-      host: remoteNode2.proxy.getProxyHost(),
-      port: remoteNode2.proxy.getProxyPort(),
-    });
+    serverAddress = {
+      host: quicServer.host as unknown as Host,
+      port: quicServer.port as unknown as Port,
+    };
   });
 
   afterEach(async () => {
+    await taskManager.stopTasks();
     await taskManager.stop();
+    await taskManager.destroy();
+    await sigchain.stop();
+    await sigchain.destroy();
     await nodeGraph.stop();
     await nodeGraph.destroy();
+    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
+    await acl.stop();
+    await acl.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await proxy.stop();
+
+    await clientSocket.stop(true);
+    await rpcServer.destroy(true);
+    await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
+    await serverSocket.stop(true);
+    await taskManager.stop();
   });
 
-  // Connection life cycle
   test('should create connection', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      // @ts-ignore: kidnap connectionLocks
-      const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      const finalConnection = connections.get(remoteNodeIdString1);
-      // Check entry is in map and lock is released
-      expect(finalConnection).toBeDefined();
-      expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
-  test('acquireConnection should create connection', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      await withF(
-        [await nodeConnectionManager.acquireConnection(remoteNodeId1)],
-        async (conn) => {
-          expect(conn).toBeDefined();
-          const intermediaryConnection = connections.get(remoteNodeIdString1);
-          expect(intermediaryConnection).toBeDefined();
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
         },
-      );
-      const finalConnection = connections.get(remoteNodeIdString1);
-      expect(finalConnection).toBeDefined();
-      // Neither write nor read lock should be locked now
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+  });
+
+  test('acquireConnection should create connection', async () => {
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    const acquire = await nodeConnectionManager.acquireConnection(serverNodeId);
+    const [release] = await acquire();
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    await release();
+    await nodeConnectionManager.stop();
   });
   test('withConnF should create connection', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      await nodeConnectionManager.withConnF(remoteNodeId1, async () => {
-        // Do nothing
-      });
-      const finalConnection = connections.get(remoteNodeIdString1);
-      // Check entry is in map
-      expect(finalConnection).toBeDefined();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    });
+
+    await nodeConnectionManager.stop();
   });
   test('should list active connections', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      await nodeConnectionManager.withConnF(remoteNodeId1, async () => {
-        // Do nothing
-        expect(nodeConnectionManager?.listConnections()).toHaveLength(1);
-      });
-      await nodeConnectionManager.withConnF(remoteNodeId2, async () => {
-        // Do nothing
-        expect(nodeConnectionManager?.listConnections()).toHaveLength(2);
-      });
-      expect(nodeConnectionManager?.listConnections()).toHaveLength(2);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    });
+
+    const connectionsList = nodeConnectionManager.listConnections();
+    expect(connectionsList).toHaveLength(1);
+    expect(nodesUtils.encodeNodeId(connectionsList[0].nodeId)).toEqual(
+      serverNodeIdEncoded,
+    );
+    expect(connectionsList[0].address.host).toEqual(quicServer.host);
+    expect(connectionsList[0].address.port).toEqual(quicServer.port);
+
+    await nodeConnectionManager.stop();
   });
   test('withConnG should create connection', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-
-      const testGenerator = async function* () {
-        for (let i = 0; i < 10; i++) {
-          yield 'HelloWorld ' + i;
-        }
-      };
-
-      // Creating the generator
-      const gen = nodeConnectionManager.withConnG(
-        remoteNodeId1,
-        async function* () {
-          yield* testGenerator();
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
         },
-      );
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    // @ts-ignore: kidnap protected property
+    const connectionMap = nodeConnectionManager.connections;
 
-      // Connection is not created yet
-      expect(connections.get(remoteNodeIdString1)).not.toBeDefined();
+    const gen = nodeConnectionManager.withConnG(
+      serverNodeId,
+      async function* (): AsyncGenerator {
+        expect(connectionMap.size).toBeGreaterThanOrEqual(1);
+      },
+    );
 
-      // Iterating over generator
+    for await (const _ of gen) {
+      // Do nothing
+    }
+
+    await nodeConnectionManager.stop();
+  });
+  test('should fail to create connection to offline node', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    // @ts-ignore: kidnap protected property
+    const connectionMap = nodeConnectionManager.connections;
+    const randomNodeId = keysUtils.publicKeyToNodeId(
+      keysUtils.generateKeyPair().publicKey,
+    );
+    const gen = nodeConnectionManager.withConnG(
+      randomNodeId,
+      async function* (): AsyncGenerator {
+        expect(connectionMap.size).toBeGreaterThanOrEqual(1);
+      },
+    );
+
+    const prom = async () => {
       for await (const _ of gen) {
         // Do nothing
       }
+    };
+    await expect(prom).rejects.toThrow(
+      nodesErrors.ErrorNodeGraphNodeIdNotFound,
+    );
 
-      const finalConnection = connections.get(remoteNodeIdString1);
-      // Check entry is in map
-      expect(finalConnection).toBeDefined();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
-  test('should fail to create connection to offline node', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      // NodeConnectionManager under test
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        connConnectTime: 500,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // Add the dummy node
-      await nodeGraph.setNode(dummyNodeId, {
-        host: '125.0.0.1' as Host,
-        port: 55555 as Port,
-      });
-      // @ts-ignore: kidnap connection map
-      const connections = nodeConnectionManager.connections;
-      // @ts-ignore: kidnap connectionLocks
-      const connectionLocks = nodeConnectionManager.connectionLocks;
-      expect(connections.size).toBe(0);
-
-      await expect(() =>
-        nodeConnectionManager?.withConnF(dummyNodeId, nop),
-      ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
-      expect(connections.size).toBe(0);
-      const connLock = connections.get(dummyNodeId.toString() as NodeIdString);
-      // There should still be an entry in the connection map, but it should
-      // only contain a lock - no connection
-      expect(connLock).not.toBeDefined();
-      expect(
-        connectionLocks.isLocked(dummyNodeId.toString() as NodeIdString),
-      ).toBe(false);
-      expect(connLock?.connection).toBeUndefined();
-
-      // Undo the initial dummy node add
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    await nodeConnectionManager.stop();
   });
   test('connection should persist', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      // NodeConnectionManager under test
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore accessing protected NodeConnectionMap
-      const connections = nodeConnectionManager.connections;
-      expect(connections.size).toBe(0);
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      // Check we only have this single connection
-      expect(connections.size).toBe(1);
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      // Check we still only have this single connection
-      expect(connections.size).toBe(1);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      // Do nothing
+    });
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(1);
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      // Do nothing
+    });
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(1);
+
+    await nodeConnectionManager.stop();
   });
-  test('should create 1 connection with concurrent creates.', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      // NodeConnectionManager under test
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
+  test('should create 1 connection with concurrent creates', async () => {
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    const waitProm = promise<void>();
+    const tryConnection = () => {
+      return nodeConnectionManager.withConnF(serverNodeId, async () => {
+        // Do nothing
+        await waitProm.p;
       });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore accessing protected NodeConnectionMap
-      const connections = nodeConnectionManager.connections;
-      // @ts-ignore: kidnap connectionLocks
-      const connectionLocks = nodeConnectionManager.connectionLocks;
-      expect(connections.size).toBe(0);
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      // Concurrently create connection to same target
-      await Promise.all([
-        nodeConnectionManager.withConnF(remoteNodeId1, nop),
-        nodeConnectionManager.withConnF(remoteNodeId1, nop),
-      ]);
-      // Check only 1 connection exists
-      expect(connections.size).toBe(1);
-      const finalConnection = connections.get(remoteNodeIdString1);
-      // Check entry is in map and lock is released
-      expect(finalConnection).toBeDefined();
-      expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    };
+    const tryProm = Promise.all([
+      tryConnection(),
+      tryConnection(),
+      tryConnection(),
+      tryConnection(),
+      tryConnection(),
+    ]);
+    waitProm.resolveP();
+    await tryProm;
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(1);
+
+    await nodeConnectionManager.stop();
   });
   test('should destroy a connection', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // @ts-ignore: kidnap connections
-      const connections = nodeConnectionManager.connections;
-      // @ts-ignore: kidnap connectionLocks
-      const connectionLocks = nodeConnectionManager.connectionLocks;
-      const initialConnection = connections.get(remoteNodeIdString1);
-      expect(initialConnection).toBeUndefined();
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      const midConnAndLock = connections.get(remoteNodeIdString1);
-      // Check entry is in map and lock is released
-      expect(midConnAndLock).toBeDefined();
-      expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      // Do nothing
+    });
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
-      // Destroying the connection
-      // @ts-ignore: private method
-      await nodeConnectionManager.destroyConnection(remoteNodeId1);
-      const finalConnAndLock = connections.get(remoteNodeIdString1);
-      expect(finalConnAndLock).not.toBeDefined();
-      expect(connectionLocks.isLocked(remoteNodeIdString1)).toBeFalsy();
-      expect(finalConnAndLock?.connection).toBeUndefined();
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    // @ts-ignore: Kidnap protected property
+    const connectionMap = nodeConnectionManager.connections;
+    const connection = connectionMap.get(
+      serverNodeId.toString() as NodeIdString,
+    );
+    await connection!.connection.destroy({ force: true });
+
+    // Waiting for connection to clean up from map
+    await sleep(100);
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(0);
+
+    await nodeConnectionManager.stop();
   });
   test('stopping should destroy all connections', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // Do testing
-      // set up connections
-      await nodeConnectionManager.withConnF(remoteNodeId1, nop);
-      await nodeConnectionManager.withConnF(remoteNodeId2, nop);
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      // Do nothing
+    });
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
-      // @ts-ignore: Hijack connection map
-      const connections = nodeConnectionManager.connections;
-      // @ts-ignore: kidnap connectionLocks
-      const connectionLocks = nodeConnectionManager.connectionLocks;
-      expect(connections.size).toBe(2);
-      for (const [nodeIdString, connAndLock] of connections) {
-        expect(connAndLock.connection).toBeDefined();
-        expect(connAndLock.timer).toBeDefined();
-        expect(connectionLocks.isLocked(nodeIdString)).toBeDefined();
-      }
+    // @ts-ignore: Kidnap protected property
+    const connectionMap = nodeConnectionManager.connections;
+    await nodeConnectionManager.stop();
 
-      // Destroying connections
-      await nodeConnectionManager.stop();
-      expect(connections.size).toBe(0);
-      for (const [nodeIdString, connAndLock] of connections) {
-        expect(connAndLock.connection).toBeUndefined();
-        expect(connAndLock.timer).toBeUndefined();
-        expect(connectionLocks.isLocked(nodeIdString)).toBeDefined();
-      }
-    } finally {
-      // Clean up
-      await nodeConnectionManager?.stop();
-    }
+    // Waiting for connection to clean up from map
+    expect(connectionMap.size).toBe(0);
   });
-
-  // New ping tests
   test('should ping node with address', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      await nodeConnectionManager.pingNode(
-        remoteNodeId1,
-        remoteNode1.proxy.getProxyHost(),
-        remoteNode1.proxy.getProxyPort(),
-      );
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    const result = await nodeConnectionManager.pingNode(
+      serverNodeId,
+      localHost,
+      quicServer.port as unknown as Port,
+    );
+    expect(result).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+
+    await nodeConnectionManager.stop();
   });
   test('should fail to ping non existent node', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      // Pinging node
-      expect(
-        await nodeConnectionManager.pingNode(
-          remoteNodeId1,
-          '127.1.2.3' as Host,
-          55555 as Port,
-          { timer: new Timer({ delay: 10000 }) },
-        ),
-      ).toEqual(false);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
-  });
-  test('should fail to ping node if NodeId does not match', async () => {
-    // NodeConnectionManager under test
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        logger: nodeConnectionManagerLogger,
-      });
-      await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-      await taskManager.startProcessing();
-      expect(
-        await nodeConnectionManager.pingNode(
-          remoteNodeId1,
-          remoteNode2.proxy.getProxyHost(),
-          remoteNode2.proxy.getProxyPort(),
-          { timer: new Timer({ delay: 10000 }) },
-        ),
-      ).toEqual(false);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    const result = await nodeConnectionManager.pingNode(
+      serverNodeId,
+      localHost,
+      12345 as Port,
+    );
+    expect(result).toBeFalse();
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
 
-      expect(
-        await nodeConnectionManager.pingNode(
-          remoteNodeId2,
-          remoteNode1.proxy.getProxyHost(),
-          remoteNode1.proxy.getProxyPort(),
-          { timer: new Timer({ delay: 10000 }) },
-        ),
-      ).toEqual(false);
-    } finally {
-      await nodeConnectionManager?.stop();
-    }
+    await nodeConnectionManager.stop();
+  });
+  // TODO: this needs the custom node verification logic to work.
+  test('should fail to ping node if NodeId does not match', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        crypto: {
+          key,
+          ops,
+        },
+        localHost: localHost as unknown as QUICHost,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+    const result = await nodeConnectionManager.pingNode(
+      clientNodeId,
+      localHost,
+      quicServer.port as unknown as Port,
+    );
+    expect(result).toBeFalse();
+    expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();
+
+    await nodeConnectionManager.stop();
   });
 });

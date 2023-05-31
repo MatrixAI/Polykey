@@ -53,6 +53,9 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
         sourceId: input.srcIdEncoded,
       },
     );
+    // FIXME: Need a utility for getting the NodeId from the connection info.
+    //  We only have the remote certificates if that. Should throw if certs are missing but in practice this should
+    //  never happen given the custom verification logic checks this.
     const connectionInfo = meta;
     const srcNodeId = nodesUtils.encodeNodeId(connectionInfo!.remoteNodeId);
     // Firstly, check if this node is the desired node
@@ -67,11 +70,9 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
             `Received signaling message to target ${input.srcIdEncoded}@${host}:${port}`,
           );
           // Ignore failure
-          try {
-            await nodeConnectionManager.holePunchReverse(host, port);
-          } catch {
-            // Do nothing
-          }
+          await nodeConnectionManager
+            .holePunchReverse(host, port)
+            .catch(() => {});
         } else {
           logger.error(
             'Received signaling message, target information was missing, skipping reverse hole punch',
@@ -94,9 +95,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
         logger.debug(
           `Relaying signaling message from ${srcNodeId}@${proxyAddress.host}:${proxyAddress.port} to ${targetNodeId} with information ${proxyAddress}`,
         );
-        // TODO: fix
-        call.request.setProxyAddress(proxyAddress);
-        await nodeConnectionManager.relaySignalingMessage(call.request, {
+        await nodeConnectionManager.relaySignalingMessage(input, {
           host: connectionInfo!.remoteHost,
           port: connectionInfo!.remotePort,
         });

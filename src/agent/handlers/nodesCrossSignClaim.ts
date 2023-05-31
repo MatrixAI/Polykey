@@ -1,6 +1,5 @@
-import type { EchoMessage } from './types';
+import type { AgentClaimMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type KeyRing from '../../keys/KeyRing';
 import type { NodeId } from '../../ids';
 import type ACL from '../../acl/ACL';
 import type NodeManager from '../../nodes/NodeManager';
@@ -11,19 +10,18 @@ import { DuplexHandler } from '../../rpc/handlers';
 // TODO: come back to this!
 class NodesCrossSignClaimHandler extends DuplexHandler<
   {
-    keyRing: KeyRing;
     acl: ACL;
     nodeManager: NodeManager;
   },
-  AgentRPCRequestParams<EchoMessage>,
-  AgentRPCResponseResult<EchoMessage>
+  AgentRPCRequestParams<AgentClaimMessage>,
+  AgentRPCResponseResult<AgentClaimMessage>
 > {
   public async *handle(
-    input: AsyncIterable<AgentRPCRequestParams<EchoMessage>>,
+    input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
     _,
     meta,
-  ): AsyncGenerator<AgentRPCResponseResult<EchoMessage>> {
-    const { acl } = this.container;
+  ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
+    const { acl, nodeManager } = this.container;
     // TODO: get remote info from metadata. dependent on js-quic meta types
     const requestingNodeId: NodeId | undefined = nodesUtils.decodeNodeId(
       meta?.remoteNodeId,
@@ -35,7 +33,7 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
       throw new nodesErrors.ErrorNodePermissionDenied();
     }
     // Handle claiming the node
-    await nodeManager.handleClaimNode(requestingNodeId, genClaims);
+    yield* nodeManager.handleClaimNode(requestingNodeId, input);
   }
 }
 

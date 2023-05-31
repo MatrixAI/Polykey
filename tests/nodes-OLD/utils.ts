@@ -1,7 +1,5 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
-import type { Host, Port } from '@/network/types';
-import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
@@ -72,13 +70,13 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.quicServerAgent.host as unknown as Host,
-    port: remoteNode.quicServerAgent.port as unknown as Port,
+    host: remoteNode.proxy.getProxyHost(),
+    port: remoteNode.proxy.getProxyPort(),
   } as NodeAddress);
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.quicServerAgent.host as unknown as Host,
-    port: localNode.quicServerAgent.port as unknown as Port,
+    host: localNode.proxy.getProxyHost(),
+    port: localNode.proxy.getProxyPort(),
   } as NodeAddress);
 }
 
@@ -101,47 +99,6 @@ const uniqueNodeIdArb = (length: number) =>
       }
       return false;
     });
-
-/**
- * Signs using the 256-bit HMAC key
- * Web Crypto has to use the `CryptoKey` type.
- * But to be fully generic, we use the `ArrayBuffer` type.
- * In production, prefer to use libsodium as it would be faster.
- */
-async function sign(key: ArrayBuffer, data: ArrayBuffer) {
-  const cryptoKey = await webcrypto.subtle.importKey(
-    'raw',
-    key,
-    {
-      name: 'HMAC',
-      hash: 'SHA-256',
-    },
-    true,
-    ['sign', 'verify'],
-  );
-  return webcrypto.subtle.sign('HMAC', cryptoKey, data);
-}
-
-/**
- * Verifies using 256-bit HMAC key
- * Web Crypto prefers using the `CryptoKey` type.
- * But to be fully generic, we use the `ArrayBuffer` type.
- * In production, prefer to use libsodium as it would be faster.
- */
-async function verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
-  const cryptoKey = await webcrypto.subtle.importKey(
-    'raw',
-    key,
-    {
-      name: 'HMAC',
-      hash: 'SHA-256',
-    },
-    true,
-    ['sign', 'verify'],
-  );
-  return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
-}
-
 export {
   generateRandomNodeId,
   generateNodeIdForBucket,
@@ -149,6 +106,4 @@ export {
   nodeIdArb,
   nodeIdArrayArb,
   uniqueNodeIdArb,
-  sign,
-  verify,
 };

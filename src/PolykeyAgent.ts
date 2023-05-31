@@ -6,8 +6,10 @@ import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type { Crypto as QUICCrypto } from '@matrixai/quic';
+import type * as quicEvents from '@matrixai/quic/dist/events';
 import path from 'path';
 import process from 'process';
+import { webcrypto } from 'crypto';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
@@ -47,11 +49,7 @@ import { serverManifest as agentServerManifest } from './agent/handlers';
 
 // TODO: clean this up
 type NetworkConfig = {
-  forwardHost?: Host;
-  forwardPort?: Port;
-  proxyHost?: Host;
-  proxyPort?: Port;
-  // GRPCServer for agent service
+  // RPCServer for agent service
   agentHost?: Host;
   agentPort?: Port;
   // RPCServer for client service
@@ -167,7 +165,7 @@ class PolykeyAgent {
       initialClosestNodes?: number;
     };
     networkConfig?: NetworkConfig;
-    quicServerConfig: QUICServerConfig;
+    quicServerConfig?: QUICServerConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -191,7 +189,7 @@ class PolykeyAgent {
     webSocketServerClient?: WebSocketServer;
     rpcServerAgent?: RPCServer;
     quicSocket?: QUICSocket;
-    quicServerAgent: QUICServer;
+    quicServerAgent?: QUICServer;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -362,24 +360,43 @@ class PolykeyAgent {
           keyRing,
           logger: logger.getChild(NodeGraph.name),
         }));
-      // TODO:
+      // TODO: This needs to be changed and moved to a utils file
       const quicOpts: QUICCrypto = {
-        randomBytes(_data: ArrayBuffer): Promise<void> {
-          return Promise.resolve(undefined);
+        randomBytes: async (data: ArrayBuffer) => {
+          const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+          const dataBuf = Buffer.from(data);
+          // FIXME: is there a better way?
+          dataBuf.write(randomBytes.toString('binary'), 'binary');
         },
-        sign(_key: ArrayBuffer, _data: ArrayBuffer): Promise<ArrayBuffer> {
-          return Promise.resolve(new ArrayBuffer(0));
+        async sign(key: ArrayBuffer, data: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
         },
-        verify(
-          _key: ArrayBuffer,
-          _data: ArrayBuffer,
-          _sig: ArrayBuffer,
-        ): Promise<boolean> {
-          return Promise.resolve(false);
+        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
         },
       };
       const quicCrypto = {
-        key: new ArrayBuffer(0),
+        key: keysUtils.generateKey(),
         ops: quicOpts,
       };
       const resolveHostname = (host) => {
@@ -545,14 +562,15 @@ class PolykeyAgent {
               privKeyPem: tlsConfig.keyPrivatePem,
               certChainPem: tlsConfig.certChainPem,
             },
-            verifyPeer: true,
+            verifyPeer: false, // FIXME: false until custom verification logic
             ...quicServerConfig,
+            logKeys: 'tmp/key.log',
           },
           crypto: quicCrypto,
           logger: logger.getChild(QUICServer.name + 'Agent'),
-          keepaliveIntervalTime: 0,
-          maxReadableStreamBytes: 0,
-          maxWritableStreamBytes: 0,
+          // KeepaliveIntervalTime: 0, TODO
+          // maxReadableStreamBytes: 0,
+          // maxWritableStreamBytes: 0,
           socket: quicSocket,
           resolveHostname,
           reasonToCode: utils.reasonToCode,
@@ -871,7 +889,43 @@ class PolykeyAgent {
         port: _networkConfig.agentPort,
         ipv6Only: false, // TODO: hardcode this?
       });
-      // TODO: set up stream event handling here
+      // Setting up stream handling
+      const handleStream = async (
+        event: quicEvents.QUICConnectionStreamEvent,
+      ) => {
+        // Streams are handled via the RPCServer.
+        const stream = event.detail;
+        this.logger.info('!!!!Handling new stream!!!!!');
+        this.rpcServerAgent.handleStream(stream);
+      };
+
+      const handleConnection = async (
+        event: quicEvents.QUICServerConnectionEvent,
+      ) => {
+        // Needs to setup stream handler
+        const conn = event.detail;
+        this.logger.info('!!!!Handling new Connection!!!!!');
+        conn.addEventListener('stream', handleStream);
+        conn.addEventListener(
+          'destroy',
+          () => {
+            conn.removeEventListener('stream', handleStream);
+          },
+          { once: true },
+        );
+      };
+      this.quicServerAgent.addEventListener('connection', handleConnection);
+      this.quicServerAgent.addEventListener(
+        'stop',
+        () => {
+          this.quicServerAgent.removeEventListener(
+            'connection',
+            handleConnection,
+          );
+        },
+        { once: true },
+      );
+      // Finished setting up handling
       await this.quicServerAgent.start({
         host: _networkConfig.agentHost,
         port: _networkConfig.agentPort,

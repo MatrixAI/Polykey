@@ -39,8 +39,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
   public readonly hostname?: Hostname;
 
   protected logger: Logger;
-  protected quicClient: QUICClient;
-  protected rpcClient: RPCClient<M>;
+  public readonly quicClient: QUICClient;
+  public readonly rpcClient: RPCClient<M>;
 
   static createNodeConnection<M extends ClientManifest>(
     {
@@ -58,7 +58,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
-      quicSocket: QUICSocket;
+      quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
@@ -81,7 +81,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
-      quicSocket: QUICSocket;
+      quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
@@ -106,6 +106,17 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       logger.debug(`Failed ${this.name} creation with ${e}`);
       throw e;
     });
+    quicClient.connection.addEventListener(
+      'destroy',
+      async () => {
+        // Trigger the client destroying.
+        // TODO: remove this later, may be handled by the `QUICClient` when fixed.
+        // FIXME: ignoring errors with destroying for now.
+        //  Problems with the socket being stopped before destroy.
+        await quicClient.destroy({ force: false }).catch(() => {});
+      },
+      { once: true },
+    );
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
@@ -122,7 +133,14 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       rpcClient,
       logger,
     });
-    nodeConnection.rpcClient = rpcClient;
+    quicClient.addEventListener(
+      'destroy',
+      async () => {
+        // Trigger the nodeConnection destroying
+        await nodeConnection.destroy({ force: false });
+      },
+      { once: true },
+    );
     logger.info(`Created ${this.name}`);
     return nodeConnection;
   }

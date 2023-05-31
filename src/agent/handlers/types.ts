@@ -11,7 +11,7 @@ export type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
 };
 
-export type AgentClaimMessage = ClaimIdMessage & {
+export type AgentClaimMessage = Partial<ClaimIdMessage> & {
   signedTokenEncoded: SignedTokenEncoded;
 };
 

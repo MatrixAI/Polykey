@@ -41,7 +41,6 @@ import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
-import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 
 /**
  * Object map pattern for each vault
@@ -862,12 +861,11 @@ class VaultManager {
         vaultPermissions: VaultAction[];
       }> {
         const client = connection.getClient();
-        const genReadable = client.vaultsScan(new utilsPB.EmptyMessage());
+        const genReadable = await client.methods.vaultsScan({});
         for await (const vault of genReadable) {
-          const vaultName = vault.getVaultName() as VaultName;
-          const vaultIdEncoded = vault.getVaultId() as VaultIdEncoded;
-          const vaultPermissions =
-            vault.getVaultPermissionsList() as VaultAction[];
+          const vaultName = vault.vaultName;
+          const vaultIdEncoded = vault.vaultIdEncoded;
+          const vaultPermissions = vault.vaultPermissions;
           yield { vaultName, vaultIdEncoded, vaultPermissions };
         }
       },
