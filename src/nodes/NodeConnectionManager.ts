@@ -485,6 +485,14 @@ class NodeConnectionManager {
     connection.addEventListener('destroy', handleDestroy, {
       once: true,
     });
+    // We can assume connection was established and destination was valid,
+    // we can add the target to the nodeGraph
+    await this.nodeManager?.setNode(nodeId, {
+      host: address.host,
+      port: address.port,
+    });
+    // Creating TTL timeout.
+    // We don't create a TTL for seed nodes.
     const timeToLiveTimer = !this.isSeedNode(nodeId)
       ? new Timer({
           handler: async () => await this.destroyConnection(nodeId),

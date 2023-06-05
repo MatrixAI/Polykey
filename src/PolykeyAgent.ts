@@ -2,7 +2,7 @@ import type { FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { CertManagerChangeData, Key } from './keys/types';
+import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type { Crypto as QUICCrypto } from '@matrixai/quic';
@@ -92,10 +92,10 @@ class PolykeyAgent {
    */
   public static readonly eventSymbols = {
     [CertManager.name]: Symbol(CertManager.name),
-    [Proxy.name]: Symbol(Proxy.name),
+    [QUICServer.name]: Symbol(QUICServer.name),
   } as {
     readonly CertManager: unique symbol;
-    readonly Proxy: unique symbol;
+    readonly QUICServer: unique symbol;
   };
 
   public static async createPolykeyAgent({
@@ -806,25 +806,23 @@ class PolykeyAgent {
         },
       );
       this.events.on(
-        PolykeyAgent.eventSymbols.Proxy,
+        PolykeyAgent.eventSymbols.QUICServer,
         async (data: ConnectionData) => {
-          if (data.type === 'reverse') {
-            if (this.keyRing.getNodeId().equals(data.remoteNodeId)) return;
-            const address = networkUtils.buildAddress(
-              data.remoteHost,
-              data.remotePort,
-            );
-            const nodeIdEncoded = nodesUtils.encodeNodeId(data.remoteNodeId);
-            this.logger.info(
-              `Reverse connection adding ${nodeIdEncoded}:${address} to ${NodeGraph.name}`,
-            );
-            // Reverse connection was established and authenticated,
-            //  add it to the node graph
-            await this.nodeManager.setNode(data.remoteNodeId, {
-              host: data.remoteHost,
-              port: data.remotePort,
-            });
-          }
+          if (this.keyRing.getNodeId().equals(data.remoteNodeId)) return;
+          const address = networkUtils.buildAddress(
+            data.remoteHost,
+            data.remotePort,
+          );
+          const nodeIdEncoded = nodesUtils.encodeNodeId(data.remoteNodeId);
+          this.logger.info(
+            `Connection adding ${nodeIdEncoded}:${address} to ${NodeGraph.name}`,
+          );
+          // Reverse connection was established and authenticated,
+          //  add it to the node graph
+          await this.nodeManager.setNode(data.remoteNodeId, {
+            host: data.remoteHost,
+            port: data.remotePort,
+          });
         },
       );
       const _networkConfig = {
@@ -904,6 +902,42 @@ class PolykeyAgent {
       ) => {
         // Needs to setup stream handler
         const conn = event.detail;
+        try {
+          // FIXME: The client certs are not immediately avaliable, for this to work depends on a fix in js-quic
+          // Dispatch connection event
+          const remoteInfo = conn.remoteInfo;
+          if (remoteInfo.remoteCertificates == null) {
+            throw Error('remote certificates were not provided');
+          }
+          const remoteCertPem = remoteInfo.remoteCertificates[0];
+          if (remoteCertPem == null) {
+            throw Error('remote certificates were not provided');
+          }
+          const remoteCert = keysUtils.certFromPEM(
+            remoteCertPem as CertificatePEM,
+          );
+          if (remoteCert == null) throw Error('failed to parse certificate');
+          const nodeId = keysUtils.certNodeId(remoteCert);
+          if (nodeId == null) throw Error('failed to extract NodeId from cert');
+          const data: ConnectionData = {
+            remoteNodeId: nodeId,
+            remoteHost: remoteInfo.remoteHost as unknown as Host,
+            remotePort: remoteInfo.remotePort as unknown as Port,
+          };
+          await this.events.emitAsync(
+            PolykeyAgent.eventSymbols.QUICServer,
+            data,
+          );
+        } catch (e) {
+          this.logger.error(e.message);
+          // // FIXME: destroying here causes internal errors with quic, bug needs to be fixed
+          // await conn.destroy({
+          //   appError: true,
+          //   errorMessage: e.message,
+          //   force: true,
+          // });
+        }
+
         this.logger.info('!!!!Handling new Connection!!!!!');
         conn.addEventListener('stream', handleStream);
         conn.addEventListener(

@@ -59,7 +59,6 @@ type ConnectionData = {
   remoteNodeId: NodeId;
   remoteHost: Host;
   remotePort: Port;
-  type: 'forward' | 'reverse';
 };
 
 type ConnectionEstablishedCallback = (data: ConnectionData) => any;

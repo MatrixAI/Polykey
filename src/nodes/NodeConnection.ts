@@ -12,12 +12,11 @@ import type {
 import type { QUICClientConfig } from './types';
 import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import * as asyncInit from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { QUICClient } from '@matrixai/quic';
 import * as nodesErrors from './errors';
-import RPCClient from '../rpc/RPCClient';
 import * as nodesEvents from './events';
+import RPCClient from '../rpc/RPCClient';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
