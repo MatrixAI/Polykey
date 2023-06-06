@@ -69,7 +69,6 @@ export * from './gestalts/errors';
 export * from './identities/errors';
 export * from './agent/errors';
 export * from './client/errors';
-export * from './grpc/errors';
 export * from './network/errors';
 export * from './nodes/errors';
 export * from './claims/errors';

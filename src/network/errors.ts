@@ -2,98 +2,6 @@ import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorNetwork<T> extends ErrorPolykey<T> {}
 
-class ErrorProxy<T> extends ErrorNetwork<T> {}
-
-class ErrorProxyNotRunning<T> extends ErrorProxy<T> {
-  static description = 'Proxy is not running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorProxyConnectInvalidUrl<T> extends ErrorProxy<T> {
-  static description = 'Invalid target host used for HTTP connect proxy';
-  exitCode = sysexits.PROTOCOL;
-}
-
-class ErrorProxyConnectMissingNodeId<T> extends ErrorProxy<T> {
-  static description =
-    'Node ID query parameter is required for HTTP connect proxy';
-  exitCode = sysexits.PROTOCOL;
-}
-
-class ErrorProxyConnectAuth<T> extends ErrorProxy<T> {
-  static description = 'Incorrect HTTP connect proxy password';
-  exitCode = sysexits.NOPERM;
-}
-
-class ErrorConnection<T> extends ErrorNetwork<T> {}
-
-class ErrorConnectionNotRunning<T> extends ErrorConnection<T> {
-  static description = 'Connection is not running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorConnectionComposed<T> extends ErrorConnection<T> {
-  static description = 'Connection is composed';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorConnectionNotComposed<T> extends ErrorConnection<T> {
-  static description = 'Connection is not composed';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorConnectionMessageParse<T> extends ErrorConnection<T> {
-  static description = 'Network message received is invalid';
-  exitCode = sysexits.TEMPFAIL;
-}
-
-class ErrorConnectionTimeout<T> extends ErrorConnection<T> {
-  static description = 'Connection keep-alive timed out';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorConnectionEndTimeout<T> extends ErrorConnection<T> {
-  static description = 'Connection end timed out';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorConnectionNodesEmpty<T> extends ErrorConnection<T> {
-  static description = 'Nodes list to verify against was empty';
-  exitCode = sysexits.USAGE;
-}
-
-/**
- * Used by ConnectionForward and ConnectionReverse
- */
-class ErrorConnectionStart<T> extends ErrorConnection<T> {
-  static description = 'Connection start failed';
-  exitCode: number = sysexits.PROTOCOL;
-}
-
-class ErrorConnectionStartTimeout<T> extends ErrorConnectionStart<T> {
-  static description = 'Connection start timed out';
-  exitCode = sysexits.NOHOST;
-}
-
-class ErrorConnectionStartTimeoutMax<T> extends ErrorConnectionStart<T> {
-  static description =
-    'Connection start timeout exceeds max allowable of 20 seconds';
-  exitCode = sysexits.USAGE;
-}
-
-/**
- * Used by ConnectionReverse
- */
-class ErrorConnectionCompose<T> extends ErrorConnection<T> {
-  static description = 'Connection compose failed';
-  exitCode: number = sysexits.PROTOCOL;
-}
-
-class ErrorConnectionComposeTimeout<T> extends ErrorConnectionCompose<T> {
-  static description = 'Connection compose timed out';
-  exitCode = sysexits.NOHOST;
-}
-
 /**
  * Used for certificate verification
  */
@@ -141,24 +49,6 @@ class ErrorDNSResolver<T> extends ErrorNetwork<T> {
 
 export {
   ErrorNetwork,
-  ErrorProxy,
-  ErrorProxyNotRunning,
-  ErrorProxyConnectInvalidUrl,
-  ErrorProxyConnectMissingNodeId,
-  ErrorProxyConnectAuth,
-  ErrorConnection,
-  ErrorConnectionNotRunning,
-  ErrorConnectionComposed,
-  ErrorConnectionNotComposed,
-  ErrorConnectionMessageParse,
-  ErrorConnectionTimeout,
-  ErrorConnectionEndTimeout,
-  ErrorConnectionNodesEmpty,
-  ErrorConnectionStart,
-  ErrorConnectionStartTimeout,
-  ErrorConnectionStartTimeoutMax,
-  ErrorConnectionCompose,
-  ErrorConnectionComposeTimeout,
   ErrorCertChain,
   ErrorCertChainEmpty,
   ErrorCertChainUnclaimed,

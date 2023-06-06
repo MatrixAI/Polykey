@@ -61,18 +61,6 @@ type ConnectionData = {
   remotePort: Port;
 };
 
-type ConnectionEstablishedCallback = (data: ConnectionData) => any;
-
-type PingMessage = {
-  type: 'ping';
-};
-
-type PongMessage = {
-  type: 'pong';
-};
-
-type NetworkMessage = PingMessage | PongMessage;
-
 export type {
   Host,
   Hostname,
@@ -82,8 +70,4 @@ export type {
   ProxyConfig,
   ConnectionInfo,
   ConnectionData,
-  ConnectionEstablishedCallback,
-  PingMessage,
-  PongMessage,
-  NetworkMessage,
 };
