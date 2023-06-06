@@ -57,6 +57,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
     //  We only have the remote certificates if that. Should throw if certs are missing but in practice this should
     //  never happen given the custom verification logic checks this.
     const connectionInfo = meta;
+    throw Error('TMP IMP cant currently get the remote node info, need to fix');
     const srcNodeId = nodesUtils.encodeNodeId(connectionInfo!.remoteNodeId);
     // Firstly, check if this node is the desired node
     // If so, then we want to make this node start sending hole punching packets

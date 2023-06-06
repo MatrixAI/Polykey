@@ -14,6 +14,11 @@ import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
 
+// Fixes problem with spyOn overriding imports directly
+const mocks = {
+  browser: identitiesUtils.browser,
+};
+
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
   const password = 'helloworld';
@@ -35,8 +40,6 @@ describe('claim', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -62,7 +65,7 @@ describe('claim', () => {
     async () => {
       // Need an authenticated identity
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       await testUtils.pkStdio(
         [

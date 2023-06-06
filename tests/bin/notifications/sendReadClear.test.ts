@@ -40,8 +40,8 @@ describe('send/read/claim', () => {
       agentPassword: senderAgentPassword,
     } = await testUtils.setupTestAgent(logger));
     senderId = senderAgentStatus.data.nodeId;
-    senderHost = senderAgentStatus.data.proxyHost;
-    senderPort = senderAgentStatus.data.proxyPort;
+    senderHost = senderAgentStatus.data.agentHost;
+    senderPort = senderAgentStatus.data.agentPort;
     ({
       agentStatus: receiverAgentStatus,
       agentClose: receiverAgentClose,
@@ -49,8 +49,8 @@ describe('send/read/claim', () => {
       agentPassword: receiverAgentPassword,
     } = await testUtils.setupTestAgent(logger));
     receiverId = receiverAgentStatus.data.nodeId;
-    receiverHost = receiverAgentStatus.data.proxyHost;
-    receiverPort = receiverAgentStatus.data.proxyPort;
+    receiverHost = receiverAgentStatus.data.agentHost;
+    receiverPort = receiverAgentStatus.data.agentPort;
   });
   afterEach(async () => {
     await receiverAgentClose();

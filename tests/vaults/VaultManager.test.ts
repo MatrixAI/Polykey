@@ -6,8 +6,9 @@ import type {
   VaultName,
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
-import type { Host, Port, TLSConfig } from '@/network/types';
+import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -17,6 +18,7 @@ import { DB } from '@matrixai/db';
 import { destroyed, running } from '@matrixai/async-init';
 import git from 'isomorphic-git';
 import { RWLockWriter } from '@matrixai/async-locks';
+import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -26,18 +28,16 @@ import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
 import * as vaultsErrors from '@/vaults/errors';
 import NodeGraph from '@/nodes/NodeGraph';
-import Proxy from '@/network/Proxy';
 import * as vaultsUtils from '@/vaults/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as keysUtils from '@/keys/utils/index';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
-import * as testsUtils from '../utils/index';
+import * as tlsTestsUtils from '../utils/tls';
 
 describe('VaultManager', () => {
   const localHost = '127.0.0.1' as Host;
-  const port = 0 as Port;
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -473,9 +473,9 @@ describe('VaultManager', () => {
   describe('with remote agents', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
-    let proxy: Proxy;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager;
+    let quicSocket: QUICSocket;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let taskManager: TaskManager;
@@ -491,7 +491,7 @@ describe('VaultManager', () => {
         logger: logger.getChild('Remote Keynode 1'),
         nodePath: path.join(allDataDir, 'remoteKeynode1'),
         networkConfig: {
-          proxyHost: localHost,
+          agentHost: localHost,
         },
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
@@ -505,7 +505,7 @@ describe('VaultManager', () => {
         logger: logger.getChild('Remote Keynode 2'),
         nodePath: path.join(allDataDir, 'remoteKeynode2'),
         networkConfig: {
-          proxyHost: localHost,
+          agentHost: localHost,
         },
         keyRingConfig: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
@@ -517,12 +517,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.proxy.getProxyHost(),
-        port: remoteKeynode2.proxy.getProxyPort(),
+        host: remoteKeynode2.quicServerAgent.host as unknown as Host,
+        port: remoteKeynode2.quicServerAgent.port as unknown as Port,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.proxy.getProxyHost(),
-        port: remoteKeynode1.proxy.getProxyPort(),
+        host: remoteKeynode1.quicServerAgent.host as unknown as Host,
+        port: remoteKeynode1.quicServerAgent.port as unknown as Port,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -553,10 +553,6 @@ describe('VaultManager', () => {
         keyRing: dummyKeyRing,
         logger,
       });
-      proxy = new Proxy({
-        authToken: 'auth',
-        logger,
-      });
 
       keyRing = await KeyRing.createKeyRing({
         keysPath: path.join(allDataDir, 'allKeyRing'),
@@ -568,25 +564,29 @@ describe('VaultManager', () => {
       });
       localNodeId = keyRing.getNodeId();
 
-      const tlsConfig: TLSConfig = await testsUtils.createTLSConfig(
-        keyRing.keyPair,
-      );
-
-      await proxy.start({
-        tlsConfig,
-        serverHost: localHost,
-        serverPort: port,
-      });
       taskManager = await TaskManager.createTaskManager({
         db,
         lazy: true,
         logger,
       });
+      const crypto = tlsTestsUtils.createCrypto();
+      quicSocket = new QUICSocket({
+        crypto,
+        logger,
+      });
+      await quicSocket.start({
+        host: '127.0.0.1' as QUICHost,
+      });
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         nodeGraph,
-        proxy,
-        taskManager,
+        quicClientConfig: {
+          crypto,
+          config: {
+            verifyPeer: false,
+          },
+        },
+        quicSocket,
         logger,
       });
       await nodeConnectionManager.start({
@@ -594,12 +594,12 @@ describe('VaultManager', () => {
       });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.proxy.getProxyHost(),
-        port: remoteKeynode1.proxy.getProxyPort(),
+        host: remoteKeynode1.quicServerAgent.host as unknown as Host,
+        port: remoteKeynode1.quicServerAgent.port as unknown as Port,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.proxy.getProxyHost(),
-        port: remoteKeynode2.proxy.getProxyPort(),
+        host: remoteKeynode2.quicServerAgent.host as unknown as Host,
+        port: remoteKeynode2.quicServerAgent.port as unknown as Port,
       });
     });
     afterEach(async () => {
@@ -607,7 +607,7 @@ describe('VaultManager', () => {
       await taskManager.stopTasks();
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
       await nodeConnectionManager.stop();
-      await proxy.stop();
+      await quicSocket.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
       await keyRing.stop();
@@ -748,7 +748,7 @@ describe('VaultManager', () => {
           'pull',
         );
 
-        await testUtils.expectRemoteErrorOLD(
+        await testUtils.expectRemoteError(
           vaultManager.cloneVault(
             remoteKeynode1Id,
             'not-existing' as VaultName,
@@ -836,7 +836,7 @@ describe('VaultManager', () => {
       });
       try {
         // Should reject with no permissions set
-        await testUtils.expectRemoteErrorOLD(
+        await testUtils.expectRemoteError(
           vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -878,7 +878,7 @@ describe('VaultManager', () => {
           remoteVaultId,
         );
 
-        await testUtils.expectRemoteErrorOLD(
+        await testUtils.expectRemoteError(
           vaultManager.pullVault({ vaultId: clonedVaultId }),
           vaultsErrors.ErrorVaultsPermissionDenied,
         );
@@ -1380,6 +1380,99 @@ describe('VaultManager', () => {
       },
       globalThis.failedConnectionTimeout,
     );
+    // Disabled for now, failing in CI and the core network logic is subject to
+    //  change with the QUIC update
+    test('scanVaults should get all vaults with permissions from remote node', async () => {
+      // 1. we need to set up state
+      const vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing,
+        nodeConnectionManager,
+        acl: {} as any,
+        gestaltGraph: {} as any,
+        notificationsManager: {} as NotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
+      });
+      try {
+        // Setting up state
+        const targetNodeId = remoteKeynode1.keyRing.getNodeId();
+        const nodeId1 = keyRing.getNodeId();
+
+        // Letting nodeGraph know where the remote agent is
+        await nodeGraph.setNode(targetNodeId, {
+          host: remoteKeynode1.quicServerAgent.host as unknown as Host,
+          port: remoteKeynode1.quicServerAgent.port as unknown as Port,
+        });
+
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: nodeId1,
+        });
+
+        const vault1 = await remoteKeynode1.vaultManager.createVault(
+          'testVault1' as VaultName,
+        );
+        const vault2 = await remoteKeynode1.vaultManager.createVault(
+          'testVault2' as VaultName,
+        );
+        const vault3 = await remoteKeynode1.vaultManager.createVault(
+          'testVault3' as VaultName,
+        );
+
+        // Scanning vaults
+
+        // Should throw due to no permission
+        const testFun = async () => {
+          for await (const _ of vaultManager.scanVaults(targetNodeId)) {
+            // Should throw
+          }
+        };
+        await testUtils.expectRemoteError(
+          testFun(),
+          vaultsErrors.ErrorVaultsPermissionDenied,
+        );
+        // Should throw due to lack of scan permission
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', nodeId1],
+          'notify',
+        );
+        await testUtils.expectRemoteError(
+          testFun(),
+          vaultsErrors.ErrorVaultsPermissionDenied,
+        );
+
+        // Setting permissions
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', nodeId1],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'clone');
+        await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'pull');
+        await remoteKeynode1.acl.setVaultAction(vault2, nodeId1, 'clone');
+        // No permissions for vault3
+
+        const gen = vaultManager.scanVaults(targetNodeId);
+        const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
+        for await (const vault of gen) {
+          vaults[vault.vaultIdEncoded] = [
+            vault.vaultName,
+            vault.vaultPermissions,
+          ];
+        }
+
+        expect(vaults[vaultsUtils.encodeVaultId(vault1)]).toEqual([
+          'testVault1',
+          ['clone', 'pull'],
+        ]);
+        expect(vaults[vaultsUtils.encodeVaultId(vault2)]).toEqual([
+          'testVault2',
+          ['clone'],
+        ]);
+        expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
+      } finally {
+        await vaultManager.stop();
+      }
+    });
   });
   test('handleScanVaults should list all vaults with permissions', async () => {
     // 1. we need to set up state
@@ -1454,174 +1547,6 @@ describe('VaultManager', () => {
       await gestaltGraph.destroy();
       await acl.stop();
       await acl.destroy();
-    }
-  });
-  // Disabled for now, failing in CI and the core network logic is subject to
-  //  change with the QUIC update
-  test.skip('scanVaults should get all vaults with permissions from remote node', async () => {
-    // 1. we need to set up state
-    const remoteAgent = await PolykeyAgent.createPolykeyAgent({
-      password: 'password',
-      nodePath: path.join(dataDir, 'remoteNode'),
-      networkConfig: {
-        proxyHost: localHost,
-      },
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
-    });
-    const acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const nodeGraph = await NodeGraph.createNodeGraph({
-      db,
-      keyRing: dummyKeyRing,
-      logger,
-    });
-    const proxy = new Proxy({
-      authToken: 'auth',
-      logger,
-    });
-    const keyRing = await KeyRing.createKeyRing({
-      keysPath: path.join(dataDir, 'keys'),
-      password: 'password',
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: localHost,
-      serverPort: port,
-    });
-    const taskManager = await TaskManager.createTaskManager({
-      db,
-      logger,
-      lazy: true,
-    });
-    const nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      logger,
-      nodeGraph,
-      proxy,
-      taskManager,
-      connConnectTime: 4000,
-      pingTimeout: 4000,
-    });
-    await nodeConnectionManager.start({
-      nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
-    });
-    await taskManager.startProcessing();
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing,
-      nodeConnectionManager,
-      acl,
-      gestaltGraph,
-      notificationsManager: {} as NotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      // Setting up state
-      const targetNodeId = remoteAgent.keyRing.getNodeId();
-      const nodeId1 = keyRing.getNodeId();
-
-      // Letting nodeGraph know where the remote agent is
-      await nodeGraph.setNode(targetNodeId, {
-        host: 'localhost' as Host,
-        port: remoteAgent.proxy.getProxyPort(),
-      });
-
-      await remoteAgent.gestaltGraph.setNode({
-        nodeId: nodeId1,
-      });
-
-      const vault1 = await remoteAgent.vaultManager.createVault(
-        'testVault1' as VaultName,
-      );
-      const vault2 = await remoteAgent.vaultManager.createVault(
-        'testVault2' as VaultName,
-      );
-      const vault3 = await remoteAgent.vaultManager.createVault(
-        'testVault3' as VaultName,
-      );
-
-      // Scanning vaults
-
-      // Should throw due to no permission
-      const testFun = async () => {
-        for await (const _ of vaultManager.scanVaults(targetNodeId)) {
-          // Should throw
-        }
-      };
-      await testUtils.expectRemoteErrorOLD(
-        testFun(),
-        vaultsErrors.ErrorVaultsPermissionDenied,
-      );
-      // Should throw due to lack of scan permission
-      await remoteAgent.gestaltGraph.setGestaltAction(
-        ['node', nodeId1],
-        'notify',
-      );
-      await testUtils.expectRemoteErrorOLD(
-        testFun(),
-        vaultsErrors.ErrorVaultsPermissionDenied,
-      );
-
-      // Setting permissions
-      await remoteAgent.gestaltGraph.setGestaltAction(
-        ['node', nodeId1],
-        'scan',
-      );
-      await remoteAgent.acl.setVaultAction(vault1, nodeId1, 'clone');
-      await remoteAgent.acl.setVaultAction(vault1, nodeId1, 'pull');
-      await remoteAgent.acl.setVaultAction(vault2, nodeId1, 'clone');
-      // No permissions for vault3
-
-      const gen = vaultManager.scanVaults(targetNodeId);
-      const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
-      for await (const vault of gen) {
-        vaults[vault.vaultIdEncoded] = [
-          vault.vaultName,
-          vault.vaultPermissions,
-        ];
-      }
-
-      expect(vaults[vaultsUtils.encodeVaultId(vault1)]).toEqual([
-        'testVault1',
-        ['clone', 'pull'],
-      ]);
-      expect(vaults[vaultsUtils.encodeVaultId(vault2)]).toEqual([
-        'testVault2',
-        ['clone'],
-      ]);
-      expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
-    } finally {
-      await taskManager.stopProcessing();
-      await taskManager.stopTasks();
-      await vaultManager.stop();
-      await vaultManager.destroy();
-      await nodeConnectionManager.stop();
-      await proxy.stop();
-      await nodeGraph.stop();
-      await nodeGraph.destroy();
-      await gestaltGraph.stop();
-      await gestaltGraph.destroy();
-      await acl.stop();
-      await acl.destroy();
-      await remoteAgent.stop();
-      await taskManager.stop();
     }
   });
   test('stopping respects locks', async () => {

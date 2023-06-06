@@ -1,98 +1,100 @@
-import type { Host, Port } from '@/network/types';
-import type { Notification } from '@/notifications/types';
-import type { NodeId } from '@/ids/types';
-import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type * as quicEvents from '@matrixai/quic/dist/events';
+import type { Host as QUICHost } from '@matrixai/quic';
+import type { Notification, SignedNotification } from '@/notifications/types';
+import type { NodeId } from '@/ids';
+import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { QUICClient, QUICServer, QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import TaskManager from '@/tasks/TaskManager';
+import RPCClient from '@/rpc/RPCClient';
+import RPCServer from '@/rpc/RPCServer';
+import { notificationsSend } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
-import GRPCServer from '@/grpc/GRPCServer';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import Sigchain from '@/sigchain/Sigchain';
-import Proxy from '@/network/Proxy';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import ACL from '@/acl/ACL';
-import GRPCClientAgent from '@/agent/GRPCClientAgent';
-import notificationsSend from '@/agent/service/notificationsSend';
-import { AgentServiceService } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
-import * as notificationsErrors from '@/notifications/errors';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '@/nodes/utils';
+import NodeGraph from '@/nodes/NodeGraph';
 import * as notificationsUtils from '@/notifications/utils';
-import * as keysUtils from '@/keys/utils/index';
-import Token from '@/tokens/Token';
+import { NotificationsSendHandler } from '@/agent/handlers/notificationsSend';
+import NotificationsManager from '@/notifications/NotificationsManager';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodeManager from '@/nodes/NodeManager';
+import ACL from '@/acl/ACL';
+import { Token } from '@/tokens';
+import * as notificationsErrors from '@/notifications/errors';
 import * as validationErrors from '@/validation/errors';
-import * as testsUtils from '../../utils/index';
-import * as testUtils from '../../utils';
+import Sigchain from '../../../src/sigchain/Sigchain';
+import TaskManager from '../../../src/tasks/TaskManager';
+import * as testUtils from '../../utils/utils';
+import * as tlsTestsUtils from '../../utils/tls';
 
-describe('notificationsSend', () => {
-  const logger = new Logger('notificationsSend test', LogLevel.WARN, [
+describe('nodesHolePunchMessage', () => {
+  const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
-  const authToken = 'abc123';
-  let senderNodeId: NodeId;
-  let senderKeyRing: KeyRing;
+  const password = 'password';
+  const crypto = tlsTestsUtils.createCrypto();
+  const localHost = '127.0.0.1' as QUICHost;
+
   let dataDir: string;
+
+  let keyRing: KeyRing;
+  let db: DB;
   let nodeGraph: NodeGraph;
+  let acl: ACL;
+  let sigchain: Sigchain;
   let taskManager: TaskManager;
+  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
-  let acl: ACL;
-  let sigchain: Sigchain;
-  let proxy: Proxy;
+  let rpcServer: RPCServer;
+  let quicServer: QUICServer;
 
-  let db: DB;
-  let keyRing: KeyRing;
-  let grpcServer: GRPCServer;
-  let grpcClient: GRPCClientAgent;
+  let senderKeyRing: KeyRing;
+  let senderNodeId: NodeId;
+
+  const clientManifest = {
+    notificationsSend,
+  };
+  type ClientManifest = typeof clientManifest;
+  let rpcClient: RPCClient<ClientManifest>;
+  let quicClient: QUICClient;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = path.join(dataDir, 'keys');
+
     const senderKeysPath = path.join(dataDir, 'senderKeys');
     senderKeyRing = await KeyRing.createKeyRing({
-      password,
       keysPath: senderKeysPath,
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-    });
-    keyRing = await KeyRing.createKeyRing({
       password,
-      keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     senderNodeId = senderKeyRing.getNodeId();
+
+    // Handler dependencies
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      keysPath,
+      password,
+      logger,
+    });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
     });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger,
+    });
     acl = await ACL.createACL({
       db,
       logger,
-    });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -109,11 +111,23 @@ describe('notificationsSend', () => {
       logger,
       lazy: true,
     });
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: localHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -133,55 +147,109 @@ describe('notificationsSend', () => {
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
-        acl,
         db,
+        keyRing,
+        acl,
         nodeConnectionManager,
         nodeManager,
-        keyRing,
         logger,
       });
-    const agentService = {
-      notificationsSend: notificationsSend({
-        notificationsManager,
-        keyRing,
-        logger,
+
+    // Setting up server
+    const serverManifest = {
+      notificationsSend: new NotificationsSendHandler({
         db,
+        keyRing,
+        notificationsManager,
       }),
     };
-    grpcServer = new GRPCServer({ logger });
-    await grpcServer.start({
-      services: [[AgentServiceService, agentService]],
-      host: '127.0.0.1' as Host,
-      port: 0 as Port,
-    });
-    grpcClient = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: keyRing.getNodeId(),
-      host: '127.0.0.1' as Host,
-      port: grpcServer.getPort(),
+    rpcServer = await RPCServer.createRPCServer({
+      manifest: serverManifest,
       logger,
     });
-  }, globalThis.defaultTimeout);
+    const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    quicServer = new QUICServer({
+      config: {
+        tlsConfig: {
+          privKeyPem: tlsConfig.keyPrivatePem,
+          certChainPem: tlsConfig.certChainPem,
+        },
+        verifyPeer: false,
+      },
+      crypto,
+      logger,
+    });
+    const handleStream = async (
+      event: quicEvents.QUICConnectionStreamEvent,
+    ) => {
+      // Streams are handled via the RPCServer.
+      const stream = event.detail;
+      logger.info('!!!!Handling new stream!!!!!');
+      rpcServer.handleStream(stream);
+    };
+    const handleConnection = async (
+      event: quicEvents.QUICServerConnectionEvent,
+    ) => {
+      // Needs to setup stream handler
+      const conn = event.detail;
+      logger.info('!!!!Handling new Connection!!!!!');
+      conn.addEventListener('stream', handleStream);
+      conn.addEventListener(
+        'destroy',
+        () => {
+          conn.removeEventListener('stream', handleStream);
+        },
+        { once: true },
+      );
+    };
+    quicServer.addEventListener('connection', handleConnection);
+    quicServer.addEventListener(
+      'stop',
+      () => {
+        quicServer.removeEventListener('connection', handleConnection);
+      },
+      { once: true },
+    );
+    await quicServer.start({
+      host: localHost,
+    });
+
+    // Setting up client
+    rpcClient = await RPCClient.createRPCClient({
+      manifest: clientManifest,
+      streamFactory: () => {
+        return quicClient.connection.streamNew();
+      },
+      logger,
+    });
+    quicClient = await QUICClient.createQUICClient({
+      crypto,
+      config: {
+        verifyPeer: false,
+      },
+      host: localHost,
+      port: quicServer.port,
+      localHost: localHost,
+      logger,
+    });
+  });
   afterEach(async () => {
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await grpcClient.destroy();
-    await grpcServer.stop();
+    await rpcServer.destroy(true);
+    await quicServer.stop({ force: true });
     await notificationsManager.stop();
-    await nodeConnectionManager.stop();
     await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await sigchain.stop();
-    await sigchain.stop();
-    await proxy.stop();
     await acl.stop();
+    await nodeGraph.stop();
     await db.stop();
-    await senderKeyRing.stop();
     await keyRing.stop();
     await taskManager.stop();
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
   });
+
   test('successfully sends a notification', async () => {
     // Set notify permission for sender on receiver
     await acl.setNodePerm(senderNodeId, {
@@ -203,10 +271,9 @@ describe('notificationsSend', () => {
       notification,
       senderKeyRing.keyPair,
     );
-    const request = new notificationsPB.AgentNotification();
-    request.setContent(signedNotification);
-    const response = await grpcClient.notificationsSend(request);
-    expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
+    await rpcClient.methods.notificationsSend({
+      signedNotificationEncoded: signedNotification,
+    });
     // Check notification was received
     const receivedNotifications =
       await notificationsManager.readNotifications();
@@ -235,10 +302,12 @@ describe('notificationsSend', () => {
       isRead: false,
     };
     const token = Token.fromPayload(notification1);
-    const request1 = new notificationsPB.AgentNotification();
-    request1.setContent(JSON.stringify(token.toJSON()));
-    await testUtils.expectRemoteErrorOLD(
-      grpcClient.notificationsSend(request1),
+    await testUtils.expectRemoteError(
+      rpcClient.methods.notificationsSend({
+        signedNotificationEncoded: JSON.stringify(
+          token.toJSON(),
+        ) as SignedNotification,
+      }),
       notificationsErrors.ErrorNotificationsVerificationFailed,
     );
     // Check notification was not received
@@ -257,10 +326,10 @@ describe('notificationsSend', () => {
       notification2,
       senderKeyRing.keyPair,
     );
-    const request2 = new notificationsPB.AgentNotification();
-    request2.setContent(signedNotification);
-    await testUtils.expectRemoteErrorOLD(
-      grpcClient.notificationsSend(request2),
+    await testUtils.expectRemoteError(
+      rpcClient.methods.notificationsSend({
+        signedNotificationEncoded: signedNotification,
+      }),
       validationErrors.ErrorParse,
     );
     // Check notification was not received
@@ -285,10 +354,10 @@ describe('notificationsSend', () => {
       notification,
       senderKeyRing.keyPair,
     );
-    const request = new notificationsPB.AgentNotification();
-    request.setContent(signedNotification);
-    await testUtils.expectRemoteErrorOLD(
-      grpcClient.notificationsSend(request),
+    await testUtils.expectRemoteError(
+      rpcClient.methods.notificationsSend({
+        signedNotificationEncoded: signedNotification,
+      }),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     // Check notification was not received

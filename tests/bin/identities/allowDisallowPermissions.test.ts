@@ -15,6 +15,11 @@ import { encodeProviderIdentityId } from '@/identities/utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
 
+// Fixes problem with spyOn overriding imports directly
+const mocks = {
+  browser: identitiesUtils.browser,
+};
+
 describe('allow/disallow/permissions', () => {
   const logger = new Logger('allow/disallow/permissions test', LogLevel.WARN, [
     new StreamHandler(),
@@ -43,8 +48,6 @@ describe('allow/disallow/permissions', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -62,8 +65,6 @@ describe('allow/disallow/permissions', () => {
       password,
       nodePath: nodePathGestalt,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -75,8 +76,8 @@ describe('allow/disallow/permissions', () => {
       },
     });
     nodeId = node.keyRing.getNodeId();
-    nodeHost = node.proxy.getProxyHost();
-    nodePort = node.proxy.getProxyPort();
+    nodeHost = node.quicServerAgent.host as unknown as Host;
+    nodePort = node.quicServerAgent.port as unknown as Port;
     node.identitiesManager.registerProvider(provider);
     await node.identitiesManager.putToken(provider.id, identity, {
       accessToken: 'def456',
@@ -239,7 +240,7 @@ describe('allow/disallow/permissions', () => {
       );
       // Authenticate our own identity in order to query the provider
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       await testUtils.pkStdio(
         [

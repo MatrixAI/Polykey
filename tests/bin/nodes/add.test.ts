@@ -35,8 +35,6 @@ describe('add', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },

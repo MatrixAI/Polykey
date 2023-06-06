@@ -47,8 +47,6 @@ describe('discover/get', () => {
       password,
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -60,14 +58,12 @@ describe('discover/get', () => {
       },
     });
     nodeAId = nodeA.keyRing.getNodeId();
-    nodeAHost = nodeA.proxy.getProxyHost();
-    nodeAPort = nodeA.proxy.getProxyPort();
+    nodeAHost = nodeA.quicServerAgent.host as unknown as Host;
+    nodeAPort = nodeA.quicServerAgent.port as unknown as Port;
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -86,8 +82,6 @@ describe('discover/get', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },

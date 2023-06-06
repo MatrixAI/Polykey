@@ -6,7 +6,7 @@ import config from '@/config';
 import * as testUtils from '../../utils';
 
 describe('unlock', () => {
-  const logger = new Logger('unlock test', LogLevel.WARN, [
+  const logger = new Logger('unlock test', LogLevel.INFO, [
     new StreamHandler(),
   ]);
   let agentDir;

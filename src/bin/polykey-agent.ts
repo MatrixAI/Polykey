@@ -23,7 +23,6 @@ import * as binUtils from './utils';
 import PolykeyAgent from '../PolykeyAgent';
 import * as nodesUtils from '../nodes/utils';
 import ErrorPolykey from '../ErrorPolykey';
-import grpcSetLogger from '../grpc/utils/setLogger';
 import { promisify, promise } from '../utils';
 
 process.title = 'polykey-agent';
@@ -52,8 +51,6 @@ async function main(_argv = process.argv): Promise<number> {
       handler.setFormatter(formatting.jsonFormatter),
     );
   }
-  // Set the global upstream GRPC logger
-  grpcSetLogger(logger.getChild('grpc'));
   let pkAgent: PolykeyAgent;
   exitHandlers.handlers.push(async () => {
     await pkAgent?.stop();
@@ -116,12 +113,8 @@ async function main(_argv = process.argv): Promise<number> {
     nodeId: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
     clientHost: pkAgent.webSocketServerClient.getHost(),
     clientPort: pkAgent.webSocketServerClient.getPort(),
-    agentHost: pkAgent.grpcServerAgent.getHost(),
-    agentPort: pkAgent.grpcServerAgent.getPort(),
-    proxyHost: pkAgent.proxy.getProxyHost(),
-    proxyPort: pkAgent.proxy.getProxyPort(),
-    forwardHost: pkAgent.proxy.getForwardHost(),
-    forwardPort: pkAgent.proxy.getForwardPort(),
+    agentHost: pkAgent.quicServerAgent.host,
+    agentPort: pkAgent.quicServerAgent.port,
   };
   try {
     await processSend(messageOut);

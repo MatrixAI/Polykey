@@ -414,9 +414,14 @@ class PolykeyAgent {
         new NodeConnectionManager({
           keyRing,
           nodeGraph,
-          taskManager,
           seedNodes,
           quicSocket,
+          quicClientConfig: {
+            crypto: quicCrypto,
+            config: {
+              verifyPeer: false,
+            },
+          },
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),
         });

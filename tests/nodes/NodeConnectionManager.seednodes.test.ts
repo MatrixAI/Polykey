@@ -1,8 +1,5 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type {
-  Crypto as QUICCrypto,
-  Host as QUICHost,
-} from '@matrixai/quic/dist/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { NodeAddress } from '@/nodes/types';
 import type { SeedNodes } from '@/nodes/types';
@@ -42,17 +39,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     port: 55555 as Port,
   };
   const password = 'password';
-
-  const ops: QUICCrypto = {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      // FIXME: is there a better way?
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
+  const crypto = tlsTestUtils.createCrypto();
 
   function createPromiseCancellableNop() {
     return () => new PromiseCancellable<void>((resolve) => resolve());
@@ -67,7 +54,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeId2: NodeId;
   let remoteNodeIdEncoded1: NodeIdEncoded;
-  let key: ArrayBuffer;
   let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
@@ -125,12 +111,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       port: remotePolykeyAgent2.quicSocket.port as unknown as Port,
     };
 
-    key = keysUtils.generateKey();
     clientSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -214,10 +196,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -260,10 +239,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -313,10 +289,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -370,10 +343,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -424,10 +394,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           tlsConfig: {
@@ -476,10 +443,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,

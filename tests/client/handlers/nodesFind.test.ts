@@ -2,11 +2,13 @@ import type { TLSConfig } from '@/network/types';
 import type { NodeIdEncoded } from '@/ids/index';
 import type NodeManager from '../../../src/nodes/NodeManager';
 import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -17,9 +19,8 @@ import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as validationErrors from '@/validation/errors';
 import { nodesFind } from '@/client';
-import * as testsUtils from '../../utils';
-import * as testUtils from '../../utils';
-import Proxy from '../../../src/network/Proxy';
+import * as testsUtils from '../../utils/utils';
+import * as tlsTestsUtils from '../../utils/tls';
 import Sigchain from '../../../src/sigchain/Sigchain';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
@@ -33,7 +34,6 @@ describe('nodesFind', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -42,9 +42,9 @@ describe('nodesFind', () => {
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
+  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let mockedFindNode: jest.SpyInstance;
 
   beforeEach(async () => {
@@ -71,16 +71,7 @@ describe('nodesFind', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
-    });
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     sigchain = await Sigchain.createSigchain({
       db,
       keyRing,
@@ -96,11 +87,24 @@ describe('nodesFind', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -117,7 +121,7 @@ describe('nodesFind', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await proxy.stop();
+    await quicSocket.stop();
     await db.stop();
     await keyRing.stop();
     await taskManager.stop();
@@ -197,7 +201,7 @@ describe('nodesFind', () => {
     // Doing the test
     const request = new nodesPB.Node();
     request.setNodeId('nodeId');
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.nodesFind({
         nodeIdEncoded: 'nodeId' as NodeIdEncoded,
       }),

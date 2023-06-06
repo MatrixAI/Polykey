@@ -14,7 +14,6 @@ import { Sigchain } from '../sigchain';
 import { ACL } from '../acl';
 import { GestaltGraph } from '../gestalts';
 import { KeyRing } from '../keys';
-import Proxy from '../network/Proxy';
 import { NodeConnectionManager, NodeGraph, NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
 import { NotificationsManager } from '../notifications';
@@ -143,11 +142,6 @@ async function bootstrapState({
       logger: logger.getChild(IdentitiesManager.name),
       fresh,
     });
-    // Proxies are constructed only, but not started
-    const proxy = new Proxy({
-      authToken: '',
-      logger: logger.getChild(Proxy.name),
-    });
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       fresh,
@@ -162,8 +156,8 @@ async function bootstrapState({
     const nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {} as any, // No connections are attempted
+      quicSocket: {} as any, // No connections are attempted
       logger: logger.getChild(NodeConnectionManager.name),
     });
     const nodeManager = new NodeManager({

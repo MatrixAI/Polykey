@@ -1,8 +1,5 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type {
-  Crypto as QUICCrypto,
-  Host as QUICHost,
-} from '@matrixai/quic/dist/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
 import path from 'path';
@@ -23,10 +20,10 @@ import * as keysUtils from '@/keys/utils';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import { promise, sleep } from '@/utils';
 import * as nodesErrors from '@/nodes/errors';
-import * as testNodesUtils from './utils';
 import NodeConnection from '../../src/nodes/NodeConnection';
 import RPCServer from '../../src/rpc/RPCServer';
 import * as tlsUtils from '../utils/tls';
+import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
@@ -36,21 +33,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   ]);
   const localHost = '127.0.0.1' as Host;
   const password = 'password';
-
-  const ops: QUICCrypto = {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      // FIXME: is there a better way?
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
+  const crypto = tlsTestUtils.createCrypto();
 
   let dataDir: string;
 
-  let key: ArrayBuffer;
   let serverTlsConfig: TLSConfig;
   let serverNodeId: NodeId;
   let clientNodeId: NodeId;
@@ -74,7 +60,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    key = keysUtils.generateKey();
     const serverKeyPair = keysUtils.generateKeyPair();
     const clientKeyPair = keysUtils.generateKeyPair();
     serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
@@ -82,10 +67,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
     serverSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('serverSocket'),
     });
     await serverSocket.start({
@@ -98,10 +80,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
           certChainPem: serverTlsConfig.certChainPem,
         },
       },
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       socket: serverSocket,
       logger: logger.getChild(`${QUICServer.name}`),
     });
@@ -125,10 +104,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await quicServer.start();
     clientSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -209,10 +185,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -244,10 +217,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -285,10 +255,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -326,10 +293,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -375,10 +339,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -424,10 +385,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -481,10 +439,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -528,10 +483,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -583,10 +535,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -637,10 +586,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -683,10 +629,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -726,10 +669,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -770,10 +710,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -807,4 +744,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  // TODO: tests for multi connections, needs custom verification
+  test.todo('use multi-connection to connect to one node with multiple addresses');
+  test.todo('use multi-connection to connect to multiple nodes with multiple addresses');
+  test.todo('use multi-connection to connect to multiple nodes with single address');
+  test.todo('multi-connection respects locking');
+  test.todo('multi-connection ends early when all nodes are connected to');
 });

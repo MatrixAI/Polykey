@@ -12,6 +12,7 @@ import Status from '@/status/Status';
 import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
+import { promise } from '@/utils';
 import * as testUtils from '../../utils';
 
 describe('start', () => {
@@ -76,10 +77,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       expect(
@@ -166,10 +163,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       // The foreground process PID should nto be the background process PID
@@ -273,36 +266,44 @@ describe('start', () => {
       let stdErrLine2;
       const rlErr1 = readline.createInterface(agentProcess1.stderr!);
       const rlErr2 = readline.createInterface(agentProcess2.stderr!);
+      const agentStartedProm1 = promise<[number, string]>();
+      const agentStartedProm2 = promise<[number, string]>();
       rlErr1.on('line', (l) => {
         stdErrLine1 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm1.resolveP([0, l]);
+          agentProcess1.kill('SIGINT');
+        }
       });
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm2.resolveP([0, l]);
+          agentProcess2.kill('SIGINT');
+        }
       });
-      // eslint-disable-next-line prefer-const
-      let [index, exitCode] = await new Promise<
-        [number, number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess1.once('exit', (code, signal) => {
-          resolve([0, code, signal]);
-        });
-        agentProcess2.once('exit', (code, signal) => {
-          resolve([1, code, signal]);
-        });
+
+      agentProcess1.once('exit', (code) => {
+        agentStartedProm1.resolveP([code ?? 255, stdErrLine1]);
       });
+      agentProcess2.once('exit', (code) => {
+        agentStartedProm2.resolveP([code ?? 255, stdErrLine2]);
+      });
+
+      const results = await Promise.all([
+        agentStartedProm1.p,
+        agentStartedProm2.p,
+      ]);
+      // Only 1 should fail with locked
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      // It's either the first or second process
-      if (index === 0) {
-        testUtils.expectProcessError(exitCode!, stdErrLine1, [
-          errorStatusLocked,
-        ]);
-        agentProcess2.kill('SIGQUIT');
-      } else if (index === 1) {
-        testUtils.expectProcessError(exitCode!, stdErrLine2, [
-          errorStatusLocked,
-        ]);
-        agentProcess1.kill('SIGQUIT');
+      let failed = 0;
+      for (const [code, line] of results) {
+        if (code !== 0) {
+          failed += 1;
+          testUtils.expectProcessError(code, line, [errorStatusLocked]);
+        }
       }
+      expect(failed).toEqual(1);
     },
     globalThis.defaultTimeout * 2,
   );
@@ -361,39 +362,44 @@ describe('start', () => {
       let stdErrLine2;
       const rlErr1 = readline.createInterface(agentProcess.stderr!);
       const rlErr2 = readline.createInterface(bootstrapProcess.stderr!);
+      const agentStartedProm1 = promise<[number, string]>();
+      const agentStartedProm2 = promise<[number, string]>();
       rlErr1.on('line', (l) => {
         stdErrLine1 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm1.resolveP([0, l]);
+          agentProcess.kill('SIGINT');
+        }
       });
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
-      });
-      // eslint-disable-next-line prefer-const
-      let [index, exitCode] = await new Promise<
-        [number, number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess.once('exit', (code, signal) => {
-          resolve([0, code, signal]);
-        });
-        bootstrapProcess.once('exit', (code, signal) => {
-          resolve([1, code, signal]);
-        });
-      });
-      const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      // It's either the first or second process
-      try {
-        if (index === 0) {
-          testUtils.expectProcessError(exitCode!, stdErrLine1, [
-            errorStatusLocked,
-          ]);
-        } else {
-          testUtils.expectProcessError(exitCode!, stdErrLine2, [
-            errorStatusLocked,
-          ]);
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm2.resolveP([0, l]);
+          bootstrapProcess.kill('SIGINT');
         }
-      } finally {
-        bootstrapProcess.kill('SIGTERM');
-        agentProcess.kill('SIGTERM');
+      });
+
+      agentProcess.once('exit', (code) => {
+        agentStartedProm1.resolveP([code ?? 255, stdErrLine1]);
+      });
+      bootstrapProcess.once('exit', (code) => {
+        agentStartedProm2.resolveP([code ?? 255, stdErrLine2]);
+      });
+
+      const results = await Promise.all([
+        agentStartedProm1.p,
+        agentStartedProm2.p,
+      ]);
+      // Only 1 should fail with locked
+      const errorStatusLocked = new statusErrors.ErrorStatusLocked();
+      let failed = 0;
+      for (const [code, line] of results) {
+        if (code !== 0) {
+          failed += 1;
+          testUtils.expectProcessError(code, line, [errorStatusLocked]);
+        }
       }
+      expect(failed).toEqual(1);
     },
     globalThis.defaultTimeout * 2,
   );
@@ -562,10 +568,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       expect(

@@ -4,12 +4,14 @@ import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
+import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
@@ -19,14 +21,13 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
-import Proxy from '@/network/Proxy';
 import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils/index';
 import * as testUtils from '../utils';
-import * as testsUtils from '../utils/index';
+import * as tlsTestsUtils from '../utils/tls';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -52,9 +53,9 @@ describe('NotificationsManager', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let keyRing: KeyRing;
   let sigchain: Sigchain;
-  let proxy: Proxy;
 
   let receiver: PolykeyAgent;
   beforeEach(async () => {
@@ -101,15 +102,6 @@ describe('NotificationsManager', () => {
       keyRing,
       logger,
     });
-    proxy = new Proxy({
-      authToken: 'abc123',
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
-    });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
@@ -120,11 +112,24 @@ describe('NotificationsManager', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyRing,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       logger,
     });
     nodeManager = new NodeManager({
@@ -145,7 +150,8 @@ describe('NotificationsManager', () => {
       password: password,
       nodePath: path.join(dataDir, 'receiver'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1' as Host,
+        clientHost: '127.0.0.1' as Host,
       },
       logger,
       keyRingConfig: {
@@ -155,8 +161,8 @@ describe('NotificationsManager', () => {
       },
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.proxy.getProxyHost(),
-      port: receiver.proxy.getProxyPort(),
+      host: receiver.quicServerAgent.host as unknown as Host,
+      port: receiver.quicServerAgent.port as unknown as Port,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
@@ -164,9 +170,9 @@ describe('NotificationsManager', () => {
     await taskManager.stopTasks();
     await receiver.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
-    await proxy.stop();
     await sigchain.stop();
     await acl.stop();
     await db.stop();
@@ -295,21 +301,21 @@ describe('NotificationsManager', () => {
       } as VaultActions,
     };
 
-    await testUtils.expectRemoteErrorOLD(
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         generalNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await testUtils.expectRemoteErrorOLD(
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         gestaltNotification,
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    await testUtils.expectRemoteErrorOLD(
+    await testUtils.expectRemoteError(
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         vaultNotification,

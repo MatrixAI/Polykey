@@ -229,12 +229,8 @@ class CommandStart extends CommandPolykey {
           nodeId: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
           clientHost: pkAgent.webSocketServerClient.getHost(),
           clientPort: pkAgent.webSocketServerClient.getPort(),
-          agentHost: pkAgent.grpcServerAgent.getHost(),
-          agentPort: pkAgent.grpcServerAgent.getPort(),
-          proxyHost: pkAgent.proxy.getProxyHost(),
-          proxyPort: pkAgent.proxy.getProxyPort(),
-          forwardHost: pkAgent.proxy.getForwardHost(),
-          forwardPort: pkAgent.proxy.getForwardPort(),
+          agentHost: pkAgent.quicServerAgent.host,
+          agentPort: pkAgent.quicServerAgent.port,
         };
       }
       process.stdout.write(

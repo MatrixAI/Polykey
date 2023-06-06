@@ -2,7 +2,7 @@ import type { Host, Port } from '@/network/types';
 import ErrorPolykey from '@/ErrorPolykey';
 import * as binUtils from '@/bin/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
-import * as grpcErrors from '@/grpc/errors';
+import * as rpcErrors from '@/rpc/errors';
 import * as testUtils from '../utils';
 
 describe('bin/utils', () => {
@@ -97,7 +97,7 @@ describe('bin/utils', () => {
         timestamp,
         data,
       });
-      const remoteError = new grpcErrors.ErrorPolykeyRemoteOLD<any>(
+      const remoteError = new rpcErrors.ErrorPolykeyRemote<any>(
         {
           nodeId,
           host,
@@ -107,7 +107,7 @@ describe('bin/utils', () => {
         'some remote error',
         { timestamp, cause: pkError },
       );
-      const twoRemoteErrors = new grpcErrors.ErrorPolykeyRemoteOLD<any>(
+      const twoRemoteErrors = new rpcErrors.ErrorPolykeyRemote<any>(
         {
           nodeId,
           host,
@@ -117,7 +117,7 @@ describe('bin/utils', () => {
         'remote error',
         {
           timestamp,
-          cause: new grpcErrors.ErrorPolykeyRemoteOLD(
+          cause: new rpcErrors.ErrorPolykeyRemote(
             {
               nodeId,
               host,
@@ -147,7 +147,7 @@ describe('bin/utils', () => {
         binUtils.outputFormatter({ type: 'error', data: remoteError }),
       ).toBe(
         `${remoteError.name}: ${remoteError.description} - ${remoteError.message}\n` +
-          `  command\t${remoteError.metadata.command}\n` +
+          // `  command\t${remoteError.metadata?.command}\n` +
           `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
           `  host\t${host}\n` +
           `  port\t${port}\n` +
@@ -159,7 +159,7 @@ describe('bin/utils', () => {
         binUtils.outputFormatter({ type: 'error', data: twoRemoteErrors }),
       ).toBe(
         `${twoRemoteErrors.name}: ${twoRemoteErrors.description} - ${twoRemoteErrors.message}\n` +
-          `  command\t${twoRemoteErrors.metadata.command}\n` +
+          // `  command\t${twoRemoteErrors.metadata?.command}\n` +
           `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
           `  host\t${host}\n` +
           `  port\t${port}\n` +

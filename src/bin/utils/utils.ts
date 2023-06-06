@@ -7,8 +7,6 @@ import ErrorPolykey from '../../ErrorPolykey';
 import * as binErrors from '../errors';
 import * as clientUtils from '../../client/utils/utils';
 import * as clientErrors from '../../client/errors';
-import * as grpcErrors from '../../grpc/errors';
-import * as nodesUtils from '../../nodes/utils';
 import * as utils from '../../utils';
 import * as rpcErrors from '../../rpc/errors';
 
@@ -112,22 +110,7 @@ function outputFormatter(msg: OutputObject): string | Uint8Array {
     let currError = msg.data;
     let indent = '  ';
     while (currError != null) {
-      if (currError instanceof grpcErrors.ErrorPolykeyRemoteOLD) {
-        output += `${currError.name}: ${currError.description}`;
-        if (currError.message && currError.message !== '') {
-          output += ` - ${currError.message}`;
-        }
-        output += '\n';
-        output += `${indent}command\t${currError.metadata.command}\n`;
-        output += `${indent}nodeId\t${nodesUtils.encodeNodeId(
-          currError.metadata.nodeId,
-        )}\n`;
-        output += `${indent}host\t${currError.metadata.host}\n`;
-        output += `${indent}port\t${currError.metadata.port}\n`;
-        output += `${indent}timestamp\t${currError.timestamp}\n`;
-        output += `${indent}cause: `;
-        currError = currError.cause;
-      } else if (currError instanceof rpcErrors.ErrorPolykeyRemote) {
+      if (currError instanceof rpcErrors.ErrorPolykeyRemote) {
         output += `${currError.name}: ${currError.description}`;
         if (currError.message && currError.message !== '') {
           output += ` - ${currError.message}`;

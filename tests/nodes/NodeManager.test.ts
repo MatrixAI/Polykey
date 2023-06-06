@@ -1,9 +1,6 @@
 import type { NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
-import type {
-  Crypto as QUICCrypto,
-  Host as QUICHost,
-} from '@matrixai/quic/dist/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { Task } from '@/tasks/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
@@ -24,6 +21,7 @@ import { never, promise, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as testNodesUtils from './utils';
 import * as nodesTestUtils from '../nodes/utils';
+import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeManager.name} test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -44,16 +42,7 @@ describe(`${NodeManager.name} test`, () => {
   } as unknown as NodeConnectionManager;
   const dummySigchain = {} as Sigchain;
 
-  const ops: QUICCrypto = {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      // FIXME: is there a better way?
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
+  const crypto = tlsTestUtils.createCrypto();
 
   let keyRing: KeyRing;
   let db: DB;
@@ -63,7 +52,6 @@ describe(`${NodeManager.name} test`, () => {
   let sigchain: Sigchain;
   let taskManager: TaskManager;
 
-  let key: ArrayBuffer;
   let clientSocket: QUICSocket;
 
   beforeEach(async () => {
@@ -106,12 +94,8 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
 
-    key = keysUtils.generateKey();
     clientSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -346,10 +330,7 @@ describe(`${NodeManager.name} test`, () => {
   //     keyRing,
   //     nodeGraph,
   //     quicClientConfig: {
-  //       crypto: {
-  //         key,
-  //         ops,
-  //       },
+  //       crypto,
   //     },
   //     quicSocket: clientSocket,
   //     logger
@@ -572,10 +553,7 @@ describe(`${NodeManager.name} test`, () => {
       keyRing,
       nodeGraph,
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
       },
       quicSocket: clientSocket,
       logger,

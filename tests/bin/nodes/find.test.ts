@@ -33,8 +33,6 @@ describe('find', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -55,8 +53,6 @@ describe('find', () => {
       password,
       nodePath: path.join(dataDir, 'remoteOnline'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -68,16 +64,14 @@ describe('find', () => {
       },
     });
     remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
-    remoteOnlineHost = remoteOnline.proxy.getProxyHost();
-    remoteOnlinePort = remoteOnline.proxy.getProxyPort();
+    remoteOnlineHost = remoteOnline.quicServerAgent.host as unknown as Host;
+    remoteOnlinePort = remoteOnline.quicServerAgent.port as unknown as Port;
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
     // Setting up an offline remote keynode
     remoteOffline = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'remoteOffline'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -89,8 +83,8 @@ describe('find', () => {
       },
     });
     remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();
-    remoteOfflineHost = remoteOffline.proxy.getProxyHost();
-    remoteOfflinePort = remoteOffline.proxy.getProxyPort();
+    remoteOfflineHost = remoteOffline.quicServerAgent.host as unknown as Host;
+    remoteOfflinePort = remoteOffline.quicServerAgent.port as unknown as Port;
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
   });

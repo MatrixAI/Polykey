@@ -28,8 +28,6 @@ describe('claim', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -47,8 +45,6 @@ describe('claim', () => {
       password,
       nodePath: path.join(dataDir, 'remoteNode'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -104,27 +100,25 @@ describe('claim', () => {
       expect(stdout).toContain(remoteIdEncoded);
     },
   );
-  testUtils.testIf(testUtils.isTestPlatformEmpty)(
-    'sends a gestalt invite (force invite)',
-    async () => {
-      await remoteNode.notificationsManager.sendNotification(localId, {
-        type: 'GestaltInvite',
-      });
-      const { exitCode, stdout } = await testUtils.pkStdio(
-        ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
-        {
-          env: {
-            PK_NODE_PATH: nodePath,
-            PK_PASSWORD: password,
-          },
-          cwd: dataDir,
+  // TestUtils.testIf(testUtils.isTestPlatformEmpty)
+  test('sends a gestalt invite (force invite)', async () => {
+    await remoteNode.notificationsManager.sendNotification(localId, {
+      type: 'GestaltInvite',
+    });
+    const { exitCode, stdout } = await testUtils.pkStdio(
+      ['nodes', 'claim', remoteIdEncoded, '--force-invite'],
+      {
+        env: {
+          PK_NODE_PATH: nodePath,
+          PK_PASSWORD: password,
         },
-      );
-      expect(exitCode).toBe(0);
-      expect(stdout).toContain('Successfully generated a cryptolink');
-      expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
-    },
-  );
+        cwd: dataDir,
+      },
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain('Successfully generated a cryptolink');
+    expect(stdout).toContain(nodesUtils.encodeNodeId(remoteId));
+  });
   testUtils.testIf(testUtils.isTestPlatformEmpty)('claims a node', async () => {
     await remoteNode.notificationsManager.sendNotification(localId, {
       type: 'GestaltInvite',

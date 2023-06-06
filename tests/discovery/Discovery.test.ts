@@ -4,6 +4,7 @@ import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids/index';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -11,6 +12,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
+import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -22,18 +24,16 @@ import NodeManager from '@/nodes/NodeManager';
 import KeyRing from '@/keys/KeyRing';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
-import Proxy from '@/network/Proxy';
 import * as utils from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
-import * as grpcUtils from '@/grpc/utils/index';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import * as testsUtils from '../utils';
 import { encodeProviderIdentityId } from '../../src/ids/index';
 import 'ix/add/asynciterable-operators/toarray';
+import * as tlsTestsUtils from '../utils/tls';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -57,11 +57,11 @@ describe('Discovery', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let db: DB;
   let acl: ACL;
   let keyRing: KeyRing;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   // Other gestalt
   let nodeA: PolykeyAgent;
   let nodeB: PolykeyAgent;
@@ -81,7 +81,6 @@ describe('Discovery', () => {
       () => new PromiseCancellable((resolve) => resolve()),
     );
     // Sets the global GRPC logger to the logger
-    grpcUtils.setLogger(logger);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -145,17 +144,6 @@ describe('Discovery', () => {
       keyRing,
       logger: logger.getChild('sigChain'),
     });
-    proxy = new Proxy({
-      authToken: 'abc123',
-      logger: logger.getChild('fwxProxy'),
-    });
-    await proxy.start({
-      forwardHost: '127.0.0.1' as Host,
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
-      proxyHost: '127.0.0.1' as Host,
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-    });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
@@ -166,11 +154,24 @@ describe('Discovery', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -192,8 +193,6 @@ describe('Discovery', () => {
       password: password,
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -208,8 +207,6 @@ describe('Discovery', () => {
       password: password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -224,8 +221,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.proxy.getProxyHost(),
-      port: nodeA.proxy.getProxyPort(),
+      host: nodeA.quicServerAgent.host as unknown as Host,
+      port: nodeA.quicServerAgent.port as unknown as Port,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
@@ -246,9 +243,9 @@ describe('Discovery', () => {
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
-    await proxy.stop();
     await sigchain.stop();
     await identitiesManager.stop();
     await gestaltGraph.stop();

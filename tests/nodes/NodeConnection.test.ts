@@ -1,7 +1,7 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
 import type { NodeId, NodeIdEncoded } from '@/ids';
-import type { Host as QUICHost, Crypto as QUICCrypto } from '@matrixai/quic';
+import type { Host as QUICHost } from '@matrixai/quic';
 import { QUICServer, QUICSocket } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
@@ -12,8 +12,7 @@ import RPCServer from '@/rpc/RPCServer';
 import * as nodesErrors from '@/nodes/errors';
 import NodeConnection from '@/nodes/NodeConnection';
 import { promise } from '@/utils';
-import * as testNodesUtils from './utils';
-import * as tlsUtils from '../utils/tls';
+import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnection.name}`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -23,18 +22,8 @@ describe(`${NodeConnection.name}`, () => {
   ]);
   const localHost = '127.0.0.1' as Host;
 
-  const ops: QUICCrypto = {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      // FIXME: is there a better way?
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
+  const crypto = tlsTestUtils.createCrypto();
 
-  let key: ArrayBuffer;
   let serverTlsConfig: TLSConfig;
   let clientTlsConfig: TLSConfig;
   let serverNodeId: NodeId;
@@ -69,19 +58,15 @@ describe(`${NodeConnection.name}`, () => {
   };
 
   beforeEach(async () => {
-    key = keysUtils.generateKey();
     const serverKeyPair = keysUtils.generateKeyPair();
     const clientKeyPair = keysUtils.generateKeyPair();
     serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
     _clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
-    serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
-    clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
+    serverTlsConfig = await tlsTestUtils.createTLSConfig(serverKeyPair);
+    clientTlsConfig = await tlsTestUtils.createTLSConfig(clientKeyPair);
     serverSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('serverSocket'),
     });
     await serverSocket.start({
@@ -94,10 +79,7 @@ describe(`${NodeConnection.name}`, () => {
           certChainPem: serverTlsConfig.certChainPem,
         },
       },
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       socket: serverSocket,
       logger: logger.getChild(`${QUICServer.name}`),
     });
@@ -121,10 +103,7 @@ describe(`${NodeConnection.name}`, () => {
 
     await quicServer.start();
     clientSocket = new QUICSocket({
-      crypto: {
-        key,
-        ops,
-      },
+      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -147,10 +126,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -173,10 +149,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -193,10 +166,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: 12345 as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -217,10 +187,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -254,10 +221,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -278,10 +242,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -304,10 +265,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: true,
@@ -332,10 +290,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -371,10 +326,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -401,10 +353,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -434,10 +383,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,
@@ -471,10 +417,7 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        crypto: {
-          key,
-          ops,
-        },
+        crypto,
         localHost: localHost as unknown as QUICHost,
         config: {
           verifyPeer: false,

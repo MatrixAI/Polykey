@@ -1,13 +1,14 @@
 import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
-import type { Host, Port } from '@/network/types';
 import type { SignedNotification } from '@/notifications/types';
 import type { NodeIdEncoded } from '@/ids/index';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -18,7 +19,6 @@ import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import { notificationsSend } from '@/client';
-import * as testsUtils from '../../utils';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
@@ -26,7 +26,11 @@ import NodeManager from '../../../src/nodes/NodeManager';
 import NotificationsManager from '../../../src/notifications/NotificationsManager';
 import ACL from '../../../src/acl/ACL';
 import Sigchain from '../../../src/sigchain/Sigchain';
-import Proxy from '../../../src/network/Proxy';
+import * as tlsTestsUtils from '../../utils/tls';
+
+const mocks = {
+  generateNotification: notificationsUtils.generateNotification,
+};
 
 describe('notificationsSend', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -36,7 +40,6 @@ describe('notificationsSend', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -47,18 +50,15 @@ describe('notificationsSend', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let mockedSignNotification: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
 
   beforeEach(async () => {
-    mockedSignNotification = jest.spyOn(
-      notificationsUtils,
-      'generateNotification',
-    );
+    mockedSignNotification = jest.spyOn(mocks, 'generateNotification');
     mockedSendNotification = jest.spyOn(
       NodeConnectionManager.prototype,
       'withConnF',
@@ -75,7 +75,7 @@ describe('notificationsSend', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -84,15 +84,6 @@ describe('notificationsSend', () => {
     acl = await ACL.createACL({
       db,
       logger,
-    });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -109,11 +100,24 @@ describe('notificationsSend', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -152,8 +156,8 @@ describe('notificationsSend', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
-    await proxy.stop();
     await acl.stop();
     await db.stop();
     await keyRing.stop();

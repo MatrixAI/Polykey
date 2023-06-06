@@ -1,6 +1,6 @@
 import type { NodeAddress } from '@/nodes/types';
 import type { VaultId, VaultName } from '@/vaults/types';
-import type { Host } from '@/network/types';
+import type { Host, Port } from '@/network/types';
 import type { GestaltNodeInfo } from '@/gestalts/types';
 import path from 'path';
 import fs from 'fs';
@@ -228,7 +228,8 @@ describe('CLI vaults', () => {
         password,
         nodePath: dataDir2,
         networkConfig: {
-          proxyHost: '127.0.0.1' as Host,
+          agentHost: '127.0.0.1' as Host,
+          clientHost: '127.0.0.1' as Host,
         },
         logger: logger,
         keyRingConfig: {
@@ -255,14 +256,14 @@ describe('CLI vaults', () => {
       const targetNodeId = targetPolykeyAgent.keyRing.getNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
-        host: targetPolykeyAgent.proxy.getProxyHost(),
-        port: targetPolykeyAgent.proxy.getProxyPort(),
+        host: targetPolykeyAgent.quicServerAgent.host as unknown as Host,
+        port: targetPolykeyAgent.quicServerAgent.port as unknown as Port,
       });
       await targetPolykeyAgent.nodeManager.setNode(
         polykeyAgent.keyRing.getNodeId(),
         {
-          host: polykeyAgent.proxy.getProxyHost(),
-          port: polykeyAgent.proxy.getProxyPort(),
+          host: polykeyAgent.quicServerAgent.host as unknown as Host,
+          port: polykeyAgent.quicServerAgent.port as unknown as Port,
         },
       );
       await polykeyAgent.acl.setNodePerm(targetNodeId, {
@@ -821,7 +822,8 @@ describe('CLI vaults', () => {
             logger,
             nodePath: path.join(dataDir, 'remoteOnline'),
             networkConfig: {
-              proxyHost: '127.0.0.1' as Host,
+              agentHost: '127.0.0.1' as Host,
+              clientHost: '127.0.0.1' as Host,
             },
             keyRingConfig: {
               passwordOpsLimit: keysUtils.passwordOpsLimits.min,
@@ -833,8 +835,8 @@ describe('CLI vaults', () => {
           const remoteOnlineNodeIdEncoded =
             nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
-            host: remoteOnline.proxy.getProxyHost(),
-            port: remoteOnline.proxy.getProxyPort(),
+            host: remoteOnline.quicServerAgent.host as unknown as Host,
+            port: remoteOnline.quicServerAgent.port as unknown as Port,
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({

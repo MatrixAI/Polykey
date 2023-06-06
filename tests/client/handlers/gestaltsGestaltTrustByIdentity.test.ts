@@ -2,12 +2,13 @@ import type { TLSConfig } from '@/network/types';
 import type { IdentityId, ClaimId, ProviderIdentityClaimId } from '@/ids/index';
 import type { SignedClaim } from '@/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
-import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -23,16 +24,15 @@ import * as nodesUtils from '@/nodes/utils';
 import * as gestaltsErrors from '@/gestalts/errors';
 import { sleep } from '@/utils';
 import { gestaltsGestaltTrustByIdentity } from '@/client';
-import * as testsUtils from '../../utils';
 import Discovery from '../../../src/discovery/Discovery';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
 import NodeManager from '../../../src/nodes/NodeManager';
 import IdentitiesManager from '../../../src/identities/IdentitiesManager';
-import Proxy from '../../../src/network/Proxy';
 import Sigchain from '../../../src/sigchain/Sigchain';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TestProvider from '../../identities/TestProvider';
-import * as testUtils from '../../utils';
+import * as testUtils from '../../utils/utils';
+import * as tlsTestsUtils from '../../utils/tls';
 
 describe('gestaltsGestaltTrustByIdentity', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -42,7 +42,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -55,8 +54,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
   let testProvider: TestProvider;
@@ -87,7 +86,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
       lazy: true,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     acl = await ACL.createACL({
       db,
       logger,
@@ -104,15 +103,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       gestaltGraph,
       logger,
     });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-    });
     sigchain = await Sigchain.createSigchain({
       db,
       keyRing,
@@ -123,11 +113,24 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      crypto,
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        crypto,
+        config: {
+          verifyPeer: false,
+        },
+      },
+      quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
@@ -180,9 +183,9 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
-    await proxy.stop();
     await identitiesManager.stop();
     await webSocketServer.stop(true);
     await webSocketClient.destroy(true);

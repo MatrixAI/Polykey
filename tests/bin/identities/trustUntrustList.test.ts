@@ -15,6 +15,11 @@ import { encodeProviderIdentityId } from '@/identities/utils';
 import * as testUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 
+// Fixes problem with spyOn overriding imports directly
+const mocks = {
+  browser: identitiesUtils.browser,
+};
+
 describe('trust/untrust/list', () => {
   const logger = new Logger('trust/untrust/list test', LogLevel.WARN, [
     new StreamHandler(),
@@ -45,8 +50,6 @@ describe('trust/untrust/list', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -64,8 +67,6 @@ describe('trust/untrust/list', () => {
       password,
       nodePath: nodePathGestalt,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
@@ -77,8 +78,8 @@ describe('trust/untrust/list', () => {
       },
     });
     nodeId = node.keyRing.getNodeId();
-    nodeHost = node.proxy.getProxyHost();
-    nodePort = node.proxy.getProxyPort();
+    nodeHost = node.quicServerAgent.host as unknown as Host;
+    nodePort = node.quicServerAgent.port as unknown as Port;
     node.identitiesManager.registerProvider(provider);
     await node.identitiesManager.putToken(provider.id, identity, {
       accessToken: 'def456',
@@ -127,7 +128,7 @@ describe('trust/untrust/list', () => {
         },
       );
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
@@ -261,7 +262,7 @@ describe('trust/untrust/list', () => {
         },
       );
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
