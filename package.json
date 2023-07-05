@@ -79,7 +79,7 @@
     "dev": "nodemon src/bin/polykey.ts -- agent start --verbose"
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.6.7",
+    "@grpc/grpc-js": "1.8.8",
     "@matrixai/async-cancellable": "^1.0.6",
     "@matrixai/async-init": "^1.8.2",
     "@matrixai/async-locks": "^3.2.0",
