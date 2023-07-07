@@ -161,7 +161,7 @@
     "prettier": "^2.6.2",
     "shelljs": "^0.8.5",
     "shx": "^0.3.4",
-    "systeminformation": "^5.12.1",
+    "systeminformation": "^5.18.5",
     "ts-jest": "^28.0.5",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^3.9.0",

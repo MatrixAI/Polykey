@@ -402,8 +402,8 @@ integration:linux:
     - job: integration:deployment
       optional: true
   tags:
-    - shared-macos-amd64
-  image: macos-11-xcode-12
+    - saas-macos-medium-m1
+  image: macos-12-xcode-14
   script:
     - for f in ./builds/*-macos-x64*; do "$f"; done
   rules:
