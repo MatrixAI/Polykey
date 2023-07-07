@@ -9,10 +9,6 @@ const moduleNameMapper = pathsToModuleNameMapper(compilerOptions.paths, {
   prefix: '<rootDir>/src/',
 });
 
-// using panva/jose with jest requires subpath exports
-// https://github.com/panva/jose/discussions/105
-moduleNameMapper['^jose/(.*)$'] = "<rootDir>/node_modules/jose/dist/node/cjs/$1";
-
 // Global variables that are shared across the jest worker pool
 // These variables must be static and serializable
 if ((process.env.PK_TEST_PLATFORM != null) !== (process.env.PK_TEST_COMMAND != null)) throw Error('Both PK_TEST_PLATFORM and PK_TEST_COMMAND must be set together.')
@@ -50,8 +46,21 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   testMatch: ['**/?(*.)+(spec|test|unit.test).+(ts|tsx|js|jsx)'],
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
-    '^.+\\.jsx?$': 'babel-jest',
+    "^.+\\.(t|j)sx?$": [
+      "@swc/jest",
+      {
+        "jsc": {
+          "parser": {
+            "syntax": "typescript",
+            "dynamicImport": true,
+            "tsx": true,
+            "decorators": compilerOptions.experimentalDecorators,
+          },
+          "target": compilerOptions.target.toLowerCase(),
+          "keepClassNames": true,
+        },
+      }
+    ],
   },
   reporters: [
     'default',
