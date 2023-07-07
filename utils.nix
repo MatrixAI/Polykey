@@ -1,7 +1,8 @@
 { runCommandNoCC
 , linkFarm
 , nix-gitignore
-, nodejs-16_x
+, nodejs
+, node2nix
 , pkgs
 , lib
 , fetchurl
@@ -9,8 +10,6 @@
 }:
 
 rec {
-  # Fix nodejs version
-  nodejs = nodejs-16_x;
   # This removes the org scoping
   basename = builtins.baseNameOf node2nixDev.packageName;
   # Filter source to only what's necessary for building
@@ -30,14 +29,6 @@ rec {
     "/jest.config.js"
   ] ./.;
   nodeVersion = builtins.elemAt (lib.versions.splitVersion nodejs.version) 0;
-  # Custom node2nix directly from GitHub
-  node2nixSrc = fetchFromGitHub {
-    owner = "svanderburg";
-    repo = "node2nix";
-    rev = "9377fe4a45274fab0c7faba4f7c43ffae8421dd2";
-    sha256 = "15zip9w9hivd1p6k82hh4zba02jj6q0g2f1i9b7rrn2hs70qdlai";
-  };
-  node2nix = (import "${node2nixSrc}/release.nix" {}).package.x86_64-linux;
   node2nixDrv = dev: runCommandNoCC "node2nix" {} ''
     mkdir $out
     ${node2nix}/bin/node2nix \
@@ -78,28 +69,29 @@ rec {
     '';
   });
   pkgBuilds = {
-    "3.4" = {
+    "3.5" = {
       "linux-x64" = fetchurl {
-        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.4/node-v16.15.0-linux-x64";
-        sha256 = "sR98InYftgwoXMU6I1Jt9+flVmMy06Xdgpi/lcudU9A=";
+        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.5/node-v18.15.0-linux-x64";
+        sha256 = "0glr88p9higdwsffg3l243kpixqcf1mb7fawq62rj9n7b275lwx4";
       };
       "win32-x64" = fetchurl {
-        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.4/node-v16.15.0-win-x64";
-        sha256 = "tH4L7ENiaBbVVNbVDSiRMayGpleNp91pFiCPNKiFqpc=";
+        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.5/node-v18.15.0-win-x64";
+        sha256 = "1d51w02m5jv7fgk3brkv3wizn1l75rai1zyq8m9vlm1za1gaha8p";
       };
       "macos-x64" = fetchurl {
-        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.4/node-v16.15.0-macos-x64";
-        sha256 = "PlOsskHRucHXPz9Ip2BMYNpJR+TTdlG77A0GMB4jNts=";
+        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.5/node-v18.15.0-macos-x64";
+        sha256 = "1qcih9l3vncg05glhr45avcz2p5sqk7sp9776q4133xg88s09k0k";
       };
-      "macos-arm64" = fetchurl {
-        url = "https://github.com/vercel/pkg-fetch/releases/download/v3.4/node-v16.15.0-macos-arm64";
-        sha256 = "VNCPKjPQjLhzyX8d/FJ/dvDQcA9Gv9YZ6Wf2EcDCARI=";
-      };
+      # No build for v18.15.0 macos-arm64 build
+      # "macos-arm64" = fetchurl {
+      #   url = "https://github.com/vercel/pkg-fetch/releases/download/v3.4/node-v16.15.0-macos-arm64";
+      #   sha256 = "VNCPKjPQjLhzyX8d/FJ/dvDQcA9Gv9YZ6Wf2EcDCARI=";
+      # };
     };
   };
   pkgCachePath =
     let
-      pkgBuild = pkgBuilds."3.4";
+      pkgBuild = pkgBuilds."3.5";
       fetchedName = n: builtins.replaceStrings ["node"] ["fetched"] n;
     in
       linkFarm "pkg-cache"
@@ -116,9 +108,10 @@ rec {
             name = fetchedName pkgBuild.macos-x64.name;
             path = pkgBuild.macos-x64;
           }
-          {
-            name = fetchedName pkgBuild.macos-arm64.name;
-            path = pkgBuild.macos-arm64;
-          }
+          # No build for v18.15 macos-arm64 build
+          # {
+          #   name = fetchedName pkgBuild.macos-arm64.name;
+          #   path = pkgBuild.macos-arm64;
+          # }
         ];
 }

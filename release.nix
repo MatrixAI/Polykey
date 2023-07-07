@@ -8,7 +8,7 @@ let
       name = "${utils.basename}-${version}-linux-${arch}";
       version = utils.node2nixDev.version;
       src = "${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}";
-      nativeBuildInputs = [ utils.nodejs ];
+      nativeBuildInputs = [ nodejs ];
       PKG_CACHE_PATH = utils.pkgCachePath;
       PKG_IGNORE_TAG = 1;
       buildPhase = ''
@@ -29,7 +29,7 @@ let
       name = "${utils.basename}-${version}-win-${arch}.exe";
       version = utils.node2nixDev.version;
       src = "${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}";
-      nativeBuildInputs = [ utils.nodejs ];
+      nativeBuildInputs = [ nodejs ];
       PKG_CACHE_PATH = utils.pkgCachePath;
       PKG_IGNORE_TAG = 1;
       buildPhase = ''
@@ -50,7 +50,7 @@ let
       name = "${utils.basename}-${version}-macos-${arch}";
       version = utils.node2nixDev.version;
       src = "${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}";
-      nativeBuildInputs = [ utils.nodejs ];
+      nativeBuildInputs = [ nodejs ];
       PKG_CACHE_PATH = utils.pkgCachePath;
       PKG_IGNORE_TAG = 1;
       buildPhase = ''

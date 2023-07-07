@@ -6,7 +6,7 @@ let
 in
   mkShell {
     nativeBuildInputs = [
-      utils.nodejs
+      nodejs
       shellcheck
       grpc-tools
       grpcurl
