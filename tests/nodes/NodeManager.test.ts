@@ -1,5 +1,5 @@
 import type { NodeAddress } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { Task } from '@/tasks/types';
 import path from 'path';
@@ -19,6 +19,7 @@ import NodeConnection from '@/nodes/NodeConnection';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import { never, promise, sleep } from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
+import PolykeyAgent from '@/PolykeyAgent';
 import * as testNodesUtils from './utils';
 import * as nodesTestUtils from '../nodes/utils';
 import * as tlsTestUtils from '../utils/tls';
@@ -41,7 +42,6 @@ describe(`${NodeManager.name} test`, () => {
     isSeedNode: mockedIsSeedNode,
   } as unknown as NodeConnectionManager;
   const dummySigchain = {} as Sigchain;
-
   const crypto = tlsTestUtils.createCrypto();
 
   let keyRing: KeyRing;
@@ -53,6 +53,7 @@ describe(`${NodeManager.name} test`, () => {
   let taskManager: TaskManager;
 
   let clientSocket: QUICSocket;
+  let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
     // Setting up client dependencies
@@ -95,12 +96,13 @@ describe(`${NodeManager.name} test`, () => {
     });
 
     clientSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
       host: localHost as unknown as QUICHost,
     });
+
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
@@ -120,7 +122,7 @@ describe(`${NodeManager.name} test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await clientSocket.stop(true);
+    await clientSocket.stop({ force: true });
   });
 
   test('should add a node when bucket has room', async () => {
@@ -324,68 +326,68 @@ describe(`${NodeManager.name} test`, () => {
     expect(oldestNodeNew).toBeUndefined();
     nodeManagerPingMock.mockRestore();
   });
-  // FIXME: uses the NCM, depends on custom verification
-  // test('should add node when an incoming connection is established', async () => {
-  //   const nodeConnectionManager = new NodeConnectionManager({
-  //     keyRing,
-  //     nodeGraph,
-  //     quicClientConfig: {
-  //       crypto,
-  //     },
-  //     quicSocket: clientSocket,
-  //     logger
-  //   })
-  //   const nodeManager = new NodeManager({
-  //     db,
-  //     sigchain: dummySigchain,
-  //     keyRing,
-  //     gestaltGraph,
-  //     nodeGraph,
-  //     nodeConnectionManager,
-  //     taskManager,
-  //     logger,
-  //   });
-  //   await nodeManager.start();
-  //
-  //   await nodeConnectionManager.start({ nodeManager });
-  //   server = await PolykeyAgent.createPolykeyAgent({
-  //     password: 'password',
-  //     nodePath: path.join(dataDir, 'server'),
-  //     networkConfig: {
-  //       proxyHost: localhost,
-  //     },
-  //     logger: logger,
-  //     keyRingConfig: {
-  //       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-  //       passwordMemLimit: keysUtils.passwordMemLimits.min,
-  //       strictMemoryLock: false,
-  //     },
-  //   });
-  //   const serverNodeId = server.keyRing.getNodeId();
-  //   const serverNodeAddress: NodeAddress = {
-  //     host: server.proxy.getProxyHost(),
-  //     port: server.proxy.getProxyPort(),
-  //   };
-  //   await nodeGraph.setNode(serverNodeId, serverNodeAddress);
-  //
-  //   const expectedHost = proxy.getProxyHost();
-  //   const expectedPort = proxy.getProxyPort();
-  //   const expectedNodeId = keyRing.getNodeId();
-  //
-  //   const nodeData = await server.nodeGraph.getNode(expectedNodeId);
-  //   expect(nodeData).toBeUndefined();
-  //
-  //   // Now we want to connect to the server by making an echo request.
-  //   await nodeConnectionManager.withConnF(serverNodeId, async (conn) => {
-  //     const client = conn.getClient();
-  //     await client.echo(new utilsPB.EchoMessage().setChallenge('hello'));
-  //   });
-  //
-  //   const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
-  //   expect(nodeData2).toBeDefined();
-  //   expect(nodeData2?.address.host).toEqual(expectedHost);
-  //   expect(nodeData2?.address.port).toEqual(expectedPort);
-  // });
+  test('should add node when an incoming connection is established', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        crypto,
+      },
+      quicSocket: clientSocket,
+      logger,
+    });
+    const nodeManager = new NodeManager({
+      db,
+      sigchain: dummySigchain,
+      keyRing,
+      gestaltGraph,
+      nodeGraph,
+      nodeConnectionManager,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+
+    await nodeConnectionManager.start({ nodeManager });
+    const server = await PolykeyAgent.createPolykeyAgent({
+      password: 'password',
+      nodePath: path.join(dataDir, 'server'),
+      networkConfig: {
+        agentHost: '127.0.0.1' as Host,
+      },
+      logger: logger,
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
+    });
+    const serverNodeId = server.keyRing.getNodeId();
+    const serverNodeAddress: NodeAddress = {
+      host: server.quicServerAgent.host as unknown as Host,
+      port: server.quicServerAgent.port as unknown as Port,
+    };
+    await nodeGraph.setNode(serverNodeId, serverNodeAddress);
+
+    const expectedHost = clientSocket.host;
+    const expectedPort = clientSocket.port;
+    const expectedNodeId = keyRing.getNodeId();
+
+    const nodeData = await server.nodeGraph.getNode(expectedNodeId);
+    expect(nodeData).toBeUndefined();
+
+    // Now we want to connect to the server
+    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+      // Do nothing
+    });
+
+    const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
+    expect(nodeData2).toBeDefined();
+    expect(nodeData2?.address.host).toEqual(expectedHost);
+    expect(nodeData2?.address.port).toEqual(expectedPort);
+  });
   test('should not add nodes to full bucket if pings succeeds', async () => {
     const nodeManager = new NodeManager({
       db,
@@ -553,6 +555,8 @@ describe(`${NodeManager.name} test`, () => {
       keyRing,
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
       },
       quicSocket: clientSocket,

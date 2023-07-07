@@ -1,4 +1,4 @@
-import type { Host, Port } from '@/network/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId } from '@/ids';
 import type { NodeAddress } from '@/nodes/types';
@@ -31,7 +31,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   ]);
   const localHost = '127.0.0.1' as Host;
   const password = 'password';
-
   const crypto = tlsTestUtils.createCrypto();
 
   let dataDir: string;
@@ -49,6 +48,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let sigchain: Sigchain;
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
+  let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -76,7 +76,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     };
 
     clientSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -121,6 +120,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       db,
       logger,
     });
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
@@ -137,7 +137,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop(true);
+    await clientSocket.stop({ force: true });
     await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
@@ -149,11 +149,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -208,11 +206,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -282,11 +278,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,

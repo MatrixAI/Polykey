@@ -4,9 +4,11 @@ import type { Host, Hostname, Port, Address } from './types';
 import type { Certificate } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { NodeAddress } from 'nodes/types';
+import type { CertificatePEM } from '../keys/types';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
+import { never } from '@/utils';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
 
@@ -215,18 +217,21 @@ function resolvesZeroIP(ip: Host): Host {
  */
 async function verifyServerCertificateChain(
   nodeIds: Array<NodeId>,
-  certChain: Array<Certificate>,
+  certPEMChain: Array<string>,
 ): Promise<NodeId> {
-  if (!certChain.length) {
+  if (certPEMChain.length === 0) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
     );
   }
-  if (!nodeIds.length) {
-    throw new networkErrors.ErrorConnectionNodesEmpty(
-      'No nodes were provided to verify against',
-    );
+  if (nodeIds.length === 0) {
+    throw new Error('No nodes were provided to verify against'); // FIXME: use a proper error
   }
+  const certChain = certPEMChain.map((v) => {
+    const cert = keysUtils.certFromPEM(v as CertificatePEM);
+    if (cert == null) never();
+    return cert;
+  });
   const now = new Date();
   let certClaim: Certificate | null = null;
   let certClaimIndex: number | null = null;
@@ -337,13 +342,18 @@ async function verifyServerCertificateChain(
  * The server does have a target NodeId. This means we verify the entire chain.
  */
 async function verifyClientCertificateChain(
-  certChain: Array<Certificate>,
+  certPEMChain: Array<string>,
 ): Promise<void> {
-  if (!certChain.length) {
+  if (certPEMChain.length === 0) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
     );
   }
+  const certChain = certPEMChain.map((v) => {
+    const cert = keysUtils.certFromPEM(v as CertificatePEM);
+    if (cert == null) never();
+    return cert;
+  });
   const now = new Date();
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];

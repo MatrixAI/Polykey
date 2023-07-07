@@ -5,8 +5,8 @@ import type { SeedNodes } from './nodes/types';
 import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type { Crypto as QUICCrypto } from '@matrixai/quic';
 import type * as quicEvents from '@matrixai/quic/dist/events';
+import type { ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -360,52 +360,12 @@ class PolykeyAgent {
           keyRing,
           logger: logger.getChild(NodeGraph.name),
         }));
-      // TODO: This needs to be changed and moved to a utils file
-      const quicOpts: QUICCrypto = {
-        randomBytes: async (data: ArrayBuffer) => {
-          const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-          const dataBuf = Buffer.from(data);
-          // FIXME: is there a better way?
-          dataBuf.write(randomBytes.toString('binary'), 'binary');
-        },
-        async sign(key: ArrayBuffer, data: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
-        },
-        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
-        },
-      };
-      const quicCrypto = {
-        key: keysUtils.generateKey(),
-        ops: quicOpts,
-      };
       const resolveHostname = (host) => {
         return networkUtils.resolveHostname(host)[0] ?? '';
       };
       quicSocket =
         quicSocket ??
         new QUICSocket({
-          crypto: quicCrypto,
           logger: logger.getChild(QUICSocket.name),
           resolveHostname,
         });
@@ -417,10 +377,8 @@ class PolykeyAgent {
           seedNodes,
           quicSocket,
           quicClientConfig: {
-            crypto: quicCrypto,
-            config: {
-              verifyPeer: false,
-            },
+            key: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+            cert: await certManager.getCertPEMsChainPEM(),
           },
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),
@@ -559,23 +517,52 @@ class PolykeyAgent {
           logger: logger.getChild(RPCServer.name + 'Agent'),
         });
       }
+      const serverCrypto: ServerCrypto = {
+        async sign(key: ArrayBuffer, data: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
+        },
+        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
+        },
+      };
       quicServerAgent =
         quicServerAgent ??
         new QUICServer({
           config: {
-            tlsConfig: {
-              privKeyPem: tlsConfig.keyPrivatePem,
-              certChainPem: tlsConfig.certChainPem,
-            },
-            verifyPeer: false, // FIXME: false until custom verification logic
+            key: tlsConfig.keyPrivatePem,
+            cert: tlsConfig.certChainPem,
+            verifyPeer: true,
+            verifyAllowFail: true,
             ...quicServerConfig,
-            logKeys: 'tmp/key.log',
+            logKeys: 'tmp/key.log', // FIXME
+            keepAliveIntervalTime: 30000, // TODO
           },
-          crypto: quicCrypto,
+          crypto: {
+            key: keysUtils.generateKey(),
+            ops: serverCrypto,
+          },
+          verifyCallback: networkUtils.verifyClientCertificateChain,
           logger: logger.getChild(QUICServer.name + 'Agent'),
-          // KeepaliveIntervalTime: 0, TODO
-          // maxReadableStreamBytes: 0,
-          // maxWritableStreamBytes: 0,
           socket: quicSocket,
           resolveHostname,
           reasonToCode: utils.reasonToCode,
@@ -584,7 +571,7 @@ class PolykeyAgent {
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
       await quicServerAgent?.stop({ force: true });
-      await quicSocket?.stop(true);
+      await quicSocket?.stop({ force: true });
       await rpcServerAgent?.destroy(true);
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
@@ -802,10 +789,8 @@ class PolykeyAgent {
           // FIXME: Can we even support updating TLS config anymore?
           // this.grpcServerClient.setTLSConfig(tlsConfig);
           this.quicServerAgent.updateConfig({
-            tlsConfig: {
-              privKeyPem: tlsConfig.keyPrivatePem,
-              certChainPem: tlsConfig.certChainPem,
-            },
+            key: tlsConfig.keyPrivatePem,
+            cert: tlsConfig.certChainPem,
           });
           this.logger.info(`${KeyRing.name} change propagated`);
         },
@@ -906,18 +891,14 @@ class PolykeyAgent {
         event: quicEvents.QUICServerConnectionEvent,
       ) => {
         // Needs to setup stream handler
-        const conn = event.detail;
+        const connection = event.detail;
         try {
-          // FIXME: The client certs are not immediately avaliable, for this to work depends on a fix in js-quic
           // Dispatch connection event
-          const remoteInfo = conn.remoteInfo;
-          if (remoteInfo.remoteCertificates == null) {
+          const remoteCertificates = connection.getRemoteCertsChain();
+          if (remoteCertificates.length === 0) {
             throw Error('remote certificates were not provided');
           }
-          const remoteCertPem = remoteInfo.remoteCertificates[0];
-          if (remoteCertPem == null) {
-            throw Error('remote certificates were not provided');
-          }
+          const remoteCertPem = remoteCertificates[0];
           const remoteCert = keysUtils.certFromPEM(
             remoteCertPem as CertificatePEM,
           );
@@ -926,8 +907,8 @@ class PolykeyAgent {
           if (nodeId == null) throw Error('failed to extract NodeId from cert');
           const data: ConnectionData = {
             remoteNodeId: nodeId,
-            remoteHost: remoteInfo.remoteHost as unknown as Host,
-            remotePort: remoteInfo.remotePort as unknown as Port,
+            remoteHost: connection.remoteHost as unknown as Host,
+            remotePort: connection.remotePort as unknown as Port,
           };
           await this.events.emitAsync(
             PolykeyAgent.eventSymbols.QUICServer,
@@ -935,30 +916,32 @@ class PolykeyAgent {
           );
         } catch (e) {
           this.logger.error(e.message);
-          // // FIXME: destroying here causes internal errors with quic, bug needs to be fixed
-          // await conn.destroy({
-          //   appError: true,
-          //   errorMessage: e.message,
-          //   force: true,
-          // });
+          await connection.stop({
+            applicationError: true,
+            errorMessage: e.message,
+            force: true,
+          });
         }
 
         this.logger.info('!!!!Handling new Connection!!!!!');
-        conn.addEventListener('stream', handleStream);
-        conn.addEventListener(
-          'destroy',
+        connection.addEventListener('connectionStream', handleStream);
+        connection.addEventListener(
+          'connectionStop',
           () => {
-            conn.removeEventListener('stream', handleStream);
+            connection.removeEventListener('connectionStream', handleStream);
           },
           { once: true },
         );
       };
-      this.quicServerAgent.addEventListener('connection', handleConnection);
       this.quicServerAgent.addEventListener(
-        'stop',
+        'serverConnection',
+        handleConnection,
+      );
+      this.quicServerAgent.addEventListener(
+        'serverStop',
         () => {
           this.quicServerAgent.removeEventListener(
-            'connection',
+            'serverConnection',
             handleConnection,
           );
         },

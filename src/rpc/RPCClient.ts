@@ -88,7 +88,7 @@ class RPCClient<M extends ClientManifest> {
     {},
     {
       get: (_, method) => {
-        if (typeof method === 'symbol') throw never();
+        if (typeof method === 'symbol') return;
         switch (this.callerTypes[method]) {
           case 'UNARY':
             return (params, ctx) => this.unaryCaller(method, params, ctx);

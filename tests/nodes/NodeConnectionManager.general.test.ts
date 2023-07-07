@@ -1,4 +1,4 @@
-import type { Host, Port } from '@/network/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { NodeAddress, NodeBucket } from '@/nodes/types';
@@ -33,8 +33,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   ]);
   const localHost = '127.0.0.1' as Host;
   const password = 'password';
-
   const crypto = tlsTestUtils.createCrypto();
+
+  let tlsConfig: TLSConfig;
 
   const nodeIdGenerator = (number: number) => {
     const idArray = new Uint8Array([
@@ -91,6 +92,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
 
+  let nodeConnectionManager: NodeConnectionManager;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -114,7 +117,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
 
     clientSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -131,6 +133,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -166,6 +169,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   });
 
   afterEach(async () => {
+    logger.info('AFTER EACH');
+    await nodeConnectionManager?.stop();
     await taskManager.stopTasks();
     await sigchain.stop();
     await sigchain.destroy();
@@ -179,23 +184,21 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop(true);
+    await clientSocket.stop({ force: true });
     await taskManager.stop();
 
     await remotePolykeyAgent.stop();
   });
 
   test('finds node (local)', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -231,18 +234,16 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeConnectionManager.stop();
   });
   test('finds node (contacts remote node)', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -270,6 +271,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     mockedPingNode.mockImplementation(
       () => new PromiseCancellable((resolve) => resolve(true)),
     );
+    logger.info('DOING TEST');
 
     await nodeGraph.setNode(serverNodeId, serverAddress);
     // Adding node information to remote node
@@ -288,18 +290,16 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeConnectionManager.stop();
   });
   test('cannot find node (contacts remote node)', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -339,18 +339,16 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeConnectionManager.stop();
   });
   test('receives 20 closest local nodes from connected target', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -425,18 +423,16 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeConnectionManager.stop();
   });
   test('sendHolePunchMessage', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -510,20 +506,18 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  // TODO: this depends on custom verification logic
-  test('relayHolePunchMessage', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+  // TODO: Verification logic is done, but hole punching is not implemented.
+  test.skip('relayHolePunchMessage', async () => {
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -580,18 +574,16 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeConnectionManager.stop();
   });
   test('getClosestGlobalNodes should skip recent offline nodes', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 10000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: undefined,

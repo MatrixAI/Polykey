@@ -31,12 +31,6 @@ type TLSConfig = {
   certChainPem: CertificatePEMChain;
 };
 
-type ProxyConfig = {
-  host: Host;
-  port: Port;
-  authToken: string;
-};
-
 /**
  * Proxy connection information
  * @property remoteNodeId - NodeId of the remote connecting node
@@ -67,7 +61,6 @@ export type {
   Port,
   Address,
   TLSConfig,
-  ProxyConfig,
   ConnectionInfo,
   ConnectionData,
 };

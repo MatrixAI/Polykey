@@ -112,7 +112,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     };
 
     clientSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -159,6 +158,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
 
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
@@ -175,7 +175,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop(true);
+    await clientSocket.stop({ force: true });
     await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
@@ -196,11 +196,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
@@ -239,12 +237,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: {
@@ -289,13 +285,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-          maxIdleTimeout: 1000,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 1000,
         keepaliveIntervalTime: 500,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: {
@@ -343,12 +337,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: {
@@ -381,7 +373,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  // TODO: this depends on custom verification logic and client certs being provided before conn starts
   test('should expand the network when nodes enter', async () => {
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
@@ -394,16 +385,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          tlsConfig: {
-            certChainPem: tlsConfig.certChainPem,
-            privKeyPem: tlsConfig.keyPrivatePem,
-          },
-          verifyPeer: false,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: {
@@ -443,12 +428,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
+        crypto,
       },
       quicSocket: clientSocket,
       seedNodes: {

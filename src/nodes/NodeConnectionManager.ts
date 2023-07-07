@@ -9,12 +9,12 @@ import type {
   NodeData,
   NodeId,
   NodeIdString,
+  QUICClientConfig,
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { MultiLockRequest } from '@matrixai/async-locks/dist/types';
-import type { QUICClientConfig } from './types';
+import type { LockRequest } from '@matrixai/async-locks/dist/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
@@ -40,6 +40,8 @@ type ConnectionAndTimer = {
   timer: Timer | null;
   usageCount: number;
 };
+
+// TODO: review and redo connection configs.
 
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
@@ -105,8 +107,8 @@ class NodeConnectionManager {
     pingTimeout = 2000,
     logger,
   }: {
-    nodeGraph: NodeGraph;
     keyRing: KeyRing;
+    nodeGraph: NodeGraph;
     quicSocket: QUICSocket;
     quicClientConfig: QUICClientConfig;
     seedNodes?: SeedNodes;
@@ -150,9 +152,9 @@ class NodeConnectionManager {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.nodeManager = undefined;
     const destroyProms: Array<Promise<void>> = [];
-    for (const [nodeId, connAndLock] of this.connections) {
-      if (connAndLock == null) continue;
-      if (connAndLock.connection == null) continue;
+    for (const [nodeId, connAndTimer] of this.connections) {
+      if (connAndTimer == null) continue;
+      if (connAndTimer.connection == null) continue;
       // It exists so we want to destroy it
       const destroyProm = this.destroyConnection(
         IdInternal.fromString<NodeId>(nodeId),
@@ -445,7 +447,7 @@ class NodeConnectionManager {
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
-          _targetNodeIds: nodeIds,
+          targetNodeIds: nodeIds,
           manifest: agentClientManifest,
           quicClientConfig: this.quicClientConfig,
           targetHost: address.host,
@@ -459,7 +461,7 @@ class NodeConnectionManager {
       );
     // TODO: finally cancel ICE. Use signal and await all settled
     // 2. if established then add to result map
-    const nodeId = connection.getNodeId();
+    const nodeId = connection.nodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     if (connectionsResults.has(nodeIdString)) {
       // 3. if already exists then clean up
@@ -1023,7 +1025,7 @@ class NodeConnectionManager {
     limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Array<NodeId>> {
-    const locks: Array<MultiLockRequest<Lock>> = nodeIds.map((nodeId) => {
+    const locks: Array<LockRequest<Lock>> = nodeIds.map((nodeId) => {
       return [nodeId.toString(), Lock];
     });
     return await this.connectionLocks.withF(...locks, async () => {

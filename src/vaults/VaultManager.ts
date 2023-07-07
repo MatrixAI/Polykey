@@ -17,7 +17,7 @@ import type NotificationsManager from '../notifications/NotificationsManager';
 import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
-import type { MultiLockRequest } from '@matrixai/async-locks';
+import type { LockRequest } from '@matrixai/async-locks';
 import type { Key } from 'keys/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
@@ -312,7 +312,7 @@ class VaultManager {
     );
     const vaultIdString = vaultId.toString() as VaultIdString;
     return await this.vaultLocks.withF(
-      [vaultId, RWLockWriter, 'write'],
+      [vaultId.toString(), RWLockWriter, 'write'],
       async () => {
         // Creating vault
         const vault = await VaultInternal.createVaultInternal({
@@ -388,30 +388,33 @@ class VaultManager {
       );
     }
 
-    await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
-      // Ensure protection from write skew
-      await tran.getForUpdate([
-        ...this.vaultsDbPath,
-        vaultsUtils.encodeVaultId(vaultId),
-        VaultInternal.nameKey,
-      ]);
-      const vaultMeta = await this.getVaultMeta(vaultId, tran);
-      if (vaultMeta == null) return;
-      const vaultName = vaultMeta.vaultName;
-      this.logger.info(
-        `Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
-      );
-      const vaultIdString = vaultId.toString() as VaultIdString;
-      const vault = await this.getVault(vaultId, tran);
-      // Destroying vault state and metadata
-      await vault.stop();
-      await vault.destroy(tran);
-      // Removing from map
-      this.vaultMap.delete(vaultIdString);
-      // Removing name->id mapping
-      await tran.del([...this.vaultsNamesDbPath, vaultName]);
-    });
+    await this.vaultLocks.withF(
+      [vaultId.toString(), RWLockWriter, 'write'],
+      async () => {
+        await tran.lock([...this.vaultsDbPath, vaultId].join(''));
+        // Ensure protection from write skew
+        await tran.getForUpdate([
+          ...this.vaultsDbPath,
+          vaultsUtils.encodeVaultId(vaultId),
+          VaultInternal.nameKey,
+        ]);
+        const vaultMeta = await this.getVaultMeta(vaultId, tran);
+        if (vaultMeta == null) return;
+        const vaultName = vaultMeta.vaultName;
+        this.logger.info(
+          `Destroying Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
+        );
+        const vaultIdString = vaultId.toString() as VaultIdString;
+        const vault = await this.getVault(vaultId, tran);
+        // Destroying vault state and metadata
+        await vault.stop();
+        await vault.destroy(tran);
+        // Removing from map
+        this.vaultMap.delete(vaultIdString);
+        // Removing name->id mapping
+        await tran.del([...this.vaultsNamesDbPath, vaultName]);
+      },
+    );
     this.logger.info(`Destroyed Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
   }
 
@@ -431,12 +434,15 @@ class VaultManager {
       throw new vaultsErrors.ErrorVaultsVaultUndefined();
     }
     const vaultIdString = vaultId.toString() as VaultIdString;
-    await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
-      const vault = await this.getVault(vaultId, tran);
-      await vault.stop();
-      this.vaultMap.delete(vaultIdString);
-    });
+    await this.vaultLocks.withF(
+      [vaultId.toString(), RWLockWriter, 'write'],
+      async () => {
+        await tran.lock([...this.vaultsDbPath, vaultId].join(''));
+        const vault = await this.getVault(vaultId, tran);
+        await vault.stop();
+        this.vaultMap.delete(vaultIdString);
+      },
+    );
   }
 
   /**
@@ -476,42 +482,49 @@ class VaultManager {
       );
     }
 
-    await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock(
-        [...this.vaultsNamesDbPath, newVaultName].join(''),
-        [...this.vaultsDbPath, vaultId].join(''),
-      );
-      this.logger.info(`Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`);
-      // Checking if new name exists
-      if (await this.getVaultId(newVaultName, tran)) {
-        throw new vaultsErrors.ErrorVaultsVaultDefined();
-      }
-      // Ensure protection from write skew
-      await tran.getForUpdate([
-        ...this.vaultsDbPath,
-        vaultsUtils.encodeVaultId(vaultId),
-        VaultInternal.nameKey,
-      ]);
-      // Checking if vault exists
-      const vaultMetadata = await this.getVaultMeta(vaultId, tran);
-      if (vaultMetadata == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      }
-      const oldVaultName = vaultMetadata.vaultName;
-      // Updating metadata with new name;
-      const vaultDbPath = [
-        ...this.vaultsDbPath,
-        vaultsUtils.encodeVaultId(vaultId),
-      ];
-      await tran.put([...vaultDbPath, VaultInternal.nameKey], newVaultName);
-      // Updating name->id map
-      await tran.del([...this.vaultsNamesDbPath, oldVaultName]);
-      await tran.put(
-        [...this.vaultsNamesDbPath, newVaultName],
-        vaultId.toBuffer(),
-        true,
-      );
-    });
+    await this.vaultLocks.withF(
+      [vaultId.toString(), RWLockWriter, 'write'],
+      async () => {
+        await tran.lock(
+          [...this.vaultsNamesDbPath, newVaultName]
+            .map((v) => v.toString())
+            .join(''),
+          [...this.vaultsDbPath, vaultId].map((v) => v.toString()).join(''),
+        );
+        this.logger.info(
+          `Renaming Vault ${vaultsUtils.encodeVaultId(vaultId)}`,
+        );
+        // Checking if new name exists
+        if (await this.getVaultId(newVaultName, tran)) {
+          throw new vaultsErrors.ErrorVaultsVaultDefined();
+        }
+        // Ensure protection from write skew
+        await tran.getForUpdate([
+          ...this.vaultsDbPath,
+          vaultsUtils.encodeVaultId(vaultId),
+          VaultInternal.nameKey,
+        ]);
+        // Checking if vault exists
+        const vaultMetadata = await this.getVaultMeta(vaultId, tran);
+        if (vaultMetadata == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        }
+        const oldVaultName = vaultMetadata.vaultName;
+        // Updating metadata with new name;
+        const vaultDbPath = [
+          ...this.vaultsDbPath,
+          vaultsUtils.encodeVaultId(vaultId),
+        ];
+        await tran.put([...vaultDbPath, VaultInternal.nameKey], newVaultName);
+        // Updating name->id map
+        await tran.del([...this.vaultsNamesDbPath, oldVaultName]);
+        await tran.put(
+          [...this.vaultsNamesDbPath, newVaultName],
+          vaultId.toBuffer(),
+          true,
+        );
+      },
+    );
   }
 
   /**
@@ -656,7 +669,7 @@ class VaultManager {
       `Cloning Vault ${vaultsUtils.encodeVaultId(vaultId)} on Node ${nodeId}`,
     );
     return await this.vaultLocks.withF(
-      [vaultId, RWLockWriter, 'write'],
+      [vaultId.toString(), RWLockWriter, 'write'],
       async () => {
         const vault = await VaultInternal.cloneVaultInternal({
           targetNodeId: nodeId,
@@ -737,16 +750,19 @@ class VaultManager {
     }
 
     if ((await this.getVaultName(vaultId, tran)) == null) return;
-    await this.vaultLocks.withF([vaultId, RWLockWriter, 'write'], async () => {
-      await tran.lock([...this.vaultsDbPath, vaultId].join(''));
-      const vault = await this.getVault(vaultId, tran);
-      await vault.pullVault({
-        nodeConnectionManager: this.nodeConnectionManager,
-        pullNodeId,
-        pullVaultNameOrId,
-        tran,
-      });
-    });
+    await this.vaultLocks.withF(
+      [vaultId.toString(), RWLockWriter, 'write'],
+      async () => {
+        await tran.lock([...this.vaultsDbPath, vaultId].join(''));
+        const vault = await this.getVault(vaultId, tran);
+        await vault.pullVault({
+          nodeConnectionManager: this.nodeConnectionManager,
+          pullNodeId,
+          pullVaultNameOrId,
+          tran,
+        });
+      },
+    );
   }
 
   /**
@@ -768,7 +784,7 @@ class VaultManager {
     const vault = await this.getVault(vaultId, tran);
     return yield* withG(
       [
-        this.vaultLocks.lock([vaultId, RWLockWriter, 'read']),
+        this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read']),
         vault.getLock().read(),
       ],
       async function* (): AsyncGenerator<Buffer, void> {
@@ -810,7 +826,7 @@ class VaultManager {
     const vault = await this.getVault(vaultId, tran);
     return await withF(
       [
-        this.vaultLocks.lock([vaultId, RWLockWriter, 'read']),
+        this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read']),
         vault.getLock().read(),
       ],
       async () => {
@@ -993,7 +1009,7 @@ class VaultManager {
     }
 
     // Obtaining locks
-    const vaultLocks: Array<MultiLockRequest<RWLockWriter>> = vaultIds.map(
+    const vaultLocks: Array<LockRequest<RWLockWriter>> = vaultIds.map(
       (vaultId) => {
         return [vaultId.toString(), RWLockWriter, 'read'];
       },

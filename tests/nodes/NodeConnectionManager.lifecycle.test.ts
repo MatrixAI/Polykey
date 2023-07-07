@@ -26,7 +26,7 @@ import * as tlsUtils from '../utils/tls';
 import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -38,6 +38,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let dataDir: string;
 
   let serverTlsConfig: TLSConfig;
+  let clientTlsConfig: TLSConfig;
   let serverNodeId: NodeId;
   let clientNodeId: NodeId;
   let serverNodeIdEncoded: NodeIdEncoded;
@@ -56,6 +57,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
 
+  let nodeConnectionManager: NodeConnectionManager;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -66,8 +69,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
+    clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
     serverSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('serverSocket'),
     });
     await serverSocket.start({
@@ -75,10 +78,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     quicServer = new QUICServer({
       config: {
-        tlsConfig: {
-          privKeyPem: serverTlsConfig.keyPrivatePem,
-          certChainPem: serverTlsConfig.certChainPem,
-        },
+        key: serverTlsConfig.keyPrivatePem,
+        cert: serverTlsConfig.certChainPem,
       },
       crypto,
       socket: serverSocket,
@@ -91,20 +92,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       manifest: {}, // TODO: test server manifest
       sensitive: false,
     });
-    // Setting up handling
-    // logger.info('Setting up connection handling for server');
-    // quicServer.addEventListener('connection', handleConnection);
-    // quicServer.addEventListener(
-    //   'stop',
-    //   () => {
-    //     quicServer.removeEventListener('connection', handleConnection);
-    //   },
-    //   { once: true },
-    // );
 
     await quicServer.start();
     clientSocket = new QUICSocket({
-      crypto,
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
@@ -156,6 +146,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   afterEach(async () => {
+    await nodeConnectionManager.stop();
+
     await taskManager.stopTasks();
     await taskManager.stop();
     await taskManager.destroy();
@@ -172,24 +164,22 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await clientSocket.stop(true);
+    await clientSocket.stop({ force: true });
     await rpcServer.destroy(true);
     await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
-    await serverSocket.stop(true);
+    await serverSocket.stop({ force: true });
     await taskManager.stop();
   });
 
   test('should create connection', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -212,16 +202,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   test('acquireConnection should create connection', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -250,16 +238,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('withConnF should create connection', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -288,16 +274,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should list active connections', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -334,16 +318,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('withConnG should create connection', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -380,16 +362,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.stop();
   });
   test('should fail to create connection to offline node', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -434,16 +414,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('connection should persist', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -478,16 +456,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should create 1 connection with concurrent creates', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -530,16 +506,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should destroy a connection', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -581,16 +555,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('stopping should destroy all connections', async () => {
     await nodeGraph.setNode(serverNodeId, serverAddress);
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -624,16 +596,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     expect(connectionMap.size).toBe(0);
   });
   test('should ping node with address', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -664,16 +634,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.stop();
   });
   test('should fail to ping non existent node', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -705,16 +673,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   // TODO: this needs the custom node verification logic to work.
   test('should fail to ping node if NodeId does not match', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
         crypto,
-        localHost: localHost as unknown as QUICHost,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -745,9 +711,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.stop();
   });
   // TODO: tests for multi connections, needs custom verification
-  test.todo('use multi-connection to connect to one node with multiple addresses');
-  test.todo('use multi-connection to connect to multiple nodes with multiple addresses');
-  test.todo('use multi-connection to connect to multiple nodes with single address');
+  test.todo(
+    'use multi-connection to connect to one node with multiple addresses',
+  );
+  test.todo(
+    'use multi-connection to connect to multiple nodes with multiple addresses',
+  );
+  test.todo(
+    'use multi-connection to connect to multiple nodes with single address',
+  );
   test.todo('multi-connection respects locking');
   test.todo('multi-connection ends early when all nodes are connected to');
 });
