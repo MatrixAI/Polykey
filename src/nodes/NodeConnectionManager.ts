@@ -29,7 +29,10 @@ import * as nodesErrors from './errors';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import { never } from '../utils';
+import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
+import { PromiseDeconstructed } from '../types';
+import { getRandomBytes } from '../keys/utils/random';
 
 // TODO: check all locking and add cancellation for it.
 
@@ -183,6 +186,7 @@ class NodeConnectionManager {
       this.logger.warn('Attempting connection to our own NodeId');
     }
     return async () => {
+      this.logger.warn(`acquiring connection to node ${nodesUtils.encodeNodeId(targetNodeId)}`);
       const connectionAndTimer = await this.getConnection(
         targetNodeId,
         undefined,
@@ -196,6 +200,7 @@ class NodeConnectionManager {
       return [
         async (e) => {
           if (nodesUtils.isConnectionError(e)) {
+            this.logger.warn(`acquiring errored with ${e?.message}`);
             // Error with connection, shutting connection down
             await this.destroyConnection(targetNodeId);
           }
@@ -206,6 +211,7 @@ class NodeConnectionManager {
             connectionAndTimer.usageCount <= 0 &&
             !this.isSeedNode(targetNodeId)
           ) {
+            this.logger.warn(`creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`);
             connectionAndTimer.timer = new Timer({
               handler: async () => await this.destroyConnection(targetNodeId),
               delay: this.connTimeoutTime,
@@ -305,24 +311,25 @@ class NodeConnectionManager {
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
-    this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
+    this.logger.warn(`Getting NodeConnection for ${targetNodeIdEncoded}`);
+    // FIXME: LOCK IS BEING HELD!
     return await this.connectionLocks.withF(
       [targetNodeIdString, Lock],
       async () => {
+        this.logger.warn(`acquired lock for ${targetNodeIdEncoded}`);
         const connAndTimer = this.connections.get(targetNodeIdString);
         if (connAndTimer != null) {
-          this.logger.debug(
+          this.logger.warn(
             `Found existing NodeConnection for ${targetNodeIdEncoded}`,
           );
           return connAndTimer;
         }
         // Creating the connection and set in map
-        this.logger.debug(`Finding address for ${targetNodeIdEncoded}`);
         const targetAddress = address ?? (await this.findNode(targetNodeId));
         if (targetAddress == null) {
           throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
         }
-        this.logger.debug(
+        this.logger.warn(
           `Found address for ${targetNodeIdEncoded} at ${targetAddress.host}:${targetAddress.port}`,
         );
         // Attempting a multi-connection for the target node
@@ -338,7 +345,9 @@ class NodeConnectionManager {
         // Should throw before reaching here
         never();
       },
-    );
+    ).finally(() => {
+      this.logger.warn(`lock finished for ${targetNodeIdEncoded}`);
+    });
   }
 
   /**
@@ -354,6 +363,8 @@ class NodeConnectionManager {
     addresses: Array<NodeAddress>,
     ctx: ContextTimed,
   ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
+    const nodesEncoded = nodeIds.map(v => nodesUtils.encodeNodeId(v));
+    this.logger.warn(`getting multi-connection for ${nodesEncoded}`)
     if (nodeIds.length === 0) throw Error('TMP, must provide at least 1 node');
     const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
     // 1. short circuit any existing connections
@@ -362,6 +373,7 @@ class NodeConnectionManager {
       const nodeIdString = nodeId.toString() as NodeIdString;
       const connAndTimer = this.connections.get(nodeIdString);
       if (connAndTimer == null) {
+        this.logger.warn(`found existing connection for ${nodesUtils.encodeNodeId(nodeId)}`);
         nodesShortlist.add(nodeIdString);
         continue;
       }
@@ -397,6 +409,7 @@ class NodeConnectionManager {
       nodesShortlistArray.push(IdInternal.fromString<NodeId>(nodeIdString));
     }
     const cleanUpReason = Symbol('CleanUpReason');
+    this.logger.warn(`attempting connections for ${nodesShortlistArray.map(v => nodesUtils.encodeNodeId(v))}`)
     const connProms = resolvedAddresses.map((address) =>
       this.establishSingleConnection(
         nodesShortlistArray,
@@ -412,12 +425,16 @@ class NodeConnectionManager {
     );
     // We race the connections with timeout
     try {
+      this.logger.warn(`awaiting connections`);
       await Promise.race([Promise.all(connProms)]);
+      this.logger.warn(`awaiting connections resolved`);
     } finally {
       // Cleaning up
+      this.logger.warn(`cleaning up`);
       abortController.abort(cleanUpReason);
-      const results = await Promise.allSettled(connProms);
+      await Promise.allSettled(connProms);
     }
+    if (connectionsResults.size === 0) throw Error('No connections established!');
     // TODO: This needs to throw if none were established.
     //  The usual use case is a single node, this shouldn't be a aggregate error type.
     return connectionsResults;
@@ -444,12 +461,15 @@ class NodeConnectionManager {
     // TODO: if all connections fail then this needs to throw. Or does it? Do we just report the allSettled result?
     // TODO: add ICE. Create hole punch relay proms.
     // 1. attempt connection to an address
+    this.logger.warn(`establishing single connection for address ${address.host}:${address.port}`);
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
-          quicClientConfig: this.quicClientConfig,
+          quicClientConfig: {
+            ...this.quicClientConfig,
+          },
           targetHost: address.host,
           targetPort: address.port,
           quicSocket: this.quicSocket,
@@ -458,12 +478,16 @@ class NodeConnectionManager {
           ),
         },
         ctx,
-      );
+      ).catch((e) => {
+        this.logger.warn(`establish single connection failed for ${address.host}:${address.port} with ${e.message}`)
+        throw e;
+      });
     // TODO: finally cancel ICE. Use signal and await all settled
     // 2. if established then add to result map
     const nodeId = connection.nodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     if (connectionsResults.has(nodeIdString)) {
+      this.logger.warn(`single connection already existed, cleaning up ${address.host}:${address.port}`)
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       throw Error(
@@ -473,7 +497,7 @@ class NodeConnectionManager {
     }
     // Final setup
     const handleDestroy = async () => {
-      this.logger.debug('stream destroyed event');
+      this.logger.warn('stream destroyed event');
       // To avoid deadlock only in the case where this is called
       // we want to check for destroying connection and read lock
       const connAndTimer = this.connections.get(nodeIdString);
@@ -509,8 +533,8 @@ class NodeConnectionManager {
     };
     this.connections.set(nodeIdString, newConnAndTimer);
     connectionsResults.set(nodeIdString, newConnAndTimer);
-    this.logger.debug(
-      `Created NodeConnection for ${nodesUtils.encodeNodeId(nodeId)}`,
+    this.logger.warn(
+      `Created NodeConnection for ${nodesUtils.encodeNodeId(nodeId)} on ${address}`,
     );
   }
 
@@ -540,27 +564,64 @@ class NodeConnectionManager {
   }
 
   /**
-   * Treat this node as the server.
-   * Instruct the reverse proxy to send hole-punching packets back to the target's
-   * forward proxy, in order to open a connection from the client to this server.
-   * A connection is established if the client node's forward proxy is sending
-   * hole punching packets at the same time as this node (acting as the server)
-   * sends hole-punching packets back to the client's forward proxy.
-   * @param proxyHost host of the client's forward proxy
-   * @param proxyPort port of the client's forward proxy
+   * Open up a port in the NAT by sending packets to the target address.
+   * The packets will be sent in an exponential backoff dialing pattern and contain random data.
+   *
+   * This can't know it succeeded, it will continue until timed out or cancelled.
+   *
+   * @param host host of the target client.
+   * @param port port of the target client.
    * @param ctx
    */
+  public async holePunchReverse(
+    host: Host,
+    port: Port,
+    ctx?: Partial<ContextTimed>,
+  ): Promise<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public holePunchReverse(
-    _proxyHost: Host,
-    _proxyPort: Port,
-    _ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<void> {
-    // TODO: tell the server to hole punch reverse
-    // This needs to make the call to the QUICServer.initHolePunch.
-    // Or maybe implement the logic directly on the socket since we have access here.
-    // Mimic the dialing procedure, 1sec delay ping with doubling backoff.
-    throw Error('TMP IMP');
+  @timedCancellable(true, 4000)
+  public async holePunchReverse(
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
+    const connectionMap = this.quicSocket.connectionMap;
+    // Checking existing connections
+    for (const [, connection] of connectionMap.serverConnections) {
+      const connectionHost = connection.remoteHost as unknown as Host;
+      const connectionPort = connection.remotePort as unknown as Port;
+      if (host === connectionHost && port === connectionPort) {
+        // Connection exists, return early
+        return;
+      }
+    }
+    // We need to send a random data packet to the target until the process times out or a connection is established
+    let ended = false;
+    const endedProm = utils.promise();
+    if (ctx.signal.aborted) {
+      endedProm.resolveP();
+    }
+    const onAbort = () => {
+      ended = true;
+      endedProm.resolveP();
+      ctx.signal.removeEventListener('abort', onAbort);
+    };
+    ctx.signal.addEventListener('abort', onAbort);
+    void ctx.timer.catch(() => {}).finally(() => onAbort());
+
+    let delay = 250;
+    // Setting up established event checking
+    try {
+      while (true) {
+        const message = getRandomBytes(32);
+        await this.quicSocket.send(Buffer.from(message), port, host);
+        await Promise.race([utils.sleep(delay), endedProm.p]);
+        if (ended) break;
+        delay *= 2;
+      }
+    } finally {
+      onAbort();
+    }
   }
 
   /**
@@ -585,8 +646,14 @@ class NodeConnectionManager {
     pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
+    this.logger.warn(`Finding address for ${nodesUtils.encodeNodeId(targetNodeId)}`);
     // First check if we already have an existing ID -> address record
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
+    if (address != null) {
+      this.logger.warn(`found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${address.host}:${address.port}`)
+    } else {
+      this.logger.warn(`attempting to find in the network`)
+    }
     // Otherwise, attempt to locate it by contacting network
     address =
       address ??
@@ -596,6 +663,11 @@ class NodeConnectionManager {
         pingTimeout ?? this.pingTimeout,
         ctx,
       ));
+    if (address != null) {
+      this.logger.warn(`found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${address.host}:${address.port}`)
+    } else {
+      this.logger.warn(`no address found`)
+    }
     // TODO: This currently just does one iteration
     return address;
   }
@@ -660,6 +732,7 @@ class NodeConnectionManager {
         break;
       }
       const [nextNodeId, nextNodeAddress] = nextNode;
+      this.logger.warn(`asking ${nodesUtils.encodeNodeId(nextNodeId)} for closes nodes to ${nodesUtils.encodeNodeId(targetNodeId)}`);
       // Skip if the node has already been contacted
       if (contacted.has(nextNodeId.toString())) continue;
       if (ignoreRecentOffline && this.hasBackoff(nextNodeId)) continue;
@@ -957,6 +1030,8 @@ class NodeConnectionManager {
   // FIXME: How do we handle pinging now? Previously this was done on the proxy level.
   //  Now I think we need to actually establish a connection. Pinging should just be establishing a connection now.
   //  I'll keep this but have it wrap normal connection establishment.
+  // FIXME: this forms a cycle deadlock when we need to find a node in the network. Previously it was not a problem due
+  //  to it being on the proxy level. But now we need Monitors and re-entrancy.
   /**
    * Checks if a connection can be made to the target. Returns true if the
    * connection can be authenticated, it's certificate matches the nodeId and

@@ -24,6 +24,7 @@ import ACL from '@/acl/ACL';
 import { Token } from '@/tokens';
 import * as notificationsErrors from '@/notifications/errors';
 import * as validationErrors from '@/validation/errors';
+import * as keysUtils from '@/keys/utils/index';
 import Sigchain from '../../../src/sigchain/Sigchain';
 import TaskManager from '../../../src/tasks/TaskManager';
 import * as testUtils from '../../utils/utils';
@@ -72,6 +73,9 @@ describe('nodesHolePunchMessage', () => {
       keysPath: senderKeysPath,
       password,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     senderNodeId = senderKeyRing.getNodeId();
 
@@ -81,6 +85,9 @@ describe('nodesHolePunchMessage', () => {
       keysPath,
       password,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -112,18 +119,19 @@ describe('nodesHolePunchMessage', () => {
       lazy: true,
     });
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
       host: localHost,
     });
+    const tlsConfigClient = await tlsTestsUtils.createTLSConfig(
+      keyRing.keyPair,
+    );
     nodeConnectionManager = new NodeConnectionManager({
       quicClientConfig: {
+        key: tlsConfigClient.keyPrivatePem,
+        cert: tlsConfigClient.certChainPem,
         crypto,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket,
       keyRing,
@@ -170,11 +178,10 @@ describe('nodesHolePunchMessage', () => {
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
-        tlsConfig: {
-          privKeyPem: tlsConfig.keyPrivatePem,
-          certChainPem: tlsConfig.certChainPem,
-        },
-        verifyPeer: false,
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        verifyPeer: true,
+        verifyAllowFail: true,
       },
       crypto,
       logger,
@@ -193,20 +200,20 @@ describe('nodesHolePunchMessage', () => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('stream', handleStream);
+      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'destroy',
+        'connectionStop',
         () => {
-          conn.removeEventListener('stream', handleStream);
+          conn.removeEventListener('connectionStream', handleStream);
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('connection', handleConnection);
+    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'stop',
+      'serverStop',
       () => {
-        quicServer.removeEventListener('connection', handleConnection);
+        quicServer.removeEventListener('serverConnection', handleConnection);
       },
       { once: true },
     );
@@ -225,7 +232,10 @@ describe('nodesHolePunchMessage', () => {
     quicClient = await QUICClient.createQUICClient({
       crypto,
       config: {
-        verifyPeer: false,
+        key: tlsConfigClient.keyPrivatePem,
+        cert: tlsConfigClient.certChainPem,
+        verifyPeer: true,
+        verifyAllowFail: true,
       },
       host: localHost,
       port: quicServer.port,

@@ -358,6 +358,18 @@ class NodeManager {
       connectionTimeout != null
         ? new Timer({ delay: connectionTimeout })
         : undefined;
+    const abortController = new AbortController()
+    timer
+      ?.catch(() => {})
+      .finally(() => {
+        abortController.abort(Error('SOME ERROR'));
+      });
+    ctx.signal.throwIfAborted();
+    ctx.signal.addEventListener('abort', () => {
+      abortController.abort(ctx.signal.reason);
+    })
+
+    console.log('before requestChainData');
     return this.nodeConnectionManager.withConnF(
       targetNodeId,
       async (connection) => {
@@ -398,8 +410,9 @@ class NodeManager {
         }
         return claims;
       },
-      { signal: ctx.signal, timer },
-    );
+      { signal: abortController.signal, timer },
+    ).finally(() => console.log('AFTER requestChainData'));
+
   }
 
   /**
@@ -524,7 +537,7 @@ class NodeManager {
     tran?: DBTransaction,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     if (tran == null) {
-      return this.db.withTransactionG((tran) =>
+      return yield* this.db.withTransactionG((tran) =>
         this.handleClaimNode(requestingNodeId, input, tran),
       );
     }

@@ -58,10 +58,7 @@ type TokenSignature = Signature | MAC;
 /**
  * Token signature in JSON
  */
-type TokenSignatureJSON = {
-  type: 'Buffer';
-  data: Array<number>;
-};
+type TokenSignatureJSON = string;
 
 /**
  * Encoded token signature

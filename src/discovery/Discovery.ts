@@ -251,15 +251,17 @@ class Discovery {
     const vertexId = gestaltsUtils.decodeGestaltId(vertex);
     if (vertexId == null) never();
     const [type, id] = vertexId;
+    this.logger.warn(vertexId);
     switch (type) {
       case 'node':
+        this.logger.warn('node');
         return await this.processNode(id, connectionTimeout, ctx);
       case 'identity':
+        this.logger.warn('identity');
         return await this.processIdentity(id, connectionTimeout, ctx);
       default:
         never();
     }
-    this.visitedVertices.add(vertex);
   }
 
   protected async processNode(
@@ -304,6 +306,7 @@ class Discovery {
         ctx,
       );
     } catch (e) {
+      console.error(e);
       this.visitedVertices.add(encodedGestaltNodeId);
       this.logger.error(
         `Failed to discover ${nodesUtils.encodeNodeId(
@@ -465,6 +468,7 @@ class Discovery {
       }
     }
     this.visitedVertices.add(encodedGestaltNodeId);
+    this.logger.warn('node task done');
   }
 
   protected async processIdentity(
@@ -532,6 +536,7 @@ class Discovery {
     this.visitedVertices.add(
       gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]),
     );
+    this.logger.warn('identity task done');
   }
 
   /**
@@ -613,6 +618,7 @@ class Discovery {
           gestaltIdEncoded,
         ],
         lazy: true,
+        deadline: 2000,
       },
       tran,
     );

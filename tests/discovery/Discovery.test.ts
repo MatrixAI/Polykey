@@ -31,13 +31,15 @@ import * as keysUtils from '@/keys/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { encodeProviderIdentityId } from '../../src/ids/index';
+import {encodeClaimId, encodeProviderIdentityId} from '../../src/ids/index';
 import 'ix/add/asynciterable-operators/toarray';
 import * as tlsTestsUtils from '../utils/tls';
+import {createTLSConfig} from "../utils/tls";
+import * as claimsUtils from "@/claims/utils";
 
 describe('Discovery', () => {
   const password = 'password';
-  const logger = new Logger(`${Discovery.name} Test`, LogLevel.WARN, [
+  const logger = new Logger(`${Discovery.name} Test`, LogLevel.INFO, [
     new StreamHandler(),
   ]);
   const testToken = {
@@ -156,20 +158,19 @@ describe('Discovery', () => {
     });
     const crypto = tlsTestsUtils.createCrypto();
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
       host: '127.0.0.1' as QUICHost,
     });
+    const tlsConfig= await createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         crypto,
-        config: {
-          verifyPeer: false,
-        },
       },
       quicSocket,
       connConnectTime: 2000,
@@ -238,6 +239,7 @@ describe('Discovery', () => {
     );
   });
   afterEach(async () => {
+    console.log('ENDING')
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
     await nodeA.stop();
@@ -283,6 +285,7 @@ describe('Discovery', () => {
     ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
   });
   test('discovery by node', async () => {
+    console.log('asd');
     const discovery = await Discovery.createDiscovery({
       db,
       keyRing,
@@ -296,30 +299,39 @@ describe('Discovery', () => {
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     let existingTasks: number = 0;
+    console.log('asd');
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
+    console.log('asd');
     const gestalts = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
+    console.log('asd');
     const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
     const gestaltIdentities = gestalt.identities;
     expect(Object.keys(gestaltMatrix)).toHaveLength(3);
+    console.log('asd');
     expect(Object.keys(gestaltNodes)).toHaveLength(2);
     expect(Object.keys(gestaltIdentities)).toHaveLength(1);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
       gestaltsUtils.encodeGestaltId(['node', nodeIdA]),
     );
+    console.log('asd');
     expect(gestaltString).toContain(
       gestaltsUtils.encodeGestaltId(['node', nodeIdB]),
     );
     expect(gestaltString).toContain(identityId);
+    console.log('asd');
     await taskManager.stopProcessing();
+    console.log('asd');
     await discovery.stop();
+    console.log('asd');
     await discovery.destroy();
+    console.log('asd');
   });
   test('discovery by identity', async () => {
     const discovery = await Discovery.createDiscovery({

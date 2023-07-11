@@ -7,6 +7,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { HolePunchRelayMessage } from './types';
+import * as networkUtils from '@/network/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
@@ -53,12 +54,10 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
         sourceId: input.srcIdEncoded,
       },
     );
-    // FIXME: Need a utility for getting the NodeId from the connection info.
-    //  We only have the remote certificates if that. Should throw if certs are missing but in practice this should
-    //  never happen given the custom verification logic checks this.
-    const connectionInfo = meta;
-    throw Error('TMP IMP cant currently get the remote node info, need to fix');
-    const srcNodeId = nodesUtils.encodeNodeId(connectionInfo!.remoteNodeId);
+    // Connections should always be validated
+    const srcNodeId = nodesUtils.encodeNodeId(
+      networkUtils.nodeIdFromMeta(meta),
+    );
     // Firstly, check if this node is the desired node
     // If so, then we want to make this node start sending hole punching packets
     // back to the source node.
@@ -84,8 +83,8 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
         // If so, ask the nodeManager to relay to the node
         const targetNodeId = input.dstIdEncoded;
         const proxyAddress = {
-          host: connectionInfo!.remoteHost,
-          port: connectionInfo!.remotePort,
+          host: meta.remoteHost,
+          port: meta.remotePort,
         };
         // Checking if the source and destination are the same
         if (sourceId?.equals(targetId)) {
@@ -97,8 +96,8 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
           `Relaying signaling message from ${srcNodeId}@${proxyAddress.host}:${proxyAddress.port} to ${targetNodeId} with information ${proxyAddress}`,
         );
         await nodeConnectionManager.relaySignalingMessage(input, {
-          host: connectionInfo!.remoteHost,
-          port: connectionInfo!.remotePort,
+          host: meta.remoteHost,
+          port: meta.remotePort,
         });
       }
     });

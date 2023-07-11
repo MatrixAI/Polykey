@@ -113,7 +113,7 @@ function fromGestaltLinkJSON(gestaltLinkJSON: GestaltLinkJSON): GestaltLink {
           (headerSignatureJSON) => ({
             ...headerSignatureJSON,
             signature: Buffer.from(
-              headerSignatureJSON.signature.data,
+              headerSignatureJSON.signature,
             ) as TokenSignature,
           }),
         ),

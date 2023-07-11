@@ -3,6 +3,7 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type ACL from '../../acl/ACL';
 import type NodeManager from '../../nodes/NodeManager';
+import * as networkUtils from '@/network/utils';
 import * as nodesErrors from '../../nodes/errors';
 import * as nodesUtils from '../../nodes/utils';
 import { DuplexHandler } from '../../rpc/handlers';
@@ -22,10 +23,7 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { acl, nodeManager } = this.container;
-    // TODO: get remote info from metadata. dependent on js-quic meta types
-    const requestingNodeId: NodeId | undefined = nodesUtils.decodeNodeId(
-      meta?.remoteNodeId,
-    );
+    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) throw Error('TMP invalid nodeId');
     // Check the ACL for permissions
     const permissions = await acl.getNodePerm(requestingNodeId);

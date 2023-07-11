@@ -16,6 +16,7 @@ import { NodesChainDataGetHandler } from '@/agent/handlers/nodesChainDataGet';
 import { nodesChainDataGet } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
+import * as keysUtils from '@/keys/utils/index';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
 
@@ -53,6 +54,9 @@ describe('nodesChainDataGet', () => {
       keysPath,
       password,
       logger,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -79,10 +83,8 @@ describe('nodesChainDataGet', () => {
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
-        tlsConfig: {
-          privKeyPem: tlsConfig.keyPrivatePem,
-          certChainPem: tlsConfig.certChainPem,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
         verifyPeer: false,
       },
       crypto,
@@ -102,20 +104,20 @@ describe('nodesChainDataGet', () => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('stream', handleStream);
+      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'destroy',
+        'connectionStop',
         () => {
-          conn.removeEventListener('stream', handleStream);
+          conn.removeEventListener('connectionStream', handleStream);
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('connection', handleConnection);
+    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'stop',
+      'serverStop',
       () => {
-        quicServer.removeEventListener('connection', handleConnection);
+        quicServer.removeEventListener('serverConnection', handleConnection);
       },
       { once: true },
     );

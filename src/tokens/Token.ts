@@ -9,6 +9,7 @@ import type {
 } from './types';
 import type { Key, PublicKey, PrivateKey, KeyPair } from '../keys/types';
 import type { POJO } from '../types';
+import type { Signature } from '../keys/types';
 import * as tokensUtils from './utils';
 import * as tokensErrors from './errors';
 import * as ids from '../ids';
@@ -230,9 +231,14 @@ class Token<P extends TokenPayload = TokenPayload> {
    * Exports this `Token` into `SignedToken`
    */
   public toSigned(): SignedToken<P> {
+    const clonedSignature = globalThis.structuredClone(this._signatures);
+    // Converting signatures back to buffers
+    clonedSignature.forEach((v) => {
+      v.signature = Buffer.from(v.signature) as Signature;
+    });
     return {
-      payload: utils.structuredClone(this.payload),
-      signatures: utils.structuredClone(this._signatures),
+      payload: globalThis.structuredClone(this.payload),
+      signatures: clonedSignature,
     };
   }
 

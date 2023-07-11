@@ -879,7 +879,6 @@ class GestaltGraph {
     }
     const [type, id] = gestaltId;
     const gestaltKey = gestaltsUtils.toGestaltKey(gestaltId);
-
     switch (type) {
       case 'node': {
         if ((await tran.get([...this.dbNodesPath, gestaltKey], true)) == null) {

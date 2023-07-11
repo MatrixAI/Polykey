@@ -430,17 +430,6 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
-/**
- * Structured clone does deep copy
- * Remove the reliance on v8 in Node 17
- */
-const structuredClone =
-  'structuredClone' in globalThis
-    ? globalThis.structuredClone
-    : (value: any) => {
-        return v8.deserialize(v8.serialize(value));
-      };
-
 // TODO: expand on this.
 const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
   return 0;
@@ -486,7 +475,6 @@ export {
   lexiUnpackBuffer,
   bufferWrap,
   isBufferSource,
-  structuredClone,
   reasonToCode,
   codeToReason,
 };

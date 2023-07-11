@@ -6,7 +6,7 @@ import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { ServerCrypto } from '@matrixai/quic';
+import type {ClientCrypto, ServerCrypto} from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -369,6 +369,13 @@ class PolykeyAgent {
           logger: logger.getChild(QUICSocket.name),
           resolveHostname,
         });
+      const clientCrypto: ClientCrypto = {
+        randomBytes: async (data: ArrayBuffer) => {
+          const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+          const dataBuf = Buffer.from(data);
+          dataBuf.write(randomBytes.toString('binary'), 'binary');
+        },
+      };
       nodeConnectionManager =
         nodeConnectionManager ??
         new NodeConnectionManager({
@@ -379,6 +386,9 @@ class PolykeyAgent {
           quicClientConfig: {
             key: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
             cert: await certManager.getCertPEMsChainPEM(),
+            crypto: {
+              ops: clientCrypto,
+            },
           },
           ...nodeConnectionManagerConfig_,
           logger: logger.getChild(NodeConnectionManager.name),

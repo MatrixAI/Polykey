@@ -90,7 +90,7 @@ describe(`${NodeConnection.name}`, () => {
       handlerTimeoutGraceTime: 1000,
       handlerTimeoutTime: 5000,
       logger: logger.getChild(`${RPCServer.name}`),
-      manifest: {}, // TODO: test server manifest
+      manifest: {},
       sensitive: false,
     });
     // Setting up handling
@@ -220,7 +220,7 @@ describe(`${NodeConnection.name}`, () => {
     // Wait for destruction, may take 2+ seconds
     await Promise.race([
       destroyProm.p,
-      sleep(200).then(() => {
+      sleep(5000).then(() => {
         throw Error('Destroying timed out');
       }),
     ]);

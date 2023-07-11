@@ -22,6 +22,7 @@ import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
+import {QUICClientDestroyEvent} from "@matrixai/quic/dist/events";
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -126,7 +127,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       },
       ctx,
     ).catch((e) => {
-      logger.debug(`Failed ${this.name} creation with ${e}`);
+      console.error(e)
+      logger.warn(`Failed ${this.name} creation with ${e}`);
       throw e;
     });
     const rpcClient = await RPCClient.createRPCClient<M>({

@@ -22,6 +22,8 @@ import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sleep } from '@/utils';
 import * as tlsTestUtils from '../utils/tls';
+import {generateRandomNodeId} from "./utils";
+import {Timer} from "@matrixai/timer";
 
 describe(`${NodeConnectionManager.name} general test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -328,4 +330,143 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  test('Connection can time out', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        crypto,
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+      connTimeoutTime: 5000,
+      connConnectTime: 200,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    const randomNodeId = generateRandomNodeId();
+    await nodeManager.setNode(randomNodeId, {
+      host : '127.0.0.1' as Host,
+      port: 12321 as Port,
+    });
+    await expect(nodeConnectionManager.withConnF(randomNodeId, async () => {
+      // do nothing
+    })).rejects.toThrow();
+  })
+  test('Connection can time out with passed in timer', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        crypto,
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+      connTimeoutTime: 5000,
+      connConnectTime: 200,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    const randomNodeId = generateRandomNodeId();
+    await nodeManager.setNode(randomNodeId, {
+      host : '127.0.0.1' as Host,
+      port: 12321 as Port,
+    });
+    await expect(nodeConnectionManager.withConnF(
+      randomNodeId,
+      async () => {
+      // do nothing
+    },
+      {timer: new Timer({
+          delay: 100,
+        })} )).rejects.toThrow();
+  })
+  test('Connection can time out with passed in timer and signal', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        crypto,
+      },
+      quicSocket: clientSocket,
+      seedNodes: undefined,
+      connTimeoutTime: 5000,
+      connConnectTime: 200,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    const randomNodeId = generateRandomNodeId();
+    await nodeManager.setNode(randomNodeId, {
+      host : '127.0.0.1' as Host,
+      port: 12321 as Port,
+    });
+    const abortController = new AbortController();
+    const ctx = {
+      timer: new Timer({
+        delay: 100,
+      }),
+      signal: abortController.signal,
+    }
+    // We need to hook up signal manually
+    ctx.timer.finally(() => {
+      abortController.abort(Error('Some Error'));
+    })
+    await expect(nodeConnectionManager.withConnF(
+      randomNodeId,
+      async () => {
+      // do nothing
+    },
+      ctx )).rejects.toThrow();
+  })
 });

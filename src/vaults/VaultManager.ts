@@ -54,6 +54,8 @@ type VaultMetadata = {
   remoteInfo?: RemoteInfo;
 };
 
+// FIXME: The DB is not managed by the EFS anymore.
+
 interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),

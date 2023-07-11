@@ -506,8 +506,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  // TODO: Verification logic is done, but hole punching is not implemented.
-  test.skip('relayHolePunchMessage', async () => {
+  test('relayHolePunchMessage', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
