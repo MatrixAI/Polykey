@@ -20,9 +20,10 @@ import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
-import { Lock, LockBox } from '@matrixai/async-locks';
+import { Lock, LockBox, Monitor, RWLockWriter } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { withMonitor } from '@matrixai/quic/dist/utils';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -150,7 +151,6 @@ class NodeConnectionManager {
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
-
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.nodeManager = undefined;
@@ -186,8 +186,10 @@ class NodeConnectionManager {
       this.logger.warn('Attempting connection to our own NodeId');
     }
     return async () => {
-      this.logger.warn(`acquiring connection to node ${nodesUtils.encodeNodeId(targetNodeId)}`);
-      const connectionAndTimer = await this.getConnection(
+      this.logger.debug(
+        `acquiring connection to node ${nodesUtils.encodeNodeId(targetNodeId)}`,
+      );
+      const connectionAndTimer = await this.somethingSomethingConnection(
         targetNodeId,
         undefined,
         ctx,
@@ -200,7 +202,7 @@ class NodeConnectionManager {
       return [
         async (e) => {
           if (nodesUtils.isConnectionError(e)) {
-            this.logger.warn(`acquiring errored with ${e?.message}`);
+            this.logger.debug(`acquiring errored with ${e?.message}`);
             // Error with connection, shutting connection down
             await this.destroyConnection(targetNodeId);
           }
@@ -211,7 +213,9 @@ class NodeConnectionManager {
             connectionAndTimer.usageCount <= 0 &&
             !this.isSeedNode(targetNodeId)
           ) {
-            this.logger.warn(`creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`);
+            this.logger.debug(
+              `creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+            );
             connectionAndTimer.timer = new Timer({
               handler: async () => await this.destroyConnection(targetNodeId),
               delay: this.connTimeoutTime,
@@ -286,9 +290,62 @@ class NodeConnectionManager {
     // Wait for any destruction to complete after locking is removed
   }
 
+  protected somethingSomethingConnection(
+    targetNodeId: NodeId,
+    address?: NodeAddress,
+    ctx?: Partial<ContextTimed>,
+  );
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connConnectTime,
+  )
+  protected async somethingSomethingConnection(
+    targetNodeId: NodeId,
+    address: NodeAddress | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<ConnectionAndTimer> {
+    // If the connection already exists then we need to return it.
+    const existingConnection = await this.getExistingConnection(targetNodeId);
+    if (existingConnection != null) return existingConnection;
+
+    // If there was no address provided then we need to find it.
+    if (address == null) {
+      // Find the node
+      address = await this.findNode(targetNodeId, undefined, undefined, ctx);
+      if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    }
+    // Then we just get the connection, it should already exist.
+    return await this.getConnection(targetNodeId, address, ctx);
+  }
+
+  protected async getExistingConnection(
+    targetNodeId: NodeId,
+  ): Promise<ConnectionAndTimer | undefined> {
+    const targetNodeIdString = targetNodeId.toString() as NodeIdString;
+    return await this.connectionLocks.withF(
+      [targetNodeIdString, Lock],
+      async () => {
+        const connAndTimer = this.connections.get(targetNodeIdString);
+        if (connAndTimer != null) {
+          this.logger.debug(
+            `Found existing NodeConnection for ${nodesUtils.encodeNodeId(
+              targetNodeId,
+            )}`,
+          );
+          return connAndTimer;
+        }
+        this.logger.debug(
+          `no existing NodeConnection for ${nodesUtils.encodeNodeId(
+            targetNodeId,
+          )}`,
+        );
+      },
+    );
+  }
+
   /**
-   * Create a connection to another node (without performing any function).
-   * This is a NOOP if a connection already exists.
+   * This gets a connection with a known address.
    * @param targetNodeId Id of node we are creating connection to.
    * @param address - The address to connect on if specified. If not provided we attempt a kademlia search.
    * @param ctx
@@ -296,7 +353,7 @@ class NodeConnectionManager {
    */
   protected getConnection(
     targetNodeId: NodeId,
-    address?: NodeAddress,
+    address: NodeAddress,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<ConnectionAndTimer>;
   @timedCancellable(
@@ -306,36 +363,21 @@ class NodeConnectionManager {
   )
   protected async getConnection(
     targetNodeId: NodeId,
-    address: NodeAddress | undefined,
+    address: NodeAddress,
     @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
+    const existingConnection = await this.getExistingConnection(targetNodeId);
+    if (existingConnection != null) return existingConnection;
     const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
-    this.logger.warn(`Getting NodeConnection for ${targetNodeIdEncoded}`);
-    // FIXME: LOCK IS BEING HELD!
-    return await this.connectionLocks.withF(
-      [targetNodeIdString, Lock],
-      async () => {
-        this.logger.warn(`acquired lock for ${targetNodeIdEncoded}`);
-        const connAndTimer = this.connections.get(targetNodeIdString);
-        if (connAndTimer != null) {
-          this.logger.warn(
-            `Found existing NodeConnection for ${targetNodeIdEncoded}`,
-          );
-          return connAndTimer;
-        }
-        // Creating the connection and set in map
-        const targetAddress = address ?? (await this.findNode(targetNodeId));
-        if (targetAddress == null) {
-          throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
-        }
-        this.logger.warn(
-          `Found address for ${targetNodeIdEncoded} at ${targetAddress.host}:${targetAddress.port}`,
-        );
+    this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
+    return await this.connectionLocks
+      .withF([targetNodeIdString, Lock], async () => {
+        this.logger.debug(`acquired lock for ${targetNodeIdEncoded}`);
         // Attempting a multi-connection for the target node
-        const results = await this.getMultiConnection(
+        const results = await this.establishMultiConnection(
           [targetNodeId],
-          [targetAddress],
+          [address],
           ctx,
         );
         // Should be a single result.
@@ -344,10 +386,10 @@ class NodeConnectionManager {
         }
         // Should throw before reaching here
         never();
-      },
-    ).finally(() => {
-      this.logger.warn(`lock finished for ${targetNodeIdEncoded}`);
-    });
+      })
+      .finally(() => {
+        this.logger.debug(`lock finished for ${targetNodeIdEncoded}`);
+      });
   }
 
   /**
@@ -358,13 +400,13 @@ class NodeConnectionManager {
    * @param ctx
    * @protected
    */
-  protected async getMultiConnection(
+  protected async establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
     ctx: ContextTimed,
   ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
-    const nodesEncoded = nodeIds.map(v => nodesUtils.encodeNodeId(v));
-    this.logger.warn(`getting multi-connection for ${nodesEncoded}`)
+    const nodesEncoded = nodeIds.map((v) => nodesUtils.encodeNodeId(v));
+    this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
     if (nodeIds.length === 0) throw Error('TMP, must provide at least 1 node');
     const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
     // 1. short circuit any existing connections
@@ -373,10 +415,12 @@ class NodeConnectionManager {
       const nodeIdString = nodeId.toString() as NodeIdString;
       const connAndTimer = this.connections.get(nodeIdString);
       if (connAndTimer == null) {
-        this.logger.warn(`found existing connection for ${nodesUtils.encodeNodeId(nodeId)}`);
         nodesShortlist.add(nodeIdString);
         continue;
       }
+      this.logger.debug(
+        `found existing connection for ${nodesUtils.encodeNodeId(nodeId)}`,
+      );
       connectionsResults.set(nodeIdString, connAndTimer);
     }
     // 2. resolve the addresses into a full list. Any host names need to be resolved.
@@ -409,7 +453,11 @@ class NodeConnectionManager {
       nodesShortlistArray.push(IdInternal.fromString<NodeId>(nodeIdString));
     }
     const cleanUpReason = Symbol('CleanUpReason');
-    this.logger.warn(`attempting connections for ${nodesShortlistArray.map(v => nodesUtils.encodeNodeId(v))}`)
+    this.logger.debug(
+      `attempting connections for ${nodesShortlistArray.map((v) =>
+        nodesUtils.encodeNodeId(v),
+      )}`,
+    );
     const connProms = resolvedAddresses.map((address) =>
       this.establishSingleConnection(
         nodesShortlistArray,
@@ -425,16 +473,18 @@ class NodeConnectionManager {
     );
     // We race the connections with timeout
     try {
-      this.logger.warn(`awaiting connections`);
+      this.logger.debug(`awaiting connections`);
       await Promise.race([Promise.all(connProms)]);
-      this.logger.warn(`awaiting connections resolved`);
+      this.logger.debug(`awaiting connections resolved`);
     } finally {
       // Cleaning up
-      this.logger.warn(`cleaning up`);
+      this.logger.debug(`cleaning up`);
       abortController.abort(cleanUpReason);
       await Promise.allSettled(connProms);
     }
-    if (connectionsResults.size === 0) throw Error('No connections established!');
+    if (connectionsResults.size === 0) {
+      throw Error('No connections established!');
+    }
     // TODO: This needs to throw if none were established.
     //  The usual use case is a single node, this shouldn't be a aggregate error type.
     return connectionsResults;
@@ -461,7 +511,9 @@ class NodeConnectionManager {
     // TODO: if all connections fail then this needs to throw. Or does it? Do we just report the allSettled result?
     // TODO: add ICE. Create hole punch relay proms.
     // 1. attempt connection to an address
-    this.logger.warn(`establishing single connection for address ${address.host}:${address.port}`);
+    this.logger.debug(
+      `establishing single connection for address ${address.host}:${address.port}`,
+    );
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
@@ -479,7 +531,9 @@ class NodeConnectionManager {
         },
         ctx,
       ).catch((e) => {
-        this.logger.warn(`establish single connection failed for ${address.host}:${address.port} with ${e.message}`)
+        this.logger.debug(
+          `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
+        );
         throw e;
       });
     // TODO: finally cancel ICE. Use signal and await all settled
@@ -487,7 +541,9 @@ class NodeConnectionManager {
     const nodeId = connection.nodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     if (connectionsResults.has(nodeIdString)) {
-      this.logger.warn(`single connection already existed, cleaning up ${address.host}:${address.port}`)
+      this.logger.debug(
+        `single connection already existed, cleaning up ${address.host}:${address.port}`,
+      );
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       throw Error(
@@ -497,7 +553,7 @@ class NodeConnectionManager {
     }
     // Final setup
     const handleDestroy = async () => {
-      this.logger.warn('stream destroyed event');
+      this.logger.debug('stream destroyed event');
       // To avoid deadlock only in the case where this is called
       // we want to check for destroying connection and read lock
       const connAndTimer = this.connections.get(nodeIdString);
@@ -533,8 +589,10 @@ class NodeConnectionManager {
     };
     this.connections.set(nodeIdString, newConnAndTimer);
     connectionsResults.set(nodeIdString, newConnAndTimer);
-    this.logger.warn(
-      `Created NodeConnection for ${nodesUtils.encodeNodeId(nodeId)} on ${address}`,
+    this.logger.debug(
+      `Created NodeConnection for ${nodesUtils.encodeNodeId(
+        nodeId,
+      )} on ${address}`,
     );
   }
 
@@ -625,8 +683,8 @@ class NodeConnectionManager {
   }
 
   /**
-   * Retrieves the node address. If an entry doesn't exist in the db, then
-   * proceeds to locate it using Kademlia.
+   * Will attempt to find a connection via a Kademlia search.
+   * The connection will be established in the process.
    * @param targetNodeId Id of the node we are tying to find
    * @param ignoreRecentOffline skips nodes that are within their backoff period
    * @param pingTimeout timeout for any ping attempts
@@ -646,29 +704,37 @@ class NodeConnectionManager {
     pingTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
-    this.logger.warn(`Finding address for ${nodesUtils.encodeNodeId(targetNodeId)}`);
+    this.logger.debug(
+      `Finding address for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+    );
     // First check if we already have an existing ID -> address record
     let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
     if (address != null) {
-      this.logger.warn(`found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${address.host}:${address.port}`)
+      this.logger.debug(
+        `found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${
+          address.host
+        }:${address.port}`,
+      );
+      return address;
     } else {
-      this.logger.warn(`attempting to find in the network`)
+      this.logger.debug(`attempting to find in the network`);
     }
     // Otherwise, attempt to locate it by contacting network
-    address =
-      address ??
-      (await this.getClosestGlobalNodes(
-        targetNodeId,
-        ignoreRecentOffline,
-        pingTimeout ?? this.pingTimeout,
-        ctx,
-      ));
+    address = await this.getClosestGlobalNodes(
+      targetNodeId,
+      ignoreRecentOffline,
+      pingTimeout ?? this.pingTimeout,
+      ctx,
+    );
     if (address != null) {
-      this.logger.warn(`found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${address.host}:${address.port}`)
+      this.logger.debug(
+        `found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${
+          address.host
+        }:${address.port}`,
+      );
     } else {
-      this.logger.warn(`no address found`)
+      this.logger.debug(`no address found`);
     }
-    // TODO: This currently just does one iteration
     return address;
   }
 
@@ -714,7 +780,7 @@ class NodeConnectionManager {
     // If we have no nodes at all in our database (even after synchronising),
     // then we should return nothing. We aren't going to find any others
     if (shortlist.length === 0) {
-      this.logger.warn('Node graph was empty, No nodes to query');
+      this.logger.debug('Node graph was empty, No nodes to query');
       return;
     }
     // Need to keep track of the nodes that have been contacted
@@ -732,7 +798,11 @@ class NodeConnectionManager {
         break;
       }
       const [nextNodeId, nextNodeAddress] = nextNode;
-      this.logger.warn(`asking ${nodesUtils.encodeNodeId(nextNodeId)} for closes nodes to ${nodesUtils.encodeNodeId(targetNodeId)}`);
+      this.logger.debug(
+        `asking ${nodesUtils.encodeNodeId(
+          nextNodeId,
+        )} for closes nodes to ${nodesUtils.encodeNodeId(targetNodeId)}`,
+      );
       // Skip if the node has already been contacted
       if (contacted.has(nextNodeId.toString())) continue;
       if (ignoreRecentOffline && this.hasBackoff(nextNodeId)) continue;
@@ -936,7 +1006,9 @@ class NodeConnectionManager {
       this.keyRing.getNodeId().equals(targetNodeId)
     ) {
       // Logging and silently dropping operation
-      this.logger.warn('Attempted to send signaling message to our own NodeId');
+      this.logger.debug(
+        'Attempted to send signaling message to our own NodeId',
+      );
       return;
     }
     const rlyNode = nodesUtils.encodeNodeId(relayNodeId);
@@ -1074,7 +1146,6 @@ class NodeConnectionManager {
     return true;
   }
 
-  // FIXME: rename this maybe? We have establishX and getX. Need to review and standardize names here.
   /**
    * Used to start connections to multiple nodes and hosts at the same time.
    * The main use-case is to connect to multiple seed nodes on the same hostname.
@@ -1084,7 +1155,7 @@ class NodeConnectionManager {
    * @param limit
    * @param ctx
    */
-  public establishMultiConnection(
+  public getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
     connectionTimeout?: number,
@@ -1093,7 +1164,7 @@ class NodeConnectionManager {
   ): PromiseCancellable<Array<NodeId>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(true)
-  public async establishMultiConnection(
+  public async getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
     _connectionTimeout: number = 2000, // TODO: apply or remove
@@ -1104,7 +1175,11 @@ class NodeConnectionManager {
       return [nodeId.toString(), Lock];
     });
     return await this.connectionLocks.withF(...locks, async () => {
-      const results = await this.getMultiConnection(nodeIds, addresses, ctx);
+      const results = await this.establishMultiConnection(
+        nodeIds,
+        addresses,
+        ctx,
+      );
       const resultsArray: Array<NodeId> = [];
       for (const [nodeIdString] of results) {
         resultsArray.push(IdInternal.fromString<NodeId>(nodeIdString));

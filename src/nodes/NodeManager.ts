@@ -358,7 +358,7 @@ class NodeManager {
       connectionTimeout != null
         ? new Timer({ delay: connectionTimeout })
         : undefined;
-    const abortController = new AbortController()
+    const abortController = new AbortController();
     timer
       ?.catch(() => {})
       .finally(() => {
@@ -367,52 +367,57 @@ class NodeManager {
     ctx.signal.throwIfAborted();
     ctx.signal.addEventListener('abort', () => {
       abortController.abort(ctx.signal.reason);
-    })
+    });
 
     console.log('before requestChainData');
-    return this.nodeConnectionManager.withConnF(
-      targetNodeId,
-      async (connection) => {
-        const claims: Record<ClaimId, SignedClaim> = {};
-        const client = connection.getClient();
-        for await (const agentClaim of await client.methods.nodesChainDataGet({
-          claimIdEncoded:
-            claimId != null ? encodeClaimId(claimId) : ('' as ClaimIdEncoded),
-        })) {
-          if (ctx.signal.aborted) throw ctx.signal.reason;
-          // Need to re-construct each claim
-          const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
-          const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = parseSignedClaim(signedClaimEncoded);
-          // Verifying the claim
-          const issPublicKey = keysUtils.publicKeyFromNodeId(
-            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-          );
-          const subPublicKey =
-            signedClaim.payload.typ === 'node'
-              ? keysUtils.publicKeyFromNodeId(
-                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-                )
-              : null;
-          const token = Token.fromSigned(signedClaim);
-          if (!token.verifyWithPublicKey(issPublicKey)) {
-            this.logger.warn('Failed to verify issuing node');
-            continue;
+    return this.nodeConnectionManager
+      .withConnF(
+        targetNodeId,
+        async (connection) => {
+          const claims: Record<ClaimId, SignedClaim> = {};
+          const client = connection.getClient();
+          for await (const agentClaim of await client.methods.nodesChainDataGet(
+            {
+              claimIdEncoded:
+                claimId != null
+                  ? encodeClaimId(claimId)
+                  : ('' as ClaimIdEncoded),
+            },
+          )) {
+            if (ctx.signal.aborted) throw ctx.signal.reason;
+            // Need to re-construct each claim
+            const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
+            const signedClaimEncoded = agentClaim.signedTokenEncoded;
+            const signedClaim = parseSignedClaim(signedClaimEncoded);
+            // Verifying the claim
+            const issPublicKey = keysUtils.publicKeyFromNodeId(
+              nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+            );
+            const subPublicKey =
+              signedClaim.payload.typ === 'node'
+                ? keysUtils.publicKeyFromNodeId(
+                    nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+                  )
+                : null;
+            const token = Token.fromSigned(signedClaim);
+            if (!token.verifyWithPublicKey(issPublicKey)) {
+              this.logger.warn('Failed to verify issuing node');
+              continue;
+            }
+            if (
+              subPublicKey != null &&
+              !token.verifyWithPublicKey(subPublicKey)
+            ) {
+              this.logger.warn('Failed to verify subject node');
+              continue;
+            }
+            claims[claimId] = signedClaim;
           }
-          if (
-            subPublicKey != null &&
-            !token.verifyWithPublicKey(subPublicKey)
-          ) {
-            this.logger.warn('Failed to verify subject node');
-            continue;
-          }
-          claims[claimId] = signedClaim;
-        }
-        return claims;
-      },
-      { signal: abortController.signal, timer },
-    ).finally(() => console.log('AFTER requestChainData'));
-
+          return claims;
+        },
+        { signal: abortController.signal, timer },
+      )
+      .finally(() => console.log('AFTER requestChainData'));
   }
 
   /**
@@ -1205,14 +1210,13 @@ class NodeManager {
       )}`,
     );
     // Establishing connections to the seed nodes
-    const connections =
-      await this.nodeConnectionManager.establishMultiConnection(
-        seedNodes,
-        filteredAddresses,
-        pingTimeout,
-        undefined,
-        { signal: ctx.signal },
-      );
+    const connections = await this.nodeConnectionManager.getMultiConnection(
+      seedNodes,
+      filteredAddresses,
+      pingTimeout,
+      undefined,
+      { signal: ctx.signal },
+    );
     logger.debug(`Multi-connection established for`);
     connections.forEach((nodeId) => {
       logger.debug(`${nodesUtils.encodeNodeId(nodeId)}`);

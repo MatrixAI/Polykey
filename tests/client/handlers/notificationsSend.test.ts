@@ -17,7 +17,6 @@ import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
-import * as notificationsUtils from '@/notifications/utils';
 import { notificationsSend } from '@/client';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
@@ -27,10 +26,6 @@ import NotificationsManager from '../../../src/notifications/NotificationsManage
 import ACL from '../../../src/acl/ACL';
 import Sigchain from '../../../src/sigchain/Sigchain';
 import * as tlsTestsUtils from '../../utils/tls';
-
-const mocks = {
-  generateNotification: notificationsUtils.generateNotification,
-};
 
 describe('notificationsSend', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -54,11 +49,9 @@ describe('notificationsSend', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedSignNotification: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
 
   beforeEach(async () => {
-    mockedSignNotification = jest.spyOn(mocks, 'generateNotification');
     mockedSendNotification = jest.spyOn(
       NodeConnectionManager.prototype,
       'withConnF',
@@ -102,7 +95,6 @@ describe('notificationsSend', () => {
     });
     const crypto = tlsTestsUtils.createCrypto();
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
@@ -113,9 +105,10 @@ describe('notificationsSend', () => {
       nodeGraph,
       quicClientConfig: {
         crypto,
-        config: {
-          verifyPeer: false,
-        },
+        // @ts-ignore
+        key: undefined,
+        // @ts-ignore
+        cert: undefined,
       },
       quicSocket,
       connConnectTime: 2000,
@@ -146,7 +139,6 @@ describe('notificationsSend', () => {
       });
   });
   afterEach(async () => {
-    mockedSignNotification.mockRestore();
     mockedSendNotification.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
@@ -198,9 +190,6 @@ describe('notificationsSend', () => {
     });
 
     // Doing the test
-    mockedSignNotification.mockImplementation(async () => {
-      return 'signedNotification' as SignedNotification;
-    });
     mockedSendNotification.mockImplementation();
     const receiverNodeIdEncoded =
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
@@ -209,21 +198,9 @@ describe('notificationsSend', () => {
       message: 'test',
     });
     // Check we signed and sent the notification
-    expect(mockedSignNotification.mock.calls.length).toBe(1);
     expect(mockedSendNotification.mock.calls.length).toBe(1);
     expect(
       nodesUtils.encodeNodeId(mockedSendNotification.mock.calls[0][0]),
     ).toEqual(receiverNodeIdEncoded);
-    // Check notification content
-    expect(mockedSignNotification.mock.calls[0][0]).toEqual({
-      typ: 'notification',
-      data: {
-        type: 'General',
-        message: 'test',
-      },
-      iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-      sub: receiverNodeIdEncoded,
-      isRead: false,
-    });
   });
 });

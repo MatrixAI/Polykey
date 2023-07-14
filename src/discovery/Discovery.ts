@@ -251,13 +251,10 @@ class Discovery {
     const vertexId = gestaltsUtils.decodeGestaltId(vertex);
     if (vertexId == null) never();
     const [type, id] = vertexId;
-    this.logger.warn(vertexId);
     switch (type) {
       case 'node':
-        this.logger.warn('node');
         return await this.processNode(id, connectionTimeout, ctx);
       case 'identity':
-        this.logger.warn('identity');
         return await this.processIdentity(id, connectionTimeout, ctx);
       default:
         never();
@@ -468,7 +465,6 @@ class Discovery {
       }
     }
     this.visitedVertices.add(encodedGestaltNodeId);
-    this.logger.warn('node task done');
   }
 
   protected async processIdentity(

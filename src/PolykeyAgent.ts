@@ -6,7 +6,7 @@ import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type {ClientCrypto, ServerCrypto} from '@matrixai/quic';
+import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';

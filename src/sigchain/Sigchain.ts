@@ -258,7 +258,10 @@ class Sigchain {
     )) {
       headerSignatures.push({
         protected: headerSignatureJSON.protected,
-        signature: Buffer.from(headerSignatureJSON.signature, 'binary') as TokenSignature,
+        signature: Buffer.from(
+          headerSignatureJSON.signature,
+          'binary',
+        ) as TokenSignature,
       });
     }
     return headerSignatures;

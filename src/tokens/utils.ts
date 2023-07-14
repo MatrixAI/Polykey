@@ -16,7 +16,6 @@ import * as ids from '../ids';
 import * as validationErrors from '../validation/errors';
 import * as keysUtils from '../keys/utils';
 import * as utils from '../utils';
-import {sign} from "../../tests/nodes/utils";
 
 function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
   const payloadJSON = canonicalize(payload)!;

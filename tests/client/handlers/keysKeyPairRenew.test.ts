@@ -92,11 +92,9 @@ describe('keysKeyPairRenew', () => {
     const nodeId1 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
     const config1 = pkAgent.quicServerAgent.config;
-    const fwdTLSConfig1: TLSConfig = {
-      // @ts-ignore: privKeyPem should always be defined here
-      keyPrivatePem: config1.tlsConfig!.privKeyPem!,
-      // @ts-ignore: certChainPem should always be defined here
-      certChainPem: config1.tlsConfig!.certChainPem!,
+    const fwdTLSConfig1 = {
+      keyPrivatePem: config1.key,
+      certChainPem: config1.cert,
     };
     const expectedTLSConfig1: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair1.privateKey),
@@ -114,11 +112,9 @@ describe('keysKeyPairRenew', () => {
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
     const config2 = pkAgent.quicServerAgent.config;
-    const fwdTLSConfig2: TLSConfig = {
-      // @ts-ignore: privKeyPem should always be defined here
-      keyPrivatePem: config2.tlsConfig!.privKeyPem!,
-      // @ts-ignore: certChainPem should always be defined here
-      certChainPem: config2.tlsConfig!.certChainPem!,
+    const fwdTLSConfig2 = {
+      keyPrivatePem: config2.key,
+      certChainPem: config2.cert,
     };
     const expectedTLSConfig2: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(rootKeyPair2.privateKey),

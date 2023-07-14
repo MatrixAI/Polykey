@@ -1,4 +1,4 @@
-import type {Host, Port, TLSConfig} from '@/network/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 import type { IdentityId, ClaimId, ProviderIdentityClaimId } from '@/ids/index';
 import type { SignedClaim } from '@/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';

@@ -20,7 +20,7 @@ import * as utils from '@/utils/index';
 import * as nodeTestUtils from '../nodes/utils';
 
 describe('VaultInternal', () => {
-  const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('Vault', LogLevel.INFO, [new StreamHandler()]);
 
   let dataDir: string;
   let efsDbPath: string;

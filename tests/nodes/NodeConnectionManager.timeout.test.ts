@@ -9,6 +9,7 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
+import { Timer } from '@matrixai/timer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
 import * as keysUtils from '@/keys/utils';
@@ -21,9 +22,8 @@ import TaskManager from '@/tasks/TaskManager';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sleep } from '@/utils';
+import { generateRandomNodeId } from './utils';
 import * as tlsTestUtils from '../utils/tls';
-import {generateRandomNodeId} from "./utils";
-import {Timer} from "@matrixai/timer";
 
 describe(`${NodeConnectionManager.name} general test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -363,13 +363,15 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     const randomNodeId = generateRandomNodeId();
     await nodeManager.setNode(randomNodeId, {
-      host : '127.0.0.1' as Host,
+      host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
-    await expect(nodeConnectionManager.withConnF(randomNodeId, async () => {
-      // do nothing
-    })).rejects.toThrow();
-  })
+    await expect(
+      nodeConnectionManager.withConnF(randomNodeId, async () => {
+        // Do nothing
+      }),
+    ).rejects.toThrow();
+  });
   test('Connection can time out with passed in timer', async () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyRing,
@@ -403,18 +405,23 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     const randomNodeId = generateRandomNodeId();
     await nodeManager.setNode(randomNodeId, {
-      host : '127.0.0.1' as Host,
+      host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
-    await expect(nodeConnectionManager.withConnF(
-      randomNodeId,
-      async () => {
-      // do nothing
-    },
-      {timer: new Timer({
-          delay: 100,
-        })} )).rejects.toThrow();
-  })
+    await expect(
+      nodeConnectionManager.withConnF(
+        randomNodeId,
+        async () => {
+          // Do nothing
+        },
+        {
+          timer: new Timer({
+            delay: 100,
+          }),
+        },
+      ),
+    ).rejects.toThrow();
+  });
   test('Connection can time out with passed in timer and signal', async () => {
     const nodeConnectionManager = new NodeConnectionManager({
       keyRing,
@@ -448,7 +455,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     const randomNodeId = generateRandomNodeId();
     await nodeManager.setNode(randomNodeId, {
-      host : '127.0.0.1' as Host,
+      host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
     const abortController = new AbortController();
@@ -457,16 +464,19 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         delay: 100,
       }),
       signal: abortController.signal,
-    }
+    };
     // We need to hook up signal manually
     ctx.timer.finally(() => {
       abortController.abort(Error('Some Error'));
-    })
-    await expect(nodeConnectionManager.withConnF(
-      randomNodeId,
-      async () => {
-      // do nothing
-    },
-      ctx )).rejects.toThrow();
-  })
+    });
+    await expect(
+      nodeConnectionManager.withConnF(
+        randomNodeId,
+        async () => {
+          // Do nothing
+        },
+        ctx,
+      ),
+    ).rejects.toThrow();
+  });
 });

@@ -571,20 +571,19 @@ describe('VaultManager', () => {
       });
       const crypto = tlsTestsUtils.createCrypto();
       quicSocket = new QUICSocket({
-        crypto,
         logger,
       });
       await quicSocket.start({
         host: '127.0.0.1' as QUICHost,
       });
+      const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         nodeGraph,
         quicClientConfig: {
+          key: tlsConfig.keyPrivatePem,
+          cert: tlsConfig.certChainPem,
           crypto,
-          config: {
-            verifyPeer: false,
-          },
         },
         quicSocket,
         logger,
@@ -1331,7 +1330,7 @@ describe('VaultManager', () => {
           // @ts-ignore: kidnap vaultManager lockBox
           const vaultLocks = vaultManager.vaultLocks;
           const [releaseWrite] = await vaultLocks.lock([
-            vaultId,
+            vaultId.toString(),
             RWLockWriter,
             'write',
           ])();
@@ -1572,7 +1571,7 @@ describe('VaultManager', () => {
       // Getting and holding the lock
       const vault = vaultMap.get(vaultIdString)!;
       const [releaseWrite] = await vaultLocks.lock([
-        vaultId,
+        vaultId.toString(),
         RWLockWriter,
         'write',
       ])();
@@ -1614,7 +1613,7 @@ describe('VaultManager', () => {
       // Getting and holding the lock
       const vault = vaultMap.get(vaultIdString)!;
       const [releaseWrite] = await vaultLocks.lock([
-        vaultId,
+        vaultId.toString(),
         RWLockWriter,
         'write',
       ])();
@@ -1652,7 +1651,7 @@ describe('VaultManager', () => {
       const vaultId = await vaultManager.createVault('vaultName');
       // Getting and holding the lock
       const [releaseWrite] = await vaultLocks.lock([
-        vaultId,
+        vaultId.toString(),
         RWLockWriter,
         'write',
       ])();

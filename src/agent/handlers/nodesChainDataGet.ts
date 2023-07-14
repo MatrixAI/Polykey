@@ -4,7 +4,7 @@ import type { ClaimIdMessage, AgentClaimMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import * as claimsUtils from '../../claims/utils';
 import { ServerHandler } from '../../rpc/handlers';
-import {encodeClaimId} from "../../claims/utils";
+import { encodeClaimId } from '../../claims/utils';
 
 class NodesChainDataGetHandler extends ServerHandler<
   {

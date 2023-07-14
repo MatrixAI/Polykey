@@ -15,6 +15,7 @@ import Logger from '@matrixai/logger';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { QUICClient } from '@matrixai/quic';
+import { QUICClientDestroyEvent } from '@matrixai/quic/dist/events';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import RPCClient from '../rpc/RPCClient';
@@ -22,7 +23,6 @@ import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
-import {QUICClientDestroyEvent} from "@matrixai/quic/dist/events";
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -126,11 +126,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         logger: logger.getChild(QUICClient.name),
       },
       ctx,
-    ).catch((e) => {
-      console.error(e)
-      logger.warn(`Failed ${this.name} creation with ${e}`);
-      throw e;
-    });
+    );
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
