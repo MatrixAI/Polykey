@@ -16,14 +16,14 @@ import type NodeManager from './NodeManager';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { LockRequest } from '@matrixai/async-locks/dist/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
+import type { ClientCrypto } from '@matrixai/quic';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
-import { Lock, LockBox, Monitor, RWLockWriter } from '@matrixai/async-locks';
+import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { withMonitor } from '@matrixai/quic/dist/utils';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -32,7 +32,6 @@ import * as networkUtils from '../network/utils';
 import { never } from '../utils';
 import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
-import { PromiseDeconstructed } from '../types';
 import { getRandomBytes } from '../keys/utils/random';
 
 // TODO: check all locking and add cancellation for it.
@@ -46,7 +45,6 @@ type ConnectionAndTimer = {
 };
 
 // TODO: review and redo connection configs.
-
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager {
@@ -70,6 +68,16 @@ class NodeConnectionManager {
    * The number of the closest nodes to contact initially
    */
   public readonly initialClosestNodes: number;
+
+  /**
+   * Default timeout for reverse hole punching.
+   */
+  public readonly holePunchTimeout: number;
+
+  /**
+   * Initial delay between punch packets, delay doubles each attempt.
+   */
+  public readonly holePunchInitialInterval: number;
 
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
@@ -98,28 +106,39 @@ class NodeConnectionManager {
   protected backoffDefault: number = 1000 * 60 * 5; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
   protected quicClientConfig: QUICClientConfig;
+  protected crypto: {
+    ops: ClientCrypto;
+  };
 
   public constructor({
     keyRing,
     nodeGraph,
     quicSocket,
     quicClientConfig,
+    crypto,
     seedNodes = {},
     initialClosestNodes = 3,
     connConnectTime = 2000,
     connTimeoutTime = 60000,
     pingTimeout = 2000,
+    holePunchTimeout = 4000,
+    holePunchInitialInterval = 250,
     logger,
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
     quicSocket: QUICSocket;
     quicClientConfig: QUICClientConfig;
+    crypto: {
+      ops: ClientCrypto;
+    };
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connConnectTime?: number;
     connTimeoutTime?: number;
     pingTimeout?: number;
+    holePunchTimeout?: number;
+    holePunchInitialInterval?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -127,12 +146,15 @@ class NodeConnectionManager {
     this.nodeGraph = nodeGraph;
     this.quicSocket = quicSocket;
     this.quicClientConfig = quicClientConfig;
+    this.crypto = crypto;
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
+    this.holePunchTimeout = holePunchTimeout;
+    this.holePunchInitialInterval = holePunchInitialInterval;
     this.pingTimeout = pingTimeout;
   }
 
@@ -290,6 +312,11 @@ class NodeConnectionManager {
     // Wait for any destruction to complete after locking is removed
   }
 
+  /**
+   * This will return an existing connection or establish a new one as needed.
+   * If no address is provided it will preform a kademlia search for the node.
+   */
+  // TODO rename
   protected somethingSomethingConnection(
     targetNodeId: NodeId,
     address?: NodeAddress,
@@ -519,9 +546,8 @@ class NodeConnectionManager {
         {
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
-          quicClientConfig: {
-            ...this.quicClientConfig,
-          },
+          quicClientConfig: this.quicClientConfig,
+          crypto: this.crypto,
           targetHost: address.host,
           targetPort: address.port,
           quicSocket: this.quicSocket,
@@ -546,6 +572,7 @@ class NodeConnectionManager {
       );
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
+      // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
       throw Error(
         'TMP IMP, This should be exceedingly rare, lets see if it happens',
       );
@@ -667,7 +694,7 @@ class NodeConnectionManager {
     ctx.signal.addEventListener('abort', onAbort);
     void ctx.timer.catch(() => {}).finally(() => onAbort());
 
-    let delay = 250;
+    let delay = this.holePunchInitialInterval;
     // Setting up established event checking
     try {
       while (true) {

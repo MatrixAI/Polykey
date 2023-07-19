@@ -6,7 +6,7 @@ import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
+import type { ClientCrypto, QUICConfig, ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -47,14 +47,16 @@ import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import { serverManifest as agentServerManifest } from './agent/handlers';
 
-// TODO: clean this up
 type NetworkConfig = {
-  // RPCServer for agent service
+  // Agent QUICSocket config
   agentHost?: Host;
   agentPort?: Port;
+  ipv6Only?: boolean;
+
   // RPCServer for client service
   clientHost?: Host;
   clientPort?: Port;
+
   maxReadableStreamBytes?: number;
   connectionIdleTimeoutTime?: number;
   pingIntervalTime?: number;
@@ -64,21 +66,17 @@ type NetworkConfig = {
   clientParserBufferByteLimit?: number;
 };
 
-// TODO: add defaults to polykey's config
-type QUICServerConfig = {
-  verifyPem?: string | undefined;
-  verifyFromPemFile?: string | undefined;
-  supportedPrivateKeyAlgos?: string | undefined;
-  logKeys?: string | undefined;
+type PolykeyQUICConfig = {
+  // Optionals
+  keepAliveIntervalTime?: number;
   maxIdleTimeout?: number;
-  maxRecvUdpPayloadSize?: number;
-  maxSendUdpPayloadSize?: number;
-  initialMaxData?: number;
-  initialMaxStreamDataBidiLocal?: number;
-  initialMaxStreamDataBidiRemote?: number;
-  initialMaxStreamsBidi?: number;
-  initialMaxStreamsUni?: number;
-};
+  // Disabled, set internally
+  ca?: never;
+  key?: never;
+  cert?: never;
+  verifyPeer?: never;
+  verifyAllowFail?: never;
+} & Partial<QUICConfig>;
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -106,10 +104,10 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    proxyConfig = {},
+    quicServerConfig = {},
+    quicClientConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
-    quicServerConfig = {},
     workers,
     // Optional dependencies
     status,
@@ -151,21 +149,17 @@ class PolykeyAgent {
     certManagerConfig?: {
       certDuration?: number;
     };
-    proxyConfig?: {
-      authToken?: string;
-      connConnectTime?: number;
-      connKeepAliveTimeoutTime?: number;
-      connEndTime?: number;
-      connPunchIntervalTime?: number;
-      connKeepAliveIntervalTime?: number;
-    };
     nodeConnectionManagerConfig?: {
       connConnectTime?: number;
       connTimeoutTime?: number;
       initialClosestNodes?: number;
+      pingTimeout?: number;
+      holePunchTimeout?: number;
+      holePunchInitialInterval?: number;
     };
     networkConfig?: NetworkConfig;
-    quicServerConfig?: QUICServerConfig;
+    quicServerConfig?: PolykeyQUICConfig;
+    quicClientConfig?: PolykeyQUICConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -206,12 +200,6 @@ class PolykeyAgent {
       ...config.defaults.certManagerConfig,
       ...utils.filterEmptyObject(certManagerConfig),
     };
-    // TODO: remove
-    const proxyConfig_ = {
-      authToken: keysUtils.getRandomBytes(10).toString(),
-      ...config.defaults.proxyConfig,
-      ...utils.filterEmptyObject(proxyConfig),
-    };
     const nodeConnectionManagerConfig_ = {
       ...config.defaults.nodeConnectionManagerConfig,
       ...utils.filterEmptyObject(nodeConnectionManagerConfig),
@@ -219,6 +207,14 @@ class PolykeyAgent {
     const networkConfig_ = {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
+    };
+    const quicServerConfig_ = {
+      ...config.defaults.quicServerConfig,
+      ...utils.filterEmptyObject(quicServerConfig),
+    };
+    const quicClientConfig_ = {
+      ...config.defaults.quicClientConfig,
+      ...utils.filterEmptyObject(quicClientConfig),
     };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -384,13 +380,14 @@ class PolykeyAgent {
           seedNodes,
           quicSocket,
           quicClientConfig: {
+            ...quicClientConfig_,
             key: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
             cert: await certManager.getCertPEMsChainPEM(),
-            crypto: {
-              ops: clientCrypto,
-            },
           },
           ...nodeConnectionManagerConfig_,
+          crypto: {
+            ops: clientCrypto,
+          },
           logger: logger.getChild(NodeConnectionManager.name),
         });
       nodeManager =
@@ -559,13 +556,11 @@ class PolykeyAgent {
         quicServerAgent ??
         new QUICServer({
           config: {
+            ...quicServerConfig_,
             key: tlsConfig.keyPrivatePem,
             cert: tlsConfig.certChainPem,
             verifyPeer: true,
             verifyAllowFail: true,
-            ...quicServerConfig,
-            logKeys: 'tmp/key.log', // FIXME
-            keepAliveIntervalTime: 30000, // TODO
           },
           crypto: {
             key: keysUtils.generateKey(),
@@ -885,7 +880,7 @@ class PolykeyAgent {
       await this.quicSocket.start({
         host: _networkConfig.agentHost,
         port: _networkConfig.agentPort,
-        ipv6Only: false, // TODO: hardcode this?
+        ipv6Only: _networkConfig.agentPort,
       });
       // Setting up stream handling
       const handleStream = async (
@@ -957,11 +952,9 @@ class PolykeyAgent {
         },
         { once: true },
       );
-      // Finished setting up handling
-      await this.quicServerAgent.start({
-        host: _networkConfig.agentHost,
-        port: _networkConfig.agentPort,
-      });
+      // Finished setting up handling.
+      // No host or port is provided here, it's configured in the shared QUICSocket.
+      await this.quicServerAgent.start();
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
       await this.nodeGraph.start({ fresh });

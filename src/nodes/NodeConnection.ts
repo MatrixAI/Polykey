@@ -1,21 +1,21 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId, QUICClientConfig } from './types';
-import type { ConnectionInfo, Host, Hostname, Port } from '../network/types';
-import type { Certificate, CertificatePEM } from '../keys/types';
+import type { Host, Hostname, Port } from '../network/types';
+import type { CertificatePEM } from '../keys/types';
 import type { ClientManifest } from '../rpc/types';
 import type {
   Host as QUICHost,
   Port as QUICPort,
   QUICSocket,
+  ClientCrypto,
 } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { QUICClient } from '@matrixai/quic';
-import { QUICClientDestroyEvent } from '@matrixai/quic/dist/events';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import RPCClient from '../rpc/RPCClient';
@@ -70,6 +70,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
+      crypto: {
+        ops: ClientCrypto;
+      };
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -84,6 +87,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort,
       targetHostname,
       quicClientConfig,
+      crypto,
       quicSocket,
       manifest,
       logger = new Logger(this.name),
@@ -93,6 +97,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort: Port;
       targetHostname?: Hostname;
       quicClientConfig: QUICClientConfig;
+      crypto: {
+        ops: ClientCrypto;
+      };
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -112,9 +119,10 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         port: targetPort as unknown as QUICPort,
         socket: quicSocket,
         config: {
+          ...quicClientConfig,
           verifyPeer: true,
           verifyAllowFail: true,
-          ...quicClientConfig,
+          ca: undefined,
         },
         verifyCallback: async (certPEMs) => {
           validatedNodeId = await networkUtils.verifyServerCertificateChain(
@@ -122,7 +130,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
             certPEMs,
           );
         },
-        crypto: quicClientConfig.crypto,
+        crypto: crypto,
         logger: logger.getChild(QUICClient.name),
       },
       ctx,
@@ -136,6 +144,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       logger: clientLogger,
     });
     if (validatedNodeId == null) never();
+    // Obtaining remote node ID from certificate chain. It should always exist in the chain if validated.
+    //  This may de different from the NodeId we validated it as if it renewed at some point.
     const connection = quicClient.connection;
     const certChain = connection.getRemoteCertsChain().map((pem) => {
       const cert = keysUtils.certFromPEM(pem as CertificatePEM);

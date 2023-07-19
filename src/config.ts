@@ -90,14 +90,10 @@ const config = {
       certDuration: 31536000,
     },
     networkConfig: {
-      // ForwardProxy
-      forwardHost: '127.0.0.1' as Host,
-      forwardPort: 0 as Port,
-      proxyHost: '0.0.0.0' as Host,
-      proxyPort: 0 as Port,
       // GRPCServer for agent service
       agentHost: '127.0.0.1' as Host,
       agentPort: 0 as Port,
+      ipv6Only: false,
       // RPCServer for client service
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
@@ -110,17 +106,21 @@ const config = {
       maxReadableStreamBytes: 1_000_000_000, // About 1 GB
       clientParserBufferByteLimit: 1_000_000, // About 1MB
     },
-    proxyConfig: {
-      connConnectTime: 2000,
-      connKeepAliveTimeoutTime: 20000,
-      connEndTime: 1000,
-      connPunchIntervalTime: 100,
-      connKeepAliveIntervalTime: 1000,
+    quicServerConfig: {
+      keepAliveIntervalTime: 10_000, // 10 seconds
+      maxIdleTimeout: 60_000, // 1 minute
+    },
+    quicClientConfig: {
+      keepAliveIntervalTime: 10_000, // 10 seconds
+      maxIdleTimeout: 60_000, // 1 minute
     },
     nodeConnectionManagerConfig: {
       connConnectTime: 2000,
       connTimeoutTime: 60000,
       initialClosestNodes: 3,
+      pingTimeout: 2000,
+      holePunchTimeout: 4000,
+      holePunchInitialInterval: 250,
     },
     // This is not used by the `PolykeyAgent` which defaults to `{}`
     network: {

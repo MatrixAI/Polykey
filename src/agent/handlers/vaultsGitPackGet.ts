@@ -4,13 +4,13 @@ import type ACL from '../../acl/ACL';
 import type { DB } from '@matrixai/db';
 import type { GitPackMessage, VaultsGitPackGetMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
+import * as networkUtils from '@/network/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import * as agentErrors from '../errors';
 import { ServerHandler } from '../../rpc/handlers';
 
 class VaultsGitPackGetHandler extends ServerHandler<
@@ -28,15 +28,8 @@ class VaultsGitPackGetHandler extends ServerHandler<
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<GitPackMessage>> {
     const { vaultManager, acl, db } = this.container;
-    // Getting the NodeId from the ReverseProxy connection info
-    const connectionInfo = meta;
-    // If this is getting run the connection exists
-    // It SHOULD exist here
-    if (connectionInfo == null) {
-      throw new agentErrors.ErrorConnectionInfoMissing();
-    }
-    const nodeId = connectionInfo.remoteNodeId;
-    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
+    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+    const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
     const nameOrId = meta.get('vaultNameOrId').pop()!.toString();
     yield* db.withTransactionG(async function* (
       tran,
@@ -65,7 +58,7 @@ class VaultsGitPackGetHandler extends ServerHandler<
         },
       );
       // Checking permissions
-      const permissions = await acl.getNodePerm(nodeId, tran);
+      const permissions = await acl.getNodePerm(requestingNodeId, tran);
       const vaultPerms = permissions?.vaults[vaultId];
       if (vaultPerms?.[actionType] !== null) {
         throw new vaultsErrors.ErrorVaultsPermissionDenied(

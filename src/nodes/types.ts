@@ -1,6 +1,6 @@
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
-import type { ClientCrypto } from '@matrixai/quic';
+import type { ClientCrypto, QUICConfig } from '@matrixai/quic';
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -27,15 +27,22 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
+/**
+ * These are the config options we pass to the quic system.
+ * It is re-defined here to only expose the options we want to propagate.
+ * Other parameters are provided via the internal logic.
+ */
 type QUICClientConfig = {
   cert: string;
   key: string;
+  // Optionals
   maxIdleTimeout?: number;
   keepaliveIntervalTime?: number;
-  crypto: {
-    ops: ClientCrypto;
-  };
-};
+  // Handled via internal logic
+  ca: never;
+  verifyPeer: never;
+  verifyAllowFail: never;
+} & Partial<QUICConfig>;
 
 export type {
   NodeId,

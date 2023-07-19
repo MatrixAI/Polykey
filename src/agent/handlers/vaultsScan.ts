@@ -2,8 +2,8 @@ import type { VaultsScanMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
+import * as networkUtils from '@/network/utils';
 import { ServerHandler } from '../../rpc/handlers';
-import * as agentErrors from '../errors';
 import * as vaultsUtils from '../../vaults/utils';
 
 class VaultsScanHandler extends ServerHandler<
@@ -20,18 +20,14 @@ class VaultsScanHandler extends ServerHandler<
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager, db } = this.container;
-    // Getting the NodeId from the ReverseProxy connection info
-    const connectionInfo = meta;
-    // If this is getting run the connection exists
-    // It SHOULD exist here
-    if (connectionInfo == null) {
-      throw new agentErrors.ErrorConnectionInfoMissing();
-    }
-    const nodeId = connectionInfo.remoteNodeId;
+    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
     yield* db.withTransactionG(async function* (
       tran,
     ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
-      const listResponse = vaultManager.handleScanVaults(nodeId, tran);
+      const listResponse = vaultManager.handleScanVaults(
+        requestingNodeId,
+        tran,
+      );
       for await (const {
         vaultId,
         vaultName,

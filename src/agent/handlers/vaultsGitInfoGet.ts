@@ -6,13 +6,13 @@ import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
 import type { VaultsGitInfoGetMessage } from './types';
 import type { VaultAction } from '../../vaults/types';
+import * as networkUtils from '@/network/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { ServerHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import * as agentErrors from '../errors';
 import * as nodesUtils from '../../nodes/utils';
 
 class VaultsGitInfoGetHandler extends ServerHandler<
@@ -64,15 +64,9 @@ class VaultsGitInfoGetHandler extends ServerHandler<
         throw new vaultsErrors.ErrorVaultsVaultUndefined();
       }
       // Getting the NodeId from the ReverseProxy connection info
-      const connectionInfo = meta;
-      // If this is getting run the connection exists
-      // It SHOULD exist here
-      if (connectionInfo == null) {
-        throw new agentErrors.ErrorConnectionInfoMissing();
-      }
-      const nodeId = connectionInfo.remoteNodeId;
-      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
-      const permissions = await acl.getNodePerm(nodeId, tran);
+      const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+      const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
+      const permissions = await acl.getNodePerm(requestingNodeId, tran);
       if (permissions == null) {
         throw new vaultsErrors.ErrorVaultsPermissionDenied(
           `No permissions found for ${nodeIdEncoded}`,
