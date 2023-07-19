@@ -583,8 +583,8 @@ describe('VaultManager', () => {
         quicClientConfig: {
           key: tlsConfig.keyPrivatePem,
           cert: tlsConfig.certChainPem,
-          crypto,
         },
+        crypto,
         quicSocket,
         logger,
       });

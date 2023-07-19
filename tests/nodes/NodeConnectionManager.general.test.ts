@@ -110,6 +110,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger: logger.getChild('AgentA'),
     });
@@ -198,8 +199,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -243,8 +244,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -299,8 +300,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -348,8 +349,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -432,8 +433,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -516,8 +517,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -543,8 +544,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       'holePunchReverse',
     );
     mockedHolePunchReverse.mockImplementation(() => {
-      return new PromiseCancellable<void>(() => {
-        return;
+      return new PromiseCancellable<void>((res) => {
+        res();
       });
     });
 
@@ -582,8 +583,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 10000,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });

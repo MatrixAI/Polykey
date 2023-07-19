@@ -1,6 +1,6 @@
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
-import type { ClientCrypto, QUICConfig } from '@matrixai/quic';
+import type { QUICConfig } from '@matrixai/quic';
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -39,9 +39,9 @@ type QUICClientConfig = {
   maxIdleTimeout?: number;
   keepaliveIntervalTime?: number;
   // Handled via internal logic
-  ca: never;
-  verifyPeer: never;
-  verifyAllowFail: never;
+  ca?: never;
+  verifyPeer?: never;
+  verifyAllowFail?: never;
 } & Partial<QUICConfig>;
 
 export type {

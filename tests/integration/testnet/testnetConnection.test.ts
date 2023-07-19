@@ -9,6 +9,8 @@ import config from '@/config';
 import * as testUtils from '../../utils';
 import { sleep } from '../../../src/utils/index';
 
+test('dummy test', async () => {});
+
 describe.skip('testnet connection', () => {
   const logger = new Logger('TCT', LogLevel.WARN, [new StreamHandler()]);
   const format = formatting.format`${formatting.keys}:${formatting.msg}`;
@@ -242,8 +244,7 @@ describe.skip('testnet connection', () => {
         // ProxyHost: localhost,
         agentHost: localhost,
         clientHost: localhost,
-        forwardHost: localhost,
-        proxyPort: 55551 as Port,
+        agentPort: 55551 as Port,
       },
 
       logger: logger.getChild('A1'),
@@ -255,11 +256,9 @@ describe.skip('testnet connection', () => {
       nodePath: nodePath2,
       seedNodes,
       networkConfig: {
-        // ProxyHost: localhost,
         agentHost: localhost,
         clientHost: localhost,
-        forwardHost: localhost,
-        proxyPort: 55552 as Port,
+        agentPort: 55552 as Port,
       },
       logger: logger.getChild('A2'),
     });

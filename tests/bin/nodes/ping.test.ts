@@ -32,9 +32,6 @@ describe('ping', () => {
         agentHost: '127.0.0.1' as Host,
         clientHost: '127.0.0.1' as Host,
       },
-      proxyConfig: {
-        connConnectTime: 2000,
-      },
       nodeConnectionManagerConfig: {
         connConnectTime: 2000,
         connTimeoutTime: 1000,

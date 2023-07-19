@@ -73,22 +73,22 @@ const clientPort = new commander.Option(
   .env('PK_CLIENT_PORT')
   .argParser(binParsers.parsePort);
 
-const proxyHost = new commander.Option('-ph, --proxy-host <host>', 'Proxy host')
-  .env('PK_PROXY_HOST')
+const agentHost = new commander.Option('-ah, --agent-host <host>', 'Agent host')
+  .env('PK_AGENT_HOST')
   .argParser(binParsers.parseHost)
-  .default(config.defaults.networkConfig.proxyHost);
+  .default(config.defaults.networkConfig.agentHost);
 
-const proxyPort = new commander.Option('-pp, --proxy-port <port>', 'Proxy Port')
-  .env('PK_PROXY_PORT')
+const agentPort = new commander.Option('-ap, --agent-port <port>', 'Agent Port')
+  .env('PK_AGENT_PORT')
   .argParser(binParsers.parsePort)
-  .default(config.defaults.networkConfig.proxyPort);
+  .default(config.defaults.networkConfig.agentPort);
 
 const connConnectTime = new commander.Option(
   '--connection-timeout <ms>',
   'Timeout value for connection establishment between nodes',
 )
   .argParser(binParsers.parseInteger)
-  .default(config.defaults.proxyConfig.connConnectTime);
+  .default(config.defaults.nodeConnectionManagerConfig.connConnectTime);
 
 const passwordFile = new commander.Option(
   '-pf, --password-file <path>',
@@ -204,8 +204,8 @@ export {
   nodeId,
   clientHost,
   clientPort,
-  proxyHost,
-  proxyPort,
+  agentHost,
+  agentPort,
   connConnectTime,
   recoveryCodeFile,
   passwordFile,

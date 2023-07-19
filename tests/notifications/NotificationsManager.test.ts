@@ -114,21 +114,20 @@ describe('NotificationsManager', () => {
     });
     const crypto = tlsTestsUtils.createCrypto();
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
       host: '127.0.0.1' as QUICHost,
     });
+    const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyRing,
       quicClientConfig: {
-        crypto,
-        config: {
-          verifyPeer: false,
-        },
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
       },
+      crypto,
       quicSocket,
       logger,
     });

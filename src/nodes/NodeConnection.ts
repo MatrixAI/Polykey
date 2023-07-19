@@ -119,10 +119,10 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         port: targetPort as unknown as QUICPort,
         socket: quicSocket,
         config: {
-          ...quicClientConfig,
           verifyPeer: true,
           verifyAllowFail: true,
           ca: undefined,
+          ...quicClientConfig,
         },
         verifyCallback: async (certPEMs) => {
           validatedNodeId = await networkUtils.verifyServerCertificateChain(

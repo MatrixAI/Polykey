@@ -6,7 +6,7 @@ import type {
   KeyPair,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
-import type { Crypto as QUICCrypto } from '@matrixai/quic/dist/types';
+import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -65,11 +65,10 @@ async function createTLSConfigWithChain(
 }
 
 function createCrypto(key: Key = keysUtils.generateKey()) {
-  const ops: QUICCrypto = {
+  const ops: ClientCrypto & ServerCrypto = {
     randomBytes: async (data: ArrayBuffer) => {
       const randomBytes = keysUtils.getRandomBytes(data.byteLength);
       const dataBuf = Buffer.from(data);
-      // FIXME: is there a better way?
       dataBuf.write(randomBytes.toString('binary'), 'binary');
     },
     sign: testNodesUtils.sign,

@@ -146,11 +146,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   afterEach(async () => {
-    await nodeConnectionManager.stop();
-
-    await taskManager.stopTasks();
     await taskManager.stop();
-    await taskManager.destroy();
+    await nodeConnectionManager.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -159,6 +156,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await gestaltGraph.destroy();
     await acl.stop();
     await acl.destroy();
+    await taskManager.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
@@ -168,7 +166,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await rpcServer.destroy(true);
     await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
     await serverSocket.stop({ force: true });
-    await taskManager.stop();
   });
 
   test('should create connection', async () => {
@@ -179,8 +176,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -198,6 +195,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       nodeManager,
     });
+
+    await nodeConnectionManager.stop();
   });
 
   test('acquireConnection should create connection', async () => {
@@ -209,8 +208,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -245,8 +244,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -281,8 +280,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -325,8 +324,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -369,8 +368,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -421,8 +420,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -463,8 +462,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -513,8 +512,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -562,8 +561,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -603,8 +602,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -641,8 +640,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -680,8 +679,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });

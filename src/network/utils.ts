@@ -8,8 +8,8 @@ import type { CertificatePEM } from '../keys/types';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
-import { never } from '@/utils';
 import * as networkErrors from './errors';
+import { never } from '../utils';
 import * as keysUtils from '../keys/utils';
 
 /**
@@ -225,7 +225,9 @@ async function verifyServerCertificateChain(
     );
   }
   if (nodeIds.length === 0) {
-    throw new Error('No nodes were provided to verify against'); // FIXME: use a proper error
+    throw new networkErrors.ErrorCertVerificationError(
+      'No nodes were provided to verify against',
+    );
   }
   const certChain = certPEMChain.map((v) => {
     const cert = keysUtils.certFromPEM(v as CertificatePEM);

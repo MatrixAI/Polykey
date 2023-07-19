@@ -491,7 +491,7 @@ class NodeGraph {
           yield [bucketIndex, bucket];
         }
       } finally {
-        await bucketsDbIterator.destroy(); // FIXME: destroy?
+        await bucketsDbIterator.destroy();
       }
     }
   }

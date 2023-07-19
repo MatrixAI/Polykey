@@ -14,7 +14,6 @@ import * as tokensUtils from './utils';
 import * as tokensErrors from './errors';
 import * as ids from '../ids';
 import * as keysUtils from '../keys/utils';
-import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
 
 /**

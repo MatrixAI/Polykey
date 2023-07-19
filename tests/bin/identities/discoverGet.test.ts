@@ -8,7 +8,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
-import * as identitiesUtils from '@/identities/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils/index';
 import { encodeProviderIdentityId } from '@/identities/utils';
@@ -125,10 +124,6 @@ describe('discover/get', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by node',
     async () => {
-      // Need an authenticated identity
-      const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
-        .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
           'identities',
@@ -202,7 +197,6 @@ describe('discover/get', () => {
         testToken.providerId,
         testToken.identityId,
       );
-      mockedBrowser.mockRestore();
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
@@ -211,10 +205,6 @@ describe('discover/get', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by identity',
     async () => {
-      // Need an authenticated identity
-      const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
-        .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
           'identities',
@@ -288,7 +278,6 @@ describe('discover/get', () => {
         testToken.providerId,
         testToken.identityId,
       );
-      mockedBrowser.mockRestore();
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },

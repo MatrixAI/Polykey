@@ -20,7 +20,7 @@ import { Timer } from '@matrixai/timer';
 import * as rpcUtilsMiddleware from './utils/middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils/utils';
-import { never, promise } from '../utils';
+import { promise } from '../utils';
 
 const timerCleanupReasonSymbol = Symbol('timerCleanUpReasonSymbol');
 

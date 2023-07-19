@@ -25,12 +25,12 @@ import type {
   ClaimLinkIdentity,
   ClaimLinkNode,
 } from '../claims/payloads/index';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
@@ -303,9 +303,9 @@ class Discovery {
         ctx,
       );
     } catch (e) {
-      console.error(e);
       this.visitedVertices.add(encodedGestaltNodeId);
-      this.logger.error(
+      // Not strictly an error in this case, we can fail to connect
+      this.logger.info(
         `Failed to discover ${nodesUtils.encodeNodeId(
           nodeId,
         )} - ${e.toString()}`,
@@ -391,10 +391,6 @@ class Discovery {
               continue;
             }
             // Attempt to get the identity info on the identity provider
-            const timer =
-              connectionTimeout != null
-                ? new Timer({ delay: connectionTimeout })
-                : undefined;
             if (signedClaim.payload.sub == null) never();
             const [providerId, identityId] = JSON.parse(
               signedClaim.payload.sub,
@@ -402,7 +398,7 @@ class Discovery {
             const identityInfo = await this.getIdentityInfo(
               providerId,
               identityId,
-              { signal: ctx.signal, timer },
+              { signal: ctx.signal, timer: connectionTimeout },
             );
             // If we can't get identity info, simply skip this claim
             if (identityInfo == null) {
@@ -476,14 +472,10 @@ class Discovery {
     // Firstly get the identity info of this identity
     const providerIdentityId = id;
     const [providerId, identityId] = id;
-    const timer =
-      connectionTimeout != null
-        ? new Timer({ delay: connectionTimeout })
-        : undefined;
     const vertexIdentityInfo = await this.getIdentityInfo(
       providerId,
       identityId,
-      { signal: ctx.signal, timer },
+      { signal: ctx.signal, timer: connectionTimeout },
     );
     // If we don't have identity info, simply skip this vertex
     if (vertexIdentityInfo == null) {
@@ -532,7 +524,6 @@ class Discovery {
     this.visitedVertices.add(
       gestaltsUtils.encodeGestaltIdentityId(['identity', providerIdentityId]),
     );
-    this.logger.warn('identity task done');
   }
 
   /**
@@ -630,7 +621,7 @@ class Discovery {
   protected getIdentityInfo(
     providerId: ProviderId,
     identityId: IdentityId,
-    ctx: Partial<ContextTimed>,
+    ctx: Partial<ContextTimedInput>,
   ): Promise<IdentityData | undefined>;
   @timedCancellable(true, 20000)
   protected async getIdentityInfo(

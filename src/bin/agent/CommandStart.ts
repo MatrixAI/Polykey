@@ -26,8 +26,8 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.recoveryCodeFile);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
-    this.addOption(binOptions.proxyHost);
-    this.addOption(binOptions.proxyPort);
+    this.addOption(binOptions.agentHost);
+    this.addOption(binOptions.agentPort);
     this.addOption(binOptions.connConnectTime);
     this.addOption(binOptions.seedNodes);
     this.addOption(binOptions.network);
@@ -68,7 +68,7 @@ class CommandStart extends CommandPolykey {
         );
       } else {
         // Otherwise this is the existing password
-        // however, the code is capable of doing partial bootstrapping
+        // however, the code is capable of doing partial bootstrapping,
         // so it's possible that this is also a new password
         // if the root key isn't setup
         password = await binProcessors.processPassword(
@@ -99,14 +99,11 @@ class CommandStart extends CommandPolykey {
           passwordMemLimit:
             keysUtils.passwordMemLimits[options.passwordMemLimit],
         },
-        proxyConfig: {
-          connConnectTime: options.connectionTimeout,
-        },
         networkConfig: {
           clientHost: options.clientHost,
           clientPort: options.clientPort,
-          proxyHost: options.proxyHost,
-          proxyPort: options.proxyPort,
+          agentHost: options.agentHost,
+          agentPort: options.agentPort,
         },
         seedNodes: seedNodes_,
         workers: options.workers,

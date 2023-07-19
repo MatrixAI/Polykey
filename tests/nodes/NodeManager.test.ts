@@ -55,6 +55,9 @@ describe(`${NodeManager.name} test`, () => {
   let clientSocket: QUICSocket;
   let tlsConfig: TLSConfig;
 
+  let server: PolykeyAgent;
+  let nodeConnectionManager;
+
   beforeEach(async () => {
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -106,8 +109,8 @@ describe(`${NodeManager.name} test`, () => {
   });
 
   afterEach(async () => {
-    await taskManager.stopProcessing();
-    await taskManager.stopTasks();
+    await taskManager.stop();
+    await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -116,13 +119,14 @@ describe(`${NodeManager.name} test`, () => {
     await gestaltGraph.destroy();
     await acl.stop();
     await acl.destroy();
-    await taskManager.stop();
+    await taskManager.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
 
     await clientSocket.stop({ force: true });
+    await server?.stop();
   });
 
   test('should add a node when bucket has room', async () => {
@@ -327,14 +331,14 @@ describe(`${NodeManager.name} test`, () => {
     nodeManagerPingMock.mockRestore();
   });
   test('should add node when an incoming connection is established', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger,
     });
@@ -351,7 +355,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     await nodeConnectionManager.start({ nodeManager });
-    const server = await PolykeyAgent.createPolykeyAgent({
+    server = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(dataDir, 'server'),
       networkConfig: {
@@ -551,14 +555,14 @@ describe(`${NodeManager.name} test`, () => {
     );
   });
   test('refreshBucket should not throw errors when network is empty', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger,
     });

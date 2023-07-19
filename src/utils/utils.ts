@@ -5,7 +5,6 @@ import type {
   Callback,
 } from '../types';
 import os from 'os';
-import v8 from 'v8';
 import process from 'process';
 import path from 'path';
 import lexi from 'lexicographic-integer';
@@ -430,12 +429,10 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
-// TODO: expand on this.
 const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
   return 0;
 };
 
-// TODO: expand on this.
 const codeToReason = (type: 'recv' | 'send', code: number): any => {
   return Error(`${type} ${code}`);
 };

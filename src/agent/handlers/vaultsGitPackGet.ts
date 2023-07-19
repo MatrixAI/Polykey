@@ -4,7 +4,7 @@ import type ACL from '../../acl/ACL';
 import type { DB } from '@matrixai/db';
 import type { GitPackMessage, VaultsGitPackGetMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import * as networkUtils from '@/network/utils';
+import * as networkUtils from '../../network/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';

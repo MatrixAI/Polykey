@@ -24,10 +24,13 @@ describe('start', () => {
     );
   });
   afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
+    await fs.promises
+      .rm(dataDir, {
+        force: true,
+        recursive: true,
+      })
+      // Just ignore failures here
+      .catch(() => {});
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
@@ -45,7 +48,7 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -113,7 +116,7 @@ describe('start', () => {
           passwordPath,
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--background',
           '--background-out-file',
@@ -213,7 +216,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -239,7 +242,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -321,7 +324,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -415,7 +418,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -445,7 +448,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -493,7 +496,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -534,7 +537,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -617,7 +620,7 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -657,7 +660,7 @@ describe('start', () => {
           recoveryCodePath,
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -714,7 +717,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -761,8 +764,8 @@ describe('start', () => {
       // Make sure these ports are not occupied
       const clientHost = '127.0.0.2';
       const clientPort = 55555;
-      const proxyHost = '127.0.0.3';
-      const proxyPort = 55556;
+      const agentHost = '127.0.0.3';
+      const agentPort = 55556;
       const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
@@ -773,10 +776,10 @@ describe('start', () => {
           clientHost,
           '--client-port',
           clientPort.toString(),
-          '--proxy-host',
-          proxyHost,
-          '--proxy-port',
-          proxyPort.toString(),
+          '--agent-host',
+          agentHost,
+          '--agent-port',
+          agentPort.toString(),
           '--verbose',
         ],
         {
@@ -794,6 +797,8 @@ describe('start', () => {
       const statusInfo = await status.waitFor('LIVE');
       expect(statusInfo.data.clientHost).toBe(clientHost);
       expect(statusInfo.data.clientPort).toBe(clientPort);
+      expect(statusInfo.data.agentHost).toBe(agentHost);
+      expect(statusInfo.data.agentPort).toBe(agentPort);
       agentProcess.kill('SIGTERM');
       // Check for graceful exit
       await status.waitFor('DEAD');
@@ -886,11 +891,11 @@ describe('start', () => {
       ({ agentStatus: agent2Status, agentClose: agent2Close } =
         await testUtils.setupTestAgent(logger));
       seedNodeId1 = agent1Status.data.nodeId;
-      seedNodeHost1 = agent1Status.data.proxyHost;
-      seedNodePort1 = agent1Status.data.proxyPort;
+      seedNodeHost1 = agent1Status.data.agentHost;
+      seedNodePort1 = agent1Status.data.agentPort;
       seedNodeId2 = agent2Status.data.nodeId;
-      seedNodeHost2 = agent2Status.data.proxyHost;
-      seedNodePort2 = agent2Status.data.proxyPort;
+      seedNodeHost2 = agent2Status.data.agentHost;
+      seedNodePort2 = agent2Status.data.agentPort;
     });
     afterEach(async () => {
       await agent1Close();
@@ -933,7 +938,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -1000,7 +1005,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',

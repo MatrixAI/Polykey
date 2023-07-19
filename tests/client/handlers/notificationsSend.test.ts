@@ -1,6 +1,5 @@
 import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
-import type { SignedNotification } from '@/notifications/types';
 import type { NodeIdEncoded } from '@/ids/index';
 import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
@@ -104,12 +103,12 @@ describe('notificationsSend', () => {
       keyRing,
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        // @ts-ignore
+        // @ts-ignore: TLS not needed for this test
         key: undefined,
-        // @ts-ignore
+        // @ts-ignore: TLS not needed for this test
         cert: undefined,
       },
+      crypto,
       quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,

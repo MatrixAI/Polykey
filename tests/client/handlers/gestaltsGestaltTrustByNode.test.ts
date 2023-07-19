@@ -34,7 +34,7 @@ import NodeGraph from '../../../src/nodes/NodeGraph';
 import TestProvider from '../../identities/TestProvider';
 
 describe('gestaltsGestaltTrustByNode', () => {
-  const logger = new Logger('agentUnlock test', LogLevel.WARN, [
+  const logger = new Logger('gestaltsGestaltTrustByNode test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -163,7 +163,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     const crypto = tlsTestsUtils.createCrypto();
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
@@ -173,11 +172,12 @@ describe('gestaltsGestaltTrustByNode', () => {
       keyRing,
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        config: {
-          verifyPeer: false,
-        },
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
       },
+      crypto,
       quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,

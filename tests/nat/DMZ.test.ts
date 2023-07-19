@@ -49,7 +49,7 @@ describe('DMZ', () => {
           path.join(dataDir, 'polykey'),
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           '0',
@@ -85,10 +85,6 @@ describe('DMZ', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
       });
       agentProcess.kill('SIGTERM');
       let exitCode, signal;
@@ -132,10 +128,10 @@ describe('DMZ', () => {
         agent2NodePath,
         agent1NodeId,
         agent1Host,
-        agent1ProxyPort,
+        agent1AgentPort,
         agent2NodeId,
         agent2Host,
-        agent2ProxyPort,
+        agent2AgentPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('dmz', 'dmz', logger);
       //               Namespace1                                Namespace2
@@ -155,7 +151,7 @@ describe('DMZ', () => {
           'add',
           agent2NodeId,
           agent2Host,
-          agent2ProxyPort,
+          agent2AgentPort,
           '--no-ping',
         ],
         {
@@ -177,7 +173,7 @@ describe('DMZ', () => {
           'add',
           agent1NodeId,
           agent1Host,
-          agent1ProxyPort,
+          agent1AgentPort,
           '--no-ping',
         ],
         {

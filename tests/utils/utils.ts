@@ -2,6 +2,7 @@ import type { NodeId } from '@/ids/types';
 import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as rpcErrors from '@/rpc/errors';
+import { promise } from '@/utils';
 
 function generateRandomNodeId(): NodeId {
   const random = keysUtils.getRandomBytes(16).toString('hex');
@@ -28,4 +29,61 @@ function describeIf(condition: boolean) {
   return condition ? describe : describe.skip;
 }
 
-export { generateRandomNodeId, expectRemoteError, testIf, describeIf };
+function trackTimers() {
+  const timerMap: Map<any, any> = new Map();
+  const oldClearTimeout = globalThis.clearTimeout;
+  const newClearTimeout = (...args) => {
+    timerMap.delete(args[0]);
+    // @ts-ignore: slight type mismatch
+    oldClearTimeout(...args);
+  };
+  globalThis.clearTimeout = newClearTimeout;
+
+  const oldSetTimeout = globalThis.setTimeout;
+  const newSetTimeout = (handler: TimerHandler, timeout?: number) => {
+    const prom = promise();
+    const stack = Error();
+    const newCallback = async (...args) => {
+      // @ts-ignore: only expecting functions
+      await handler(...args);
+      prom.resolveP();
+    };
+    const result = oldSetTimeout(newCallback, timeout);
+    timerMap.set(result, { timeout, stack });
+    void prom.p.finally(() => {
+      timerMap.delete(result);
+    });
+    return result;
+  };
+  // @ts-ignore: slight type mismatch
+  globalThis.setTimeout = newSetTimeout;
+
+  // Setting up interval
+  const oldSetInterval = globalThis.setInterval;
+  const newSetInterval = (...args) => {
+    // @ts-ignore: slight type mismatch
+    const result = oldSetInterval(...args);
+    timerMap.set(result, { timeout: args[0], error: Error() });
+    return result;
+  };
+  // @ts-ignore: slight type mismatch
+  globalThis.setInterval = newSetInterval;
+
+  const oldClearInterval = globalThis.clearInterval;
+  const newClearInterval = (timer) => {
+    timerMap.delete(timer);
+    return oldClearInterval(timer);
+  };
+  // @ts-ignore: slight type mismatch
+  globalThis.clearInterval = newClearInterval();
+
+  return timerMap;
+}
+
+export {
+  generateRandomNodeId,
+  expectRemoteError,
+  testIf,
+  describeIf,
+  trackTimers,
+};

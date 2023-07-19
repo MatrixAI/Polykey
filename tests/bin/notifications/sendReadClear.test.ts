@@ -65,10 +65,10 @@ describe('send/read/claim', () => {
   )(
     'sends, receives, and clears notifications',
     async () => {
-      let exitCode, stdout, stderr;
+      let exitCode, stdout;
       let readNotifications: Array<Notification>;
       // Add receiver to sender's node graph so it can be contacted
-      ({ exitCode, stderr } = await testUtils.pkExec(
+      ({ exitCode } = await testUtils.pkExec(
         [
           'nodes',
           'add',
@@ -85,7 +85,6 @@ describe('send/read/claim', () => {
           command: globalThis.testCmd,
         },
       ));
-      console.log(stderr);
       expect(exitCode).toBe(0);
       // Add sender to receiver's node graph so it can be trusted
       ({ exitCode } = await testUtils.pkExec(

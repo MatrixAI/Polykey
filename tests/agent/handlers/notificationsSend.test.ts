@@ -30,8 +30,8 @@ import TaskManager from '../../../src/tasks/TaskManager';
 import * as testUtils from '../../utils/utils';
 import * as tlsTestsUtils from '../../utils/tls';
 
-describe('nodesHolePunchMessage', () => {
-  const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [
+describe('notificationsSend', () => {
+  const logger = new Logger('notificationsSend test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -131,8 +131,8 @@ describe('nodesHolePunchMessage', () => {
       quicClientConfig: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket,
       keyRing,
       nodeGraph,

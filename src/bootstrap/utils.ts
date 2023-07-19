@@ -157,6 +157,7 @@ async function bootstrapState({
       keyRing,
       nodeGraph,
       quicClientConfig: {} as any, // No connections are attempted
+      crypto: {} as any, // No connections are attempted
       quicSocket: {} as any, // No connections are attempted
       logger: logger.getChild(NodeConnectionManager.name),
     });

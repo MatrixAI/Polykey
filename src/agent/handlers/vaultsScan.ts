@@ -2,7 +2,7 @@ import type { VaultsScanMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
-import * as networkUtils from '@/network/utils';
+import * as networkUtils from '../../network/utils';
 import { ServerHandler } from '../../rpc/handlers';
 import * as vaultsUtils from '../../vaults/utils';
 

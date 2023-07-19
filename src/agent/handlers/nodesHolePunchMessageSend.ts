@@ -7,7 +7,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { HolePunchRelayMessage } from './types';
-import * as networkUtils from '@/network/utils';
+import * as networkUtils from '../../network/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
@@ -82,7 +82,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
         // Otherwise, find if node in table
         // If so, ask the nodeManager to relay to the node
         const targetNodeId = input.dstIdEncoded;
-        const proxyAddress = {
+        const agentAddress = {
           host: meta.remoteHost,
           port: meta.remotePort,
         };
@@ -93,7 +93,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
           return {};
         }
         logger.debug(
-          `Relaying signaling message from ${srcNodeId}@${proxyAddress.host}:${proxyAddress.port} to ${targetNodeId} with information ${proxyAddress}`,
+          `Relaying signaling message from ${srcNodeId}@${agentAddress.host}:${agentAddress.port} to ${targetNodeId} with information ${agentAddress}`,
         );
         await nodeConnectionManager.relaySignalingMessage(input, {
           host: meta.remoteHost,

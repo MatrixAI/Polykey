@@ -304,7 +304,6 @@ function generateRandomNodeIdForBucket(
 function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
-    // E instanceof agentErrors.ErrorAgentClientDestroyed || // FIXME: Remove? Review?
     e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
     e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed
   );

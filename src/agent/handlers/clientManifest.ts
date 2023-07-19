@@ -40,7 +40,6 @@ const nodesCrossSignClaim = new DuplexCaller<
   AgentRPCResponseResult<AgentClaimMessage>
 >();
 
-// TODO: still to be completed
 const nodesHolePunchMessageSend = new UnaryCaller<
   AgentRPCRequestParams<HolePunchRelayMessage>,
   AgentRPCResponseResult

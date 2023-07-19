@@ -97,14 +97,15 @@ const config = {
       // RPCServer for client service
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
-      // Times and limits for client communication
+      // Websocket server config
+      maxReadableStreamBytes: 1_000_000_000, // About 1 GB
       connectionIdleTimeoutTime: 120, // 2 minutes
       pingIntervalTime: 1_000, // 1 second
       pingTimeoutTime: 10_000, // 10 seconds
+      // RPC config
+      clientParserBufferByteLimit: 1_000_000, // About 1MB
       handlerTimeoutTime: 60_000, // 1 minute
       handlerTimeoutGraceTime: 2_000, // 2 seconds
-      maxReadableStreamBytes: 1_000_000_000, // About 1 GB
-      clientParserBufferByteLimit: 1_000_000, // About 1MB
     },
     quicServerConfig: {
       keepAliveIntervalTime: 10_000, // 10 seconds

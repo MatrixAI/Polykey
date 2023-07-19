@@ -9,7 +9,6 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import { Timer } from '@matrixai/timer';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
 import * as keysUtils from '@/keys/utils';
@@ -25,12 +24,16 @@ import { sleep } from '@/utils';
 import { generateRandomNodeId } from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
-describe(`${NodeConnectionManager.name} general test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
-    new StreamHandler(
-      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
-    ),
-  ]);
+describe(`${NodeConnectionManager.name} timeout test`, () => {
+  const logger = new Logger(
+    `${NodeConnection.name} timeout test`,
+    LogLevel.WARN,
+    [
+      new StreamHandler(
+        formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+      ),
+    ],
+  );
   const localHost = '127.0.0.1' as Host;
   const password = 'password';
   const crypto = tlsTestUtils.createCrypto();
@@ -68,6 +71,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger: logger.getChild('AgentA'),
     });
@@ -153,8 +157,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 500,
@@ -210,8 +214,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 1000,
@@ -282,8 +286,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 1000,
@@ -338,8 +342,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 5000,
@@ -380,8 +384,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 5000,
@@ -415,9 +419,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           // Do nothing
         },
         {
-          timer: new Timer({
-            delay: 100,
-          }),
+          timer: 100,
         },
       ),
     ).rejects.toThrow();
@@ -430,8 +432,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
       connTimeoutTime: 5000,
@@ -460,15 +462,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     const abortController = new AbortController();
     const ctx = {
-      timer: new Timer({
-        delay: 100,
-      }),
+      timer: 100,
       signal: abortController.signal,
     };
-    // We need to hook up signal manually
-    ctx.timer.finally(() => {
-      abortController.abort(Error('Some Error'));
-    });
     await expect(
       nodeConnectionManager.withConnF(
         randomNodeId,

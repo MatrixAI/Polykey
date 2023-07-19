@@ -17,6 +17,7 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { LockRequest } from '@matrixai/async-locks/dist/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
 import type { ClientCrypto } from '@matrixai/quic';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -44,7 +45,6 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
-// TODO: review and redo connection configs.
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager {
@@ -173,12 +173,12 @@ class NodeConnectionManager {
     }
     this.logger.info(`Started ${this.constructor.name}`);
   }
+
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.nodeManager = undefined;
     const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndTimer] of this.connections) {
-      if (connAndTimer == null) continue;
       if (connAndTimer.connection == null) continue;
       // It exists so we want to destroy it
       const destroyProm = this.destroyConnection(
@@ -211,7 +211,7 @@ class NodeConnectionManager {
       this.logger.debug(
         `acquiring connection to node ${nodesUtils.encodeNodeId(targetNodeId)}`,
       );
-      const connectionAndTimer = await this.somethingSomethingConnection(
+      const connectionAndTimer = await this.getConnection(
         targetNodeId,
         undefined,
         ctx,
@@ -261,7 +261,7 @@ class NodeConnectionManager {
   public withConnF<T>(
     targetNodeId: NodeId,
     f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
@@ -276,7 +276,9 @@ class NodeConnectionManager {
   ): Promise<T> {
     return await withF(
       [await this.acquireConnection(targetNodeId, ctx)],
-      async ([conn]) => await f(conn),
+      async ([conn]) => {
+        return await f(conn);
+      },
     );
   }
 
@@ -316,8 +318,7 @@ class NodeConnectionManager {
    * This will return an existing connection or establish a new one as needed.
    * If no address is provided it will preform a kademlia search for the node.
    */
-  // TODO rename
-  protected somethingSomethingConnection(
+  protected getConnection(
     targetNodeId: NodeId,
     address?: NodeAddress,
     ctx?: Partial<ContextTimed>,
@@ -327,7 +328,7 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  protected async somethingSomethingConnection(
+  protected async getConnection(
     targetNodeId: NodeId,
     address: NodeAddress | undefined,
     @context ctx: ContextTimed,
@@ -343,7 +344,7 @@ class NodeConnectionManager {
       if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
     // Then we just get the connection, it should already exist.
-    return await this.getConnection(targetNodeId, address, ctx);
+    return await this.getConnectionWithAddress(targetNodeId, address, ctx);
   }
 
   protected async getExistingConnection(
@@ -378,7 +379,7 @@ class NodeConnectionManager {
    * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
-  protected getConnection(
+  protected getConnectionWithAddress(
     targetNodeId: NodeId,
     address: NodeAddress,
     ctx?: Partial<ContextTimed>,
@@ -388,7 +389,7 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connConnectTime,
   )
-  protected async getConnection(
+  protected async getConnectionWithAddress(
     targetNodeId: NodeId,
     address: NodeAddress,
     @context ctx: ContextTimed,
@@ -399,7 +400,7 @@ class NodeConnectionManager {
     const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
     this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
     return await this.connectionLocks
-      .withF([targetNodeIdString, Lock], async () => {
+      .withF([targetNodeIdString, Lock, ctx], async () => {
         this.logger.debug(`acquired lock for ${targetNodeIdEncoded}`);
         // Attempting a multi-connection for the target node
         const results = await this.establishMultiConnection(
@@ -664,7 +665,11 @@ class NodeConnectionManager {
     ctx?: Partial<ContextTimed>,
   ): Promise<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true, 4000)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.holePunchTimeout,
+  )
   public async holePunchReverse(
     host: Host,
     port: Port,
@@ -693,7 +698,6 @@ class NodeConnectionManager {
     };
     ctx.signal.addEventListener('abort', onAbort);
     void ctx.timer.catch(() => {}).finally(() => onAbort());
-
     let delay = this.holePunchInitialInterval;
     // Setting up established event checking
     try {
@@ -842,7 +846,7 @@ class NodeConnectionManager {
           nextNodeAddress.address.port,
           {
             signal: ctx.signal,
-            timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+            timer: pingTimeout ?? this.pingTimeout,
           },
         )
       ) {
@@ -882,7 +886,7 @@ class NodeConnectionManager {
             nodeData.address.port,
             {
               signal: ctx.signal,
-              timer: new Timer({ delay: pingTimeout ?? this.pingTimeout }),
+              timer: pingTimeout ?? this.pingTimeout,
             },
           ))
         ) {
@@ -996,8 +1000,6 @@ class NodeConnectionManager {
     }
   }
 
-  // FIXME: this should never throw, maybe return boolean for if singalling
-  //  was actually preformed.
   /**
    * Performs a GRPC request to send a hole-punch message to the target. Used to
    * initially establish the NodeConnection from source to target.
@@ -1005,7 +1007,7 @@ class NodeConnectionManager {
    * @param relayNodeId node ID of the relay node (i.e. the seed node)
    * @param sourceNodeId node ID of the current node (i.e. the sender)
    * @param targetNodeId node ID of the target node to hole punch
-   * @param address string of address in the form `proxyHost:proxyPort`
+   * @param address
    * @param ctx
    */
   public sendSignalingMessage(
@@ -1126,11 +1128,6 @@ class NodeConnectionManager {
     });
   }
 
-  // FIXME: How do we handle pinging now? Previously this was done on the proxy level.
-  //  Now I think we need to actually establish a connection. Pinging should just be establishing a connection now.
-  //  I'll keep this but have it wrap normal connection establishment.
-  // FIXME: this forms a cycle deadlock when we need to find a node in the network. Previously it was not a problem due
-  //  to it being on the proxy level. But now we need Monitors and re-entrancy.
   /**
    * Checks if a connection can be made to the target. Returns true if the
    * connection can be authenticated, it's certificate matches the nodeId and
@@ -1144,7 +1141,7 @@ class NodeConnectionManager {
     nodeId: NodeId,
     host: Host | Hostname,
     port: Port,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
@@ -1159,7 +1156,7 @@ class NodeConnectionManager {
     @context ctx: ContextTimed,
   ): Promise<boolean> {
     try {
-      await this.getConnection(
+      await this.getConnectionWithAddress(
         nodeId,
         {
           host,
@@ -1178,14 +1175,12 @@ class NodeConnectionManager {
    * The main use-case is to connect to multiple seed nodes on the same hostname.
    * @param nodeIds
    * @param addresses
-   * @param connectionTimeout
    * @param limit
    * @param ctx
    */
   public getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    connectionTimeout?: number,
     limit?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Array<NodeId>>;
@@ -1194,12 +1189,11 @@ class NodeConnectionManager {
   public async getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    _connectionTimeout: number = 2000, // TODO: apply or remove
     limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Array<NodeId>> {
     const locks: Array<LockRequest<Lock>> = nodeIds.map((nodeId) => {
-      return [nodeId.toString(), Lock];
+      return [nodeId.toString(), Lock, ctx];
     });
     return await this.connectionLocks.withF(...locks, async () => {
       const results = await this.establishMultiConnection(

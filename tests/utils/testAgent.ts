@@ -20,7 +20,7 @@ async function setupTestAgent(logger: Logger) {
       agentDir,
       '--client-host',
       '127.0.0.1',
-      '--proxy-host',
+      '--agent-host',
       '127.0.0.1',
       '--workers',
       'none',

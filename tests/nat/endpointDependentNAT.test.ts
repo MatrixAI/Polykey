@@ -39,7 +39,7 @@ describe('endpoint dependent NAT traversal', () => {
         agent1NodePath,
         agent2NodeId,
         agent2Host,
-        agent2ProxyPort,
+        agent2AgentPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('edm', 'dmz', logger);
       //                       Namespace1
@@ -61,7 +61,7 @@ describe('endpoint dependent NAT traversal', () => {
           'add',
           agent2NodeId,
           agent2Host,
-          agent2ProxyPort,
+          agent2AgentPort,
           '--no-ping',
         ],
         {
@@ -114,7 +114,7 @@ describe('endpoint dependent NAT traversal', () => {
         agent2NodePath,
         agent1NodeId,
         agent1Host,
-        agent1ProxyPort,
+        agent1AgentPort,
         agent2NodeId,
         tearDownNAT,
       } = await testNatUtils.setupNAT('dmz', 'edm', logger);
@@ -137,7 +137,7 @@ describe('endpoint dependent NAT traversal', () => {
           'add',
           agent1NodeId,
           agent1Host,
-          agent1ProxyPort,
+          agent1AgentPort,
           '--no-ping',
         ],
         {

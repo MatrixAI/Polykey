@@ -38,7 +38,7 @@ import { createTLSConfig } from '../utils/tls';
 
 describe('Discovery', () => {
   const password = 'password';
-  const logger = new Logger(`${Discovery.name} Test`, LogLevel.INFO, [
+  const logger = new Logger(`${Discovery.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const testToken = {
@@ -169,8 +169,8 @@ describe('Discovery', () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,
@@ -238,7 +238,6 @@ describe('Discovery', () => {
     );
   });
   afterEach(async () => {
-    console.log('ENDING');
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
     await nodeA.stop();

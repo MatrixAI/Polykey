@@ -84,7 +84,6 @@ describe('nodesPing', () => {
     });
     const crypto = tlsTestsUtils.createCrypto();
     quicSocket = new QUICSocket({
-      crypto,
       logger,
     });
     await quicSocket.start({
@@ -94,11 +93,12 @@ describe('nodesPing', () => {
       keyRing,
       nodeGraph,
       quicClientConfig: {
-        crypto,
-        config: {
-          verifyPeer: false,
-        },
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
       },
+      crypto,
       quicSocket,
       connConnectTime: 2000,
       connTimeoutTime: 2000,

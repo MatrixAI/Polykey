@@ -108,8 +108,8 @@ describe('nodesHolePunchMessage', () => {
       quicClientConfig: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket,
       keyRing,
       nodeGraph,
@@ -229,6 +229,7 @@ describe('nodesHolePunchMessage', () => {
     await keyRing.stop();
   });
 
+  // Fixme: dangling timer
   test('should send hole punch relay', async () => {
     const nodeId = nodesUtils.encodeNodeId(keyRing.getNodeId());
     await rpcClient.methods.nodesHolePunchMessageSend({

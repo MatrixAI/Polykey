@@ -6,7 +6,7 @@ import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
 import type { VaultsGitInfoGetMessage } from './types';
 import type { VaultAction } from '../../vaults/types';
-import * as networkUtils from '@/network/utils';
+import * as networkUtils from '../../network/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { ServerHandler } from '../../rpc/handlers';
@@ -63,7 +63,7 @@ class VaultsGitInfoGetHandler extends ServerHandler<
       if (vaultName == null) {
         throw new vaultsErrors.ErrorVaultsVaultUndefined();
       }
-      // Getting the NodeId from the ReverseProxy connection info
+      // Getting the NodeId from the connection metadata
       const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
       const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
       const permissions = await acl.getNodePerm(requestingNodeId, tran);

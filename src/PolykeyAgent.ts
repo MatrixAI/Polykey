@@ -52,18 +52,18 @@ type NetworkConfig = {
   agentHost?: Host;
   agentPort?: Port;
   ipv6Only?: boolean;
-
   // RPCServer for client service
   clientHost?: Host;
   clientPort?: Port;
-
+  // Websocket server config
   maxReadableStreamBytes?: number;
   connectionIdleTimeoutTime?: number;
   pingIntervalTime?: number;
   pingTimeoutTime?: number;
+  // RPC config
+  clientParserBufferByteLimit?: number;
   handlerTimeoutTime?: number;
   handlerTimeoutGraceTime?: number;
-  clientParserBufferByteLimit?: number;
 };
 
 type PolykeyQUICConfig = {
@@ -792,6 +792,8 @@ class PolykeyAgent {
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
           // FIXME: Can we even support updating TLS config anymore?
+          //  We would need to shut down the Websocket server and re-create it with the new config.
+          //  Right now graceful shutdown is not supported.
           // this.grpcServerClient.setTLSConfig(tlsConfig);
           this.quicServerAgent.updateConfig({
             key: tlsConfig.keyPrivatePem,
@@ -880,7 +882,7 @@ class PolykeyAgent {
       await this.quicSocket.start({
         host: _networkConfig.agentHost,
         port: _networkConfig.agentPort,
-        ipv6Only: _networkConfig.agentPort,
+        ipv6Only: _networkConfig.ipv6Only,
       });
       // Setting up stream handling
       const handleStream = async (
@@ -888,7 +890,6 @@ class PolykeyAgent {
       ) => {
         // Streams are handled via the RPCServer.
         const stream = event.detail;
-        this.logger.info('!!!!Handling new stream!!!!!');
         this.rpcServerAgent.handleStream(stream);
       };
 
@@ -928,7 +929,6 @@ class PolykeyAgent {
           });
         }
 
-        this.logger.info('!!!!Handling new Connection!!!!!');
         connection.addEventListener('connectionStream', handleStream);
         connection.addEventListener(
           'connectionStop',
@@ -983,7 +983,9 @@ class PolykeyAgent {
       });
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
-      this.logger.warn(`Failed Starting ${this.constructor.name}`);
+      this.logger.warn(
+        `Failed Starting ${this.constructor.name} with ${e.message}`,
+      );
       this.events.removeAllListeners();
       await this.status?.beginStop({ pid: process.pid });
       await this.taskManager?.stopProcessing();
@@ -995,7 +997,6 @@ class PolykeyAgent {
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
-      // TODO: unregister connection handlers.
       await this.quicServerAgent.stop();
       await this.quicSocket.stop();
       await this.webSocketServerClient.stop(true);
@@ -1032,7 +1033,6 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    // TODO: De-register stream handler here.
     await this.quicServerAgent.stop();
     await this.quicSocket.stop();
     await this.webSocketServerClient.stop(true);

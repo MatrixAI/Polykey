@@ -84,9 +84,9 @@ describe('bin/utils', () => {
       ).toBe('{"key1":"value1","key2":"value2"}\n');
     },
   );
-  testUtils.testIf(testUtils.isTestPlatformEmpty)(
-    'errors in human and json format',
-    () => {
+  testUtils
+    .testIf(testUtils.isTestPlatformEmpty)
+    .only('errors in human and json format', () => {
       const timestamp = new Date();
       const data = { string: 'one', number: 1 };
       const host = '127.0.0.1' as Host;
@@ -99,7 +99,7 @@ describe('bin/utils', () => {
       });
       const remoteError = new rpcErrors.ErrorPolykeyRemote<any>(
         {
-          nodeId,
+          nodeId: nodesUtils.encodeNodeId(nodeId),
           host,
           port,
           command: 'some command',
@@ -109,7 +109,7 @@ describe('bin/utils', () => {
       );
       const twoRemoteErrors = new rpcErrors.ErrorPolykeyRemote<any>(
         {
-          nodeId,
+          nodeId: nodesUtils.encodeNodeId(nodeId),
           host,
           port,
           command: 'command 2',
@@ -119,7 +119,7 @@ describe('bin/utils', () => {
           timestamp,
           cause: new rpcErrors.ErrorPolykeyRemote(
             {
-              nodeId,
+              nodeId: nodesUtils.encodeNodeId(nodeId),
               host,
               port,
               command: 'command 1',
@@ -147,10 +147,10 @@ describe('bin/utils', () => {
         binUtils.outputFormatter({ type: 'error', data: remoteError }),
       ).toBe(
         `${remoteError.name}: ${remoteError.description} - ${remoteError.message}\n` +
-          // `  command\t${remoteError.metadata?.command}\n` +
           `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
           `  host\t${host}\n` +
           `  port\t${port}\n` +
+          `  command\tsome command\n` +
           `  timestamp\t${timestamp.toString()}\n` +
           `  cause: ${remoteError.cause.name}: ${remoteError.cause.description} - ${remoteError.cause.message}\n` +
           `    data\t${JSON.stringify(data)}\n`,
@@ -159,16 +159,16 @@ describe('bin/utils', () => {
         binUtils.outputFormatter({ type: 'error', data: twoRemoteErrors }),
       ).toBe(
         `${twoRemoteErrors.name}: ${twoRemoteErrors.description} - ${twoRemoteErrors.message}\n` +
-          // `  command\t${twoRemoteErrors.metadata?.command}\n` +
           `  nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
           `  host\t${host}\n` +
           `  port\t${port}\n` +
+          `  command\tcommand 2\n` +
           `  timestamp\t${timestamp.toString()}\n` +
           `  cause: ${twoRemoteErrors.cause.name}: ${twoRemoteErrors.cause.description}\n` +
-          `    command\t${twoRemoteErrors.cause.metadata.command}\n` +
           `    nodeId\t${nodesUtils.encodeNodeId(nodeId)}\n` +
           `    host\t${host}\n` +
           `    port\t${port}\n` +
+          `    command\t${twoRemoteErrors.cause.metadata.command}\n` +
           `    timestamp\t${timestamp.toString()}\n` +
           `    cause: ${twoRemoteErrors.cause.cause.name}: ${twoRemoteErrors.cause.cause.description} - ${twoRemoteErrors.cause.cause.message}\n` +
           `      cause: ${standardError.name}: ${standardError.message}\n`,
@@ -190,6 +190,5 @@ describe('bin/utils', () => {
       expect(
         binUtils.outputFormatter({ type: 'json', data: twoRemoteErrors }),
       ).toBe(JSON.stringify(twoRemoteErrors.toJSON()) + '\n');
-    },
-  );
+    });
 });

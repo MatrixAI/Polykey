@@ -5,8 +5,6 @@ import type { Host as QUICHost } from '@matrixai/quic';
 import { QUICServer, QUICSocket } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
-import { sleep } from 'ix/asynciterable/_sleep';
-import { Timer } from '@matrixai/timer';
 import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
@@ -130,8 +128,8 @@ describe(`${NodeConnection.name}`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -151,8 +149,8 @@ describe(`${NodeConnection.name}`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -171,12 +169,12 @@ describe(`${NodeConnection.name}`, () => {
           key: clientTlsConfig.keyPrivatePem,
           cert: clientTlsConfig.certChainPem,
           maxIdleTimeout: 1000,
-          crypto,
         },
+        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
-      { timer: new Timer({ delay: 100 }) },
+      { timer: 100 },
     ).then((n) => {
       nodeConnection_ = n;
       return n;
@@ -197,8 +195,8 @@ describe(`${NodeConnection.name}`, () => {
           key: clientTlsConfig.keyPrivatePem,
           cert: clientTlsConfig.certChainPem,
           maxIdleTimeout: 100,
-          crypto,
         },
+        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
@@ -218,12 +216,7 @@ describe(`${NodeConnection.name}`, () => {
     // NodeConnection.
     await serverSocket.stop({ force: true });
     // Wait for destruction, may take 2+ seconds
-    await Promise.race([
-      destroyProm.p,
-      sleep(5000).then(() => {
-        throw Error('Destroying timed out');
-      }),
-    ]);
+    await destroyProm.p;
   });
   test('get the root chain cert', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
@@ -234,8 +227,8 @@ describe(`${NodeConnection.name}`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -254,8 +247,8 @@ describe(`${NodeConnection.name}`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -273,12 +266,12 @@ describe(`${NodeConnection.name}`, () => {
       targetPort: quicServer.port as unknown as Port,
       manifest: {},
       quicClientConfig: {
-        // @ts-ignore: no certs provided
+        // @ts-ignore: TLS not used for this test
         key: undefined,
-        // @ts-ignore: no certs provided
+        // @ts-ignore: TLS not used for this test
         cert: undefined,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -298,8 +291,8 @@ describe(`${NodeConnection.name}`, () => {
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
         cert: clientTlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then((n) => {
@@ -320,8 +313,8 @@ describe(`${NodeConnection.name}`, () => {
           cert: clientTlsConfig.certChainPem,
           keepaliveIntervalTime: 100,
           maxIdleTimeout: 200,
-          crypto,
         },
+        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
@@ -335,12 +328,7 @@ describe(`${NodeConnection.name}`, () => {
       destroyProm.resolveP();
     });
     await serverSocket.stop({ force: true });
-    await Promise.race([
-      destroyProm.p,
-      sleep(5000).then(() => {
-        throw Error('Destroying timed out');
-      }),
-    ]);
+    await destroyProm.p;
   });
   test('Should fail and destroy due to connection ending local', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
@@ -354,8 +342,8 @@ describe(`${NodeConnection.name}`, () => {
           cert: clientTlsConfig.certChainPem,
           maxIdleTimeout: 200,
           keepaliveIntervalTime: 100,
-          crypto,
         },
+        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
@@ -373,12 +361,7 @@ describe(`${NodeConnection.name}`, () => {
       errorCode: 0,
       force: false,
     });
-    await Promise.race([
-      destroyProm.p,
-      sleep(1000).then(() => {
-        throw Error('Destroying timed out');
-      }),
-    ]);
+    await destroyProm.p;
   });
   test('Should fail and destroy due to connection ending remote', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
@@ -392,8 +375,8 @@ describe(`${NodeConnection.name}`, () => {
           cert: clientTlsConfig.certChainPem,
           maxIdleTimeout: 200,
           keepaliveIntervalTime: 100,
-          crypto,
         },
+        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
@@ -413,11 +396,6 @@ describe(`${NodeConnection.name}`, () => {
         force: false,
       });
     });
-    await Promise.race([
-      destroyProm.p,
-      sleep(1000).then(() => {
-        throw Error('Destroying timed out');
-      }),
-    ]);
+    await destroyProm.p;
   });
 });

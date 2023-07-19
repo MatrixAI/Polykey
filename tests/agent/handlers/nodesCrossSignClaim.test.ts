@@ -45,6 +45,7 @@ describe('nodesCrossSignClaim', () => {
   let db: DB;
   let sigchain: Sigchain;
   let nodeGraph: NodeGraph;
+  let taskManager: TaskManager;
   let rpcServer: RPCServer;
   let quicServer: QUICServer;
 
@@ -93,7 +94,7 @@ describe('nodesCrossSignClaim', () => {
       acl,
       logger,
     });
-    const taskManager = await TaskManager.createTaskManager({
+    taskManager = await TaskManager.createTaskManager({
       db,
       logger,
     });
@@ -199,12 +200,16 @@ describe('nodesCrossSignClaim', () => {
     });
   });
   afterEach(async () => {
+    await taskManager.stop();
     await rpcServer.destroy(true);
     await quicServer.stop({ force: true });
     await nodeGraph.stop();
     await sigchain.stop();
     await db.stop();
     await keyRing.stop();
+
+    await quicServer.stop({ force: true });
+    await quicClient.destroy({ force: true });
   });
   test('successfully cross signs a claim', async () => {
     // Adding into the ACL

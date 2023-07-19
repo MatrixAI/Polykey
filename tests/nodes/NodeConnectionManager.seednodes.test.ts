@@ -10,7 +10,6 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { Timer } from '@matrixai/timer';
 import * as nodesUtils from '@/nodes/utils';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
@@ -27,7 +26,7 @@ import { sleep } from '@/utils';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
-describe(`${NodeConnectionManager.name} general test`, () => {
+describe(`${NodeConnectionManager.name} seednodes test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -82,6 +81,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger: logger.getChild('AgentA'),
     });
@@ -102,6 +102,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRingConfig: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       },
       logger: logger.getChild('AgentA'),
     });
@@ -162,7 +163,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   });
 
   afterEach(async () => {
-    await taskManager.stopTasks();
+    await taskManager.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -171,12 +172,12 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await gestaltGraph.destroy();
     await acl.stop();
     await acl.destroy();
+    await taskManager.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
     await clientSocket.stop({ force: true });
-    await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
     await remotePolykeyAgent2.stop();
@@ -198,8 +199,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
     });
@@ -240,8 +241,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -289,8 +290,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 1000,
         keepaliveIntervalTime: 500,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -340,8 +341,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -365,7 +366,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     // This should complete without error
     await nodeManager.syncNodeGraph(true, 2000, {
-      timer: new Timer({ delay: 15000 }),
+      timer: 15000,
     });
     // Information on remotes are found
     expect(await nodeGraph.getNode(remoteNodeId1)).toBeDefined();
@@ -388,8 +389,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -431,8 +432,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         keepaliveIntervalTime: 1000,
-        crypto,
       },
+      crypto,
       quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,

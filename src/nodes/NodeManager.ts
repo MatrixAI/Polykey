@@ -29,11 +29,11 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
 } from '../agent/types';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
-import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
@@ -296,7 +296,7 @@ class NodeManager {
   public pingNode(
     nodeId: NodeId,
     address?: NodeAddress,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<boolean>;
   @timedCancellable(
     true,
@@ -354,70 +354,48 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    const timer =
-      connectionTimeout != null
-        ? new Timer({ delay: connectionTimeout })
-        : undefined;
-    const abortController = new AbortController();
-    timer
-      ?.catch(() => {})
-      .finally(() => {
-        abortController.abort(Error('SOME ERROR'));
-      });
-    ctx.signal.throwIfAborted();
-    ctx.signal.addEventListener('abort', () => {
-      abortController.abort(ctx.signal.reason);
-    });
-
-    console.log('before requestChainData');
-    return this.nodeConnectionManager
-      .withConnF(
-        targetNodeId,
-        async (connection) => {
-          const claims: Record<ClaimId, SignedClaim> = {};
-          const client = connection.getClient();
-          for await (const agentClaim of await client.methods.nodesChainDataGet(
-            {
-              claimIdEncoded:
-                claimId != null
-                  ? encodeClaimId(claimId)
-                  : ('' as ClaimIdEncoded),
-            },
-          )) {
-            if (ctx.signal.aborted) throw ctx.signal.reason;
-            // Need to re-construct each claim
-            const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
-            const signedClaimEncoded = agentClaim.signedTokenEncoded;
-            const signedClaim = parseSignedClaim(signedClaimEncoded);
-            // Verifying the claim
-            const issPublicKey = keysUtils.publicKeyFromNodeId(
-              nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-            );
-            const subPublicKey =
-              signedClaim.payload.typ === 'node'
-                ? keysUtils.publicKeyFromNodeId(
-                    nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-                  )
-                : null;
-            const token = Token.fromSigned(signedClaim);
-            if (!token.verifyWithPublicKey(issPublicKey)) {
-              this.logger.warn('Failed to verify issuing node');
-              continue;
-            }
-            if (
-              subPublicKey != null &&
-              !token.verifyWithPublicKey(subPublicKey)
-            ) {
-              this.logger.warn('Failed to verify subject node');
-              continue;
-            }
-            claims[claimId] = signedClaim;
+    return this.nodeConnectionManager.withConnF(
+      targetNodeId,
+      async (connection) => {
+        const claims: Record<ClaimId, SignedClaim> = {};
+        const client = connection.getClient();
+        for await (const agentClaim of await client.methods.nodesChainDataGet({
+          claimIdEncoded:
+            claimId != null ? encodeClaimId(claimId) : ('' as ClaimIdEncoded),
+        })) {
+          if (ctx.signal.aborted) throw ctx.signal.reason;
+          // Need to re-construct each claim
+          const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
+          const signedClaimEncoded = agentClaim.signedTokenEncoded;
+          const signedClaim = parseSignedClaim(signedClaimEncoded);
+          // Verifying the claim
+          const issPublicKey = keysUtils.publicKeyFromNodeId(
+            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+          );
+          const subPublicKey =
+            signedClaim.payload.typ === 'node'
+              ? keysUtils.publicKeyFromNodeId(
+                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+                )
+              : null;
+          const token = Token.fromSigned(signedClaim);
+          if (!token.verifyWithPublicKey(issPublicKey)) {
+            this.logger.warn('Failed to verify issuing node');
+            continue;
           }
-          return claims;
-        },
-        { signal: abortController.signal, timer },
-      )
-      .finally(() => console.log('AFTER requestChainData'));
+          if (
+            subPublicKey != null &&
+            !token.verifyWithPublicKey(subPublicKey)
+          ) {
+            this.logger.warn('Failed to verify subject node');
+            continue;
+          }
+          claims[claimId] = signedClaim;
+        }
+        return claims;
+      },
+      { signal: ctx.signal, timer: connectionTimeout },
+    );
   }
 
   /**
@@ -839,9 +817,7 @@ class NodeManager {
           // Ping and remove or update node in bucket
           const pingCtx = {
             signal: ctx.signal,
-            timer: new Timer({
-              delay: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
-            }),
+            timer: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
           if (nodeAddress == null) never();
@@ -1162,14 +1138,14 @@ class NodeManager {
   /**
    * Perform an initial database synchronisation: get k of the closest nodes
    * from each seed node and add them to this database
-   * Establish a proxy connection to each node before adding it
-   * By default this operation is blocking, set `block` to false to make it
+   * Establish a connection to each node before adding it
+   * By default this operation is blocking, set `block` to `false` to make it
    * non-blocking
    */
   public syncNodeGraph(
     block?: boolean,
     pingTimeout?: number,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(true)
@@ -1214,7 +1190,6 @@ class NodeManager {
       seedNodes,
       filteredAddresses,
       pingTimeout,
-      undefined,
       { signal: ctx.signal },
     );
     logger.debug(`Multi-connection established for`);
