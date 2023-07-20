@@ -56,12 +56,12 @@ async function bootstrapState({
   }
   await mkdirExists(fs, nodePath);
   // Setup node path and sub paths
-  const statusPath = path.join(nodePath, config.defaults.statusBase);
-  const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-  const statePath = path.join(nodePath, config.defaults.stateBase);
-  const dbPath = path.join(statePath, config.defaults.dbBase);
-  const keysPath = path.join(statePath, config.defaults.keysBase);
-  const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
+  const statusPath = path.join(nodePath, config.paths.statusBase);
+  const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
+  const statePath = path.join(nodePath, config.paths.stateBase);
+  const dbPath = path.join(statePath, config.paths.dbBase);
+  const keysPath = path.join(statePath, config.paths.keysBase);
+  const vaultsPath = path.join(statePath, config.paths.vaultsBase);
   const status = new Status({
     statusPath,
     statusLockPath,

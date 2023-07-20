@@ -46,26 +46,6 @@ import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import { serverManifest as agentServerManifest } from './agent/handlers';
 
-type NetworkConfig = {
-  // Agent QUICSocket config
-  agentHost?: string;
-  agentPort?: number;
-  ipv6Only?: boolean;
-  agentKeepAliveIntervalTime?: number;
-  agentMaxIdleTimeout?: number;
-  // RPCServer for client service
-  clientHost?: string;
-  clientPort?: number;
-  // Websocket server config
-  maxIdleTimeout?: number;
-  pingIntervalTime?: number;
-  pingTimeoutTimeTime?: number;
-  // RPC config
-  clientParserBufferByteLimit?: number;
-  handlerTimeoutTime?: number;
-  handlerTimeoutGraceTime?: number;
-};
-
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyAgentRunning(),
@@ -123,6 +103,10 @@ class PolykeyAgent {
   }: {
     password: string;
     nodePath?: string;
+
+    // WHY IS THERE SO MANY CONFIGURATIONS???
+
+
     keyRingConfig?: {
       recoveryCode?: RecoveryCode;
       privateKey?: PrivateKey;
@@ -142,7 +126,25 @@ class PolykeyAgent {
       connectionHolePunchTimeoutTime?: number;
       connectionHolePunchIntervalTime?: number;
     };
-    networkConfig?: NetworkConfig;
+    networkConfig?: {
+      // Agent QUICSocket config
+      agentHost?: string;
+      agentPort?: number;
+      ipv6Only?: boolean;
+      agentKeepAliveIntervalTime?: number;
+      agentMaxIdleTimeout?: number;
+      // RPCServer for client service
+      clientHost?: string;
+      clientPort?: number;
+      // Websocket server config
+      maxIdleTimeout?: number;
+      pingIntervalTime?: number;
+      pingTimeoutTimeTime?: number;
+      // RPC config
+      clientParserBufferByteLimit?: number;
+      handlerTimeoutTime?: number;
+      handlerTimeoutGraceTime?: number;
+    };
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -192,12 +194,12 @@ class PolykeyAgent {
     };
 
     await utils.mkdirExists(fs, nodePath);
-    const statusPath = path.join(nodePath, config.defaults.statusBase);
-    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-    const statePath = path.join(nodePath, config.defaults.stateBase);
-    const dbPath = path.join(statePath, config.defaults.dbBase);
-    const keysPath = path.join(statePath, config.defaults.keysBase);
-    const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
+    const statusPath = path.join(nodePath, config.paths.statusBase);
+    const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
+    const statePath = path.join(nodePath, config.paths.stateBase);
+    const dbPath = path.join(statePath, config.paths.dbBase);
+    const keysPath = path.join(statePath, config.paths.keysBase);
+    const vaultsPath = path.join(statePath, config.paths.vaultsBase);
     const events = new EventBus({
       captureRejections: true,
     });

@@ -145,7 +145,7 @@ class VaultManager {
   }) {
     this.logger = logger;
     this.vaultsPath = vaultsPath;
-    this.efsPath = path.join(this.vaultsPath, config.defaults.efsBase);
+    this.efsPath = path.join(this.vaultsPath, config.paths.efsBase);
     this.db = db;
     this.acl = acl;
     this.keyRing = keyRing;
