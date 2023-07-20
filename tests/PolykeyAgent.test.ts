@@ -66,34 +66,34 @@ describe('PolykeyAgent', () => {
       workers: 0,
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
-    expect(nodePathContents).toContain(config.defaults.statusBase);
-    expect(nodePathContents).toContain(config.defaults.stateBase);
+    expect(nodePathContents).toContain(config.paths.statusBase);
+    expect(nodePathContents).toContain(config.paths.stateBase);
     let stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase),
+      path.join(nodePath, config.paths.stateBase),
     );
-    expect(stateContents).toContain(config.defaults.keysBase);
-    expect(stateContents).toContain(config.defaults.dbBase);
-    expect(stateContents).toContain(config.defaults.vaultsBase);
+    expect(stateContents).toContain(config.paths.keysBase);
+    expect(stateContents).toContain(config.paths.dbBase);
+    expect(stateContents).toContain(config.paths.vaultsBase);
     await pkAgent.stop();
     nodePathContents = await fs.promises.readdir(nodePath);
-    expect(nodePathContents).toContain(config.defaults.statusBase);
-    expect(nodePathContents).toContain(config.defaults.stateBase);
+    expect(nodePathContents).toContain(config.paths.statusBase);
+    expect(nodePathContents).toContain(config.paths.stateBase);
     stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase),
+      path.join(nodePath, config.paths.stateBase),
     );
-    expect(stateContents).toContain(config.defaults.keysBase);
-    expect(stateContents).toContain(config.defaults.dbBase);
-    expect(stateContents).toContain(config.defaults.vaultsBase);
+    expect(stateContents).toContain(config.paths.keysBase);
+    expect(stateContents).toContain(config.paths.dbBase);
+    expect(stateContents).toContain(config.paths.vaultsBase);
     await pkAgent.destroy(password);
     nodePathContents = await fs.promises.readdir(nodePath);
     // The status will be the only file left over
     expect(nodePathContents).toHaveLength(1);
-    expect(nodePathContents).toContain(config.defaults.statusBase);
+    expect(nodePathContents).toContain(config.paths.statusBase);
   });
   test('start after stop', async () => {
     const nodePath = `${dataDir}/polykey`;
-    const statusPath = path.join(nodePath, config.defaults.statusBase);
-    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
+    const statusPath = path.join(nodePath, config.paths.statusBase);
+    const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
@@ -125,7 +125,7 @@ describe('PolykeyAgent', () => {
   });
   test('schema state version is maintained after start and stop', async () => {
     const nodePath = path.join(dataDir, 'polykey');
-    const statePath = path.join(nodePath, config.defaults.stateBase);
+    const statePath = path.join(nodePath, config.paths.stateBase);
     const schema = new Schema({
       statePath,
     });
@@ -146,7 +146,7 @@ describe('PolykeyAgent', () => {
   });
   test('cannot start during state version mismatch', async () => {
     const nodePath = path.join(dataDir, 'polykey');
-    const statePath = path.join(nodePath, config.defaults.stateBase);
+    const statePath = path.join(nodePath, config.paths.stateBase);
     await fs.promises.mkdir(nodePath);
     let schema = await Schema.createSchema({
       statePath,

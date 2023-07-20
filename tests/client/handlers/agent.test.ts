@@ -299,8 +299,8 @@ describe('agentStop', () => {
     });
 
     // Doing the test
-    const statusPath = path.join(nodePath, config.defaults.statusBase);
-    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
+    const statusPath = path.join(nodePath, config.paths.statusBase);
+    const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
     const status = new Status({
       statusPath,
       statusLockPath,

@@ -61,7 +61,7 @@ class Schema {
     this.statePath = statePath;
     this.stateVersionPath = path.join(
       statePath,
-      config.defaults.stateVersionBase,
+      config.paths.stateVersionBase,
     );
     this.stateVersion = stateVersion;
     this.fs = fs;

@@ -42,7 +42,7 @@ describe('PolykeyClient', () => {
   });
   test('preserving and destroying session state', async () => {
     const session = await Session.createSession({
-      sessionTokenPath: path.join(nodePath, config.defaults.tokenBase),
+      sessionTokenPath: path.join(nodePath, config.paths.tokenBase),
       fs,
       logger,
     });

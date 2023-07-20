@@ -26,8 +26,8 @@ describe('Status', () => {
   });
   test('status readiness', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -48,8 +48,8 @@ describe('Status', () => {
   });
   test('status transitions', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -86,16 +86,16 @@ describe('Status', () => {
   });
   test('start with existing statusPath or statusLockPath', async () => {
     await fs.promises.writeFile(
-      path.join(dataDir, config.defaults.statusBase),
+      path.join(dataDir, config.paths.statusBase),
       'hello world',
     );
     await fs.promises.writeFile(
-      path.join(dataDir, config.defaults.statusLockBase),
+      path.join(dataDir, config.paths.statusLockBase),
       'hello world',
     );
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -108,8 +108,8 @@ describe('Status', () => {
   });
   test('readStatus on non-existent status', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -117,8 +117,8 @@ describe('Status', () => {
   });
   test('updating live status', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -159,14 +159,14 @@ describe('Status', () => {
   });
   test('singleton running status', async () => {
     const status1 = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
     const status2 = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -182,8 +182,8 @@ describe('Status', () => {
   });
   test('wait for transitions', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -213,8 +213,8 @@ describe('Status', () => {
   });
   test('parse error when statusPath is corrupted', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -227,8 +227,8 @@ describe('Status', () => {
   });
   test('status transitions are serialised', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });
@@ -283,8 +283,8 @@ describe('Status', () => {
   });
   test('wait for has at-least-once semantics', async () => {
     const status = new Status({
-      statusPath: path.join(dataDir, config.defaults.statusBase),
-      statusLockPath: path.join(dataDir, config.defaults.statusLockBase),
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
       fs: fs,
       logger: logger,
     });

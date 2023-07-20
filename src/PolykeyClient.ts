@@ -49,7 +49,7 @@ class PolykeyClient {
       throw new errors.ErrorUtilsNodePath();
     }
     await utils.mkdirExists(fs, nodePath);
-    const sessionTokenPath = path.join(nodePath, config.defaults.tokenBase);
+    const sessionTokenPath = path.join(nodePath, config.paths.tokenBase);
     session =
       session ??
       (await Session.createSession({
