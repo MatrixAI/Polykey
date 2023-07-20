@@ -35,6 +35,11 @@ describe('agentStatus', () => {
       nodePath,
       password,
       logger,
+      keyRingConfig: {
+        strictMemoryLock: false,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      },
     });
     tlsConfig = await testsUtils.createTLSConfig(pkAgent.keyRing.keyPair);
   });
