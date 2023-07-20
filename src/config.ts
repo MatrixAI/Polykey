@@ -73,10 +73,9 @@ const config = {
     },
   },
   /**
-   * Default configuration
+   * File/directory paths
    */
-  defaults: {
-    nodePath: getDefaultNodePath(),
+  paths: {
     statusBase: 'status.json',
     statusLockBase: 'status.lock',
     stateBase: 'state',
@@ -86,73 +85,116 @@ const config = {
     vaultsBase: 'vaults',
     efsBase: 'efs',
     tokenBase: 'token',
-    certManagerConfig: {
-      certDuration: 31536000,
-    },
-    networkConfig: {
-      /**
-       * Agent host defaults to `::` dual stack.
-       * This is because the agent service is supposed to be public.
-       */
-      agentHost: '::',
-      agentPort: 0,
-      /**
-       * Client host defaults to `localhost`.
-       * This will depend on the OS configuration.
-       * Usually it will be IPv4 `127.0.0.1` or IPv6 `::1`.
-       * This is because the client service is private most of the time.
-       */
-      clientHost: 'localhost',
-      clientPort: 0,
-      /**
-       * If using dual stack `::`, then this forces only IPv6 bindings.
-       */
-      ipv6Only: false,
+  },
+  /**
+   * This is not used by the `PolykeyAgent` which defaults to `{}`
+   * In the future this will be replaced by `mainnet.polykey.com` and `testnet.polykey.com`.
+   * Along with the domain we will have the root public key too.
+   *
+   * Information that is pre-configured during distribution:
+   *
+   * - Domain
+   * - Root public key
+   *
+   * Information that is discovered over DNS (Authenticated DNS is optional):
+   *
+   * - IP address
+   * - Port
+   *
+   * As long as the root public key is provided, it is sufficient to defeat poisoning
+   * the network. The root public key should also be changed often to reduce the impact
+   * of compromises. Finally the root public key can also be signed by a third party CA
+   * providing an extra level of confidence. However this is not required.
+   */
+  network: {
+    mainnet: mainnet,
+    testnet: testnet,
+  },
+  /**
+   * Default system configuration.
+   * These are not meant to be changed by the user.
+   * These constants are tuned for optimal operation by the developers.
+   */
+  defaultSystem: {
+    /**
+     * Controls the stream parser buffer limit.
+     * This is the maximum number of bytes that the stream parser
+     * will buffer before rejecting the RPC call.
+     */
+    rpcParserBufferByteLimit: 1_000_000, // About 1MB
+    rpcHandlerTimeoutTime: 60_000, // 1 minute
+    rpcHandlerTimeoutGraceTime: 2_000, // 2 seconds
 
-      /**
-       * Agent service transport keep alive interval time.
-       * This the maxmum time between keep alive messages.
-       * This only has effect if `agentMaxIdleTimeout` is greater than 0.
-       * See the transport layer for further details.
-       */
-      agentKeepAliveIntervalTime: 10_000, // 10 seconds
+    nodesInitialClosestNodes: 3,
 
-      /**
-       * Agent service transport max idle timeout.
-       * This is the maximum time that a connection can be idle.
-       * This also controls how long the transport layer will dial
-       * for a client connection.
-       * See the transport layer for further details.
-       */
-      agentMaxIdleTimeout: 60_000, // 1 minute
+    nodesConnectionConnectTime: 2000,
+    nodesConnectionTimeoutTime: 60000,
 
-      clientMaxIdleTimeout: 120, // 2 minutes
-      clientPingIntervalTime: 1_000, // 1 second
-      clientPingTimeoutTimeTime: 10_000, // 10 seconds
+    nodesConnectionHolePunchTimeoutTime: 4000,
+    nodesConnectionHolePunchIntervalTime: 250,
 
-      /**
-       * Controls the stream parser buffer limit.
-       * This is the maximum number of bytes that the stream parser
-       * will buffer before rejecting the RPC call.
-       */
-      clientParserBufferByteLimit: 1_000_000, // About 1MB
-      clientHandlerTimeoutTime: 60_000, // 1 minute
-      clientHandlerTimeoutGraceTime: 2_000, // 2 seconds
-    },
-    nodeConnectionManagerConfig: {
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 60000,
-      initialClosestNodes: 3,
-      pingTimeoutTime: 2000,
-      connectionHolePunchTimeoutTime: 4000,
-      connectionHolePunchIntervalTime: 250,
-    },
-    // This is not used by the `PolykeyAgent` which defaults to `{}`
-    network: {
-      mainnet: mainnet,
-      testnet: testnet,
-    },
+    nodesPingTimeoutTime: 2000,
+
+    clientTransportMaxIdleTimeoutTime: 120, // 2 minutes
+    clientTransportPingIntervalTime: 1_000, // 1 second
+    clientTransportPingTimeoutTime: 10_000, // 10 seconds
+
+    /**
+     * Agent service transport keep alive interval time.
+     * This the maxmum time between keep alive messages.
+     * This only has effect if `agentMaxIdleTimeout` is greater than 0.
+     * See the transport layer for further details.
+     */
+    agentConnectionKeepAliveIntervalTime: 10_000, // 10 seconds
+    /**
+     * Agent service transport max idle timeout.
+     * This is the maximum time that a connection can be idle.
+     * This also controls how long the transport layer will dial
+     * for a client connection.
+     * See the transport layer for further details.
+     */
+    agentConnectionMaxIdleTimeoutTime: 60_000, // 1 minute
+
+
+
+
+    // Why are these done separately?
+    // Shouldn't we have a consistent time from NCM down to agent connection?
+
+    // Transport layer is sort should be controlled separately?
+
+  },
+  /**
+   * Default user configuration.
+   * These are meant to be changed by the user.
+   * However the defaults here provide the average user experience.
+   */
+  defaultsUser: {
+    nodePath: getDefaultNodePath(),
+    rootCertDuration: 31536000,
+    /**
+     * If using dual stack `::`, then this forces only IPv6 bindings.
+     */
+    ipv6Only: false,
+    /**
+     * Agent host defaults to `::` dual stack.
+     * This is because the agent service is supposed to be public.
+     */
+    agentServiceHost: '::',
+    agentServicePort: 0,
+    /**
+     * Client host defaults to `localhost`.
+     * This will depend on the OS configuration.
+     * Usually it will be IPv4 `127.0.0.1` or IPv6 `::1`.
+     * This is because the client service is private most of the time.
+     */
+    clientServiceHost: 'localhost',
+    clientServicePort: 0,
   },
 };
 
+type Config = typeof config;
+
 export default config;
+
+export type { Config };

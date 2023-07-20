@@ -39,8 +39,6 @@ import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import * as keysUtils from '../keys/utils';
 
-// TODO: check all locking and add cancellation for it.
-
 type AgentClientManifest = typeof agentClientManifest;
 
 type ConnectionAndTimer = {
