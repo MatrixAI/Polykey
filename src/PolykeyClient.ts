@@ -14,7 +14,7 @@ import config from './config';
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
  * a new RPCClient which attempts to connect to an existing PolykeyAgent's
- * grpc server.
+ * RPC server.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface PolykeyClient<M extends ClientManifest>
