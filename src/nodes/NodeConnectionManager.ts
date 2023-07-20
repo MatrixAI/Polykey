@@ -35,6 +35,7 @@ import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import { getRandomBytes } from '../keys/utils/random';
 
+// TODO: finish off agent migration work after CLI migration is done.
 // TODO: check all locking and add cancellation for it.
 
 type AgentClientManifest = typeof agentClientManifest;
