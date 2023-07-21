@@ -18,7 +18,7 @@ import type ACL from '../acl/ACL';
 import type { RemoteInfo } from './VaultInternal';
 import type { VaultAction } from './types';
 import type { LockRequest } from '@matrixai/async-locks';
-import type { Key } from 'keys/types';
+import type { Key } from '../keys/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
 import { PassThrough } from 'readable-stream';

@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { IdentityId, ProviderId } from 'ids/index';
+import type { IdentityId, ProviderId } from '../../ids/index';
 import type Discovery from '../../discovery/Discovery';
-import type { IdentityMessage } from 'client/handlers/types';
+import type { IdentityMessage } from './types';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';

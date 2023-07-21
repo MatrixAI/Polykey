@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { NodeId } from 'ids/index';
-import type NotificationsManager from 'notifications/NotificationsManager';
+import type { NodeId } from '../../ids/index';
+import type NotificationsManager from '../../notifications/NotificationsManager';
 import type Logger from '@matrixai/logger';
-import type ACL from 'acl/ACL';
+import type ACL from '../../acl/ACL';
 import type { ClaimNodeMessage } from './types';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';

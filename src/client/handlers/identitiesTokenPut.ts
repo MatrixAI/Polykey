@@ -2,7 +2,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityMessage, TokenMessage } from './types';
 import type { DB } from '@matrixai/db';
-import type { IdentityId, ProviderId } from 'ids/index';
+import type { IdentityId, ProviderId } from '../../ids/index';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import { matchSync } from '../../utils/index';

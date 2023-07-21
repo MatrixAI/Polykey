@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { ProviderId } from 'ids/index';
+import type { ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { AuthProcessMessage } from 'client/handlers/types';
+import type { AuthProcessMessage } from './types';
 import * as identitiesErrors from '../../identities/errors';
 import { ServerHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';

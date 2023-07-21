@@ -1,8 +1,8 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type GestaltGraph from 'gestalts/GestaltGraph';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { DB } from '@matrixai/db';
-import type { IdentityId, ProviderId } from 'ids/index';
-import type { GestaltAction } from 'gestalts/types';
+import type { IdentityId, ProviderId } from '../../ids/index';
+import type { GestaltAction } from '../../gestalts/types';
 import type { IdentityMessage } from './types';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';

@@ -3,7 +3,7 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type { Host, Hostname, Port, Address } from './types';
 import type { Certificate } from '../keys/types';
 import type { NodeId } from '../ids/types';
-import type { NodeAddress } from 'nodes/types';
+import type { NodeAddress } from '../nodes/types';
 import type { CertificatePEM } from '../keys/types';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';

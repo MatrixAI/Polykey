@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { GestaltMessage } from 'client/handlers/types';
+import type { GestaltMessage } from './types';
 import * as nodesUtils from '../../nodes/utils';
 import { ServerHandler } from '../../rpc/handlers';
 

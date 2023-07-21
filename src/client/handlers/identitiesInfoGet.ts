@@ -1,5 +1,5 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { IdentityId, ProviderId } from 'ids/index';
+import type { IdentityId, ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { ProviderSearchMessage, IdentityInfoMessage } from './types';
 import type { IdentityData } from '../../identities/types';

@@ -1,5 +1,5 @@
 import type { Host, Port } from './network/types';
-import type { NodeAddress } from 'nodes/types';
+import type { NodeAddress } from './nodes/types';
 import { getDefaultNodePath } from './utils';
 // @ts-ignore package.json is outside rootDir
 import { version } from '../package.json';
