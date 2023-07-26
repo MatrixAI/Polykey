@@ -5,6 +5,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import * as networkUtils from '../../network/utils';
 import * as nodesErrors from '../../nodes/errors';
 import { DuplexHandler } from '../../rpc/handlers';
+import * as agentErrors from '../errors';
 
 class NodesCrossSignClaimHandler extends DuplexHandler<
   {
@@ -21,7 +22,9 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { acl, nodeManager } = this.container;
     const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
-    if (requestingNodeId == null) throw Error('TMP invalid nodeId');
+    if (requestingNodeId == null) {
+      throw new agentErrors.ErrorAgentNodeIdMissing();
+    }
     // Check the ACL for permissions
     const permissions = await acl.getNodePerm(requestingNodeId);
     if (permissions?.gestalt.claim !== null) {

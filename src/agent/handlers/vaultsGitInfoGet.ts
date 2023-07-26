@@ -6,6 +6,7 @@ import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
 import type { VaultsGitInfoGetMessage } from './types';
 import type { VaultAction } from '../../vaults/types';
+import * as agentErrors from '../errors';
 import * as networkUtils from '../../network/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
@@ -65,6 +66,9 @@ class VaultsGitInfoGetHandler extends ServerHandler<
       }
       // Getting the NodeId from the connection metadata
       const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+      if (requestingNodeId == null) {
+        throw new agentErrors.ErrorAgentNodeIdMissing();
+      }
       const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
       const permissions = await acl.getNodePerm(requestingNodeId, tran);
       if (permissions == null) {

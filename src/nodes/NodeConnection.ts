@@ -147,6 +147,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     // Obtaining remote node ID from certificate chain. It should always exist in the chain if validated.
     //  This may de different from the NodeId we validated it as if it renewed at some point.
     const connection = quicClient.connection;
+    // Remote certificate information should always be available here due to custom verification
     const certChain = connection.getRemoteCertsChain().map((pem) => {
       const cert = keysUtils.certFromPEM(pem as CertificatePEM);
       if (cert == null) never();

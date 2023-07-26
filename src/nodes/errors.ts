@@ -1,5 +1,7 @@
 import { ErrorPolykey, sysexits } from '../errors';
 
+// TODO: Some errors may need to be removed here, TBD in stage 2 agent migration
+
 class ErrorNodes<T> extends ErrorPolykey<T> {}
 
 class ErrorNodeAborted<T> extends ErrorNodes<T> {
@@ -67,16 +69,6 @@ class ErrorNodeConnectionMultiConnectionFailed<T> extends ErrorNodes<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionInfoNotExist<T> extends ErrorNodes<T> {
-  static description: 'NodeConnection info was not found';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorNodeConnectionPublicKeyNotFound<T> extends ErrorNodes<T> {
-  static description: 'Public key was not found';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
 class ErrorNodeConnectionManagerNotRunning<T> extends ErrorNodes<T> {
   static description = 'NodeConnectionManager is not running';
   exitCode = sysexits.USAGE;
@@ -119,8 +111,6 @@ export {
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
   ErrorNodeConnectionMultiConnectionFailed,
-  ErrorNodeConnectionInfoNotExist,
-  ErrorNodeConnectionPublicKeyNotFound,
   ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,

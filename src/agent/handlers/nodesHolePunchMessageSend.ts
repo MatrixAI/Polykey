@@ -7,6 +7,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { HolePunchRelayMessage } from './types';
+import * as agentErrors from '../errors';
 import * as networkUtils from '../../network/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
@@ -55,9 +56,11 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
       },
     );
     // Connections should always be validated
-    const srcNodeId = nodesUtils.encodeNodeId(
-      networkUtils.nodeIdFromMeta(meta),
-    );
+    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+    if (requestingNodeId == null) {
+      throw new agentErrors.ErrorAgentNodeIdMissing();
+    }
+    const srcNodeId = nodesUtils.encodeNodeId(requestingNodeId);
     // Firstly, check if this node is the desired node
     // If so, then we want to make this node start sending hole punching packets
     // back to the source node.
