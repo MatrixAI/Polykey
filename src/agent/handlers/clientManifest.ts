@@ -19,11 +19,6 @@ const nodesChainDataGet = new ServerCaller<
   AgentRPCResponseResult<AgentClaimMessage>
 >();
 
-// Const nodesClaimsGet = new UnaryCaller<
-//   AgentRPCRequestParams,
-//   AgentRPCResponseResult
-// >();
-
 const nodesClosestLocalNodesGet = new ServerCaller<
   AgentRPCRequestParams<NodeIdMessage>,
   AgentRPCResponseResult<NodeAddressMessage>
