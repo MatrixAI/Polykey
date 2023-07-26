@@ -11,7 +11,6 @@ import type { VaultManager } from '../../vaults';
 import { NodesClosestLocalNodesGetHandler } from './nodesClosestLocalNodesGet';
 import { NodesHolePunchMessageSendHandler } from './nodesHolePunchMessageSend';
 import { NodesCrossSignClaimHandler } from './nodesCrossSignClaim';
-// Import {NodesClaimsGetHandler} from "./nodesClaimsGet";
 import { NotificationsSendHandler } from './notificationsSend';
 import { NodesChainDataGetHandler } from './nodesChainDataGet';
 import { EchoHandler } from './echo';
@@ -34,7 +33,6 @@ const serverManifest = (container: {
   return {
     echo: new EchoHandler(container),
     nodesChainDataGet: new NodesChainDataGetHandler(container),
-    // NodesClaimsGet: new NodesClaimsGetHandler(container),
     nodesClosestLocalNodesGet: new NodesClosestLocalNodesGetHandler(container),
     nodesCrossSignClaim: new NodesCrossSignClaimHandler(container),
     nodesHolePunchMessageSend: new NodesHolePunchMessageSendHandler(container),

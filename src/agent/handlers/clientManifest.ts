@@ -69,7 +69,6 @@ const vaultsScan = new ServerCaller<
 const clientManifest = {
   echo,
   nodesChainDataGet,
-  // NodeClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
   nodesHolePunchMessageSend,
@@ -83,7 +82,6 @@ export {
   clientManifest,
   echo,
   nodesChainDataGet,
-  // NodeClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
   nodesHolePunchMessageSend,
