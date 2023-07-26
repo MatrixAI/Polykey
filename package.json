@@ -119,7 +119,6 @@
     "threads": "^1.6.5",
     "tslib": "^2.4.0",
     "tsyringe": "^4.7.0",
-    "utp-native": "^2.5.3",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.19.0",
     "ws": "^8.12.0"
   },
