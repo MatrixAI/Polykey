@@ -3,10 +3,6 @@ import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 
-export type EchoMessage = {
-  message: string;
-};
-
 export type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
 };

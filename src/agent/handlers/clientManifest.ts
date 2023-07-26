@@ -1,5 +1,4 @@
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type { EchoMessage } from './types';
 import type {
   AgentClaimMessage,
   ClaimIdMessage,
@@ -14,11 +13,6 @@ import type {
   VaultsScanMessage,
 } from './types';
 import { DuplexCaller, ServerCaller, UnaryCaller } from '../../rpc/callers';
-
-const echo = new UnaryCaller<
-  AgentRPCRequestParams<EchoMessage>,
-  AgentRPCResponseResult<EchoMessage>
->();
 
 const nodesChainDataGet = new ServerCaller<
   AgentRPCRequestParams<ClaimIdMessage>,
@@ -67,7 +61,6 @@ const vaultsScan = new ServerCaller<
 
 // No type used here, it will override type inference
 const clientManifest = {
-  echo,
   nodesChainDataGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
@@ -80,7 +73,6 @@ const clientManifest = {
 
 export {
   clientManifest,
-  echo,
   nodesChainDataGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
