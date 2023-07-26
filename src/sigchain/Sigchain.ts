@@ -259,8 +259,7 @@ class Sigchain {
       headerSignatures.push({
         protected: headerSignatureJSON.protected,
         signature: Buffer.from(
-          headerSignatureJSON.signature,
-          'binary',
+          headerSignatureJSON.signature.data,
         ) as TokenSignature,
       });
     }
@@ -443,13 +442,9 @@ class Sigchain {
     const signedClaim = claimToken.toSigned();
     await tran.put([...this.dbClaimsPath, claimIdBuffer], signedClaim.payload);
     for (const [index, headerSignature] of signedClaim.signatures.entries()) {
-      const headerSignatureEncoded = {
-        protected: headerSignature.protected,
-        signature: headerSignature.signature.toString('binary'),
-      };
       await tran.put(
         [...this.dbSignaturesPath, claimIdBuffer, utils.lexiPackBuffer(index)],
-        headerSignatureEncoded,
+        headerSignature,
       );
     }
     await tran.put(this.dbLastClaimIdPath, claimIdBuffer, true);
