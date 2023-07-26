@@ -5,7 +5,7 @@ export * from './nodesClosestLocalNodesGet';
 export * from './nodesHolePunchMessageSend';
 export * from './nodesCrossSignClaim';
 export * from './notificationsSend';
-export * from './nodesChainDataGet';
+export * from './nodesClaimsGet';
 export * from './vaultsScan';
 export * from './vaultsGitInfoGet';
 export * from './vaultsGitPackGet';

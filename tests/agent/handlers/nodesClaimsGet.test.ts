@@ -12,16 +12,16 @@ import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/identities/utils';
 import RPCClient from '@/rpc/RPCClient';
 import RPCServer from '@/rpc/RPCServer';
-import { NodesChainDataGetHandler } from '@/agent/handlers/nodesChainDataGet';
-import { nodesChainDataGet } from '@/agent/handlers/clientManifest';
+import { NodesClaimsGetHandler } from '@/agent/handlers/nodesClaimsGet';
+import { nodesClaimsGet } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
 import * as keysUtils from '@/keys/utils/index';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
 
-describe('nodesChainDataGet', () => {
-  const logger = new Logger('nodesChainDataGet test', LogLevel.WARN, [
+describe('nodesClaimsGet', () => {
+  const logger = new Logger('nodesClaimsGet test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -37,7 +37,7 @@ describe('nodesChainDataGet', () => {
   let quicServer: QUICServer;
 
   const clientManifest = {
-    nodesChainDataGet,
+    nodesClaimsGet: nodesClaimsGet,
   };
   type ClientManifest = typeof clientManifest;
   let rpcClient: RPCClient<ClientManifest>;
@@ -71,7 +71,7 @@ describe('nodesChainDataGet', () => {
 
     // Setting up server
     const serverManifest = {
-      nodesChainDataGet: new NodesChainDataGetHandler({
+      nodesClaimsGet: new NodesClaimsGetHandler({
         db,
         sigchain,
       }),
@@ -178,7 +178,7 @@ describe('nodesChainDataGet', () => {
       await sigchain.addClaim(identityLink);
     }
 
-    const response = await rpcClient.methods.nodesChainDataGet({
+    const response = await rpcClient.methods.nodesClaimsGet({
       claimIdEncoded: '' as ClaimIdEncoded,
     });
     const chainIds: Array<string> = [];

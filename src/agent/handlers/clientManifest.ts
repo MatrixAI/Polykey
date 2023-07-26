@@ -14,7 +14,7 @@ import type {
 } from './types';
 import { DuplexCaller, ServerCaller, UnaryCaller } from '../../rpc/callers';
 
-const nodesChainDataGet = new ServerCaller<
+const nodesClaimsGet = new ServerCaller<
   AgentRPCRequestParams<ClaimIdMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 >();
@@ -56,7 +56,7 @@ const vaultsScan = new ServerCaller<
 
 // No type used here, it will override type inference
 const clientManifest = {
-  nodesChainDataGet,
+  nodesClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
   nodesHolePunchMessageSend,
@@ -68,7 +68,7 @@ const clientManifest = {
 
 export {
   clientManifest,
-  nodesChainDataGet,
+  nodesClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
   nodesHolePunchMessageSend,

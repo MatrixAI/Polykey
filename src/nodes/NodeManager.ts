@@ -359,7 +359,7 @@ class NodeManager {
       async (connection) => {
         const claims: Record<ClaimId, SignedClaim> = {};
         const client = connection.getClient();
-        for await (const agentClaim of await client.methods.nodesChainDataGet({
+        for await (const agentClaim of await client.methods.nodesClaimsGet({
           claimIdEncoded:
             claimId != null ? encodeClaimId(claimId) : ('' as ClaimIdEncoded),
         })) {

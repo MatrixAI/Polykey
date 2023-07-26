@@ -5,7 +5,7 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import * as claimsUtils from '../../claims/utils';
 import { ServerHandler } from '../../rpc/handlers';
 
-class NodesChainDataGetHandler extends ServerHandler<
+class NodesClaimsGetHandler extends ServerHandler<
   {
     sigchain: Sigchain;
     db: DB;
@@ -35,4 +35,4 @@ class NodesChainDataGetHandler extends ServerHandler<
   }
 }
 
-export { NodesChainDataGetHandler };
+export { NodesClaimsGetHandler };
