@@ -22,9 +22,6 @@ class CommandPing extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -39,7 +36,7 @@ class CommandPing extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -54,13 +51,12 @@ class CommandPing extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         let error;
         const statusMessage = await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.rpcClient.methods.nodesPing({
+            pkClient.rpcClientClient.methods.nodesPing({
               metadata: auth,
               nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
             }),

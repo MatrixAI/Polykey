@@ -1,5 +1,5 @@
 import type { FileSystem } from './types';
-import type { ClientManifest, StreamFactory } from './rpc/types';
+import type { StreamFactory } from './rpc/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
@@ -10,24 +10,23 @@ import { Session } from './sessions';
 import * as errors from './errors';
 import * as utils from './utils';
 import config from './config';
+import { clientManifest } from './client/handlers/clientManifest';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
  * a new RPCClient which attempts to connect to an existing PolykeyAgent's
  * RPC server.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
-interface PolykeyClient<M extends ClientManifest>
-  extends CreateDestroyStartStop {}
+interface PolykeyClient extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
 )
-class PolykeyClient<M extends ClientManifest> {
-  static async createPolykeyClient<M extends ClientManifest>({
+class PolykeyClient {
+  static async createPolykeyClient({
     nodePath = config.defaults.nodePath,
     session,
-    manifest,
+    rpcClientClient,
     streamFactory,
     streamKeepAliveTimeoutTime,
     parserBufferByteLimit,
@@ -37,14 +36,14 @@ class PolykeyClient<M extends ClientManifest> {
   }: {
     nodePath?: string;
     session?: Session;
-    manifest: RPCClient<M> | M;
+    rpcClientClient?: RPCClient<typeof clientManifest>;
     streamFactory: StreamFactory;
     streamKeepAliveTimeoutTime?: number;
     parserBufferByteLimit?: number;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  }): Promise<PolykeyClient<M>> {
+  }): Promise<PolykeyClient> {
     logger.info(`Creating ${this.name}`);
     if (nodePath == null) {
       throw new errors.ErrorUtilsNodePath();
@@ -58,23 +57,21 @@ class PolykeyClient<M extends ClientManifest> {
         logger: logger.getChild(Session.name),
         fresh,
       }));
-    const rpcClient =
-      manifest instanceof RPCClient
-        ? manifest
-        : await RPCClient.createRPCClient<M>({
-            manifest,
-            streamFactory,
-            middlewareFactory:
-              rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
-                clientUtilsMiddleware.middlewareClient(session),
-                parserBufferByteLimit,
-              ),
-            streamKeepAliveTimeoutTime,
-            logger: logger.getChild(RPCClient.name),
-          });
+    const rpcClientClient_ =
+      rpcClientClient ??
+      (await RPCClient.createRPCClient({
+        manifest: clientManifest,
+        streamFactory,
+        middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
+          clientUtilsMiddleware.middlewareClient(session),
+          parserBufferByteLimit,
+        ),
+        streamKeepAliveTimeoutTime,
+        logger: logger.getChild(RPCClient.name),
+      }));
     const pkClient = new this({
       nodePath,
-      rpcClient,
+      rpcClientClient: rpcClientClient_,
       session,
       fs,
       logger,
@@ -86,20 +83,20 @@ class PolykeyClient<M extends ClientManifest> {
 
   public readonly nodePath: string;
   public readonly session: Session;
-  public readonly rpcClient: RPCClient<M>;
+  public readonly rpcClientClient: RPCClient<typeof clientManifest>;
 
   protected fs: FileSystem;
   protected logger: Logger;
 
   constructor({
     nodePath,
-    rpcClient,
+    rpcClientClient,
     session,
     fs,
     logger,
   }: {
     nodePath: string;
-    rpcClient: RPCClient<M>;
+    rpcClientClient: RPCClient<typeof clientManifest>;
     session: Session;
     fs: FileSystem;
     logger: Logger;
@@ -107,7 +104,7 @@ class PolykeyClient<M extends ClientManifest> {
     this.logger = logger;
     this.nodePath = nodePath;
     this.session = session;
-    this.rpcClient = rpcClient;
+    this.rpcClientClient = rpcClientClient;
     this.fs = fs;
   }
 
@@ -124,7 +121,7 @@ class PolykeyClient<M extends ClientManifest> {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.rpcClient.destroy();
+    await this.rpcClientClient.destroy();
     await this.session.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }

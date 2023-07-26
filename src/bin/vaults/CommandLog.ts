@@ -21,9 +21,6 @@ class CommandLog extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -37,7 +34,7 @@ class CommandLog extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -52,12 +49,11 @@ class CommandLog extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const data = await binUtils.retryAuthentication(async (auth) => {
           const data: Array<string> = [];
-          const logStream = await pkClient.rpcClient.methods.vaultsLog({
+          const logStream = await pkClient.rpcClientClient.methods.vaultsLog({
             metadata: auth,
             nameOrId: vault,
             depth: options.depth,

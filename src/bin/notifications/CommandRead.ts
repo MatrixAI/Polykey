@@ -33,9 +33,6 @@ class CommandRead extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const notificationsUtils = await import('../../notifications/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -50,7 +47,7 @@ class CommandRead extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -65,12 +62,11 @@ class CommandRead extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const response = await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.rpcClient.methods.notificationsRead({
+            pkClient.rpcClientClient.methods.notificationsRead({
               metadata: auth,
               unread: options.unread,
               number: options.number,

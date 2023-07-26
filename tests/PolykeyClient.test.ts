@@ -60,7 +60,7 @@ describe('PolykeyClient', () => {
       fs,
       logger,
       fresh: true,
-      manifest: {},
+      rpcClientClient: {},
     });
     expect(await session.readToken()).toBeUndefined();
     await session.writeToken('abc' as SessionToken);

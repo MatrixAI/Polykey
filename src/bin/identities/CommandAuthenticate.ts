@@ -28,9 +28,6 @@ class CommandAuthenticate extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const { never } = await import('../../utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -45,7 +42,7 @@ class CommandAuthenticate extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -60,19 +57,17 @@ class CommandAuthenticate extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         let genReadable: ReadableStream<
           ClientRPCResponseResult<AuthProcessMessage>
         >;
         await binUtils.retryAuthentication(async (auth) => {
-          genReadable = await pkClient.rpcClient.methods.identitiesAuthenticate(
-            {
+          genReadable =
+            await pkClient.rpcClientClient.methods.identitiesAuthenticate({
               metadata: auth,
               providerId: providerId,
-            },
-          );
+            });
           for await (const message of genReadable) {
             if (message.request != null) {
               this.logger.info(`Navigate to the URL in order to authenticate`);

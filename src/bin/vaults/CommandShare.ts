@@ -26,9 +26,6 @@ class CommandShare extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
@@ -43,7 +40,7 @@ class CommandShare extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -58,12 +55,11 @@ class CommandShare extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.rpcClient.methods.vaultsPermissionSet({
+            pkClient.rpcClientClient.methods.vaultsPermissionSet({
               metadata: auth,
               nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
               nameOrId: vaultName,
