@@ -72,7 +72,7 @@
     "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
     "bench": "shx rm -rf ./benches/results && ts-node ./benches",
-    "pkg": "node ./scripts/pkg.js --no-dict=leveldown.js",
+    "pkg": "node ./scripts/pkg.js",
     "polykey": "ts-node src/bin/polykey.ts",
     "start": "ts-node src/bin/polykey.ts -- agent start --verbose",
     "dev": "nodemon src/bin/polykey.ts -- agent start --verbose"
