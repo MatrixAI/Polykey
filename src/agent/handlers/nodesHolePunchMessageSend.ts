@@ -28,7 +28,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
 > {
   public async handle(
     input: AgentRPCRequestParams<HolePunchRelayMessage>,
-    _,
+    _cancel,
     meta,
   ): Promise<AgentRPCResponseResult> {
     const { db, nodeConnectionManager, keyRing, nodeManager, logger } =

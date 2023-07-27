@@ -25,7 +25,7 @@ class VaultsGitPackGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: AgentRPCRequestParams<VaultsGitPackGetMessage>,
-    _,
+    _cancel,
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<GitPackMessage>> {
     const { vaultManager, acl, db } = this.container;

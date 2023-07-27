@@ -28,7 +28,7 @@ class VaultsGitInfoGetHandler extends ServerHandler<
 > {
   public async *handle(
     input: AgentRPCRequestParams<VaultsGitInfoGetMessage>,
-    _,
+    _cancel,
     meta,
   ): AsyncGenerator<VaultInfo | GitPackMessage> {
     const { db, vaultManager, acl } = this.container;

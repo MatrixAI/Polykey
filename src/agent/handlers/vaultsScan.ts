@@ -17,7 +17,7 @@ class VaultsScanHandler extends ServerHandler<
 > {
   public async *handle(
     input: AgentRPCRequestParams,
-    _,
+    _cancel,
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager, db } = this.container;

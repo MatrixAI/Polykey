@@ -17,7 +17,7 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
 > {
   public async *handle(
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
-    _,
+    _cancel,
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { acl, nodeManager } = this.container;
