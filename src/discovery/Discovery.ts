@@ -69,6 +69,7 @@ class Discovery {
     identitiesManager,
     nodeManager,
     taskManager,
+    discoverVertexTimeout = 2000,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -78,6 +79,7 @@ class Discovery {
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
     taskManager: TaskManager;
+    discoverVertexTimeout?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Discovery> {
@@ -89,6 +91,7 @@ class Discovery {
       identitiesManager,
       nodeManager,
       taskManager,
+      discoverVertexTimeout,
       logger,
     });
     await discovery.start({ fresh });
@@ -103,6 +106,7 @@ class Discovery {
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
   protected taskManager: TaskManager;
+  protected discoverVertexTimeout: number;
 
   protected visitedVertices = new Set<GestaltIdEncoded>();
   protected discoverVertexHandler: TaskHandler = async (
@@ -111,7 +115,7 @@ class Discovery {
     vertex: GestaltIdEncoded,
   ) => {
     try {
-      await this.processVertex(vertex, 2000, ctx);
+      await this.processVertex(vertex, ctx);
     } catch (e) {
       if (
         e instanceof tasksErrors.ErrorTaskStop ||
@@ -140,6 +144,7 @@ class Discovery {
     identitiesManager,
     nodeManager,
     taskManager,
+    discoverVertexTimeout,
     logger,
   }: {
     db: DB;
@@ -148,6 +153,7 @@ class Discovery {
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
     taskManager: TaskManager;
+    discoverVertexTimeout: number;
     logger: Logger;
   }) {
     this.db = db;
@@ -156,6 +162,7 @@ class Discovery {
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
     this.taskManager = taskManager;
+    this.discoverVertexTimeout = discoverVertexTimeout;
     this.logger = logger;
   }
 
@@ -238,13 +245,11 @@ class Discovery {
   //  GestaltGraph and ask for claims newer than that
   protected processVertex(
     vertex: GestaltIdEncoded,
-    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   protected async processVertex(
     vertex: GestaltIdEncoded,
-    connectionTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
@@ -253,19 +258,15 @@ class Discovery {
     const [type, id] = vertexId;
     switch (type) {
       case 'node':
-        return await this.processNode(id, connectionTimeout, ctx);
+        return await this.processNode(id, ctx);
       case 'identity':
-        return await this.processIdentity(id, connectionTimeout, ctx);
+        return await this.processIdentity(id, ctx);
       default:
         never();
     }
   }
 
-  protected async processNode(
-    nodeId: NodeId,
-    connectionTimeout: number | undefined,
-    ctx: ContextTimed,
-  ) {
+  protected async processNode(nodeId: NodeId, ctx: ContextTimed) {
     // If the vertex we've found is our own node, we simply get our own chain
     const encodedGestaltNodeId = gestaltsUtils.encodeGestaltNodeId([
       'node',
@@ -298,7 +299,6 @@ class Discovery {
     try {
       vertexChainData = await this.nodeManager.requestChainData(
         nodeId,
-        connectionTimeout,
         newestClaimId,
         ctx,
       );
@@ -398,7 +398,7 @@ class Discovery {
             const identityInfo = await this.getIdentityInfo(
               providerId,
               identityId,
-              { signal: ctx.signal, timer: connectionTimeout },
+              ctx,
             );
             // If we can't get identity info, simply skip this claim
             if (identityInfo == null) {
@@ -463,11 +463,7 @@ class Discovery {
     this.visitedVertices.add(encodedGestaltNodeId);
   }
 
-  protected async processIdentity(
-    id: ProviderIdentityId,
-    connectionTimeout: number | undefined,
-    ctx: ContextTimed,
-  ) {
+  protected async processIdentity(id: ProviderIdentityId, ctx: ContextTimed) {
     // If the next vertex is an identity, perform a social discovery
     // Firstly get the identity info of this identity
     const providerIdentityId = id;
@@ -475,7 +471,7 @@ class Discovery {
     const vertexIdentityInfo = await this.getIdentityInfo(
       providerId,
       identityId,
-      { signal: ctx.signal, timer: connectionTimeout },
+      ctx,
     );
     // If we don't have identity info, simply skip this vertex
     if (vertexIdentityInfo == null) {
@@ -605,7 +601,7 @@ class Discovery {
           gestaltIdEncoded,
         ],
         lazy: true,
-        deadline: 2000,
+        deadline: this.discoverVertexTimeout,
       },
       tran,
     );

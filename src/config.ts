@@ -90,11 +90,11 @@ const config = {
       certDuration: 31536000,
     },
     networkConfig: {
-      // GRPCServer for agent service
+      // Config for the QUICSocket
       agentHost: '127.0.0.1' as Host,
       agentPort: 0 as Port,
       ipv6Only: false,
-      // RPCServer for client service
+      // Config for the websocket server
       clientHost: '127.0.0.1' as Host,
       clientPort: 0 as Port,
       // Websocket server config

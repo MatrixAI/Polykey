@@ -335,21 +335,18 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param connectionTimeout
    * @param claimId If set then we get the claims newer that this claim Id.
    * @param ctx
    */
   // FIXME: this should be a generator/stream
   public requestChainData(
     targetNodeId: NodeId,
-    connectionTimeout?: number,
     claimId?: ClaimId,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
   @timedCancellable(true)
   public async requestChainData(
     targetNodeId: NodeId,
-    connectionTimeout: number | undefined,
     claimId: ClaimId | undefined,
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
@@ -394,7 +391,7 @@ class NodeManager {
         }
         return claims;
       },
-      { signal: ctx.signal, timer: connectionTimeout },
+      ctx,
     );
   }
 
