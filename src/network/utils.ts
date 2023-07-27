@@ -225,9 +225,7 @@ async function verifyServerCertificateChain(
     );
   }
   if (nodeIds.length === 0) {
-    throw new networkErrors.ErrorCertVerificationError(
-      'No nodes were provided to verify against',
-    );
+    throw new networkErrors.ErrorConnectionNodesEmpty();
   }
   const certChain = certPEMChain.map((v) => {
     const cert = keysUtils.certFromPEM(v as CertificatePEM);

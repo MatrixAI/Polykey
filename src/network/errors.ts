@@ -7,8 +7,8 @@ class ErrorNetwork<T> extends ErrorPolykey<T> {}
  */
 class ErrorCertChain<T> extends ErrorNetwork<T> {}
 
-class ErrorCertVerificationError<T> extends ErrorCertChain<T> {
-  static description = 'Generic error in verification';
+class ErrorConnectionNodesEmpty<T> extends ErrorCertChain<T> {
+  static description = 'Nodes list to verify against was empty';
   exitCode = sysexits.USAGE;
 }
 
@@ -55,7 +55,7 @@ class ErrorDNSResolver<T> extends ErrorNetwork<T> {
 export {
   ErrorNetwork,
   ErrorCertChain,
-  ErrorCertVerificationError,
+  ErrorConnectionNodesEmpty,
   ErrorCertChainEmpty,
   ErrorCertChainUnclaimed,
   ErrorCertChainBroken,
