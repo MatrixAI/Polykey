@@ -32,17 +32,8 @@ type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
  * It is re-defined here to only expose the options we want to propagate.
  * Other parameters are provided via the internal logic.
  */
-type QUICClientConfig = {
-  cert: string;
-  key: string;
-  // Optionals
-  maxIdleTimeout?: number;
-  keepaliveIntervalTime?: number;
-  // Handled via internal logic
-  ca?: never;
-  verifyPeer?: never;
-  verifyAllowFail?: never;
-} & Partial<QUICConfig>;
+type QUICClientConfig = Pick<QUICConfig, 'key' | 'cert'> &
+  Omit<Partial<QUICConfig>, 'ca' | 'verifyPeer' | 'verifyAllowFail'>;
 
 export type {
   NodeId,

@@ -12,17 +12,10 @@ type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
   nodeId: NodeIdEncoded;
 };
 
-type PolykeyQUICConfig = {
-  // Optionals
-  keepAliveIntervalTime?: number;
-  maxIdleTimeout?: number;
-  // Disabled, set internally
-  ca?: never;
-  key?: never;
-  cert?: never;
-  verifyPeer?: never;
-  verifyAllowFail?: never;
-} & Partial<QUICConfig>;
+type PolykeyQUICConfig = Omit<
+  Partial<QUICConfig>,
+  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
+>;
 
 /**
  * PolykeyAgent Starting Input when Backgrounded
