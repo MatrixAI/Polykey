@@ -145,7 +145,7 @@ class VaultInternal {
       efs,
       logger,
     });
-    // This error flag will contain the error returned by the cloning grpc stream
+    // This error flag will contain the error returned by the cloning rpc stream
     let error;
     // Make the directory where the .git files will be auto generated and
     // where the contents will be cloned to ('contents' file)
@@ -549,7 +549,7 @@ class VaultInternal {
       );
     }
 
-    // This error flag will contain the error returned by the cloning grpc stream
+    // This error flag will contain the error returned by the cloning rpc stream
     let error;
     // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
     // 0 = no change, 1 = change with vault Id, 2 = change with vault name

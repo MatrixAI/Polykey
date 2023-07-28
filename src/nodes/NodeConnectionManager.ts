@@ -935,7 +935,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Performs a GRPC request to retrieve the closest nodes relative to the given
+   * Performs a RPC request to retrieve the closest nodes relative to the given
    * target node ID.
    * @param nodeId the node ID to search on
    * @param targetNodeId the node ID to find other nodes closest to it
@@ -1001,7 +1001,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Performs a GRPC request to send a hole-punch message to the target. Used to
+   * Performs a RPC request to send a hole-punch message to the target. Used to
    * initially establish the NodeConnection from source to target.
    *
    * @param relayNodeId node ID of the relay node (i.e. the seed node)

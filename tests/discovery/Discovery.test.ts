@@ -81,7 +81,6 @@ describe('Discovery', () => {
     mockedRefreshBucket.mockImplementation(
       () => new PromiseCancellable((resolve) => resolve()),
     );
-    // Sets the global GRPC logger to the logger
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );

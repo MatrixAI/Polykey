@@ -234,7 +234,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
   }
 
   /**
-   * Gets GRPCClient for this node connection
+   * Gets RPCClient for this node connection
    */
   public getClient(): RPCClient<M> {
     return this.rpcClient;

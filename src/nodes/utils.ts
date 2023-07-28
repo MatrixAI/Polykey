@@ -286,7 +286,7 @@ function generateRandomNodeIdForBucket(
  * Connection failures can happen due to the following.
  * Failure to establish a connection,
  * an existing connection fails,
- * the GRPC client has been destroyed,
+ * the RPC client has been destroyed,
  * or the NodeConnection has been destroyed.
  * This is generally used to check the connection has failed
  * before cleaning it up.

@@ -66,16 +66,12 @@ describe('Status', () => {
       clientPort: 0 as Port,
       agentHost: '::1' as Host,
       agentPort: 0 as Port,
-      grpcHost: 'localhost',
-      grpcPort: 12345,
       anything: 'something',
     });
     const statusInfo2 = await status.readStatus();
     expect(statusInfo2).toBeDefined();
     expect(statusInfo2!.status).toBe('LIVE');
     expect(statusInfo2!.data.pid).toBeDefined();
-    expect(statusInfo2!.data.grpcHost).toBe('localhost');
-    expect(statusInfo2!.data.grpcPort).toBe(12345);
     expect(statusInfo2!.data.anything).toBe('something');
     await status.beginStop({
       pid: 1,

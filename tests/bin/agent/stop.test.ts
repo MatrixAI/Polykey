@@ -160,7 +160,7 @@ describe('stop', () => {
           command: globalThis.testCmd,
         },
       );
-      // If the GRPC server gets closed after the GRPC connection is established
+      // If the RPC server gets closed after the RPC connection is established
       // then it's possible that one of these exit codes is 1
       if (agentStop1.exitCode === 1) {
         expect(agentStop2.exitCode).toBe(0);

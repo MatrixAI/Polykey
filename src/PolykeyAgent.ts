@@ -856,7 +856,6 @@ class PolykeyAgent {
       // Adding self to the gestaltGraph
       await this.gestaltGraph.setNode({ nodeId: this.keyRing.getNodeId() });
       await this.identitiesManager.start({ fresh });
-      // GRPC Server
       const tlsConfig: TLSConfig = {
         keyPrivatePem: keysUtils.privateKeyToPEM(
           this.keyRing.keyPair.privateKey,

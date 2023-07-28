@@ -44,7 +44,7 @@ const config = {
    */
   stateVersion: 1,
   /**
-   * Version of the gRPC and HTTP service
+   * Version of the RPC and HTTP service
    * It is only incremented on breaking changes
    * Use this to know if you must upgrade your service client
    */

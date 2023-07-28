@@ -8,7 +8,7 @@ class ErrorClaimsUndefinedClaimPayload<T> extends ErrorClaims<T> {
 }
 
 /**
- * Exceptions arising in cross-signing process (GRPC)
+ * Exceptions arising in cross-signing process
  */
 class ErrorCrossSign<T> extends ErrorClaims<T> {}
 
