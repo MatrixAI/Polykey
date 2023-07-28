@@ -151,6 +151,13 @@ type InverseRecord<
   [K in M[keyof M]]: RecordKeyFromValue<M, K>;
 };
 
+/**
+ * Used when an empty object is needed.
+ * Defined here with a linter override to avoid a false positive.
+ */
+// eslint-disable-next-line
+type ObjectEmpty = {};
+
 export type {
   POJO,
   JSONValue,
@@ -171,4 +178,5 @@ export type {
   NonFunctionProperties,
   RecordKeyFromValue,
   InverseRecord,
+  ObjectEmpty,
 };
