@@ -239,7 +239,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        keepaliveIntervalTime: 1000,
+        keepAliveIntervalTime: 1000,
       },
       crypto,
       quicSocket: clientSocket,
@@ -288,7 +288,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         maxIdleTimeout: 1000,
-        keepaliveIntervalTime: 500,
+        keepAliveIntervalTime: 500,
       },
       crypto,
       quicSocket: clientSocket,
@@ -339,7 +339,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        keepaliveIntervalTime: 1000,
+        keepAliveIntervalTime: 1000,
       },
       crypto,
       quicSocket: clientSocket,
@@ -387,7 +387,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        keepaliveIntervalTime: 1000,
+        keepAliveIntervalTime: 1000,
       },
       crypto,
       quicSocket: clientSocket,
@@ -430,7 +430,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       quicClientConfig: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
-        keepaliveIntervalTime: 1000,
+        keepAliveIntervalTime: 1000,
       },
       crypto,
       quicSocket: clientSocket,

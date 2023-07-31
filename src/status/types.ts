@@ -1,5 +1,4 @@
 import type { NodeId } from '../ids/types';
-import type { Host, Port } from '../network/types';
 
 type StatusStarting = {
   status: 'STARTING';
