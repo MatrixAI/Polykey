@@ -10,17 +10,16 @@ import type {
 } from '../../keys/types';
 import type { Notification } from '../../notifications/types';
 import type { CommitId, VaultAction, VaultName } from '../../vaults/types';
-import type { Host, Port } from '../../network/types';
 
 // Agent messages
 export type StatusResultMessage = {
   pid: number;
 } & NodeIdMessage &
   PublicKeyMessage & {
-    clientHost: Host;
-    clientPort: Port;
-    agentHost: Host;
-    agentPort: Port;
+    clientHost: string;
+    clientPort: number;
+    agentHost: string;
+    agentPort: number;
     certChainPEM: CertificatePEMChain;
   };
 

@@ -1,5 +1,4 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { NodeAddress } from '@/nodes/types';
 import type { SeedNodes } from '@/nodes/types';
@@ -32,7 +31,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const testAddress = {
     host: '127.0.0.1' as Host,
     port: 55555 as Port,
@@ -88,8 +87,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteNodeIdEncoded1 = nodesUtils.encodeNodeId(remoteNodeId1);
     remoteAddress1 = {
-      host: remotePolykeyAgent1.quicSocket.host as unknown as Host,
-      port: remotePolykeyAgent1.quicSocket.port as unknown as Port,
+      host: remotePolykeyAgent1.quicSocket.host as Host,
+      port: remotePolykeyAgent1.quicSocket.port as Port,
     };
 
     const nodePathB = path.join(dataDir, 'agentB');
@@ -108,15 +107,15 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     remoteNodeId2 = remotePolykeyAgent2.keyRing.getNodeId();
     remoteAddress2 = {
-      host: remotePolykeyAgent2.quicSocket.host as unknown as Host,
-      port: remotePolykeyAgent2.quicSocket.port as unknown as Port,
+      host: remotePolykeyAgent2.quicSocket.host as Host,
+      port: remotePolykeyAgent2.quicSocket.port as Port,
     };
 
     clientSocket = new QUICSocket({
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
 
     // Setting up client dependencies

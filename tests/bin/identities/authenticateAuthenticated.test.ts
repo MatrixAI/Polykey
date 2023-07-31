@@ -1,5 +1,4 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -38,8 +37,8 @@ describe('authenticate/authenticated', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {

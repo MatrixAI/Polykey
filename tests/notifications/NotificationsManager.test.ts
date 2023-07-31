@@ -149,8 +149,8 @@ describe('NotificationsManager', () => {
       password: password,
       nodePath: path.join(dataDir, 'receiver'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -160,8 +160,8 @@ describe('NotificationsManager', () => {
       },
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.quicServerAgent.host as unknown as Host,
-      port: receiver.quicServerAgent.port as unknown as Port,
+      host: receiver.quicServerAgent.host as Host,
+      port: receiver.quicServerAgent.port as Port,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {

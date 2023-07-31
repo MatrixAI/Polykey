@@ -91,12 +91,12 @@ const config = {
     },
     networkConfig: {
       // Config for the QUICSocket
-      agentHost: '127.0.0.1' as Host,
-      agentPort: 0 as Port,
+      agentHost: '127.0.0.1',
+      agentPort: 0,
       ipv6Only: false,
       // Config for the websocket server
-      clientHost: '127.0.0.1' as Host,
-      clientPort: 0 as Port,
+      clientHost: '127.0.0.1',
+      clientPort: 0,
       // Websocket server config
       maxReadableStreamBytes: 1_000_000_000, // About 1 GB
       connectionIdleTimeoutTime: 120, // 2 minutes

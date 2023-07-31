@@ -3,7 +3,6 @@ import type { IdentityId, NodeId, NodeIdEncoded, ClaimId } from '@/ids/index';
 import type { SignedClaim } from '@/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { Host, Port } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -82,8 +81,8 @@ describe('gestaltsGestaltTrustByNode', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -166,7 +165,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
+      host: '127.0.0.1',
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
@@ -196,8 +195,8 @@ describe('gestaltsGestaltTrustByNode', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({ nodeManager });
     await nodeManager.setNode(nodeIdRemote, {
-      host: node.quicServerAgent.host as unknown as Host,
-      port: node.quicServerAgent.port as unknown as Port,
+      host: node.quicServerAgent.host as Host,
+      port: node.quicServerAgent.port as Port,
     });
     discovery = await Discovery.createDiscovery({
       db,

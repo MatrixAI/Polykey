@@ -1,6 +1,5 @@
 import type { NodeAddress } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { Task } from '@/tasks/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
@@ -30,8 +29,8 @@ describe(`${NodeManager.name} test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
-  const port = 55556 as Port;
+  const localHost = '127.0.0.1';
+  const port = 55556;
   const password = 'password';
   const mockedPingNode = jest.fn();
   const mockedIsSeedNode = jest.fn();
@@ -102,7 +101,7 @@ describe(`${NodeManager.name} test`, () => {
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
 
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
@@ -359,7 +358,7 @@ describe(`${NodeManager.name} test`, () => {
       password: 'password',
       nodePath: path.join(dataDir, 'server'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
       },
       logger: logger,
       keyRingConfig: {
@@ -370,8 +369,8 @@ describe(`${NodeManager.name} test`, () => {
     });
     const serverNodeId = server.keyRing.getNodeId();
     const serverNodeAddress: NodeAddress = {
-      host: server.quicServerAgent.host as unknown as Host,
-      port: server.quicServerAgent.port as unknown as Port,
+      host: server.quicServerAgent.host as Host,
+      port: server.quicServerAgent.port as Port,
     };
     await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
@@ -406,7 +405,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address = { host: localHost, port };
+    const address = { host: localHost as Host, port: port as Port };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
@@ -441,7 +440,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address = { host: localHost, port };
+    const address = { host: localHost as Host, port: port as Port };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
@@ -483,7 +482,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address = { host: localHost, port };
+    const address = { host: localHost as Host, port: port as Port };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = testNodesUtils.generateNodeIdForBucket(nodeId, 100, i);

@@ -678,8 +678,8 @@ class NodeConnectionManager {
     const connectionMap = this.quicSocket.connectionMap;
     // Checking existing connections
     for (const [, connection] of connectionMap.serverConnections) {
-      const connectionHost = connection.remoteHost as unknown as Host;
-      const connectionPort = connection.remotePort as unknown as Port;
+      const connectionHost = connection.remoteHost;
+      const connectionPort = connection.remotePort;
       if (host === connectionHost && port === connectionPort) {
         // Connection exists, return early
         return;

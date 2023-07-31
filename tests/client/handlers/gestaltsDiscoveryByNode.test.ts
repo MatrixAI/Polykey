@@ -1,5 +1,4 @@
 import type { TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -107,7 +106,7 @@ describe('gestaltsDiscoverByNode', () => {
       logger,
     });
     await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
+      host: '127.0.0.1',
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,

@@ -8,7 +8,6 @@ import type {
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host, Port } from '@/network/types';
 import type NodeManager from '@/nodes/NodeManager';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -37,7 +36,7 @@ import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 
 describe('VaultManager', () => {
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -517,12 +516,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicServerAgent.host as unknown as Host,
-        port: remoteKeynode2.quicServerAgent.port as unknown as Port,
+        host: remoteKeynode2.quicServerAgent.host as Host,
+        port: remoteKeynode2.quicServerAgent.port as Port,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicServerAgent.host as unknown as Host,
-        port: remoteKeynode1.quicServerAgent.port as unknown as Port,
+        host: remoteKeynode1.quicServerAgent.host as Host,
+        port: remoteKeynode1.quicServerAgent.port as Port,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -574,7 +573,7 @@ describe('VaultManager', () => {
         logger,
       });
       await quicSocket.start({
-        host: '127.0.0.1' as QUICHost,
+        host: '127.0.0.1',
       });
       const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
       nodeConnectionManager = new NodeConnectionManager({
@@ -593,12 +592,12 @@ describe('VaultManager', () => {
       });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicServerAgent.host as unknown as Host,
-        port: remoteKeynode1.quicServerAgent.port as unknown as Port,
+        host: remoteKeynode1.quicServerAgent.host as Host,
+        port: remoteKeynode1.quicServerAgent.port as Port,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicServerAgent.host as unknown as Host,
-        port: remoteKeynode2.quicServerAgent.port as unknown as Port,
+        host: remoteKeynode2.quicServerAgent.host as Host,
+        port: remoteKeynode2.quicServerAgent.port as Port,
       });
     });
     afterEach(async () => {
@@ -1400,8 +1399,8 @@ describe('VaultManager', () => {
 
         // Letting nodeGraph know where the remote agent is
         await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.quicServerAgent.host as unknown as Host,
-          port: remoteKeynode1.quicServerAgent.port as unknown as Port,
+          host: remoteKeynode1.quicServerAgent.host as Host,
+          port: remoteKeynode1.quicServerAgent.port as Port,
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

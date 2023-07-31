@@ -1,6 +1,5 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
-import type { Host, Port } from '@/network/types';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
@@ -72,13 +71,13 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.quicServerAgent.host as unknown as Host,
-    port: remoteNode.quicServerAgent.port as unknown as Port,
+    host: remoteNode.quicServerAgent.host,
+    port: remoteNode.quicServerAgent.port,
   } as NodeAddress);
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.quicServerAgent.host as unknown as Host,
-    port: localNode.quicServerAgent.port as unknown as Port,
+    host: localNode.quicServerAgent.host,
+    port: localNode.quicServerAgent.port,
   } as NodeAddress);
 }
 

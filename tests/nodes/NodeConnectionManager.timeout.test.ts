@@ -1,5 +1,4 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId } from '@/ids';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeIdString } from '@/ids';
@@ -34,7 +33,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       ),
     ],
   );
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const password = 'password';
   const crypto = tlsTestUtils.createCrypto();
 
@@ -77,15 +76,15 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteAddress1 = {
-      host: remotePolykeyAgent1.quicSocket.host as unknown as Host,
-      port: remotePolykeyAgent1.quicSocket.port as unknown as Port,
+      host: remotePolykeyAgent1.quicSocket.host as Host,
+      port: remotePolykeyAgent1.quicSocket.port as Port,
     };
 
     clientSocket = new QUICSocket({
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
 
     // Setting up client dependencies

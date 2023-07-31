@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import ErrorPolykey from '@/ErrorPolykey';
 import * as binUtils from '@/bin/utils/utils';
 import * as nodesUtils from '@/nodes/utils';
@@ -89,8 +88,8 @@ describe('bin/utils', () => {
     .only('errors in human and json format', () => {
       const timestamp = new Date();
       const data = { string: 'one', number: 1 };
-      const host = '127.0.0.1' as Host;
-      const port = 55555 as Port;
+      const host = '127.0.0.1';
+      const port = 55555;
       const nodeId = testUtils.generateRandomNodeId();
       const standardError = new TypeError('some error');
       const pkError = new ErrorPolykey<undefined>('some pk error', {

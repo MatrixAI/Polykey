@@ -9,7 +9,7 @@ import type {
   WebSocket,
 } from 'uWebSockets.js';
 import type { FileSystem, JSONValue, PromiseDeconstructed } from '../types';
-import type { Host, Port, TLSConfig } from '../network/types';
+import type { TLSConfig } from '../network/types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import path from 'path';
 import os from 'os';
@@ -233,13 +233,13 @@ class WebSocketServer extends EventTarget {
   }
 
   @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
-  public getPort(): Port {
-    return this._port as Port;
+  public getPort(): number {
+    return this._port;
   }
 
   @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
-  public getHost(): Host {
-    return this._host as Host;
+  public getHost(): string {
+    return this._host;
   }
 
   /**

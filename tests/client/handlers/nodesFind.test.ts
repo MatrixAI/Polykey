@@ -16,7 +16,6 @@ import { NodesFindHandler } from '@/client/handlers/nodesFind';
 import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
-import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import * as validationErrors from '@/validation/errors';
 import { nodesFind } from '@/client';
 import * as testsUtils from '../../utils/utils';
@@ -199,8 +198,6 @@ describe('nodesFind', () => {
     });
 
     // Doing the test
-    const request = new nodesPB.Node();
-    request.setNodeId('nodeId');
     await testsUtils.expectRemoteError(
       rpcClient.methods.nodesFind({
         nodeIdEncoded: 'nodeId' as NodeIdEncoded,

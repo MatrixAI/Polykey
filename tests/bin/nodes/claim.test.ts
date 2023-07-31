@@ -1,5 +1,4 @@
 import type { NodeId, NodeIdEncoded } from '@/ids/types';
-import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -28,8 +27,8 @@ describe('claim', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
@@ -45,8 +44,8 @@ describe('claim', () => {
       password,
       nodePath: path.join(dataDir, 'remoteNode'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,

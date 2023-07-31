@@ -876,11 +876,11 @@ describe('start', () => {
     let agent2Status: StatusLive;
     let agent2Close: () => Promise<void>;
     let seedNodeId1: NodeId;
-    let seedNodeHost1: Host;
-    let seedNodePort1: Port;
+    let seedNodeHost1: string;
+    let seedNodePort1: number;
     let seedNodeId2: NodeId;
-    let seedNodeHost2: Host;
-    let seedNodePort2: Port;
+    let seedNodeHost2: string;
+    let seedNodePort2: number;
     beforeEach(async () => {
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
@@ -926,8 +926,8 @@ describe('start', () => {
           .mockValue({
             mainnet: {
               [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
+                host: seedNodeHost2 as Host,
+                port: seedNodePort2 as Port,
               },
             },
             testnet: {},
@@ -994,8 +994,8 @@ describe('start', () => {
             mainnet: {},
             testnet: {
               [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
+                host: seedNodeHost2 as Host,
+                port: seedNodePort2 as Port,
               },
             },
           });

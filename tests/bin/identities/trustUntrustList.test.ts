@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { NodeId } from '@/ids/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads/index';
@@ -37,8 +36,8 @@ describe('trust/untrust/list', () => {
   let pkAgent: PolykeyAgent;
   let node: PolykeyAgent;
   let nodeId: NodeId;
-  let nodeHost: Host;
-  let nodePort: Port;
+  let nodeHost: string;
+  let nodePort: number;
   beforeEach(async () => {
     provider = new TestProvider();
     providerString = `${provider.id}:${identity}`;
@@ -50,8 +49,8 @@ describe('trust/untrust/list', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -67,8 +66,8 @@ describe('trust/untrust/list', () => {
       password,
       nodePath: nodePathGestalt,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -78,8 +77,8 @@ describe('trust/untrust/list', () => {
       },
     });
     nodeId = node.keyRing.getNodeId();
-    nodeHost = node.quicServerAgent.host as unknown as Host;
-    nodePort = node.quicServerAgent.port as unknown as Port;
+    nodeHost = node.quicServerAgent.host;
+    nodePort = node.quicServerAgent.port;
     node.identitiesManager.registerProvider(provider);
     await node.identitiesManager.putToken(provider.id, identity, {
       accessToken: 'def456',

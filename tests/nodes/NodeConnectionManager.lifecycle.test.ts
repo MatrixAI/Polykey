@@ -1,5 +1,4 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
 import path from 'path';
@@ -31,7 +30,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const password = 'password';
   const crypto = tlsTestUtils.createCrypto();
 
@@ -74,7 +73,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild('serverSocket'),
     });
     await serverSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
     quicServer = new QUICServer({
       config: {
@@ -98,7 +97,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
 
     // Setting up client dependencies
@@ -140,8 +139,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger,
     });
     serverAddress = {
-      host: quicServer.host as unknown as Host,
-      port: quicServer.port as unknown as Port,
+      host: quicServer.host as Host,
+      port: quicServer.port as Port,
     };
   });
 
@@ -624,8 +623,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
-      localHost,
-      quicServer.port as unknown as Port,
+      localHost as Host,
+      quicServer.port as Port,
     );
     expect(result).toBeTrue();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
@@ -662,7 +661,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
-      localHost,
+      localHost as Host,
       12345 as Port,
     );
     expect(result).toBeFalse();
@@ -701,8 +700,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
-      localHost,
-      quicServer.port as unknown as Port,
+      localHost as Host,
+      quicServer.port as Port,
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();

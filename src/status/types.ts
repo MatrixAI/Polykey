@@ -14,10 +14,10 @@ type StatusLive = {
   data: {
     pid: number;
     nodeId: NodeId;
-    clientHost: Host;
-    clientPort: Port;
-    agentHost: Host;
-    agentPort: Port;
+    clientHost: string;
+    clientPort: number;
+    agentHost: string;
+    agentPort: number;
     [key: string]: any;
   };
 };

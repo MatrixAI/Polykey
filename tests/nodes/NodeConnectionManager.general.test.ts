@@ -1,5 +1,4 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { NodeAddress, NodeBucket } from '@/nodes/types';
 import fs from 'fs';
@@ -31,7 +30,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const password = 'password';
   const crypto = tlsTestUtils.createCrypto();
 
@@ -121,7 +120,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
 
     // Setting up client dependencies
@@ -164,8 +163,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger,
     });
     serverAddress = {
-      host: remotePolykeyAgent.quicSocket.host as unknown as Host,
-      port: remotePolykeyAgent.quicSocket.port as unknown as Port,
+      host: remotePolykeyAgent.quicSocket.host as Host,
+      port: remotePolykeyAgent.quicSocket.port as Port,
     };
   });
 
@@ -223,7 +222,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     // Case 1: node already exists in the local node graph (no contact required)
     const nodeId = testNodesUtils.generateRandomNodeId();
     const nodeAddress: NodeAddress = {
-      host: localHost,
+      host: localHost as Host,
       port: 11111 as Port,
     };
     await nodeGraph.setNode(nodeId, nodeAddress);
@@ -278,7 +277,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     // Adding node information to remote node
     const nodeId = testNodesUtils.generateRandomNodeId();
     const nodeAddress: NodeAddress = {
-      host: localHost,
+      host: localHost as Host,
       port: 11111 as Port,
     };
     await remotePolykeyAgent.nodeGraph.setNode(nodeId, nodeAddress);
@@ -559,8 +558,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         srcIdEncoded: srcNodeIdEncoded,
         dstIdEncoded: serverNodeIdEncoded,
         address: {
-          host: '127.0.0.2' as Host,
-          port: 22222 as Port,
+          host: '127.0.0.2',
+          port: 22222,
         },
       },
       {

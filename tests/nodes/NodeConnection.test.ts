@@ -1,7 +1,6 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
 import type { NodeId, NodeIdEncoded } from '@/ids';
-import type { Host as QUICHost } from '@matrixai/quic';
 import { QUICServer, QUICSocket } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
@@ -20,7 +19,7 @@ describe(`${NodeConnection.name}`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const crypto = tlsTestUtils.createCrypto();
 
   let serverTlsConfig: TLSConfig;
@@ -70,7 +69,7 @@ describe(`${NodeConnection.name}`, () => {
       logger: logger.getChild('serverSocket'),
     });
     await serverSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
     quicServer = new QUICServer({
       config: {
@@ -107,7 +106,7 @@ describe(`${NodeConnection.name}`, () => {
       logger: logger.getChild('clientSocket'),
     });
     await clientSocket.start({
-      host: localHost as unknown as QUICHost,
+      host: localHost,
     });
   });
 
@@ -122,8 +121,8 @@ describe(`${NodeConnection.name}`, () => {
   test('session readiness', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
@@ -143,8 +142,8 @@ describe(`${NodeConnection.name}`, () => {
   test('connects to the target', async () => {
     await NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
@@ -162,7 +161,7 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
-        targetHost: localHost,
+        targetHost: localHost as Host,
         targetPort: 12345 as Port,
         manifest: {},
         quicClientConfig: {
@@ -188,8 +187,8 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
-        targetHost: localHost,
-        targetPort: quicServer.port as unknown as Port,
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
         manifest: {},
         quicClientConfig: {
           key: clientTlsConfig.keyPrivatePem,
@@ -221,8 +220,8 @@ describe(`${NodeConnection.name}`, () => {
   test('get the root chain cert', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
@@ -241,8 +240,8 @@ describe(`${NodeConnection.name}`, () => {
   test('get the NodeId', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
@@ -262,8 +261,8 @@ describe(`${NodeConnection.name}`, () => {
   test('Should fail due to server rejecting client certificate (no certs)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         // @ts-ignore: TLS not used for this test
@@ -285,8 +284,8 @@ describe(`${NodeConnection.name}`, () => {
   test('Should fail due to client rejecting server certificate (missing NodeId)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection({
       targetNodeIds: [clientNodeId],
-      targetHost: localHost,
-      targetPort: quicServer.port as unknown as Port,
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
       manifest: {},
       quicClientConfig: {
         key: clientTlsConfig.keyPrivatePem,
@@ -305,8 +304,8 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
-        targetHost: localHost,
-        targetPort: quicServer.port as unknown as Port,
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
         manifest: {},
         quicClientConfig: {
           key: clientTlsConfig.keyPrivatePem,
@@ -334,8 +333,8 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
-        targetHost: localHost,
-        targetPort: quicServer.port as unknown as Port,
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
         manifest: {},
         quicClientConfig: {
           key: clientTlsConfig.keyPrivatePem,
@@ -367,8 +366,8 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
-        targetHost: localHost,
-        targetPort: quicServer.port as unknown as Port,
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
         manifest: {},
         quicClientConfig: {
           key: clientTlsConfig.keyPrivatePem,

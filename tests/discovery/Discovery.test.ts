@@ -4,7 +4,6 @@ import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids/index';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -159,7 +158,7 @@ describe('Discovery', () => {
       logger,
     });
     await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
+      host: '127.0.0.1',
     });
     const tlsConfig = await createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
@@ -192,8 +191,8 @@ describe('Discovery', () => {
       password: password,
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger: logger.getChild('nodeA'),
       keyRingConfig: {
@@ -206,8 +205,8 @@ describe('Discovery', () => {
       password: password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger: logger.getChild('nodeB'),
       keyRingConfig: {
@@ -220,8 +219,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.quicServerAgent.host as unknown as Host,
-      port: nodeA.quicServerAgent.port as unknown as Port,
+      host: nodeA.quicServerAgent.host as Host,
+      port: nodeA.quicServerAgent.port as Port,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());

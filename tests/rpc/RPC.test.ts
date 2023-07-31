@@ -105,8 +105,8 @@ describe('RPC', () => {
       >();
       class TestMethod extends DuplexHandler {
         public async *handle(
-          input: AsyncIterable<JSONValue>,
-        ): AsyncIterable<JSONValue> {
+          input: AsyncGenerator<JSONValue>,
+        ): AsyncGenerator<JSONValue> {
           yield* input;
         }
       }
@@ -159,7 +159,7 @@ describe('RPC', () => {
       >();
 
       class TestMethod extends ServerHandler<ContainerType, number, number> {
-        public async *handle(input: number): AsyncIterable<number> {
+        public async *handle(input: number): AsyncGenerator<number> {
           for (let i = 0; i < input; i++) {
             yield i;
           }
@@ -417,8 +417,8 @@ describe('RPC', () => {
     >();
     class TestMethod extends DuplexHandler {
       public async *handle(
-        input: AsyncIterable<JSONValue>,
-      ): AsyncIterable<JSONValue> {
+        input: AsyncIterableIterator<JSONValue>,
+      ): AsyncIterableIterator<JSONValue> {
         yield* input;
       }
     }

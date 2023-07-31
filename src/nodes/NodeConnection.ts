@@ -4,12 +4,7 @@ import type { NodeId, QUICClientConfig } from './types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { CertificatePEM } from '../keys/types';
 import type { ClientManifest } from '../rpc/types';
-import type {
-  Host as QUICHost,
-  Port as QUICPort,
-  QUICSocket,
-  ClientCrypto,
-} from '@matrixai/quic';
+import type { QUICSocket, ClientCrypto } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
@@ -115,8 +110,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     let validatedNodeId: NodeId | undefined;
     const quicClient = await QUICClient.createQUICClient(
       {
-        host: targetHost as unknown as QUICHost,
-        port: targetPort as unknown as QUICPort,
+        host: targetHost,
+        port: targetPort,
         socket: quicSocket,
         config: {
           verifyPeer: true,
@@ -161,8 +156,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       nodeId,
       host: targetHost,
       port: targetPort,
-      localHost: connection.localHost as unknown as Host,
-      localPort: connection.localPort as unknown as Port,
+      localHost: connection.localHost as Host,
+      localPort: connection.localPort as Port,
       certChain,
       hostname: targetHostname,
       quicClient,

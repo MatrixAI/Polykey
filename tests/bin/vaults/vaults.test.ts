@@ -228,8 +228,8 @@ describe('CLI vaults', () => {
         password,
         nodePath: dataDir2,
         networkConfig: {
-          agentHost: '127.0.0.1' as Host,
-          clientHost: '127.0.0.1' as Host,
+          agentHost: '127.0.0.1',
+          clientHost: '127.0.0.1',
         },
         logger: logger,
         keyRingConfig: {
@@ -256,14 +256,14 @@ describe('CLI vaults', () => {
       const targetNodeId = targetPolykeyAgent.keyRing.getNodeId();
       const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
-        host: targetPolykeyAgent.quicServerAgent.host as unknown as Host,
-        port: targetPolykeyAgent.quicServerAgent.port as unknown as Port,
+        host: targetPolykeyAgent.quicServerAgent.host as Host,
+        port: targetPolykeyAgent.quicServerAgent.port as Port,
       });
       await targetPolykeyAgent.nodeManager.setNode(
         polykeyAgent.keyRing.getNodeId(),
         {
-          host: polykeyAgent.quicServerAgent.host as unknown as Host,
-          port: polykeyAgent.quicServerAgent.port as unknown as Port,
+          host: polykeyAgent.quicServerAgent.host as Host,
+          port: polykeyAgent.quicServerAgent.port as Port,
         },
       );
       await polykeyAgent.acl.setNodePerm(targetNodeId, {
@@ -822,8 +822,8 @@ describe('CLI vaults', () => {
             logger,
             nodePath: path.join(dataDir, 'remoteOnline'),
             networkConfig: {
-              agentHost: '127.0.0.1' as Host,
-              clientHost: '127.0.0.1' as Host,
+              agentHost: '127.0.0.1',
+              clientHost: '127.0.0.1',
             },
             keyRingConfig: {
               passwordOpsLimit: keysUtils.passwordOpsLimits.min,
@@ -835,8 +835,8 @@ describe('CLI vaults', () => {
           const remoteOnlineNodeIdEncoded =
             nodesUtils.encodeNodeId(remoteOnlineNodeId);
           await polykeyAgent.nodeManager.setNode(remoteOnlineNodeId, {
-            host: remoteOnline.quicServerAgent.host as unknown as Host,
-            port: remoteOnline.quicServerAgent.port as unknown as Port,
+            host: remoteOnline.quicServerAgent.host,
+            port: remoteOnline.quicServerAgent.port,
           } as NodeAddress);
 
           await remoteOnline.gestaltGraph.setNode({

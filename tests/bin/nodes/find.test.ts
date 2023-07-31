@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids/types';
 import path from 'path';
 import fs from 'fs';
@@ -20,10 +19,10 @@ describe('find', () => {
   let remoteOffline: PolykeyAgent;
   let remoteOnlineNodeId: NodeId;
   let remoteOfflineNodeId: NodeId;
-  let remoteOnlineHost: Host;
-  let remoteOnlinePort: Port;
-  let remoteOfflineHost: Host;
-  let remoteOfflinePort: Port;
+  let remoteOnlineHost: string;
+  let remoteOnlinePort: number;
+  let remoteOfflineHost: string;
+  let remoteOfflinePort: number;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
@@ -33,8 +32,8 @@ describe('find', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       nodeConnectionManagerConfig: {
         connConnectTime: 2000,
@@ -53,8 +52,8 @@ describe('find', () => {
       password,
       nodePath: path.join(dataDir, 'remoteOnline'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -64,16 +63,16 @@ describe('find', () => {
       },
     });
     remoteOnlineNodeId = remoteOnline.keyRing.getNodeId();
-    remoteOnlineHost = remoteOnline.quicServerAgent.host as unknown as Host;
-    remoteOnlinePort = remoteOnline.quicServerAgent.port as unknown as Port;
+    remoteOnlineHost = remoteOnline.quicServerAgent.host;
+    remoteOnlinePort = remoteOnline.quicServerAgent.port;
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
     // Setting up an offline remote keynode
     remoteOffline = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'remoteOffline'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -83,8 +82,8 @@ describe('find', () => {
       },
     });
     remoteOfflineNodeId = remoteOffline.keyRing.getNodeId();
-    remoteOfflineHost = remoteOffline.quicServerAgent.host as unknown as Host;
-    remoteOfflinePort = remoteOffline.quicServerAgent.port as unknown as Port;
+    remoteOfflineHost = remoteOffline.quicServerAgent.host;
+    remoteOfflinePort = remoteOffline.quicServerAgent.port;
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
   });

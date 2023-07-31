@@ -49,12 +49,12 @@ import { serverManifest as agentServerManifest } from './agent/handlers';
 
 type NetworkConfig = {
   // Agent QUICSocket config
-  agentHost?: Host;
-  agentPort?: Port;
+  agentHost?: string;
+  agentPort?: number;
   ipv6Only?: boolean;
   // RPCServer for client service
-  clientHost?: Host;
-  clientPort?: Port;
+  clientHost?: string;
+  clientPort?: number;
   // Websocket server config
   maxReadableStreamBytes?: number;
   connectionIdleTimeoutTime?: number;
@@ -905,8 +905,8 @@ class PolykeyAgent {
           if (nodeId == null) throw Error('failed to extract NodeId from cert');
           const data: ConnectionData = {
             remoteNodeId: nodeId,
-            remoteHost: connection.remoteHost as unknown as Host,
-            remotePort: connection.remotePort as unknown as Port,
+            remoteHost: connection.remoteHost as Host,
+            remotePort: connection.remotePort as Port,
           };
           await this.events.emitAsync(
             PolykeyAgent.eventSymbols.QUICServer,
@@ -970,8 +970,8 @@ class PolykeyAgent {
         nodeId: this.keyRing.getNodeId(),
         clientHost: this.webSocketServerClient.getHost(),
         clientPort: this.webSocketServerClient.getPort(),
-        agentHost: this.quicSocket.host as unknown as Host,
-        agentPort: this.quicSocket.port as unknown as Port,
+        agentHost: this.quicSocket.host,
+        agentPort: this.quicSocket.port,
       });
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {

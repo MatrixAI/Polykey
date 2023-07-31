@@ -1,5 +1,4 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import type { SignedClaim } from '@/claims/types';
@@ -34,8 +33,8 @@ describe('discover/get', () => {
   let nodeB: PolykeyAgent;
   let nodeAId: NodeId;
   let nodeBId: NodeId;
-  let nodeAHost: Host;
-  let nodeAPort: Port;
+  let nodeAHost: string;
+  let nodeAPort: number;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
@@ -46,8 +45,8 @@ describe('discover/get', () => {
       password,
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -57,14 +56,14 @@ describe('discover/get', () => {
       },
     });
     nodeAId = nodeA.keyRing.getNodeId();
-    nodeAHost = nodeA.quicServerAgent.host as unknown as Host;
-    nodeAPort = nodeA.quicServerAgent.port as unknown as Port;
+    nodeAHost = nodeA.quicServerAgent.host;
+    nodeAPort = nodeA.quicServerAgent.port;
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -81,8 +80,8 @@ describe('discover/get', () => {
       password,
       nodePath,
       networkConfig: {
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
