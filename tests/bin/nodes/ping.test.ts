@@ -32,8 +32,8 @@ describe('ping', () => {
         clientHost: '127.0.0.1',
       },
       nodeConnectionManagerConfig: {
-        connConnectTime: 2000,
-        connTimeoutTime: 1000,
+        connectionConnectTime: 2000,
+        connectionTimeoutTime: 1000,
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,

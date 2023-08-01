@@ -99,9 +99,9 @@ const config = {
       clientPort: 0,
       // Websocket server config
       maxReadableStreamBytes: 1_000_000_000, // About 1 GB
-      connectionIdleTimeoutTime: 120, // 2 minutes
+      maxIdleTimeout: 120, // 2 minutes
       pingIntervalTime: 1_000, // 1 second
-      pingTimeoutTime: 10_000, // 10 seconds
+      pingTimeoutTimeTime: 10_000, // 10 seconds
       // RPC config
       clientParserBufferByteLimit: 1_000_000, // About 1MB
       handlerTimeoutTime: 60_000, // 1 minute
@@ -116,12 +116,12 @@ const config = {
       maxIdleTimeout: 60_000, // 1 minute
     },
     nodeConnectionManagerConfig: {
-      connConnectTime: 2000,
-      connTimeoutTime: 60000,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 60000,
       initialClosestNodes: 3,
-      pingTimeout: 2000,
-      holePunchTimeout: 4000,
-      holePunchInitialInterval: 250,
+      pingTimeoutTime: 2000,
+      connectionHolePunchTimeoutTime: 4000,
+      connectionHolePunchIntervalTime: 250,
     },
     // This is not used by the `PolykeyAgent` which defaults to `{}`
     network: {

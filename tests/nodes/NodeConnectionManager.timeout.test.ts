@@ -160,7 +160,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 500,
+      connectionTimeoutTime: 500,
     });
     nodeManager = new NodeManager({
       db,
@@ -217,7 +217,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 1000,
+      connectionTimeoutTime: 1000,
     });
     nodeManager = new NodeManager({
       db,
@@ -289,7 +289,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 1000,
+      connectionTimeoutTime: 1000,
     });
     nodeManager = new NodeManager({
       db,
@@ -345,8 +345,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 5000,
-      connConnectTime: 200,
+      connectionTimeoutTime: 5000,
+      connectionConnectTime: 200,
     });
     nodeManager = new NodeManager({
       db,
@@ -387,8 +387,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 5000,
-      connConnectTime: 200,
+      connectionTimeoutTime: 5000,
+      connectionConnectTime: 200,
     });
     nodeManager = new NodeManager({
       db,
@@ -435,8 +435,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
-      connTimeoutTime: 5000,
-      connConnectTime: 200,
+      connectionTimeoutTime: 5000,
+      connectionConnectTime: 200,
     });
     nodeManager = new NodeManager({
       db,

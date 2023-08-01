@@ -660,7 +660,7 @@ describe('WebSocket', () => {
         basePath: dataDir,
         tlsConfig,
         host,
-        pingTimeoutTime: 100,
+        pingTimeoutTimeTime: 100,
         logger: logger.getChild('server'),
       });
       logger.info(`Server started on port ${webSocketServer.getPort()}`);
@@ -847,7 +847,7 @@ describe('WebSocket', () => {
         host,
         port: webSocketServer.getPort(),
         expectedNodeIds: [keyRing.getNodeId()],
-        pingTimeoutTime: 100,
+        pingTimeoutTimeTime: 100,
         logger: logger.getChild('clientClient'),
       });
       await webSocketClient.startConnection();

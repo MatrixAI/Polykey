@@ -35,8 +35,8 @@ describe(`${NodeManager.name} test`, () => {
   const mockedPingNode = jest.fn();
   const mockedIsSeedNode = jest.fn();
   const dummyNodeConnectionManager = {
-    connConnectTime: 5000,
-    pingTimeout: 5000,
+    connectionConnectTime: 5000,
+    pingTimeoutTime: 5000,
     pingNode: mockedPingNode,
     isSeedNode: mockedIsSeedNode,
   } as unknown as NodeConnectionManager;

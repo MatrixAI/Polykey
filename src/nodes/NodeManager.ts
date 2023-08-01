@@ -76,7 +76,7 @@ class NodeManager {
   ) => {
     await this.refreshBucket(
       bucketIndex,
-      this.nodeConnectionManager.pingTimeout,
+      this.nodeConnectionManager.pingTimeoutTime,
       ctx,
     );
     // When completed reschedule the task
@@ -102,7 +102,7 @@ class NodeManager {
   ) => {
     await this.garbageCollectBucket(
       bucketIndex,
-      this.nodeConnectionManager.pingTimeout,
+      this.nodeConnectionManager.pingTimeoutTime,
       ctx,
     );
     // Checking for any new pending tasks
@@ -300,7 +300,8 @@ class NodeManager {
   ): PromiseCancellable<boolean>;
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) => nodeManager.nodeConnectionManager.pingTimeout,
+    (nodeManager: NodeManager) =>
+      nodeManager.nodeConnectionManager.pingTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,
@@ -314,7 +315,7 @@ class NodeManager {
       (await this.nodeConnectionManager.findNode(
         nodeId,
         false,
-        this.nodeConnectionManager.pingTimeout,
+        this.nodeConnectionManager.pingTimeoutTime,
         ctx,
       ));
     if (targetAddress == null) {
@@ -651,7 +652,7 @@ class NodeManager {
    * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param pingTimeout - Timeout for each ping opearation during garbage collection.
+   * @param pingTimeoutTime - Timeout for each ping opearation during garbage collection.
    * @param ctx
    * @param tran
    */
@@ -660,7 +661,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block?: boolean,
     force?: boolean,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
@@ -671,7 +672,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -683,7 +684,15 @@ class NodeManager {
 
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, block, force, pingTimeout, ctx, tran),
+        this.setNode(
+          nodeId,
+          nodeAddress,
+          block,
+          force,
+          pingTimeoutTime,
+          ctx,
+          tran,
+        ),
       );
     }
 
@@ -751,7 +760,7 @@ class NodeManager {
         nodeId,
         nodeAddress,
         block,
-        pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+        pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
         ctx,
         tran,
       );
@@ -760,20 +769,20 @@ class NodeManager {
 
   protected garbageCollectBucket(
     bucketIndex: number,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.garbageCollectBucket(bucketIndex, pingTimeout, ctx, tran),
+        this.garbageCollectBucket(bucketIndex, pingTimeoutTime, ctx, tran),
       );
     }
 
@@ -814,7 +823,8 @@ class NodeManager {
           // Ping and remove or update node in bucket
           const pingCtx = {
             signal: ctx.signal,
-            timer: pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+            timer:
+              pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
           if (nodeAddress == null) never();
@@ -868,7 +878,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -884,7 +894,7 @@ class NodeManager {
     if (block) {
       await this.garbageCollectBucket(
         bucketIndex,
-        pingTimeout ?? this.nodeConnectionManager.pingTimeout,
+        pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
         ctx,
         tran,
       );
@@ -953,18 +963,18 @@ class NodeManager {
    * Connections during the search will will share node information with other
    * nodes.
    * @param bucketIndex
-   * @param pingTimeout
+   * @param pingTimeoutTime
    * @param ctx
    */
   public refreshBucket(
     bucketIndex: number,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
@@ -977,7 +987,7 @@ class NodeManager {
     await this.nodeConnectionManager.findNode(
       bucketRandomNodeId,
       true,
-      pingTimeout,
+      pingTimeoutTime,
       ctx,
     );
   }
@@ -1141,14 +1151,14 @@ class NodeManager {
    */
   public syncNodeGraph(
     block?: boolean,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(true)
   public async syncNodeGraph(
     block: boolean = true,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     const logger = this.logger.getChild('syncNodeGraph');
@@ -1186,7 +1196,7 @@ class NodeManager {
     const connections = await this.nodeConnectionManager.getMultiConnection(
       seedNodes,
       filteredAddresses,
-      pingTimeout,
+      pingTimeoutTime,
       { signal: ctx.signal },
     );
     logger.debug(`Multi-connection established for`);
@@ -1250,7 +1260,7 @@ class NodeManager {
           path: [this.basePath, this.pingAndSetNodeHandlerId],
           // Need to be somewhat active so high priority
           priority: 100,
-          deadline: pingTimeout,
+          deadline: pingTimeoutTime,
         });
         pingTasks.push(pingAndSetTask);
       }

@@ -51,17 +51,17 @@ class NodeConnectionManager {
   /**
    * Time used to establish `NodeConnection`
    */
-  public readonly connConnectTime: number;
+  public readonly connectionConnectTime: number;
 
   /**
    * Time to live for `NodeConnection`
    */
-  public readonly connTimeoutTime: number;
+  public readonly connectionTimeoutTime: number;
 
   /**
    * Default timeout for pinging nodes
    */
-  public readonly pingTimeout: number;
+  public readonly pingTimeoutTime: number;
 
   /**
    * Alpha constant for kademlia
@@ -72,12 +72,12 @@ class NodeConnectionManager {
   /**
    * Default timeout for reverse hole punching.
    */
-  public readonly holePunchTimeout: number;
+  public readonly connectionHolePunchTimeoutTime: number;
 
   /**
    * Initial delay between punch packets, delay doubles each attempt.
    */
-  public readonly holePunchInitialInterval: number;
+  public readonly connectionHolePunchIntervalTime: number;
 
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
@@ -118,11 +118,11 @@ class NodeConnectionManager {
     crypto,
     seedNodes = {},
     initialClosestNodes = 3,
-    connConnectTime = 2000,
-    connTimeoutTime = 60000,
-    pingTimeout = 2000,
-    holePunchTimeout = 4000,
-    holePunchInitialInterval = 250,
+    connectionConnectTime = 2000,
+    connectionTimeoutTime = 60000,
+    pingTimeoutTime = 2000,
+    connectionHolePunchTimeoutTime = 4000,
+    connectionHolePunchIntervalTime = 250,
     logger,
   }: {
     keyRing: KeyRing;
@@ -134,11 +134,11 @@ class NodeConnectionManager {
     };
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
-    connConnectTime?: number;
-    connTimeoutTime?: number;
-    pingTimeout?: number;
-    holePunchTimeout?: number;
-    holePunchInitialInterval?: number;
+    connectionConnectTime?: number;
+    connectionTimeoutTime?: number;
+    pingTimeoutTime?: number;
+    connectionHolePunchTimeoutTime?: number;
+    connectionHolePunchIntervalTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -151,11 +151,11 @@ class NodeConnectionManager {
     delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
     this.initialClosestNodes = initialClosestNodes;
-    this.connConnectTime = connConnectTime;
-    this.connTimeoutTime = connTimeoutTime;
-    this.holePunchTimeout = holePunchTimeout;
-    this.holePunchInitialInterval = holePunchInitialInterval;
-    this.pingTimeout = pingTimeout;
+    this.connectionConnectTime = connectionConnectTime;
+    this.connectionTimeoutTime = connectionTimeoutTime;
+    this.connectionHolePunchTimeoutTime = connectionHolePunchTimeoutTime;
+    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
+    this.pingTimeoutTime = pingTimeoutTime;
   }
 
   public async start({ nodeManager }: { nodeManager: NodeManager }) {
@@ -240,7 +240,7 @@ class NodeConnectionManager {
             );
             connectionAndTimer.timer = new Timer({
               handler: async () => await this.destroyConnection(targetNodeId),
-              delay: this.connTimeoutTime,
+              delay: this.connectionTimeoutTime,
             });
           }
         },
@@ -267,7 +267,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
@@ -326,7 +326,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   protected async getConnection(
     targetNodeId: NodeId,
@@ -387,7 +387,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   protected async getConnectionWithAddress(
     targetNodeId: NodeId,
@@ -606,7 +606,7 @@ class NodeConnectionManager {
     const timeToLiveTimer = !this.isSeedNode(nodeId)
       ? new Timer({
           handler: async () => await this.destroyConnection(nodeId),
-          delay: this.connTimeoutTime,
+          delay: this.connectionTimeoutTime,
         })
       : null;
     // Add to map
@@ -668,7 +668,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.holePunchTimeout,
+      nodeConnectionManager.connectionHolePunchTimeoutTime,
   )
   public async holePunchReverse(
     host: Host,
@@ -698,7 +698,7 @@ class NodeConnectionManager {
     };
     ctx.signal.addEventListener('abort', onAbort);
     void ctx.timer.catch(() => {}).finally(() => onAbort());
-    let delay = this.holePunchInitialInterval;
+    let delay = this.connectionHolePunchIntervalTime;
     // Setting up established event checking
     try {
       while (true) {
@@ -718,13 +718,13 @@ class NodeConnectionManager {
    * The connection will be established in the process.
    * @param targetNodeId Id of the node we are tying to find
    * @param ignoreRecentOffline skips nodes that are within their backoff period
-   * @param pingTimeout timeout for any ping attempts
+   * @param pingTimeoutTime timeout for any ping attempts
    * @param ctx
    */
   public findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -732,7 +732,7 @@ class NodeConnectionManager {
   public async findNode(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     this.logger.debug(
@@ -754,7 +754,7 @@ class NodeConnectionManager {
     address = await this.getClosestGlobalNodes(
       targetNodeId,
       ignoreRecentOffline,
-      pingTimeout ?? this.pingTimeout,
+      pingTimeoutTime ?? this.pingTimeoutTime,
       ctx,
     );
     if (address != null) {
@@ -782,14 +782,14 @@ class NodeConnectionManager {
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
    * @param ignoreRecentOffline skips nodes that are within their backoff period
-   * @param pingTimeout
+   * @param pingTimeoutTime
    * @param ctx
    * @returns whether the target node was located in the process
    */
   public getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline?: boolean,
-    pingTimeout?: number,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -797,7 +797,7 @@ class NodeConnectionManager {
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
     ignoreRecentOffline: boolean = false,
-    pingTimeout: number | undefined,
+    pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     const localNodeId = this.keyRing.getNodeId();
@@ -846,7 +846,7 @@ class NodeConnectionManager {
           nextNodeAddress.address.port,
           {
             signal: ctx.signal,
-            timer: pingTimeout ?? this.pingTimeout,
+            timer: pingTimeoutTime ?? this.pingTimeoutTime,
           },
         )
       ) {
@@ -886,7 +886,7 @@ class NodeConnectionManager {
             nodeData.address.port,
             {
               signal: ctx.signal,
-              timer: pingTimeout ?? this.pingTimeout,
+              timer: pingTimeoutTime ?? this.pingTimeoutTime,
             },
           ))
         ) {
@@ -950,7 +950,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
@@ -1021,7 +1021,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   public async sendSignalingMessage(
     relayNodeId: NodeId,
@@ -1085,7 +1085,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connConnectTime,
+      nodeConnectionManager.connectionConnectTime,
   )
   public async relaySignalingMessage(
     message: HolePunchRelayMessage,
@@ -1147,7 +1147,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.pingTimeout,
+      nodeConnectionManager.pingTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,

@@ -136,8 +136,8 @@ describe('notificationsSend', () => {
       quicSocket,
       keyRing,
       nodeGraph,
-      connConnectTime: 2000,
-      connTimeoutTime: 2000,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

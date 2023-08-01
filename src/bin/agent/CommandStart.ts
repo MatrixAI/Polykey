@@ -28,7 +28,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.agentHost);
     this.addOption(binOptions.agentPort);
-    this.addOption(binOptions.connConnectTime);
+    this.addOption(binOptions.connectionConnectTime);
     this.addOption(binOptions.seedNodes);
     this.addOption(binOptions.network);
     this.addOption(binOptions.workers);

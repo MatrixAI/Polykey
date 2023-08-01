@@ -83,12 +83,12 @@ const agentPort = new commander.Option('-ap, --agent-port <port>', 'Agent Port')
   .argParser(binParsers.parsePort)
   .default(config.defaults.networkConfig.agentPort);
 
-const connConnectTime = new commander.Option(
+const connectionConnectTime = new commander.Option(
   '--connection-timeout <ms>',
   'Timeout value for connection establishment between nodes',
 )
   .argParser(binParsers.parseInteger)
-  .default(config.defaults.nodeConnectionManagerConfig.connConnectTime);
+  .default(config.defaults.nodeConnectionManagerConfig.connectionConnectTime);
 
 const passwordFile = new commander.Option(
   '-pf, --password-file <path>',
@@ -206,7 +206,7 @@ export {
   clientPort,
   agentHost,
   agentPort,
-  connConnectTime,
+  connectionConnectTime,
   recoveryCodeFile,
   passwordFile,
   passwordNewFile,

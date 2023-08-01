@@ -42,12 +42,12 @@ type AgentChildProcessInput = {
       certDuration?: number;
     };
     nodeConnectionManagerConfig?: {
-      connConnectTime?: number;
-      connTimeoutTime?: number;
+      connectionConnectTime?: number;
+      connectionTimeoutTime?: number;
       initialClosestNodes?: number;
-      pingTimeout?: number;
-      holePunchTimeout?: number;
-      holePunchInitialInterval?: number;
+      pingTimeoutTime?: number;
+      connectionHolePunchTimeoutTime?: number;
+      connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: {
       // Agent QUICSocket config
@@ -59,9 +59,9 @@ type AgentChildProcessInput = {
       clientPort?: Port;
       // Websocket server config
       maxReadableStreamBytes?: number;
-      connectionIdleTimeoutTime?: number;
+      maxIdleTimeout?: number;
       pingIntervalTime?: number;
-      pingTimeoutTime?: number;
+      pingTimeoutTimeTime?: number;
       // RPC config
       clientParserBufferByteLimit?: number;
       handlerTimeoutTime?: number;

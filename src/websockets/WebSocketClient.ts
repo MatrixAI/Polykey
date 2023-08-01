@@ -31,7 +31,7 @@ class WebSocketClient {
    * Default is Infinity milliseconds.
    * @param obj.pingIntervalTime - Time between pings for checking connection health and keep alive.
    * Default is 1,000 milliseconds.
-   * @param obj.pingTimeoutTime - Time before connection is cleaned up after no ping responses.
+   * @param obj.pingTimeoutTimeTime - Time before connection is cleaned up after no ping responses.
    * Default is 10,000 milliseconds.
    * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
    * @param obj.logger
@@ -42,7 +42,7 @@ class WebSocketClient {
     expectedNodeIds,
     connectionTimeoutTime = Infinity,
     pingIntervalTime = 1_000,
-    pingTimeoutTime = 10_000,
+    pingTimeoutTimeTime = 10_000,
     maxReadableStreamBytes = 1_000, // About 1kB
     logger = new Logger(this.name),
   }: {
@@ -51,7 +51,7 @@ class WebSocketClient {
     expectedNodeIds: Array<NodeId>;
     connectionTimeoutTime?: number;
     pingIntervalTime?: number;
-    pingTimeoutTime?: number;
+    pingTimeoutTimeTime?: number;
     maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<WebSocketClient> {
@@ -64,7 +64,7 @@ class WebSocketClient {
       expectedNodeIds,
       connectionTimeoutTime,
       pingIntervalTime,
-      pingTimeoutTime,
+      pingTimeoutTimeTime,
     );
     logger.info(`Created ${this.name}`);
     return clientClient;
@@ -81,7 +81,7 @@ class WebSocketClient {
     protected expectedNodeIds: Array<NodeId>,
     protected connectionTimeoutTime: number,
     protected pingIntervalTime: number,
-    protected pingTimeoutTime: number,
+    protected pingTimeoutTimeTime: number,
   ) {
     if (Validator.isValidIPv4String(host)[0]) {
       this.host = host;
@@ -226,7 +226,7 @@ class WebSocketClient {
       ws,
       this.maxReadableStreamBytes,
       this.pingIntervalTime,
-      this.pingTimeoutTime,
+      this.pingTimeoutTimeTime,
       {
         host: this.host,
         nodeId: nodesUtils.encodeNodeId(await authenticateProm.p),
@@ -268,7 +268,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     protected ws: WebSocket,
     maxReadableStreamBytes: number,
     pingInterval: number,
-    pingTimeout: number,
+    pingTimeoutTime: number,
     protected clientMetadata: {
       nodeId: NodeIdEncoded;
       host: string;
@@ -418,17 +418,17 @@ class WebSocketStreamClientInternal extends WebSocketStream {
     const pingTimer = setInterval(() => {
       ws.ping();
     }, pingInterval);
-    const pingTimeoutTimer = setTimeout(() => {
+    const pingTimeoutTimeTimer = setTimeout(() => {
       logger.debug('Ping timed out');
       ws.close(4002, 'Timed out');
-    }, pingTimeout);
+    }, pingTimeoutTime);
     ws.on('ping', () => {
       logger.debug('Received ping');
       ws.pong();
     });
     ws.on('pong', () => {
       logger.debug('Received pong');
-      pingTimeoutTimer.refresh();
+      pingTimeoutTimeTimer.refresh();
     });
     ws.once('close', (code, reason) => {
       logger.debug('WebSocket closed');
@@ -442,7 +442,7 @@ class WebSocketStreamClientInternal extends WebSocketStream {
       logger.debug('Cleaning up timers');
       // Clean up timers
       clearTimeout(pingTimer);
-      clearTimeout(pingTimeoutTimer);
+      clearTimeout(pingTimeoutTimeTimer);
     });
   }
 

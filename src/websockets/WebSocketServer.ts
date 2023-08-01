@@ -51,11 +51,11 @@ class WebSocketServer extends EventTarget {
    * @param obj.basePath - Directory path used for storing temp cert files for starting the `uWebsocket` server.
    * @param obj.host - Listen address to bind to.
    * @param obj.port - Listen port to bind to.
-   * @param obj.connectionIdleTimeoutTime - Timeout time for when the connection is cleaned up after no activity.
+   * @param obj.maxIdleTimeout - Timeout time for when the connection is cleaned up after no activity.
    * Default is 120 seconds.
    * @param obj.pingIntervalTime - Time between pings for checking connection health and keep alive.
    * Default is 1,000 milliseconds.
-   * @param obj.pingTimeoutTime - Time before connection is cleaned up after no ping responses.
+   * @param obj.pingTimeoutTimeTime - Time before connection is cleaned up after no ping responses.
    * Default is 10,000 milliseconds.
    * @param obj.fs - FileSystem interface used for creating files.
    * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
@@ -67,9 +67,9 @@ class WebSocketServer extends EventTarget {
     basePath,
     host,
     port,
-    connectionIdleTimeoutTime = 120,
+    maxIdleTimeout = 120,
     pingIntervalTime = 1_000,
-    pingTimeoutTime = 10_000,
+    pingTimeoutTimeTime = 10_000,
     fs = require('fs'),
     maxReadableStreamBytes = 1_000_000_000, // About 1 GB
     logger = new Logger(this.name),
@@ -79,9 +79,9 @@ class WebSocketServer extends EventTarget {
     basePath?: string;
     host?: string;
     port?: number;
-    connectionIdleTimeoutTime?: number;
+    maxIdleTimeout?: number;
     pingIntervalTime?: number;
-    pingTimeoutTime?: number;
+    pingTimeoutTimeTime?: number;
     fs?: FileSystem;
     maxReadableStreamBytes?: number;
     logger?: Logger;
@@ -91,9 +91,9 @@ class WebSocketServer extends EventTarget {
       logger,
       fs,
       maxReadableStreamBytes,
-      connectionIdleTimeoutTime,
+      maxIdleTimeout,
       pingIntervalTime,
-      pingTimeoutTime,
+      pingTimeoutTimeTime,
     );
     await wsServer.start({
       connectionCallback,
@@ -121,17 +121,17 @@ class WebSocketServer extends EventTarget {
    * @param logger
    * @param fs
    * @param maxReadableStreamBytes Max number of bytes stored in read buffer before error
-   * @param connectionIdleTimeoutTime
+   * @param maxIdleTimeout
    * @param pingIntervalTime
-   * @param pingTimeoutTime
+   * @param pingTimeoutTimeTime
    */
   constructor(
     protected logger: Logger,
     protected fs: FileSystem,
     protected maxReadableStreamBytes,
-    protected connectionIdleTimeoutTime: number | undefined,
+    protected maxIdleTimeout: number | undefined,
     protected pingIntervalTime: number,
-    protected pingTimeoutTime: number,
+    protected pingTimeoutTimeTime: number,
   ) {
     super();
   }
@@ -161,7 +161,7 @@ class WebSocketServer extends EventTarget {
     await this.setupServer(basePath, tlsConfig);
     this.server.ws('/*', {
       sendPingsAutomatically: true,
-      idleTimeout: this.connectionIdleTimeoutTime,
+      idleTimeout: this.maxIdleTimeout,
       upgrade: this.upgrade,
       open: this.open,
       message: this.message,
@@ -298,7 +298,7 @@ class WebSocketServer extends EventTarget {
       ws,
       this.maxReadableStreamBytes,
       this.pingIntervalTime,
-      this.pingTimeoutTime,
+      this.pingTimeoutTimeTime,
       {}, // TODO: fill in connection metadata
     );
     // Adding socket to the active sockets map
@@ -362,7 +362,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
     protected ws: WebSocket<Context>,
     maxReadBufferBytes: number,
     pingInterval: number,
-    pingTimeout: number,
+    pingTimeoutTime: number,
     protected metadata: Record<string, JSONValue>,
   ) {
     super();
@@ -472,13 +472,13 @@ class WebSocketStreamServerInternal extends WebSocketStream {
     const pingTimer = setInterval(() => {
       ws.ping();
     }, pingInterval);
-    const pingTimeoutTimer = setTimeout(() => {
+    const pingTimeoutTimeTimer = setTimeout(() => {
       logger.debug('Ping timed out');
       ws.end();
-    }, pingTimeout);
+    }, pingTimeoutTime);
     context.pong = () => {
       logger.debug('Received pong');
-      pingTimeoutTimer.refresh();
+      pingTimeoutTimeTimer.refresh();
     };
     context.close = () => {
       logger.debug('Closing');
@@ -486,7 +486,7 @@ class WebSocketStreamServerInternal extends WebSocketStream {
       // Cleaning up timers
       logger.debug('Cleaning up timers');
       clearTimeout(pingTimer);
-      clearTimeout(pingTimeoutTimer);
+      clearTimeout(pingTimeoutTimeTimer);
       // Closing streams
       logger.debug('Cleaning streams');
       const err = new webSocketErrors.ErrorServerConnectionEndedEarly();

@@ -57,9 +57,9 @@ type NetworkConfig = {
   clientPort?: number;
   // Websocket server config
   maxReadableStreamBytes?: number;
-  connectionIdleTimeoutTime?: number;
+  maxIdleTimeout?: number;
   pingIntervalTime?: number;
-  pingTimeoutTime?: number;
+  pingTimeoutTimeTime?: number;
   // RPC config
   clientParserBufferByteLimit?: number;
   handlerTimeoutTime?: number;
@@ -143,12 +143,12 @@ class PolykeyAgent {
       certDuration?: number;
     };
     nodeConnectionManagerConfig?: {
-      connConnectTime?: number;
-      connTimeoutTime?: number;
+      connectionConnectTime?: number;
+      connectionTimeoutTime?: number;
       initialClosestNodes?: number;
-      pingTimeout?: number;
-      holePunchTimeout?: number;
-      holePunchInitialInterval?: number;
+      pingTimeoutTime?: number;
+      connectionHolePunchTimeoutTime?: number;
+      connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
     quicServerConfig?: PolykeyQUICConfig;
@@ -488,9 +488,9 @@ class PolykeyAgent {
           port: networkConfig_.clientPort,
           tlsConfig,
           maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
-          connectionIdleTimeoutTime: networkConfig_.connectionIdleTimeoutTime,
+          maxIdleTimeout: networkConfig_.maxIdleTimeout,
           pingIntervalTime: networkConfig_.pingIntervalTime,
-          pingTimeoutTime: networkConfig_.pingTimeoutTime,
+          pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
           logger: logger.getChild('WebSocketServer'),
         }));
       if (rpcServerAgent == null) {
