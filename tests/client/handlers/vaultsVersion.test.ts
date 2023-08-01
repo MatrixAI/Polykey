@@ -17,7 +17,6 @@ import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import VaultManager from '@/vaults/VaultManager';
-import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import { vaultsVersion } from '@/client/handlers/clientManifest';
@@ -138,11 +137,6 @@ describe('vaultsVersion', () => {
       return ver1Oid;
     });
     // Revert the version
-    const vaultMessage = new vaultsPB.Vault();
-    vaultMessage.setNameOrId(vaultName);
-    const vaultVersionMessage = new vaultsPB.Version();
-    vaultVersionMessage.setVault(vaultMessage);
-    vaultVersionMessage.setVersionId(ver1Oid);
     const version = await rpcClient.methods.vaultsVersion({
       nameOrId: vaultName,
       versionId: ver1Oid,

@@ -58,7 +58,7 @@ export {
  * Recursively export all domain-level error classes
  * This ensures that we have one place to construct and
  * reference all Polykey errors.
- * This is used by gRPC to serialize errors from agent to client.
+ * This is used by RPC to serialize errors from agent to client.
  */
 export * from './acl/errors';
 export * from './sessions/errors';
@@ -69,7 +69,6 @@ export * from './gestalts/errors';
 export * from './identities/errors';
 export * from './agent/errors';
 export * from './client/errors';
-export * from './grpc/errors';
 export * from './network/errors';
 export * from './nodes/errors';
 export * from './claims/errors';

@@ -25,9 +25,6 @@ class CommandEncypt extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const nodesUtils = await import('../../nodes/utils');
       const keysUtils = await import('../../keys/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -43,7 +40,7 @@ class CommandEncypt extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -58,7 +55,6 @@ class CommandEncypt extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         let plainText: string;
@@ -101,7 +97,7 @@ class CommandEncypt extends CommandPolykey {
         }
         const response = await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.rpcClient.methods.keysEncrypt({
+            pkClient.rpcClientClient.methods.keysEncrypt({
               metadata: auth,
               publicKeyJwk: publicJWK,
               data: plainText,

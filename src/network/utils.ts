@@ -1,28 +1,16 @@
-import type { Socket } from 'net';
-import type { TLSSocket } from 'tls';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
-import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
+import type { Host, Hostname, Port, Address } from './types';
 import type { Certificate } from '../keys/types';
 import type { NodeId } from '../ids/types';
-import type { NodeAddress } from 'nodes/types';
-import type { CertificateASN1 } from '../keys/types';
-import { Buffer } from 'buffer';
+import type { NodeAddress } from '../nodes/types';
+import type { CertificatePEM } from '../keys/types';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import * as networkErrors from './errors';
-import * as keysUtils from '../keys/utils';
-import * as utils from '../utils';
 import { never } from '../utils';
-
-const pingBuffer = serializeNetworkMessage({
-  type: 'ping',
-});
-
-const pongBuffer = serializeNetworkMessage({
-  type: 'pong',
-});
+import * as keysUtils from '../keys/utils';
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
@@ -57,13 +45,6 @@ function isPort(port: any, connect: boolean = false): port is Port {
   if (port < 0 || port > 65535) return false;
   if (connect && port === 0) return false;
   return true;
-}
-
-/**
- * Given a bearer token, return a authentication token string.
- */
-function toAuthToken(token: string) {
-  return `Basic ${Buffer.from(token).toString('base64')}`;
 }
 
 /**
@@ -227,58 +208,6 @@ function resolvesZeroIP(ip: Host): Host {
   }
 }
 
-function serializeNetworkMessage(msg: NetworkMessage): Buffer {
-  const buf = Buffer.allocUnsafe(4);
-  if (msg.type === 'ping') {
-    buf.writeUInt32BE(0);
-  } else if (msg.type === 'pong') {
-    buf.writeUInt32BE(1);
-  }
-  return buf;
-}
-
-function unserializeNetworkMessage(data: Buffer): NetworkMessage {
-  const type = data.readUInt32BE();
-  if (type === 0) {
-    return { type: 'ping' };
-  } else if (type === 1) {
-    return { type: 'pong' };
-  }
-  throw new networkErrors.ErrorConnectionMessageParse();
-}
-
-function getCertificateChain(socket: TLSSocket): Array<Certificate> {
-  // The order of certificates is always leaf to root
-  const certs: Array<Certificate> = [];
-  let cert_ = socket.getPeerCertificate(true);
-  if (utils.isEmptyObject(cert_)) {
-    return certs;
-  }
-  while (true) {
-    let cert: Certificate | undefined;
-    try {
-      cert = keysUtils.certFromASN1(cert_.raw as CertificateASN1);
-      if (cert == null) never();
-    } catch (e) {
-      break;
-    }
-    certs.push(cert);
-    if (cert_.issuerCertificate !== cert_) {
-      cert_ = cert_.issuerCertificate;
-    } else {
-      break;
-    }
-  }
-  return certs;
-}
-
-/**
- * Checks whether a socket is the TLSSocket
- */
-function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
-  return (socket as TLSSocket).encrypted;
-}
-
 /**
  * Verify the server certificate chain when connecting to it from a client
  * This is a custom verification intended to verify that the server owned
@@ -288,18 +217,21 @@ function isTLSSocket(socket: Socket | TLSSocket): socket is TLSSocket {
  */
 async function verifyServerCertificateChain(
   nodeIds: Array<NodeId>,
-  certChain: Array<Certificate>,
+  certPEMChain: Array<string>,
 ): Promise<NodeId> {
-  if (!certChain.length) {
+  if (certPEMChain.length === 0) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
     );
   }
-  if (!nodeIds.length) {
-    throw new networkErrors.ErrorConnectionNodesEmpty(
-      'No nodes were provided to verify against',
-    );
+  if (nodeIds.length === 0) {
+    throw new networkErrors.ErrorConnectionNodesEmpty();
   }
+  const certChain = certPEMChain.map((v) => {
+    const cert = keysUtils.certFromPEM(v as CertificatePEM);
+    if (cert == null) never();
+    return cert;
+  });
   const now = new Date();
   let certClaim: Certificate | null = null;
   let certClaimIndex: number | null = null;
@@ -410,13 +342,18 @@ async function verifyServerCertificateChain(
  * The server does have a target NodeId. This means we verify the entire chain.
  */
 async function verifyClientCertificateChain(
-  certChain: Array<Certificate>,
+  certPEMChain: Array<string>,
 ): Promise<void> {
-  if (!certChain.length) {
+  if (certPEMChain.length === 0) {
     throw new networkErrors.ErrorCertChainEmpty(
       'No certificates available to verify',
     );
   }
+  const certChain = certPEMChain.map((v) => {
+    const cert = keysUtils.certFromPEM(v as CertificatePEM);
+    if (cert == null) never();
+    return cert;
+  });
   const now = new Date();
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
@@ -499,11 +436,12 @@ async function verifyClientCertificateChain(
  * Takes an array of host or hostnames and resolves them to the host addresses.
  * It will also filter out any duplicates or IPV6 addresses.
  * @param addresses
+ * @param existingAddresses
  */
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
+  existingAddresses: Set<string> = new Set(),
 ): Promise<Array<{ host: Host; port: Port }>> {
-  const existingAddresses: Set<string> = new Set();
   const final: Array<{ host: Host; port: Port }> = [];
   for (const address of addresses) {
     if (isHost(address.host)) {
@@ -525,22 +463,15 @@ async function resolveHostnames(
 }
 
 export {
-  pingBuffer,
-  pongBuffer,
   isHost,
   isHostWildcard,
   isHostname,
   isPort,
-  toAuthToken,
   buildAddress,
   parseAddress,
   isDNSError,
   resolveHostname,
   resolvesZeroIP,
-  serializeNetworkMessage,
-  unserializeNetworkMessage,
-  isTLSSocket,
-  getCertificateChain,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
   resolveHostnames,

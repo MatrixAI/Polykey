@@ -1,5 +1,5 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
+import type KeyRing from '../../keys/KeyRing';
 import type { NodeId } from '../../ids';
 import type NodeGraph from '../../nodes/NodeGraph';
 import type { NodesGetMessage } from '../handlers/types';

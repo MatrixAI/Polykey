@@ -1,8 +1,9 @@
 import type { TLSConfig } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/ids/index';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
 import type Sigchain from '../../../src/sigchain/Sigchain';
+import type { IdentityMessage } from '@/client/handlers/types';
+import type { ClientRPCResponseResult } from '@/client/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -122,7 +123,7 @@ describe('identitiesClaim', () => {
       providerToken,
     );
     const response = await rpcClient.methods.identitiesAuthenticatedGet({});
-    const output = Array<identitiesPB.Provider.AsObject>();
+    const output = Array<ClientRPCResponseResult<IdentityMessage>>();
     for await (const providerMessage of response) {
       output.push(providerMessage);
     }
@@ -175,7 +176,7 @@ describe('identitiesClaim', () => {
     );
     await identitiesManager.delToken(user1.providerId, user1.identityId);
     const response = await rpcClient.methods.identitiesAuthenticatedGet({});
-    const output = Array<identitiesPB.Provider.AsObject>();
+    const output = Array<ClientRPCResponseResult<IdentityMessage>>();
     for await (const providerMessage of response) {
       output.push(providerMessage);
     }
@@ -248,7 +249,7 @@ describe('identitiesClaim', () => {
       providerToken,
     );
     const response = await rpcClient.methods.identitiesAuthenticatedGet({});
-    const output = Array<identitiesPB.Provider.AsObject>();
+    const output = Array<ClientRPCResponseResult<IdentityMessage>>();
     for await (const providerMessage of response) {
       output.push(providerMessage);
     }
@@ -326,7 +327,7 @@ describe('identitiesClaim', () => {
     const response = await rpcClient.methods.identitiesAuthenticatedGet({
       providerId: provider2.id,
     });
-    const output = Array<identitiesPB.Provider.AsObject>();
+    const output = Array<ClientRPCResponseResult<IdentityMessage>>();
     for await (const providerMessage of response) {
       output.push(providerMessage);
     }

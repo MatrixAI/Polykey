@@ -1,9 +1,9 @@
 import type Logger from '@matrixai/logger';
+import type { DB } from '@matrixai/db';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type PolykeyAgent from '../../PolykeyAgent';
-import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type Discovery from '../../discovery/Discovery';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
@@ -83,6 +83,12 @@ import { VaultsVersionHandler } from './vaultsVersion';
 import { KeysVerifyHandler } from '../../client/handlers/keysVerify';
 import { KeysSignHandler } from '../../client/handlers/keysSign';
 
+/**
+ * All the server handler definitions for the ClientServer RPC.
+ * This will take the container of all the required dependencies and create the server handlers.
+ *
+ * Used by the RPCServer to register handlers and enforce types.
+ */
 const serverManifest = (container: {
   pkAgentProm: Promise<PolykeyAgent>;
   keyRing: KeyRing;

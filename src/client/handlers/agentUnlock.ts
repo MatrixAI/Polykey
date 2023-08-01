@@ -1,5 +1,5 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { ContainerType } from 'rpc/types';
+import type { ContainerType } from '../../rpc/types';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class AgentUnlockHandler extends UnaryHandler<

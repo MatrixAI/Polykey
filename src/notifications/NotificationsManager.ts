@@ -14,7 +14,6 @@ import {
 import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
 
@@ -175,11 +174,11 @@ class NotificationsManager {
       notification,
       this.keyRing.keyPair,
     );
-    const notificationMsg = new notificationsPB.AgentNotification();
-    notificationMsg.setContent(signedNotification);
     await this.nodeConnectionManager.withConnF(nodeId, async (connection) => {
       const client = connection.getClient();
-      await client.notificationsSend(notificationMsg);
+      await client.methods.notificationsSend({
+        signedNotificationEncoded: signedNotification,
+      });
     });
   }
 

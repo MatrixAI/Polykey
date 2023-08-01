@@ -1,14 +1,14 @@
+import type { DB } from '@matrixai/db';
+import type { SuccessMessage, VaultsPullMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type { NodeId } from '../../ids';
-import type { SuccessMessage, VaultsPullMessage } from './types';
-import type { DB } from '@matrixai/db';
 import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class VaultsPullHandler extends UnaryHandler<

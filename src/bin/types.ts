@@ -6,10 +6,16 @@ import type { StatusLive } from '../status/types';
 import type { NodeIdEncoded } from '../ids/types';
 import type { PrivateKey } from '../keys/types';
 import type { PasswordOpsLimit, PasswordMemLimit } from '../keys/types';
+import type { QUICConfig } from '@matrixai/quic';
 
 type AgentStatusLiveData = Omit<StatusLive['data'], 'nodeId'> & {
   nodeId: NodeIdEncoded;
 };
+
+type PolykeyQUICConfig = Omit<
+  Partial<QUICConfig>,
+  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
+>;
 
 /**
  * PolykeyAgent Starting Input when Backgrounded
@@ -35,28 +41,34 @@ type AgentChildProcessInput = {
     certManagerConfig?: {
       certDuration?: number;
     };
-    forwardProxyConfig?: {
-      authToken?: string;
-      connConnectTime?: number;
-      connTimeoutTime?: number;
-      connPingIntervalTime?: number;
-    };
-    reverseProxyConfig?: {
-      connConnectTime?: number;
-      connTimeoutTime?: number;
+    nodeConnectionManagerConfig?: {
+      connectionConnectTime?: number;
+      connectionTimeoutTime?: number;
+      initialClosestNodes?: number;
+      pingTimeoutTime?: number;
+      connectionHolePunchTimeoutTime?: number;
+      connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: {
-      forwardHost?: Host;
-      forwardPort?: Port;
-      proxyHost?: Host;
-      proxyPort?: Port;
-      // GRPCServer for agent service
+      // Agent QUICSocket config
       agentHost?: Host;
       agentPort?: Port;
-      // GRPCServer for client service
+      ipv6Only?: boolean;
+      // RPCServer for client service
       clientHost?: Host;
       clientPort?: Port;
+      // Websocket server config
+      maxReadableStreamBytes?: number;
+      maxIdleTimeout?: number;
+      pingIntervalTime?: number;
+      pingTimeoutTimeTime?: number;
+      // RPC config
+      clientParserBufferByteLimit?: number;
+      handlerTimeoutTime?: number;
+      handlerTimeoutGraceTime?: number;
     };
+    quicServerConfig?: PolykeyQUICConfig;
+    quicClientConfig?: PolykeyQUICConfig;
     fresh?: boolean;
   };
 };

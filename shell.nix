@@ -8,8 +8,6 @@ in
     nativeBuildInputs = [
       nodejs
       shellcheck
-      grpc-tools
-      grpcurl
       gitAndTools.gh
       awscli2
       skopeo

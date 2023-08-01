@@ -2,7 +2,7 @@ import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
-} from 'rpc/types';
+} from '../../rpc/types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { Session } from '../../sessions/index';
 import type SessionManager from '../../sessions/SessionManager';

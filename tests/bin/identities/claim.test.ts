@@ -3,7 +3,6 @@ import type {
   ProviderId,
   ProviderIdentityClaimId,
 } from '@/identities/types';
-import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -13,6 +12,11 @@ import * as identitiesUtils from '@/identities/utils';
 import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+
+// Fixes problem with spyOn overriding imports directly
+const mocks = {
+  browser: identitiesUtils.browser,
+};
 
 describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
@@ -35,10 +39,8 @@ describe('claim', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -62,7 +64,7 @@ describe('claim', () => {
     async () => {
       // Need an authenticated identity
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       await testUtils.pkStdio(
         [

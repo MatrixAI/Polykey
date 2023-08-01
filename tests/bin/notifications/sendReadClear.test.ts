@@ -1,5 +1,4 @@
 import type { NodeId } from '@/ids/types';
-import type { Host, Port } from '@/network/types';
 import type { Notification } from '@/notifications/types';
 import type { StatusLive } from '@/status/types';
 import path from 'path';
@@ -14,11 +13,11 @@ describe('send/read/claim', () => {
   ]);
   let dataDir: string;
   let senderId: NodeId;
-  let senderHost: Host;
-  let senderPort: Port;
+  let senderHost: string;
+  let senderPort: number;
   let receiverId: NodeId;
-  let receiverHost: Host;
-  let receiverPort: Port;
+  let receiverHost: string;
+  let receiverPort: number;
   let senderAgentStatus: StatusLive;
   let senderAgentClose: () => Promise<void>;
   let senderAgentDir: string;
@@ -40,8 +39,8 @@ describe('send/read/claim', () => {
       agentPassword: senderAgentPassword,
     } = await testUtils.setupTestAgent(logger));
     senderId = senderAgentStatus.data.nodeId;
-    senderHost = senderAgentStatus.data.proxyHost;
-    senderPort = senderAgentStatus.data.proxyPort;
+    senderHost = senderAgentStatus.data.agentHost;
+    senderPort = senderAgentStatus.data.agentPort;
     ({
       agentStatus: receiverAgentStatus,
       agentClose: receiverAgentClose,
@@ -49,8 +48,8 @@ describe('send/read/claim', () => {
       agentPassword: receiverAgentPassword,
     } = await testUtils.setupTestAgent(logger));
     receiverId = receiverAgentStatus.data.nodeId;
-    receiverHost = receiverAgentStatus.data.proxyHost;
-    receiverPort = receiverAgentStatus.data.proxyPort;
+    receiverHost = receiverAgentStatus.data.agentHost;
+    receiverPort = receiverAgentStatus.data.agentPort;
   });
   afterEach(async () => {
     await receiverAgentClose();

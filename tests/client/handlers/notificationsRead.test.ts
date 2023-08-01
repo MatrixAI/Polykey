@@ -3,12 +3,13 @@ import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
 import type { General, Notification, VaultShare } from '@/notifications/types';
 import type { VaultIdEncoded } from '@/ids';
 import type { VaultName } from '@/vaults/types';
-import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -18,7 +19,7 @@ import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 import { notificationsRead } from '@/client';
-import * as testsUtils from '../../utils';
+import * as tlsTestsUtils from '../../utils/tls';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
@@ -26,7 +27,6 @@ import NodeManager from '../../../src/nodes/NodeManager';
 import NotificationsManager from '../../../src/notifications/NotificationsManager';
 import ACL from '../../../src/acl/ACL';
 import Sigchain from '../../../src/sigchain/Sigchain';
-import Proxy from '../../../src/network/Proxy';
 import * as testNodesUtils from '../../nodes/utils';
 
 describe('identitiesTokenPutDeleteGet', () => {
@@ -37,7 +37,6 @@ describe('identitiesTokenPutDeleteGet', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   const nodeIdSender = testNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const nodeIdReceiverEncoded = 'test';
@@ -51,10 +50,10 @@ describe('identitiesTokenPutDeleteGet', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let mockedReadNotifications: jest.SpyInstance;
 
   beforeEach(async () => {
@@ -74,7 +73,7 @@ describe('identitiesTokenPutDeleteGet', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -83,15 +82,6 @@ describe('identitiesTokenPutDeleteGet', () => {
     acl = await ACL.createACL({
       db,
       logger,
-    });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -108,13 +98,26 @@ describe('identitiesTokenPutDeleteGet', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
-      connConnectTime: 2000,
-      connTimeoutTime: 2000,
+      quicClientConfig: {
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
+      },
+      crypto,
+      quicSocket,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -150,8 +153,8 @@ describe('identitiesTokenPutDeleteGet', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
-    await proxy.stop();
     await acl.stop();
     await db.stop();
     await keyRing.stop();

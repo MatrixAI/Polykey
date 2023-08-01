@@ -12,15 +12,13 @@ describe('utils', () => {
     expect(networkUtils.buildAddress('::' as Host, 0 as Port)).toBe('[::]:0');
   });
   test('resolving zero IPs', async () => {
-    expect(networkUtils.resolvesZeroIP('0.0.0.0' as Host)).toBe(
-      '127.0.0.1' as Host,
-    );
-    expect(networkUtils.resolvesZeroIP('::' as Host)).toBe('::1' as Host);
+    expect(networkUtils.resolvesZeroIP('0.0.0.0' as Host)).toBe('127.0.0.1');
+    expect(networkUtils.resolvesZeroIP('::' as Host)).toBe('::1');
     expect(
       networkUtils.resolvesZeroIP(
         '0000:0000:0000:0000:0000:0000:0000:0000' as Host,
       ),
-    ).toBe('::1' as Host);
+    ).toBe('::1');
   });
   test('resolving hostnames', async () => {
     await expect(

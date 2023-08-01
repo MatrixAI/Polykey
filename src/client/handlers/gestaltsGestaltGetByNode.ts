@@ -1,13 +1,13 @@
+import type { DB } from '@matrixai/db';
+import type { GestaltMessage, NodeIdMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { DB } from '@matrixai/db';
-import type { NodeId } from 'ids/index';
-import type { GestaltMessage, NodeIdMessage } from 'client/handlers/types';
+import type { NodeId } from '../../ids/index';
 import * as nodesUtils from '../../nodes/utils';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
-import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils/index';
 
 class GestaltsGestaltGetByNodeHandler extends UnaryHandler<
   {

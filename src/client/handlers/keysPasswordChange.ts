@@ -1,6 +1,6 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type KeyRing from 'keys/KeyRing';
 import type { PasswordMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type KeyRing from '../../keys/KeyRing';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class KeysPasswordChangeHandler extends UnaryHandler<

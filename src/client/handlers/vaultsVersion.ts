@@ -1,7 +1,7 @@
+import type { DB } from '@matrixai/db';
+import type { VaultsLatestVersionMessage, VaultsVersionMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultsLatestVersionMessage, VaultsVersionMessage } from './types';
-import type { DB } from '@matrixai/db';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { UnaryHandler } from '../../rpc/handlers';

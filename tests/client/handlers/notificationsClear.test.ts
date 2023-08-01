@@ -1,11 +1,12 @@
 import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
-import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -14,15 +15,14 @@ import RPCClient from '@/rpc/RPCClient';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import { notificationsClear } from '@/client';
-import * as testsUtils from '../../utils';
 import ACL from '../../../src/acl/ACL';
-import Proxy from '../../../src/network/Proxy';
 import Sigchain from '../../../src/sigchain/Sigchain';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
 import NodeManager from '../../../src/nodes/NodeManager';
 import NotificationsManager from '../../../src/notifications/NotificationsManager';
+import * as tlsTestsUtils from '../../utils/tls';
 
 describe('notificationsClear', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
@@ -32,7 +32,6 @@ describe('notificationsClear', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -43,10 +42,10 @@ describe('notificationsClear', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
+  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let mockedClearNotifications: jest.SpyInstance;
 
   beforeEach(async () => {
@@ -65,7 +64,7 @@ describe('notificationsClear', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -74,15 +73,6 @@ describe('notificationsClear', () => {
     acl = await ACL.createACL({
       db,
       logger,
-    });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -99,13 +89,26 @@ describe('notificationsClear', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
-      connConnectTime: 2000,
-      connTimeoutTime: 2000,
+      quicClientConfig: {
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
+      },
+      crypto,
+      quicSocket,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -135,6 +138,7 @@ describe('notificationsClear', () => {
     mockedClearNotifications.mockRestore();
     await webSocketServer.stop(true);
     await webSocketClient.destroy(true);
+    await quicSocket.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
       force: true,

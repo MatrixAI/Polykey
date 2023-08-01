@@ -5,7 +5,6 @@ import type {
   Callback,
 } from '../types';
 import os from 'os';
-import v8 from 'v8';
 import process from 'process';
 import path from 'path';
 import lexi from 'lexicographic-integer';
@@ -430,16 +429,13 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
-/**
- * Structured clone does deep copy
- * Remove the reliance on v8 in Node 17
- */
-const structuredClone =
-  'structuredClone' in globalThis
-    ? globalThis.structuredClone
-    : (value: any) => {
-        return v8.deserialize(v8.serialize(value));
-      };
+const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
+  return 0;
+};
+
+const codeToReason = (type: 'recv' | 'send', code: number): any => {
+  return Error(`${type} ${code}`);
+};
 
 export {
   AsyncFunction,
@@ -476,5 +472,6 @@ export {
   lexiUnpackBuffer,
   bufferWrap,
   isBufferSource,
-  structuredClone,
+  reasonToCode,
+  codeToReason,
 };

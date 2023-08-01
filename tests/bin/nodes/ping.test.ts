@@ -1,5 +1,4 @@
 import type { NodeId } from '@/ids/types';
-import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -29,17 +28,12 @@ describe('ping', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
-      },
-      proxyConfig: {
-        connConnectTime: 2000,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       nodeConnectionManagerConfig: {
-        connConnectTime: 2000,
-        connTimeoutTime: 1000,
+        connectionConnectTime: 2000,
+        connectionTimeoutTime: 1000,
       },
       seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
@@ -54,10 +48,8 @@ describe('ping', () => {
       password,
       nodePath: path.join(dataDir, 'remoteOnline'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -73,10 +65,8 @@ describe('ping', () => {
       password,
       nodePath: path.join(dataDir, 'remoteOffline'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {

@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { StatusLive } from '@/status/types';
 import fs from 'fs';
 import os from 'os';
@@ -62,24 +61,16 @@ describe('Status', () => {
     await status.finishStart({
       pid: 0,
       nodeId: nodeId1,
-      clientHost: '::1' as Host,
-      clientPort: 0 as Port,
-      agentHost: '::1' as Host,
-      agentPort: 0 as Port,
-      forwardHost: '::1' as Host,
-      forwardPort: 0 as Port,
-      proxyHost: '::1' as Host,
-      proxyPort: 0 as Port,
-      grpcHost: 'localhost',
-      grpcPort: 12345,
+      clientHost: '::1',
+      clientPort: 0,
+      agentHost: '::1',
+      agentPort: 0,
       anything: 'something',
     });
     const statusInfo2 = await status.readStatus();
     expect(statusInfo2).toBeDefined();
     expect(statusInfo2!.status).toBe('LIVE');
     expect(statusInfo2!.data.pid).toBeDefined();
-    expect(statusInfo2!.data.grpcHost).toBe('localhost');
-    expect(statusInfo2!.data.grpcPort).toBe(12345);
     expect(statusInfo2!.data.anything).toBe('something');
     await status.beginStop({
       pid: 1,
@@ -138,16 +129,10 @@ describe('Status', () => {
     const statusData1: StatusLive['data'] = {
       pid: 0,
       nodeId: nodeId1,
-      clientHost: '::1' as Host,
-      clientPort: 0 as Port,
-      agentHost: '::1' as Host,
-      agentPort: 0 as Port,
-      forwardHost: '::1' as Host,
-      forwardPort: 0 as Port,
-      proxyPort: 0 as Port,
-      proxyHost: '::1' as Host,
-      grpcHost: 'localhost',
-      grpcPort: 12345,
+      clientHost: '::1',
+      clientPort: 0,
+      agentHost: '::1',
+      agentPort: 0,
       anything: 'something',
     };
     await status.finishStart(statusData1);
@@ -210,14 +195,10 @@ describe('Status', () => {
     await status.finishStart({
       pid: 0,
       nodeId: nodeId3,
-      clientHost: '' as Host,
-      clientPort: 0 as Port,
-      agentHost: '::1' as Host,
-      agentPort: 0 as Port,
-      forwardHost: '::1' as Host,
-      forwardPort: 0 as Port,
-      proxyHost: '' as Host,
-      proxyPort: 0 as Port,
+      clientHost: '',
+      clientPort: 0,
+      agentHost: '::1',
+      agentPort: 0,
     });
     const statusInfoLive = await statusWaitFor;
     expect(statusInfoLive!.status).toBe('LIVE');
@@ -257,14 +238,10 @@ describe('Status', () => {
     for (let i = 0; i < 100; i++) {
       const [, statusInfo1, , , , statusInfo2] = await Promise.all([
         status.finishStart({
-          clientHost: '' as Host,
-          clientPort: 0 as Port,
-          agentHost: '::1' as Host,
-          agentPort: 0 as Port,
-          forwardHost: '::1' as Host,
-          forwardPort: 0 as Port,
-          proxyHost: '127.0.0.1' as Host,
-          proxyPort: 3425 as Port,
+          clientHost: '',
+          clientPort: 0,
+          agentHost: '::1',
+          agentPort: 0,
           nodeId: nodeId3,
           pid: 0,
         }),
@@ -273,14 +250,10 @@ describe('Status', () => {
           pid: 4,
         }),
         status.finishStart({
-          clientHost: '' as Host,
-          clientPort: 3445 as Port,
-          agentHost: '::1' as Host,
-          agentPort: 0 as Port,
-          forwardHost: '::1' as Host,
-          forwardPort: 0 as Port,
-          proxyHost: '127.0.0.1' as Host,
-          proxyPort: 0 as Port,
+          clientHost: '',
+          clientPort: 3445,
+          agentHost: '::1',
+          agentPort: 0,
           nodeId: nodeId3,
           pid: 0,
         }),
@@ -289,14 +262,10 @@ describe('Status', () => {
         }),
         status.readStatus(),
         status.finishStart({
-          clientHost: '' as Host,
-          clientPort: 0 as Port,
-          agentHost: '::1' as Host,
-          agentPort: 0 as Port,
-          forwardHost: '::1' as Host,
-          forwardPort: 0 as Port,
-          proxyHost: '127.0.0.1' as Host,
-          proxyPort: 0 as Port,
+          clientHost: '',
+          clientPort: 0,
+          agentHost: '::1',
+          agentPort: 0,
           nodeId: nodeId3,
           pid: 0,
         }),
@@ -327,14 +296,10 @@ describe('Status', () => {
     // Which means the `statusWaitFor` never resolves
     const statusWaitFor = status.waitFor('LIVE', 1000);
     const p1 = status.finishStart({
-      clientHost: '' as Host,
-      clientPort: 0 as Port,
-      agentHost: '::1' as Host,
-      agentPort: 0 as Port,
-      forwardHost: '::1' as Host,
-      forwardPort: 0 as Port,
-      proxyHost: '127.0.0.1' as Host,
-      proxyPort: 0 as Port,
+      clientHost: '',
+      clientPort: 0,
+      agentHost: '::1',
+      agentPort: 0,
       nodeId: nodeId3,
       pid: 0,
     });

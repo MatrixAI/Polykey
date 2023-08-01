@@ -1,5 +1,4 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/ids/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads/index';
 import type { SignedClaim } from '@/claims/types';
@@ -8,7 +7,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sysexits } from '@/utils';
-import * as identitiesUtils from '@/identities/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils/index';
 import { encodeProviderIdentityId } from '@/identities/utils';
@@ -35,8 +33,8 @@ describe('discover/get', () => {
   let nodeB: PolykeyAgent;
   let nodeAId: NodeId;
   let nodeBId: NodeId;
-  let nodeAHost: Host;
-  let nodeAPort: Port;
+  let nodeAHost: string;
+  let nodeAPort: number;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(globalThis.tmpDir, 'polykey-test-'),
@@ -47,10 +45,8 @@ describe('discover/get', () => {
       password,
       nodePath: path.join(dataDir, 'nodeA'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -60,16 +56,14 @@ describe('discover/get', () => {
       },
     });
     nodeAId = nodeA.keyRing.getNodeId();
-    nodeAHost = nodeA.proxy.getProxyHost();
-    nodeAPort = nodeA.proxy.getProxyPort();
+    nodeAHost = nodeA.quicServerAgent.host;
+    nodeAPort = nodeA.quicServerAgent.port;
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: path.join(dataDir, 'nodeB'),
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -86,10 +80,8 @@ describe('discover/get', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -131,10 +123,6 @@ describe('discover/get', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by node',
     async () => {
-      // Need an authenticated identity
-      const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
-        .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
           'identities',
@@ -208,7 +196,6 @@ describe('discover/get', () => {
         testToken.providerId,
         testToken.identityId,
       );
-      mockedBrowser.mockRestore();
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },
@@ -217,10 +204,6 @@ describe('discover/get', () => {
   testUtils.testIf(testUtils.isTestPlatformEmpty)(
     'discovers and gets gestalt by identity',
     async () => {
-      // Need an authenticated identity
-      const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
-        .mockImplementation(() => {});
       await testUtils.pkStdio(
         [
           'identities',
@@ -294,7 +277,6 @@ describe('discover/get', () => {
         testToken.providerId,
         testToken.identityId,
       );
-      mockedBrowser.mockRestore();
       // @ts-ignore - get protected property
       pkAgent.discovery.visitedVertices.clear();
     },

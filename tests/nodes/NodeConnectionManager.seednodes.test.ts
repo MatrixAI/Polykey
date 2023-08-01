@@ -1,158 +1,129 @@
-import type { NodeId, NodeIdEncoded, SeedNodes } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
-import type { Sigchain } from '@/sigchain';
-import type { Key } from '@/keys/types';
-import type { GestaltGraph } from '@/gestalts/index';
+import type { Host, Port, TLSConfig } from '@/network/types';
+import type { NodeId, NodeIdEncoded } from '@/ids';
+import type { NodeAddress } from '@/nodes/types';
+import type { SeedNodes } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
+import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { IdInternal } from '@matrixai/id';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { Timer } from '@matrixai/timer';
+import * as nodesUtils from '@/nodes/utils';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodeConnection from '@/nodes/NodeConnection';
+import * as keysUtils from '@/keys/utils';
+import KeyRing from '@/keys/KeyRing';
+import ACL from '@/acl/ACL';
+import GestaltGraph from '@/gestalts/GestaltGraph';
+import NodeGraph from '@/nodes/NodeGraph';
+import Sigchain from '@/sigchain/Sigchain';
+import TaskManager from '@/tasks/TaskManager';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import KeyRing from '@/keys/KeyRing';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import Proxy from '@/network/Proxy';
-import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as grpcUtils from '@/grpc/utils';
-import TaskManager from '@/tasks/TaskManager';
-import { sleep } from '@/utils/index';
-import * as utils from '@/utils/index';
-import * as testsUtils from '../utils';
+import { sleep } from '@/utils';
+import * as testNodesUtils from './utils';
+import * as tlsTestUtils from '../utils/tls';
 
-describe(`${NodeConnectionManager.name} seed nodes test`, () => {
-  const logger = new Logger(
-    `${NodeConnectionManager.name} test`,
-    LogLevel.WARN,
-    [new StreamHandler()],
-  );
-  grpcUtils.setLogger(logger.getChild('grpc'));
-
-  // Constants
+describe(`${NodeConnectionManager.name} seednodes test`, () => {
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const localHost = '127.0.0.1';
+  const testAddress = {
+    host: '127.0.0.1' as Host,
+    port: 55555 as Port,
+  };
   const password = 'password';
-  const nodeId1 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 5,
-  ]);
-  const nodeId2 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 8,
-  ]);
-  const nodeId3 = IdInternal.create<NodeId>([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 124,
-  ]);
-  const dummyNodeId = nodesUtils.decodeNodeId(
-    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
-  )!;
-
-  const localHost = '127.0.0.1' as Host;
-  const serverHost = '127.0.0.1' as Host;
-  const serverPort = 55555 as Port;
-
-  const dummySeedNodes: SeedNodes = {};
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId1)] = {
-    host: serverHost,
-    port: serverPort,
-  };
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId2)] = {
-    host: serverHost,
-    port: serverPort,
-  };
-  dummySeedNodes[nodesUtils.encodeNodeId(nodeId3)] = {
-    host: serverHost,
-    port: serverPort,
-  };
-
-  let dataDir: string;
-  let dataDir2: string;
-  let keyRing: KeyRing;
-  let db: DB;
-  let proxy: Proxy;
-
-  let nodeGraph: NodeGraph;
-
-  let remoteNode1: PolykeyAgent;
-  let remoteNode2: PolykeyAgent;
-  let remoteNodeId1: NodeId;
-  let remoteNodeId2: NodeId;
-
-  let taskManager: TaskManager;
-  const dummyNodeManager = {
-    setNode: jest.fn(),
-    refreshBucketQueueAdd: jest.fn(),
-  } as unknown as NodeManager;
-
-  function createPromiseCancellable<T>(result: T) {
-    return () => new PromiseCancellable<T>((resolve) => resolve(result));
-  }
+  const crypto = tlsTestUtils.createCrypto();
 
   function createPromiseCancellableNop() {
     return () => new PromiseCancellable<void>((resolve) => resolve());
   }
 
-  beforeAll(async () => {
-    dataDir2 = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    // Creating remotes, they just exist to start connections or fail them if needed
-    remoteNode1 = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath: path.join(dataDir2, 'remoteNode1'),
-      networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-      },
-      logger: logger.getChild('remoteNode1'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
-    });
-    remoteNodeId1 = remoteNode1.keyRing.getNodeId();
-    remoteNode2 = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath: path.join(dataDir2, 'remoteNode2'),
-      networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-      },
-      logger: logger.getChild('remoteNode2'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
-    });
-    remoteNodeId2 = remoteNode2.keyRing.getNodeId();
-  });
+  let dataDir: string;
 
-  afterAll(async () => {
-    await remoteNode1.stop();
-    await remoteNode2.stop();
-    await fs.promises.rm(dataDir2, { force: true, recursive: true });
-  });
+  let remotePolykeyAgent1: PolykeyAgent;
+  let remotePolykeyAgent2: PolykeyAgent;
+  let remoteAddress1: NodeAddress;
+  let remoteAddress2: NodeAddress;
+  let remoteNodeId1: NodeId;
+  let remoteNodeId2: NodeId;
+  let remoteNodeIdEncoded1: NodeIdEncoded;
+  let clientSocket: QUICSocket;
+
+  let keyRing: KeyRing;
+  let db: DB;
+  let acl: ACL;
+  let gestaltGraph: GestaltGraph;
+  let nodeGraph: NodeGraph;
+  let sigchain: Sigchain;
+  let taskManager: TaskManager;
+  let nodeManager: NodeManager;
+  let tlsConfig: TLSConfig;
 
   beforeEach(async () => {
-    // Clearing nodes from graphs
-    for await (const [nodeId] of remoteNode1.nodeGraph.getNodes()) {
-      await remoteNode1.nodeGraph.unsetNode(nodeId);
-    }
-    for await (const [nodeId] of remoteNode2.nodeGraph.getNodes()) {
-      await remoteNode2.nodeGraph.unsetNode(nodeId);
-    }
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+
+    // Setting up remote node
+    const nodePathA = path.join(dataDir, 'agentA');
+    remotePolykeyAgent1 = await PolykeyAgent.createPolykeyAgent({
+      nodePath: nodePathA,
+      password,
+      networkConfig: {
+        agentHost: localHost,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
+      logger: logger.getChild('AgentA'),
+    });
+    remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
+    remoteNodeIdEncoded1 = nodesUtils.encodeNodeId(remoteNodeId1);
+    remoteAddress1 = {
+      host: remotePolykeyAgent1.quicSocket.host as Host,
+      port: remotePolykeyAgent1.quicSocket.port as Port,
+    };
+
+    const nodePathB = path.join(dataDir, 'agentB');
+    remotePolykeyAgent2 = await PolykeyAgent.createPolykeyAgent({
+      nodePath: nodePathB,
+      password,
+      networkConfig: {
+        agentHost: localHost,
+      },
+      keyRingConfig: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
+      logger: logger.getChild('AgentA'),
+    });
+    remoteNodeId2 = remotePolykeyAgent2.keyRing.getNodeId();
+    remoteAddress2 = {
+      host: remotePolykeyAgent2.quicSocket.host as Host,
+      port: remotePolykeyAgent2.quicSocket.port as Port,
+    };
+
+    clientSocket = new QUICSocket({
+      logger: logger.getChild('clientSocket'),
+    });
+    await clientSocket.start({
+      host: localHost,
+    });
+
+    // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      logger: logger.getChild('keyRing'),
+      logger,
       passwordOpsLimit: keysUtils.passwordOpsLimits.min,
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
@@ -160,487 +131,347 @@ describe(`${NodeConnectionManager.name} seed nodes test`, () => {
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
-      logger: logger,
-      crypto: {
-        key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
-      },
+      logger,
     });
-    taskManager = await TaskManager.createTaskManager({
+    acl = await ACL.createACL({
       db,
-      lazy: true,
-      logger: logger.getChild('taskManager'),
+      logger,
+    });
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
-      logger: logger.getChild('NodeGraph'),
+      logger,
     });
-    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    proxy = new Proxy({
-      authToken: 'auth',
-      logger: logger.getChild('proxy'),
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
     });
-    await proxy.start({
-      serverHost,
-      serverPort,
-      proxyHost: localHost,
-      tlsConfig,
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
     });
-    await nodeGraph.setNode(remoteNodeId1, {
-      host: remoteNode1.proxy.getProxyHost(),
-      port: remoteNode1.proxy.getProxyPort(),
-    });
-    await nodeGraph.setNode(remoteNodeId2, {
-      host: remoteNode2.proxy.getProxyHost(),
-      port: remoteNode2.proxy.getProxyPort(),
-    });
+
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
-    await nodeGraph.stop();
-    await db.stop();
-    await keyRing.stop();
-    await proxy.stop();
     await taskManager.stop();
+    await sigchain.stop();
+    await sigchain.destroy();
+    await nodeGraph.stop();
+    await nodeGraph.destroy();
+    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
+    await acl.stop();
+    await acl.destroy();
+    await taskManager.destroy();
+    await db.stop();
+    await db.destroy();
+    await keyRing.stop();
+    await keyRing.destroy();
+    await clientSocket.stop({ force: true });
+
+    await remotePolykeyAgent1.stop();
+    await remotePolykeyAgent2.stop();
   });
 
-  // Seed nodes
   test('starting should add seed nodes to the node graph', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    let nodeManager: NodeManager | undefined;
-    try {
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        seedNodes: dummySeedNodes,
-        logger: logger,
-      });
-      nodeManager = new NodeManager({
-        db,
-        keyRing,
-        gestaltGraph: {} as GestaltGraph,
-        logger,
-        nodeConnectionManager,
-        nodeGraph,
-        taskManager,
-        sigchain: {} as Sigchain,
-      });
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      const seedNodes = nodeConnectionManager.getSeedNodes();
-      expect(seedNodes).toContainEqual(nodeId1);
-      expect(seedNodes).toContainEqual(nodeId2);
-      expect(seedNodes).toContainEqual(nodeId3);
-      expect(await nodeGraph.getNode(seedNodes[0])).toBeDefined();
-      expect(await nodeGraph.getNode(seedNodes[1])).toBeDefined();
-      expect(await nodeGraph.getNode(seedNodes[2])).toBeDefined();
-      expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
-    } finally {
-      // Clean up
-      await nodeConnectionManager?.stop();
-      await taskManager.stopProcessing();
-      await nodeManager?.stop();
-    }
-  });
-  test('should get seed nodes', async () => {
-    // NodeConnectionManager under test
+    const nodeId1 = testNodesUtils.generateRandomNodeId();
+    const nodeId2 = testNodesUtils.generateRandomNodeId();
+    const nodeId3 = testNodesUtils.generateRandomNodeId();
+    const dummySeedNodes: SeedNodes = {
+      [nodesUtils.encodeNodeId(nodeId1)]: testAddress,
+      [nodesUtils.encodeNodeId(nodeId2)]: testAddress,
+      [nodesUtils.encodeNodeId(nodeId3)]: testAddress,
+    };
     const nodeConnectionManager = new NodeConnectionManager({
       keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      proxy,
-      taskManager,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+      },
+      crypto,
+      quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
-      logger: logger,
     });
-    await nodeConnectionManager.start({ nodeManager: dummyNodeManager });
-    try {
-      const seedNodes = nodeConnectionManager.getSeedNodes();
-      expect(seedNodes).toHaveLength(3);
-      expect(seedNodes).toContainEqual(nodeId1);
-      expect(seedNodes).toContainEqual(nodeId2);
-      expect(seedNodes).toContainEqual(nodeId3);
-    } finally {
-      await nodeConnectionManager.stop();
-    }
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    const seedNodes = nodeConnectionManager.getSeedNodes();
+    expect(seedNodes).toContainEqual(nodeId1);
+    expect(seedNodes).toContainEqual(nodeId2);
+    expect(seedNodes).toContainEqual(nodeId3);
+    expect(await nodeGraph.getNode(seedNodes[0])).toBeDefined();
+    expect(await nodeGraph.getNode(seedNodes[1])).toBeDefined();
+    expect(await nodeGraph.getNode(seedNodes[2])).toBeDefined();
+    const dummyNodeId = testNodesUtils.generateRandomNodeId();
+    expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
+
+    await nodeConnectionManager.stop();
   });
   test('should synchronise nodeGraph', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    let nodeManager: NodeManager | undefined;
-    const mockedRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation(createPromiseCancellable(true));
-    try {
-      const seedNodes: SeedNodes = {};
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        seedNodes,
-        logger: logger,
-      });
-      nodeManager = new NodeManager({
-        db,
-        keyRing,
-        gestaltGraph: {} as GestaltGraph,
-        logger,
-        nodeConnectionManager,
-        nodeGraph,
-        taskManager,
-        sigchain: {} as Sigchain,
-      });
-      await nodeManager.start();
-      await remoteNode1.nodeGraph.setNode(nodeId1, {
-        host: serverHost,
-        port: serverPort,
-      });
-      await remoteNode2.nodeGraph.setNode(nodeId2, {
-        host: serverHost,
-        port: serverPort,
-      });
-      await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
-      await nodeManager.syncNodeGraph(true, 2000);
-      expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
-      expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
-      expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
-    } finally {
-      mockedRefreshBucket.mockRestore();
-      mockedPingNode.mockRestore();
-      await taskManager.stopProcessing();
-      await nodeManager?.stop();
-      await nodeConnectionManager?.stop();
-    }
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        keepAliveIntervalTime: 1000,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      seedNodes: {
+        [remoteNodeIdEncoded1]: remoteAddress1,
+      },
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+
+    const dummyNodeId = testNodesUtils.generateRandomNodeId();
+    await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
+
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    await nodeManager.syncNodeGraph(true, 2000);
+    expect(await nodeGraph.getNode(remoteNodeId1)).toBeDefined();
+    expect(await nodeGraph.getNode(remoteNodeId2)).toBeDefined();
+    expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
+
+    await nodeConnectionManager.stop();
   });
   test('should call refreshBucket when syncing nodeGraph', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    let nodeManager: NodeManager | undefined;
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation(createPromiseCancellable(true));
-    try {
-      const seedNodes: SeedNodes = {};
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        seedNodes,
-        logger: logger,
-      });
-      nodeManager = new NodeManager({
-        db,
-        keyRing,
-        gestaltGraph: {} as GestaltGraph,
-        logger,
-        nodeConnectionManager,
-        nodeGraph,
-        sigchain: {} as Sigchain,
-        taskManager,
-      });
-      await nodeManager.start();
-      await remoteNode1.nodeGraph.setNode(nodeId1, {
-        host: serverHost,
-        port: serverPort,
-      });
-      await remoteNode2.nodeGraph.setNode(nodeId2, {
-        host: serverHost,
-        port: serverPort,
-      });
-      await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
-      await nodeManager.syncNodeGraph(true, 2000);
-      await sleep(1000);
-      expect(mockedRefreshBucket).toHaveBeenCalled();
-    } finally {
-      mockedRefreshBucket.mockRestore();
-      mockedPingNode.mockRestore();
-      await taskManager.stopProcessing();
-      await nodeManager?.stop();
-      await nodeConnectionManager?.stop();
-    }
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        maxIdleTimeout: 1000,
+        keepAliveIntervalTime: 500,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      seedNodes: {
+        [remoteNodeIdEncoded1]: remoteAddress1,
+      },
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
+
+    await nodeManager.syncNodeGraph(true, 100);
+    await sleep(1000);
+    expect(mockedRefreshBucket).toHaveBeenCalled();
+
+    await nodeConnectionManager.stop();
   });
   test('should handle an offline seed node when synchronising nodeGraph', async () => {
-    let nodeConnectionManager: NodeConnectionManager | undefined;
-    let nodeManager: NodeManager | undefined;
+    const randomNodeId1 = testNodesUtils.generateRandomNodeId();
+    const randomNodeId2 = testNodesUtils.generateRandomNodeId();
+    await remotePolykeyAgent1.nodeGraph.setNode(randomNodeId1, testAddress);
+    await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
+    await remotePolykeyAgent2.nodeGraph.setNode(randomNodeId2, testAddress);
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation((nodeId: NodeId) => {
-      if (dummyNodeId.equals(nodeId)) return createPromiseCancellable(false)();
-      return createPromiseCancellable(true)();
+
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        keepAliveIntervalTime: 1000,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      seedNodes: {
+        [remoteNodeIdEncoded1]: remoteAddress1,
+      },
     });
-    try {
-      const seedNodes: SeedNodes = {};
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(dummyNodeId)] = {
-        host: serverHost,
-        port: serverPort,
-      };
-      // Adding information to remotes to find
-      await remoteNode1.nodeGraph.setNode(nodeId1, {
-        host: serverHost,
-        port: serverPort,
-      });
-      await remoteNode2.nodeGraph.setNode(nodeId2, {
-        host: serverHost,
-        port: serverPort,
-      });
-      nodeConnectionManager = new NodeConnectionManager({
-        keyRing,
-        nodeGraph,
-        proxy,
-        taskManager,
-        seedNodes,
-        connConnectTime: 500,
-        logger: logger,
-      });
-      nodeManager = new NodeManager({
-        db,
-        keyRing,
-        gestaltGraph: {} as GestaltGraph,
-        logger,
-        nodeConnectionManager,
-        nodeGraph,
-        sigchain: {} as Sigchain,
-        taskManager,
-      });
-      await nodeManager.start();
-      await nodeConnectionManager.start({ nodeManager });
-      await taskManager.startProcessing();
-      // This should complete without error
-      await nodeManager.syncNodeGraph(true, 2000, {
-        timer: new Timer({ delay: 15000 }),
-      });
-      // Information on remotes are found
-      expect(await nodeGraph.getNode(nodeId1)).toBeDefined();
-      expect(await nodeGraph.getNode(nodeId2)).toBeDefined();
-    } finally {
-      mockedRefreshBucket.mockRestore();
-      mockedPingNode.mockRestore();
-      await nodeConnectionManager?.stop();
-      await taskManager.stopProcessing();
-      await nodeManager?.stop();
-    }
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
+
+    // This should complete without error
+    await nodeManager.syncNodeGraph(true, 2000, {
+      timer: 15000,
+    });
+    // Information on remotes are found
+    expect(await nodeGraph.getNode(remoteNodeId1)).toBeDefined();
+    expect(await nodeGraph.getNode(remoteNodeId2)).toBeDefined();
+
+    await nodeConnectionManager.stop();
   });
-  test(
-    'should expand the network when nodes enter',
-    async () => {
-      // Using a single seed node we need to check that each entering node adds itself to the seed node.
-      // Also need to check that the new nodes can be seen in the network.
-      let node1: PolykeyAgent | undefined;
-      let node2: PolykeyAgent | undefined;
-      const seedNodes: SeedNodes = {};
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
-      const mockedPingNode = jest.spyOn(
-        NodeConnectionManager.prototype,
-        'pingNode',
-      );
-      mockedPingNode.mockImplementation(createPromiseCancellable(true));
-      try {
-        node1 = await PolykeyAgent.createPolykeyAgent({
-          nodePath: path.join(dataDir, 'node1'),
-          password: 'password',
-          networkConfig: {
-            proxyHost: localHost,
-            agentHost: localHost,
-            clientHost: localHost,
-            forwardHost: localHost,
-          },
-          seedNodes,
-          logger,
-          keyRingConfig: {
-            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-            passwordMemLimit: keysUtils.passwordMemLimits.min,
-            strictMemoryLock: false,
-          },
-        });
-        node2 = await PolykeyAgent.createPolykeyAgent({
-          nodePath: path.join(dataDir, 'node2'),
-          password: 'password',
-          networkConfig: {
-            proxyHost: localHost,
-            agentHost: localHost,
-            clientHost: localHost,
-            forwardHost: localHost,
-          },
-          seedNodes,
-          logger,
-          keyRingConfig: {
-            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-            passwordMemLimit: keysUtils.passwordMemLimits.min,
-            strictMemoryLock: false,
-          },
-        });
+  test('should expand the network when nodes enter', async () => {
+    const mockedRefreshBucket = jest.spyOn(
+      NodeManager.prototype,
+      'refreshBucket',
+    );
+    mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
 
-        await node1.nodeManager.syncNodeGraph(true, 2000);
-        await node2.nodeManager.syncNodeGraph(true, 2000);
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        keepAliveIntervalTime: 1000,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      seedNodes: {
+        [remoteNodeIdEncoded1]: remoteAddress1,
+      },
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
 
-        const getAllNodes = async (node: PolykeyAgent) => {
-          const nodes: Array<NodeIdEncoded> = [];
-          for await (const [nodeId] of node.nodeGraph.getNodes()) {
-            nodes.push(nodesUtils.encodeNodeId(nodeId));
-          }
-          return nodes;
-        };
-        const rNode1Nodes = await getAllNodes(remoteNode1);
-        const rNode2Nodes = await getAllNodes(remoteNode2);
-        const node1Nodes = await getAllNodes(node1);
-        const node2Nodes = await getAllNodes(node2);
+    await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
-        const nodeIdR1 = nodesUtils.encodeNodeId(remoteNodeId1);
-        const nodeIdR2 = nodesUtils.encodeNodeId(remoteNodeId2);
-        const nodeId1 = nodesUtils.encodeNodeId(node1.keyRing.getNodeId());
-        const nodeId2 = nodesUtils.encodeNodeId(node2.keyRing.getNodeId());
-        expect(rNode1Nodes).toContain(nodeId1);
-        expect(rNode1Nodes).toContain(nodeId2);
-        expect(rNode2Nodes).toContain(nodeId1);
-        expect(rNode2Nodes).toContain(nodeId2);
-        expect(node1Nodes).toContain(nodeIdR1);
-        expect(node1Nodes).toContain(nodeIdR2);
-        expect(node1Nodes).toContain(nodeId2);
-        expect(node2Nodes).toContain(nodeIdR1);
-        expect(node2Nodes).toContain(nodeIdR2);
-        expect(node2Nodes).toContain(nodeId1);
-      } finally {
-        mockedPingNode.mockRestore();
-        await node1?.stop();
-        await node2?.stop();
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test(
-    'refreshBucket delays should be reset after finding less than 20 nodes',
-    async () => {
-      // Using a single seed node we need to check that each entering node adds itself to the seed node.
-      // Also need to check that the new nodes can be seen in the network.
-      let node1: PolykeyAgent | undefined;
-      const seedNodes: SeedNodes = {};
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId1)] = {
-        host: remoteNode1.proxy.getProxyHost(),
-        port: remoteNode1.proxy.getProxyPort(),
-      };
-      seedNodes[nodesUtils.encodeNodeId(remoteNodeId2)] = {
-        host: remoteNode2.proxy.getProxyHost(),
-        port: remoteNode2.proxy.getProxyPort(),
-      };
-      const mockedPingNode = jest.spyOn(
-        NodeConnectionManager.prototype,
-        'pingNode',
-      );
-      mockedPingNode.mockImplementation(createPromiseCancellable(true));
-      try {
-        node1 = await PolykeyAgent.createPolykeyAgent({
-          nodePath: path.join(dataDir, 'node1'),
-          password: 'password',
-          networkConfig: {
-            proxyHost: localHost,
-            agentHost: localHost,
-            clientHost: localHost,
-            forwardHost: localHost,
-          },
-          seedNodes,
-          logger,
-          keyRingConfig: {
-            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-            passwordMemLimit: keysUtils.passwordMemLimits.min,
-            strictMemoryLock: false,
-          },
-        });
+    await nodeManager.syncNodeGraph(true, 500);
+    // Local and remote nodes should know each other now
+    expect(await nodeGraph.getNode(remoteNodeId2)).toBeDefined();
+    expect(
+      await remotePolykeyAgent2.nodeGraph.getNode(keyRing.getNodeId()),
+    ).toBeDefined();
 
-        // Reset all the refresh bucket timers to a distinct time
-        for (
-          let bucketIndex = 0;
-          bucketIndex < node1.nodeGraph.nodeIdBits;
-          bucketIndex++
-        ) {
-          await node1.nodeManager.updateRefreshBucketDelay(
-            bucketIndex,
-            10000,
-            true,
-          );
-        }
+    await nodeConnectionManager.stop();
+  });
+  test('refreshBucket delays should be reset after finding less than 20 nodes', async () => {
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      quicClientConfig: {
+        key: tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        keepAliveIntervalTime: 1000,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      seedNodes: {
+        [remoteNodeIdEncoded1]: remoteAddress1,
+      },
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      nodeManager,
+    });
+    await taskManager.startProcessing();
 
-        // Trigger a refreshBucket
-        await node1.nodeManager.refreshBucket(1);
+    // Reset all the refresh bucket timers to a distinct time
+    for (
+      let bucketIndex = 0;
+      bucketIndex < nodeGraph.nodeIdBits;
+      bucketIndex++
+    ) {
+      await nodeManager.updateRefreshBucketDelay(bucketIndex, 10000, true);
+    }
 
-        for await (const task of node1.taskManager.getTasks('asc', true, [
-          'refreshBucket',
-        ])) {
-          expect(task.delay).toBeGreaterThanOrEqual(50000);
-        }
-      } finally {
-        mockedPingNode.mockRestore();
-        await node1?.stop();
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
+    // Trigger a refreshBucket
+    await nodeManager.refreshBucket(1);
+
+    for await (const task of taskManager.getTasks('asc', true, [
+      'refreshBucket',
+    ])) {
+      expect(task.delay).toBeGreaterThanOrEqual(50000);
+    }
+
+    await nodeConnectionManager.stop();
+  });
 });

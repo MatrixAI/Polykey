@@ -12,6 +12,7 @@ import Status from '@/status/Status';
 import * as statusErrors from '@/status/errors';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils';
+import { promise } from '@/utils';
 import * as testUtils from '../../utils';
 
 describe('start', () => {
@@ -23,10 +24,13 @@ describe('start', () => {
     );
   });
   afterEach(async () => {
-    await fs.promises.rm(dataDir, {
-      force: true,
-      recursive: true,
-    });
+    await fs.promises
+      .rm(dataDir, {
+        force: true,
+        recursive: true,
+      })
+      // Just ignore failures here
+      .catch(() => {});
   });
   testUtils.testIf(
     testUtils.isTestPlatformEmpty || testUtils.isTestPlatformDocker,
@@ -44,7 +48,7 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -76,10 +80,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       expect(
@@ -116,7 +116,7 @@ describe('start', () => {
           passwordPath,
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--background',
           '--background-out-file',
@@ -166,10 +166,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       // The foreground process PID should nto be the background process PID
@@ -220,7 +216,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -246,7 +242,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -273,36 +269,44 @@ describe('start', () => {
       let stdErrLine2;
       const rlErr1 = readline.createInterface(agentProcess1.stderr!);
       const rlErr2 = readline.createInterface(agentProcess2.stderr!);
+      const agentStartedProm1 = promise<[number, string]>();
+      const agentStartedProm2 = promise<[number, string]>();
       rlErr1.on('line', (l) => {
         stdErrLine1 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm1.resolveP([0, l]);
+          agentProcess1.kill('SIGINT');
+        }
       });
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm2.resolveP([0, l]);
+          agentProcess2.kill('SIGINT');
+        }
       });
-      // eslint-disable-next-line prefer-const
-      let [index, exitCode] = await new Promise<
-        [number, number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess1.once('exit', (code, signal) => {
-          resolve([0, code, signal]);
-        });
-        agentProcess2.once('exit', (code, signal) => {
-          resolve([1, code, signal]);
-        });
+
+      agentProcess1.once('exit', (code) => {
+        agentStartedProm1.resolveP([code ?? 255, stdErrLine1]);
       });
+      agentProcess2.once('exit', (code) => {
+        agentStartedProm2.resolveP([code ?? 255, stdErrLine2]);
+      });
+
+      const results = await Promise.all([
+        agentStartedProm1.p,
+        agentStartedProm2.p,
+      ]);
+      // Only 1 should fail with locked
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      // It's either the first or second process
-      if (index === 0) {
-        testUtils.expectProcessError(exitCode!, stdErrLine1, [
-          errorStatusLocked,
-        ]);
-        agentProcess2.kill('SIGQUIT');
-      } else if (index === 1) {
-        testUtils.expectProcessError(exitCode!, stdErrLine2, [
-          errorStatusLocked,
-        ]);
-        agentProcess1.kill('SIGQUIT');
+      let failed = 0;
+      for (const [code, line] of results) {
+        if (code !== 0) {
+          failed += 1;
+          testUtils.expectProcessError(code, line, [errorStatusLocked]);
+        }
       }
+      expect(failed).toEqual(1);
     },
     globalThis.defaultTimeout * 2,
   );
@@ -320,7 +324,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -361,39 +365,44 @@ describe('start', () => {
       let stdErrLine2;
       const rlErr1 = readline.createInterface(agentProcess.stderr!);
       const rlErr2 = readline.createInterface(bootstrapProcess.stderr!);
+      const agentStartedProm1 = promise<[number, string]>();
+      const agentStartedProm2 = promise<[number, string]>();
       rlErr1.on('line', (l) => {
         stdErrLine1 = l;
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm1.resolveP([0, l]);
+          agentProcess.kill('SIGINT');
+        }
       });
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
-      });
-      // eslint-disable-next-line prefer-const
-      let [index, exitCode] = await new Promise<
-        [number, number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess.once('exit', (code, signal) => {
-          resolve([0, code, signal]);
-        });
-        bootstrapProcess.once('exit', (code, signal) => {
-          resolve([1, code, signal]);
-        });
-      });
-      const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      // It's either the first or second process
-      try {
-        if (index === 0) {
-          testUtils.expectProcessError(exitCode!, stdErrLine1, [
-            errorStatusLocked,
-          ]);
-        } else {
-          testUtils.expectProcessError(exitCode!, stdErrLine2, [
-            errorStatusLocked,
-          ]);
+        if (l.includes('Created PolykeyAgent')) {
+          agentStartedProm2.resolveP([0, l]);
+          bootstrapProcess.kill('SIGINT');
         }
-      } finally {
-        bootstrapProcess.kill('SIGTERM');
-        agentProcess.kill('SIGTERM');
+      });
+
+      agentProcess.once('exit', (code) => {
+        agentStartedProm1.resolveP([code ?? 255, stdErrLine1]);
+      });
+      bootstrapProcess.once('exit', (code) => {
+        agentStartedProm2.resolveP([code ?? 255, stdErrLine2]);
+      });
+
+      const results = await Promise.all([
+        agentStartedProm1.p,
+        agentStartedProm2.p,
+      ]);
+      // Only 1 should fail with locked
+      const errorStatusLocked = new statusErrors.ErrorStatusLocked();
+      let failed = 0;
+      for (const [code, line] of results) {
+        if (code !== 0) {
+          failed += 1;
+          testUtils.expectProcessError(code, line, [errorStatusLocked]);
+        }
       }
+      expect(failed).toEqual(1);
     },
     globalThis.defaultTimeout * 2,
   );
@@ -409,7 +418,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -439,7 +448,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -487,7 +496,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -528,7 +537,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -562,10 +571,6 @@ describe('start', () => {
         clientPort: expect.any(Number),
         agentHost: expect.any(String),
         agentPort: expect.any(Number),
-        proxyHost: expect.any(String),
-        proxyPort: expect.any(Number),
-        forwardHost: expect.any(String),
-        forwardPort: expect.any(Number),
         recoveryCode: expect.any(String),
       });
       expect(
@@ -615,7 +620,7 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -655,7 +660,7 @@ describe('start', () => {
           recoveryCodePath,
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -712,7 +717,7 @@ describe('start', () => {
           'start',
           '--client-host',
           '127.0.0.1',
-          '--proxy-host',
+          '--agent-host',
           '127.0.0.1',
           '--workers',
           'none',
@@ -759,8 +764,8 @@ describe('start', () => {
       // Make sure these ports are not occupied
       const clientHost = '127.0.0.2';
       const clientPort = 55555;
-      const proxyHost = '127.0.0.3';
-      const proxyPort = 55556;
+      const agentHost = '127.0.0.3';
+      const agentPort = 55556;
       const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
@@ -771,10 +776,10 @@ describe('start', () => {
           clientHost,
           '--client-port',
           clientPort.toString(),
-          '--proxy-host',
-          proxyHost,
-          '--proxy-port',
-          proxyPort.toString(),
+          '--agent-host',
+          agentHost,
+          '--agent-port',
+          agentPort.toString(),
           '--verbose',
         ],
         {
@@ -792,6 +797,8 @@ describe('start', () => {
       const statusInfo = await status.waitFor('LIVE');
       expect(statusInfo.data.clientHost).toBe(clientHost);
       expect(statusInfo.data.clientPort).toBe(clientPort);
+      expect(statusInfo.data.agentHost).toBe(agentHost);
+      expect(statusInfo.data.agentPort).toBe(agentPort);
       agentProcess.kill('SIGTERM');
       // Check for graceful exit
       await status.waitFor('DEAD');
@@ -869,11 +876,11 @@ describe('start', () => {
     let agent2Status: StatusLive;
     let agent2Close: () => Promise<void>;
     let seedNodeId1: NodeId;
-    let seedNodeHost1: Host;
-    let seedNodePort1: Port;
+    let seedNodeHost1: string;
+    let seedNodePort1: number;
     let seedNodeId2: NodeId;
-    let seedNodeHost2: Host;
-    let seedNodePort2: Port;
+    let seedNodeHost2: string;
+    let seedNodePort2: number;
     beforeEach(async () => {
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
@@ -884,11 +891,11 @@ describe('start', () => {
       ({ agentStatus: agent2Status, agentClose: agent2Close } =
         await testUtils.setupTestAgent(logger));
       seedNodeId1 = agent1Status.data.nodeId;
-      seedNodeHost1 = agent1Status.data.proxyHost;
-      seedNodePort1 = agent1Status.data.proxyPort;
+      seedNodeHost1 = agent1Status.data.agentHost;
+      seedNodePort1 = agent1Status.data.agentPort;
       seedNodeId2 = agent2Status.data.nodeId;
-      seedNodeHost2 = agent2Status.data.proxyHost;
-      seedNodePort2 = agent2Status.data.proxyPort;
+      seedNodeHost2 = agent2Status.data.agentHost;
+      seedNodePort2 = agent2Status.data.agentPort;
     });
     afterEach(async () => {
       await agent1Close();
@@ -919,8 +926,8 @@ describe('start', () => {
           .mockValue({
             mainnet: {
               [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
+                host: seedNodeHost2 as Host,
+                port: seedNodePort2 as Port,
               },
             },
             testnet: {},
@@ -931,7 +938,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',
@@ -987,8 +994,8 @@ describe('start', () => {
             mainnet: {},
             testnet: {
               [seedNodeId2]: {
-                host: seedNodeHost2,
-                port: seedNodePort2,
+                host: seedNodeHost2 as Host,
+                port: seedNodePort2 as Port,
               },
             },
           });
@@ -998,7 +1005,7 @@ describe('start', () => {
             'start',
             '--client-host',
             '127.0.0.1',
-            '--proxy-host',
+            '--agent-host',
             '127.0.0.1',
             '--workers',
             'none',

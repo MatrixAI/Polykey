@@ -1,15 +1,15 @@
+import type { DB } from '@matrixai/db';
+import type { PermissionSetMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { VaultAction } from '../../vaults/types';
 import type { NodeId } from '../../ids';
-import type { DB } from '@matrixai/db';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
-import type { PermissionSetMessage, SuccessMessage } from './types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils';
 import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { UnaryHandler } from '../../rpc/handlers';
 

@@ -1,7 +1,7 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
-import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { NotificationMessage, NotificationReadMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type NotificationsManager from '../../notifications/NotificationsManager';
 import { ServerHandler } from '../../rpc/handlers';
 
 class NotificationsReadHandler extends ServerHandler<

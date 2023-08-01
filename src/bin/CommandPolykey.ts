@@ -9,7 +9,6 @@ import Logger, {
 import * as binUtils from './utils';
 import * as binOptions from './utils/options';
 import * as binErrors from './errors';
-import grpcSetLogger from '../grpc/utils/setLogger';
 
 /**
  * Singleton logger constructed once for all commands
@@ -89,8 +88,6 @@ class CommandPolykey extends commander.Command {
         const format = formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`;
         this.logger.handlers.forEach((handler) => handler.setFormatter(format));
       }
-      // Set the global upstream GRPC logger
-      grpcSetLogger(this.logger.getChild('grpc'));
       // If the node path is undefined
       // this means there is an unknown platform
       if (opts.nodePath == null) {

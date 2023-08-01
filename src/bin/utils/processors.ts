@@ -1,7 +1,6 @@
 import type { FileSystem } from '../../types';
 import type { RecoveryCode } from '../../keys/types';
 import type { NodeId } from '../../ids/types';
-import type { Host, Port } from '../../network/types';
 import type {
   StatusStarting,
   StatusLive,
@@ -203,14 +202,14 @@ async function processRecoveryCode(
 async function processClientOptions(
   nodePath: string,
   nodeId?: NodeId,
-  clientHost?: Host,
-  clientPort?: Port,
+  clientHost?: string,
+  clientPort?: number,
   fs = require('fs'),
   logger = new Logger(processClientOptions.name),
 ): Promise<{
   nodeId: NodeId;
-  clientHost: Host;
-  clientPort: Port;
+  clientHost: string;
+  clientPort: number;
 }> {
   if (nodeId != null && clientHost != null && clientPort != null) {
     return {
@@ -266,8 +265,8 @@ async function processClientOptions(
 async function processClientStatus(
   nodePath: string,
   nodeId?: NodeId,
-  clientHost?: Host,
-  clientPort?: Port,
+  clientHost?: string,
+  clientPort?: number,
   fs = require('fs'),
   logger = new Logger(processClientStatus.name),
 ): Promise<
@@ -275,22 +274,22 @@ async function processClientStatus(
       statusInfo: StatusStarting | StatusStopping | StatusDead;
       status: Status;
       nodeId: NodeId | undefined;
-      clientHost: Host | undefined;
-      clientPort: Port | undefined;
+      clientHost: string | undefined;
+      clientPort: number | undefined;
     }
   | {
       statusInfo: StatusLive;
       status: Status;
       nodeId: NodeId;
-      clientHost: Host;
-      clientPort: Port;
+      clientHost: string;
+      clientPort: number;
     }
   | {
       statusInfo: undefined;
       status: undefined;
       nodeId: NodeId;
-      clientHost: Host;
-      clientPort: Port;
+      clientHost: string;
+      clientPort: number;
     }
 > {
   if (nodeId != null && clientHost != null && clientPort != null) {

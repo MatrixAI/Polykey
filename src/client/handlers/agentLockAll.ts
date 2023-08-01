@@ -1,5 +1,5 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type SessionManager from '../../sessions/SessionManager';
 import { UnaryHandler } from '../../rpc/handlers';
 

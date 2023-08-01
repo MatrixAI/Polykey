@@ -32,11 +32,7 @@
             "clientHost": { "type": "string" },
             "clientPort": { "type": "number" },
             "agentHost": { "type": "string" },
-            "agentPort": { "type": "number" },
-            "forwardHost": { "type": "string" },
-            "forwardPort": { "type": "number" },
-            "proxyHost": { "type": "string" },
-            "proxyPort": { "type": "number" }
+            "agentPort": { "type": "number" }
           },
           "required": [
             "pid",
@@ -44,11 +40,7 @@
             "clientHost",
             "clientPort",
             "agentHost",
-            "agentPort",
-            "forwardHost",
-            "forwardPort",
-            "proxyHost",
-            "proxyPort"
+            "agentPort"
           ]
         }
       }

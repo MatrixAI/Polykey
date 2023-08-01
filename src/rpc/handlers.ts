@@ -43,11 +43,11 @@ abstract class DuplexHandler<
    * `finally` block and check the abort signal for potential errors.
    */
   abstract handle(
-    input: AsyncIterable<Input>,
+    input: AsyncIterableIterator<Input>,
     cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): AsyncIterable<Output>;
+  ): AsyncIterableIterator<Output>;
 }
 
 abstract class ServerHandler<
@@ -60,7 +60,7 @@ abstract class ServerHandler<
     cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): AsyncIterable<Output>;
+  ): AsyncIterableIterator<Output>;
 }
 
 abstract class ClientHandler<
@@ -69,7 +69,7 @@ abstract class ClientHandler<
   Output extends JSONValue = JSONValue,
 > extends Handler<Container, Input, Output> {
   abstract handle(
-    input: AsyncIterable<Input>,
+    input: AsyncIterableIterator<Input>,
     cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,

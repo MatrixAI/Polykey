@@ -668,7 +668,7 @@ class TaskManager {
     if (this.schedulingLoop != null) return;
     this.schedulerLogger.info('Starting Scheduling Loop');
     const abortController = new AbortController();
-    const abortP = utils.signalPromise(abortController.signal);
+    const ctx = { signal: abortController.signal };
     // First iteration must run
     if (this.schedulingLockReleaser != null) {
       await this.schedulingLockReleaser();
@@ -680,7 +680,7 @@ class TaskManager {
           // this ensures that each iteration of the loop is only
           // run when it is required
           try {
-            await Promise.race([this.schedulingLock.waitForUnlock(), abortP]);
+            await this.schedulingLock.waitForUnlock(ctx);
           } catch (e) {
             if (e === abortSchedulingLoopReason) {
               break;
@@ -689,7 +689,7 @@ class TaskManager {
             }
           }
           this.schedulerLogger.debug(`Begin scheduling loop iteration`);
-          [this.schedulingLockReleaser] = await this.schedulingLock.lock()();
+          [this.schedulingLockReleaser] = await this.schedulingLock.lock(ctx)();
           // Peek ahead by 100 ms in-order to prefetch some tasks
           const now =
             Math.trunc(performance.timeOrigin + performance.now()) + 100;
@@ -762,14 +762,14 @@ class TaskManager {
     if (this.queuingLoop != null) return;
     this.queueLogger.info('Starting Queueing Loop');
     const abortController = new AbortController();
-    const abortP = utils.signalPromise(abortController.signal);
+    const ctx = { signal: abortController.signal };
     // First iteration must run
     if (this.queuingLockReleaser != null) await this.queuingLockReleaser();
     const queuingLoop = (async () => {
       try {
         while (!abortController.signal.aborted) {
           try {
-            await Promise.race([this.queuingLock.waitForUnlock(), abortP]);
+            await this.queuingLock.waitForUnlock(ctx);
           } catch (e) {
             if (e === abortQueuingLoopReason) {
               break;
@@ -778,7 +778,7 @@ class TaskManager {
             }
           }
           this.queueLogger.debug(`Begin queuing loop iteration`);
-          [this.queuingLockReleaser] = await this.queuingLock.lock()();
+          [this.queuingLockReleaser] = await this.queuingLock.lock(ctx)();
           await this.db.withTransactionF(async (tran) => {
             for await (const [kP] of tran.iterator(this.tasksQueuedDbPath, {
               values: false,

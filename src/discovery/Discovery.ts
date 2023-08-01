@@ -25,12 +25,12 @@ import type {
   ClaimLinkIdentity,
   ClaimLinkNode,
 } from '../claims/payloads/index';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
 import * as tasksErrors from '../tasks/errors';
@@ -69,6 +69,7 @@ class Discovery {
     identitiesManager,
     nodeManager,
     taskManager,
+    discoverVertexTimeout = 2000,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -78,6 +79,7 @@ class Discovery {
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
     taskManager: TaskManager;
+    discoverVertexTimeout?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Discovery> {
@@ -89,6 +91,7 @@ class Discovery {
       identitiesManager,
       nodeManager,
       taskManager,
+      discoverVertexTimeout,
       logger,
     });
     await discovery.start({ fresh });
@@ -103,6 +106,7 @@ class Discovery {
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
   protected taskManager: TaskManager;
+  protected discoverVertexTimeout: number;
 
   protected visitedVertices = new Set<GestaltIdEncoded>();
   protected discoverVertexHandler: TaskHandler = async (
@@ -111,7 +115,7 @@ class Discovery {
     vertex: GestaltIdEncoded,
   ) => {
     try {
-      await this.processVertex(vertex, 2000, ctx);
+      await this.processVertex(vertex, ctx);
     } catch (e) {
       if (
         e instanceof tasksErrors.ErrorTaskStop ||
@@ -140,6 +144,7 @@ class Discovery {
     identitiesManager,
     nodeManager,
     taskManager,
+    discoverVertexTimeout,
     logger,
   }: {
     db: DB;
@@ -148,6 +153,7 @@ class Discovery {
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
     taskManager: TaskManager;
+    discoverVertexTimeout: number;
     logger: Logger;
   }) {
     this.db = db;
@@ -156,6 +162,7 @@ class Discovery {
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
     this.taskManager = taskManager;
+    this.discoverVertexTimeout = discoverVertexTimeout;
     this.logger = logger;
   }
 
@@ -238,13 +245,11 @@ class Discovery {
   //  GestaltGraph and ask for claims newer than that
   protected processVertex(
     vertex: GestaltIdEncoded,
-    connectionTimeout?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   protected async processVertex(
     vertex: GestaltIdEncoded,
-    connectionTimeout: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
@@ -253,20 +258,15 @@ class Discovery {
     const [type, id] = vertexId;
     switch (type) {
       case 'node':
-        return await this.processNode(id, connectionTimeout, ctx);
+        return await this.processNode(id, ctx);
       case 'identity':
-        return await this.processIdentity(id, connectionTimeout, ctx);
+        return await this.processIdentity(id, ctx);
       default:
         never();
     }
-    this.visitedVertices.add(vertex);
   }
 
-  protected async processNode(
-    nodeId: NodeId,
-    connectionTimeout: number | undefined,
-    ctx: ContextTimed,
-  ) {
+  protected async processNode(nodeId: NodeId, ctx: ContextTimed) {
     // If the vertex we've found is our own node, we simply get our own chain
     const encodedGestaltNodeId = gestaltsUtils.encodeGestaltNodeId([
       'node',
@@ -299,13 +299,13 @@ class Discovery {
     try {
       vertexChainData = await this.nodeManager.requestChainData(
         nodeId,
-        connectionTimeout,
         newestClaimId,
         ctx,
       );
     } catch (e) {
       this.visitedVertices.add(encodedGestaltNodeId);
-      this.logger.error(
+      // Not strictly an error in this case, we can fail to connect
+      this.logger.info(
         `Failed to discover ${nodesUtils.encodeNodeId(
           nodeId,
         )} - ${e.toString()}`,
@@ -391,10 +391,6 @@ class Discovery {
               continue;
             }
             // Attempt to get the identity info on the identity provider
-            const timer =
-              connectionTimeout != null
-                ? new Timer({ delay: connectionTimeout })
-                : undefined;
             if (signedClaim.payload.sub == null) never();
             const [providerId, identityId] = JSON.parse(
               signedClaim.payload.sub,
@@ -402,7 +398,7 @@ class Discovery {
             const identityInfo = await this.getIdentityInfo(
               providerId,
               identityId,
-              { signal: ctx.signal, timer },
+              ctx,
             );
             // If we can't get identity info, simply skip this claim
             if (identityInfo == null) {
@@ -467,23 +463,15 @@ class Discovery {
     this.visitedVertices.add(encodedGestaltNodeId);
   }
 
-  protected async processIdentity(
-    id: ProviderIdentityId,
-    connectionTimeout: number | undefined,
-    ctx: ContextTimed,
-  ) {
+  protected async processIdentity(id: ProviderIdentityId, ctx: ContextTimed) {
     // If the next vertex is an identity, perform a social discovery
     // Firstly get the identity info of this identity
     const providerIdentityId = id;
     const [providerId, identityId] = id;
-    const timer =
-      connectionTimeout != null
-        ? new Timer({ delay: connectionTimeout })
-        : undefined;
     const vertexIdentityInfo = await this.getIdentityInfo(
       providerId,
       identityId,
-      { signal: ctx.signal, timer },
+      ctx,
     );
     // If we don't have identity info, simply skip this vertex
     if (vertexIdentityInfo == null) {
@@ -613,6 +601,7 @@ class Discovery {
           gestaltIdEncoded,
         ],
         lazy: true,
+        deadline: this.discoverVertexTimeout,
       },
       tran,
     );
@@ -628,7 +617,7 @@ class Discovery {
   protected getIdentityInfo(
     providerId: ProviderId,
     identityId: IdentityId,
-    ctx: Partial<ContextTimed>,
+    ctx: Partial<ContextTimedInput>,
   ): Promise<IdentityData | undefined>;
   @timedCancellable(true, 20000)
   protected async getIdentityInfo(

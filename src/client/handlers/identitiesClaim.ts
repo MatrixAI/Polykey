@@ -1,11 +1,11 @@
+import type { ClaimIdMessage, IdentityMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { IdentityId, ProviderId } from 'ids/index';
+import type { IdentityId, ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { ClaimIdMessage, IdentityMessage } from 'client/handlers/types';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
-import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils/index';
 
 class IdentitiesClaimHandler extends UnaryHandler<
   {

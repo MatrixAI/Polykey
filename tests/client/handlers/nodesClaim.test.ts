@@ -2,12 +2,13 @@ import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { NodeIdEncoded } from '@/ids';
 import type { Notification } from '@/notifications/types';
-import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -17,15 +18,14 @@ import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as validationErrors from '@/validation/errors';
 import { nodesClaim } from '@/client';
-import * as testsUtils from '../../utils';
 import ACL from '../../../src/acl/ACL';
-import Proxy from '../../../src/network/Proxy';
 import NodeGraph from '../../../src/nodes/NodeGraph';
 import TaskManager from '../../../src/tasks/TaskManager';
 import NodeConnectionManager from '../../../src/nodes/NodeConnectionManager';
 import NodeManager from '../../../src/nodes/NodeManager';
 import NotificationsManager from '../../../src/notifications/NotificationsManager';
-import * as testUtils from '../../utils';
+import * as testsUtils from '../../utils/utils';
+import * as tlsTestsUtils from '../../utils/tls';
 import Sigchain from '../../../src/sigchain/Sigchain';
 
 describe('nodesClaim', () => {
@@ -36,7 +36,6 @@ describe('nodesClaim', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   const dummyNotification: Notification = {
     typ: 'notification',
     data: {
@@ -55,11 +54,11 @@ describe('nodesClaim', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
+  let quicSocket: QUICSocket;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let proxy: Proxy;
   let mockedFindGestaltInvite: jest.SpyInstance;
   let mockedSendNotification: jest.SpyInstance;
   let mockedClaimNode: jest.SpyInstance;
@@ -92,20 +91,11 @@ describe('nodesClaim', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
 
     acl = await ACL.createACL({
       db,
       logger,
-    });
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -122,13 +112,26 @@ describe('nodesClaim', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
-      connConnectTime: 2000,
-      connTimeoutTime: 2000,
+      quicClientConfig: {
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
+      },
+      crypto,
+      quicSocket,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -163,11 +166,11 @@ describe('nodesClaim', () => {
     await webSocketServer.stop(true);
     await webSocketClient.destroy(true);
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
     await notificationsManager.stop();
     await sigchain.stop();
-    await proxy.stop();
     await acl.stop();
     await db.stop();
     await keyRing.stop();
@@ -248,7 +251,7 @@ describe('nodesClaim', () => {
     });
 
     // Doing the test
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.nodesClaim({
         nodeIdEncoded: 'nodeId' as NodeIdEncoded,
       }),

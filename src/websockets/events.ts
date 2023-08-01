@@ -1,4 +1,4 @@
-import type WebSocketStream from 'websockets/WebSocketStream';
+import type WebSocketStream from './WebSocketStream';
 
 class StartEvent extends Event {
   public detail: {

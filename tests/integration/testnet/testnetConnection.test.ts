@@ -1,5 +1,4 @@
 import type { NodeIdEncoded, SeedNodes } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import readline from 'readline';
@@ -8,6 +7,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import config from '@/config';
 import * as testUtils from '../../utils';
 import { sleep } from '../../../src/utils/index';
+
+test('dummy test', async () => {});
 
 describe.skip('testnet connection', () => {
   const logger = new Logger('TCT', LogLevel.WARN, [new StreamHandler()]);
@@ -206,7 +207,7 @@ describe.skip('testnet connection', () => {
     const nodePath1 = path.join(dataDir, 'node1');
     const nodePath2 = path.join(dataDir, 'node2');
     const password = 'password';
-    const localhost = '127.0.0.1' as Host;
+    const localhost = '127.0.0.1';
     logger.setLevel(LogLevel.WARN);
     // Console.log('Starting Seed');
     // const seed = await PolykeyAgent.createPolykeyAgent({
@@ -217,7 +218,7 @@ describe.skip('testnet connection', () => {
     //     agentHost: localhost,
     //     clientHost: localhost,
     //     forwardHost: localhost,
-    //     proxyPort: 55550 as Port,
+    //     proxyPort: 55550,
     //   },
     //   keysConfig: {
     //     privateKeyPemOverride: globalRootKeyPems[0],
@@ -242,8 +243,7 @@ describe.skip('testnet connection', () => {
         // ProxyHost: localhost,
         agentHost: localhost,
         clientHost: localhost,
-        forwardHost: localhost,
-        proxyPort: 55551 as Port,
+        agentPort: 55551,
       },
 
       logger: logger.getChild('A1'),
@@ -255,11 +255,9 @@ describe.skip('testnet connection', () => {
       nodePath: nodePath2,
       seedNodes,
       networkConfig: {
-        // ProxyHost: localhost,
         agentHost: localhost,
         clientHost: localhost,
-        forwardHost: localhost,
-        proxyPort: 55552 as Port,
+        agentPort: 55552,
       },
       logger: logger.getChild('A2'),
     });

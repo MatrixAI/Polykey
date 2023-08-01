@@ -1,5 +1,4 @@
 import type { IdentityData, IdentityId, ProviderId } from '@/identities/types';
-import type { Host } from '@/network/types';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -9,6 +8,11 @@ import * as identitiesUtils from '@/identities/utils';
 import * as keysUtils from '@/keys/utils/index';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils';
+
+// Fixes problem with spyOn overriding imports directly
+const mocks = {
+  browser: identitiesUtils.browser,
+};
 
 describe('search', () => {
   const logger = new Logger('search test', LogLevel.WARN, [
@@ -117,10 +121,8 @@ describe('search', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {
@@ -147,7 +149,7 @@ describe('search', () => {
       let exitCode, stdout;
       let searchResults: Array<IdentityData>;
       const mockedBrowser = jest
-        .spyOn(identitiesUtils, 'browser')
+        .spyOn(mocks, 'browser')
         .mockImplementation(() => {});
       // Search with no authenticated identities
       // Should return nothing

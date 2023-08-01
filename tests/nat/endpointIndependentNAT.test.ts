@@ -41,7 +41,7 @@ describe('endpoint independent NAT traversal', () => {
         agent1NodePath,
         agent2NodeId,
         agent2Host,
-        agent2ProxyPort,
+        agent2AgentPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('eim', 'dmz', logger);
       //                      Namespace1                                       Namespace2
@@ -60,7 +60,7 @@ describe('endpoint independent NAT traversal', () => {
           'add',
           agent2NodeId,
           agent2Host,
-          agent2ProxyPort,
+          agent2AgentPort,
           '--no-ping',
         ],
         {
@@ -113,10 +113,10 @@ describe('endpoint independent NAT traversal', () => {
         agent2NodePath,
         agent1NodeId,
         agent1Host,
-        agent1ProxyPort,
+        agent1AgentPort,
         agent2NodeId,
         agent2Host,
-        agent2ProxyPort,
+        agent2AgentPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('dmz', 'eim', logger);
       //              Namespace1                                        Namespace2
@@ -134,7 +134,7 @@ describe('endpoint independent NAT traversal', () => {
           'add',
           agent1NodeId,
           agent1Host,
-          agent1ProxyPort,
+          agent1AgentPort,
           '--no-ping',
         ],
         {
@@ -156,7 +156,7 @@ describe('endpoint independent NAT traversal', () => {
           'add',
           agent2NodeId,
           agent2Host,
-          agent2ProxyPort,
+          agent2AgentPort,
           '--no-ping',
         ],
         {
@@ -253,10 +253,10 @@ describe('endpoint independent NAT traversal', () => {
         agent2NodePath,
         agent1NodeId,
         agent1Host,
-        agent1ProxyPort,
+        agent1AgentPort,
         agent2NodeId,
         agent2Host,
-        agent2ProxyPort,
+        agent2AgentPort,
         tearDownNAT,
       } = await testNatUtils.setupNAT('eim', 'eim', logger);
       //                      Namespace1                                               Namespace2
@@ -274,7 +274,7 @@ describe('endpoint independent NAT traversal', () => {
           'add',
           agent1NodeId,
           agent1Host,
-          agent1ProxyPort,
+          agent1AgentPort,
           '--no-ping',
         ],
         {
@@ -296,7 +296,7 @@ describe('endpoint independent NAT traversal', () => {
           'add',
           agent2NodeId,
           agent2Host,
-          agent2ProxyPort,
+          agent2AgentPort,
           '--no-ping',
         ],
         {

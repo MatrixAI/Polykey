@@ -1,7 +1,7 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import type { VaultIdMessage, VaultNameMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import { UnaryHandler } from '../../rpc/handlers';
 

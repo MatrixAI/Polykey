@@ -1,6 +1,6 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { CertMessage } from './types';
-import type CertManager from 'keys/CertManager';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type CertManager from '../../keys/CertManager';
 import { ServerHandler } from '../../rpc/handlers';
 
 class KeysCertsChainGetHandler extends ServerHandler<

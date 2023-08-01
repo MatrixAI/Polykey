@@ -1,4 +1,3 @@
-import type { Host } from '@/network/types';
 import type { NodeId } from '@/ids';
 import path from 'path';
 import fs from 'fs';
@@ -24,10 +23,8 @@ describe('reset', () => {
       password,
       nodePath,
       networkConfig: {
-        proxyHost: '127.0.0.1' as Host,
-        forwardHost: '127.0.0.1' as Host,
-        agentHost: '127.0.0.1' as Host,
-        clientHost: '127.0.0.1' as Host,
+        agentHost: '127.0.0.1',
+        clientHost: '127.0.0.1',
       },
       logger,
       keyRingConfig: {

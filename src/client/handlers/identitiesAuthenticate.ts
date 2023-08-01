@@ -1,12 +1,12 @@
+import type { AuthProcessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { ProviderId } from 'ids/index';
+import type { ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { AuthProcessMessage } from 'client/handlers/types';
 import * as identitiesErrors from '../../identities/errors';
 import { ServerHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
-import { matchSync, never } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
+import { matchSync, never } from '../../utils/index';
 
 class IdentitiesAuthenticateHandler extends ServerHandler<
   {

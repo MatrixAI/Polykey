@@ -201,7 +201,7 @@ function parseJSONRPCMessage<T extends JSONValue>(
 }
 
 /**
- * Replacer function for serialising errors over GRPC (used by `JSON.stringify`
+ * Replacer function for serialising errors over RPC (used by `JSON.stringify`
  * in `fromError`)
  * Polykey errors are handled by their inbuilt `toJSON` method , so this only
  * serialises other errors
@@ -263,7 +263,7 @@ function fromError(error: Error, sensitive: boolean = false) {
 
 /**
  * Error constructors for non-Polykey errors
- * Allows these errors to be reconstructed from GRPC metadata
+ * Allows these errors to be reconstructed from RPC metadata
  */
 const standardErrors = {
   Error,
@@ -278,7 +278,7 @@ const standardErrors = {
 };
 
 /**
- * Reviver function for deserialising errors sent over GRPC (used by
+ * Reviver function for deserialising errors sent over RPC (used by
  * `JSON.parse` in `toError`)
  * The final result returned will always be an error - if the deserialised
  * data is of an unknown type then this will be wrapped as an

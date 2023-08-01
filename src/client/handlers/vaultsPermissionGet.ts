@@ -1,8 +1,8 @@
+import type { DB } from '@matrixai/db';
+import type { VaultIdentifierMessage, VaultPermissionMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { DB } from '@matrixai/db';
 import type ACL from '../../acl/ACL';
-import type { VaultIdentifierMessage, VaultPermissionMessage } from './types';
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId, NodeIdEncoded } from '../../ids';
 import { IdInternal } from '@matrixai/id';

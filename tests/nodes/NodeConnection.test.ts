@@ -1,1158 +1,400 @@
-import type { AddressInfo } from 'net';
-import type { ConnectionInfo, Host, Port, TLSConfig } from '@/network/types';
-import type { NodeId } from '@/nodes/types';
-import type { Key } from '@/keys/types';
-import type { Server } from '@grpc/grpc-js';
-import type { ChildProcessWithoutNullStreams } from 'child_process';
-import type { GestaltNodeInfo } from '@/gestalts/types';
-import net from 'net';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { DB } from '@matrixai/db';
-import { destroyed } from '@matrixai/async-init';
-import { Timer } from '@matrixai/timer';
-import TaskManager from '@/tasks/TaskManager';
-import Proxy from '@/network/Proxy';
-import NodeConnection from '@/nodes/NodeConnection';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import VaultManager from '@/vaults/VaultManager';
-import KeyRing from '@/keys/KeyRing';
+import type { Host, Port, TLSConfig } from '@/network/types';
+import type * as quicEvents from '@matrixai/quic/dist/events';
+import type { NodeId, NodeIdEncoded } from '@/ids';
+import { QUICServer, QUICSocket } from '@matrixai/quic';
+import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
+import { errors as quicErrors } from '@matrixai/quic';
+import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
+import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
-import GRPCClientAgent from '@/agent/GRPCClientAgent';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import Sigchain from '@/sigchain/Sigchain';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import * as nodesErrors from '@/nodes/errors';
-import * as networkErrors from '@/network/errors';
-import { poll, promise, promisify, sleep } from '@/utils';
-import PolykeyAgent from '@/PolykeyAgent';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as GRPCErrors from '@/grpc/errors';
-import * as agentErrors from '@/agent/errors';
-import * as grpcUtils from '@/grpc/utils';
-import * as utils from '@/utils';
-import * as testNodesUtils from './utils';
-import * as grpcTestUtils from '../grpc/utils';
-import * as agentTestUtils from '../agent/utils';
-import * as testsUtils from '../utils';
+import RPCServer from '@/rpc/RPCServer';
+import NodeConnection from '@/nodes/NodeConnection';
+import { promise } from '@/utils';
+import * as networkUtils from '@/network/utils';
+import * as tlsTestUtils from '../utils/tls';
 
-const destroyCallback = async () => {};
-
-describe(`${NodeConnection.name} test`, () => {
+describe(`${NodeConnection.name}`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
-    new StreamHandler(),
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
   ]);
-  grpcUtils.setLogger(logger.getChild('grpc'));
+  const localHost = '127.0.0.1';
+  const crypto = tlsTestUtils.createCrypto();
 
-  const password = 'password';
-  const nodeInfo: GestaltNodeInfo = {
-    nodeId: testNodesUtils.generateRandomNodeId(),
+  let serverTlsConfig: TLSConfig;
+  let clientTlsConfig: TLSConfig;
+  let serverNodeId: NodeId;
+  let clientNodeId: NodeId;
+  let serverNodeIdEncoded: NodeIdEncoded;
+  let serverSocket: QUICSocket;
+  let quicServer: QUICServer;
+  let rpcServer: RPCServer;
+  let clientSocket: QUICSocket;
+
+  let nodeConnection_: NodeConnection<any>;
+
+  const handleStream = async (event: quicEvents.QUICConnectionStreamEvent) => {
+    // Streams are handled via the RPCServer.
+    logger.info('Handling stream');
+    const stream = event.detail;
+    rpcServer.handleStream(stream);
   };
 
-  // Server
-  let serverDataDir: string;
-  let targetNodeId: NodeId;
-  let serverKeyRing: KeyRing;
-  let serverVaultManager: VaultManager;
-  let serverNodeGraph: NodeGraph;
-  let serverNodeConnectionManager: NodeConnectionManager;
-  let serverNodeManager: NodeManager;
-  let serverSigchain: Sigchain;
-  let serverACL: ACL;
-  let serverGestaltGraph: GestaltGraph;
-  let serverDb: DB;
-  let serverNotificationsManager: NotificationsManager;
-  let serverProxy: Proxy;
-
-  // Client
-  let clientDataDir: string;
-  let sourceNodeId: NodeId;
-  let clientKeyRing: KeyRing;
-  let clientNodeConnectionManager: NodeConnectionManager;
-  const authToken = 'AUTH';
-  let clientProxy: Proxy;
-
-  let agentServer: Server;
-  let serverPort: Port;
-  let tlsConfig: TLSConfig;
-
-  const localHost = '127.0.0.1' as Host;
-  let targetPort: Port;
-  let sourcePort: Port;
-
-  let serverTLSConfig: TLSConfig;
-  let serverTaskManager: TaskManager;
-
-  /**
-   * Mock TCP server
-   * This is the server that the ReverseProxy will be proxying to
-   */
-  function tcpServer(end: boolean = false, fastEnd: boolean = false) {
-    const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
-    const { p: serverConnEndP, resolveP: resolveServerConnEndP } =
-      promise<void>();
-    const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
-      promise<void>();
-    const server = net.createServer(
-      {
-        allowHalfOpen: false,
+  const handleConnection = async (
+    event: quicEvents.QUICServerConnectionEvent,
+  ) => {
+    // Needs to setup stream handler
+    const conn = event.detail;
+    logger.info('Setting up stream handling for connection');
+    conn.addEventListener('connectionStream', handleStream);
+    conn.addEventListener(
+      'connectionStop',
+      () => {
+        conn.removeEventListener('connectionStream', handleStream);
       },
-      (conn) => {
-        logger.info('connection!');
-        if (fastEnd) {
-          conn.end();
-          conn.destroy();
-        }
-        logger.info(JSON.stringify(conn.address()));
-        resolveServerConnP();
-        conn.on('end', () => {
-          logger.info('ending');
-          resolveServerConnEndP();
-          conn.end();
-          conn.destroy();
-        });
-        conn.once('close', () => {
-          logger.info('closing');
-          resolveServerConnClosedP();
-        });
-        if (end) {
-          conn.removeAllListeners('end');
-          conn.on('end', () => {
-            logger.info('ending');
-            resolveServerConnEndP();
-            conn.destroy();
-          });
-          conn.end();
-        }
-      },
+      { once: true },
     );
-    const serverClose = promisify(server.close).bind(server);
-    const serverListen = promisify(server.listen).bind(server);
-    const serverHost = () => {
-      return (server.address() as AddressInfo).address as Host;
-    };
-    const serverPort = () => {
-      return (server.address() as AddressInfo).port as Port;
-    };
-    return {
-      serverListen,
-      serverClose,
-      serverConnP,
-      serverConnEndP,
-      serverConnClosedP,
-      serverHost,
-      serverPort,
-    };
-  }
+  };
 
   beforeEach(async () => {
-    // Server setup
-    serverDataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-server'),
-    );
-    const serverKeysPath = path.join(serverDataDir, 'serverKeys');
-    const serverVaultsPath = path.join(serverDataDir, 'serverVaults');
-    const serverDbPath = path.join(serverDataDir, 'serverDb');
-
-    serverKeyRing = await KeyRing.createKeyRing({
-      password,
-      keysPath: serverKeysPath,
-      fs: fs,
-      logger: logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+    const serverKeyPair = keysUtils.generateKeyPair();
+    const clientKeyPair = keysUtils.generateKeyPair();
+    serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
+    clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
+    serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
+    serverTlsConfig = await tlsTestUtils.createTLSConfig(serverKeyPair);
+    clientTlsConfig = await tlsTestUtils.createTLSConfig(clientKeyPair);
+    serverSocket = new QUICSocket({
+      logger: logger.getChild('serverSocket'),
     });
-
-    serverTLSConfig = await testsUtils.createTLSConfig(serverKeyRing.keyPair);
-
-    serverDb = await DB.createDB({
-      dbPath: serverDbPath,
-      fs: fs,
-      logger: logger,
-      crypto: {
-        key: serverKeyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+    await serverSocket.start({
+      host: localHost,
+    });
+    quicServer = new QUICServer({
+      config: {
+        key: serverTlsConfig.keyPrivatePem,
+        cert: serverTlsConfig.certChainPem,
+        verifyPeer: true,
+        verifyAllowFail: true,
       },
+      verifyCallback: networkUtils.verifyClientCertificateChain,
+      crypto,
+      socket: serverSocket,
+      logger: logger.getChild(`${QUICServer.name}`),
     });
-    serverACL = await ACL.createACL({
-      db: serverDb,
-      logger: logger,
+    rpcServer = await RPCServer.createRPCServer({
+      handlerTimeoutGraceTime: 1000,
+      handlerTimeoutTime: 5000,
+      logger: logger.getChild(`${RPCServer.name}`),
+      manifest: {},
+      sensitive: false,
     });
-    serverSigchain = await Sigchain.createSigchain({
-      keyRing: serverKeyRing,
-      db: serverDb,
-      logger: logger,
-    });
-    serverGestaltGraph = await GestaltGraph.createGestaltGraph({
-      db: serverDb,
-      acl: serverACL,
-      logger: logger,
-    });
-
-    serverProxy = new Proxy({
-      authToken: '',
-      logger: logger,
-    });
-
-    serverNodeGraph = await NodeGraph.createNodeGraph({
-      db: serverDb,
-      keyRing: serverKeyRing,
-      logger,
-    });
-    serverTaskManager = await TaskManager.createTaskManager({
-      db: serverDb,
-      lazy: true,
-      logger,
-    });
-    serverNodeConnectionManager = new NodeConnectionManager({
-      keyRing: serverKeyRing,
-      nodeGraph: serverNodeGraph,
-      proxy: serverProxy,
-      taskManager: serverTaskManager,
-      logger,
-    });
-    serverNodeManager = new NodeManager({
-      db: serverDb,
-      sigchain: serverSigchain,
-      gestaltGraph: serverGestaltGraph,
-      keyRing: serverKeyRing,
-      nodeGraph: serverNodeGraph,
-      nodeConnectionManager: serverNodeConnectionManager,
-      taskManager: serverTaskManager,
-      logger: logger,
-    });
-    await serverNodeManager.start();
-    await serverNodeConnectionManager.start({ nodeManager: serverNodeManager });
-    serverVaultManager = await VaultManager.createVaultManager({
-      keyRing: serverKeyRing,
-      vaultsPath: serverVaultsPath,
-      nodeConnectionManager: serverNodeConnectionManager,
-      notificationsManager: serverNotificationsManager,
-      db: serverDb,
-      acl: serverACL,
-      gestaltGraph: serverGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-    serverNotificationsManager =
-      await NotificationsManager.createNotificationsManager({
-        acl: serverACL,
-        db: serverDb,
-        nodeConnectionManager: serverNodeConnectionManager,
-        nodeManager: serverNodeManager,
-        keyRing: serverKeyRing,
-        logger: logger,
-      });
-    await serverGestaltGraph.setNode(nodeInfo);
-    [agentServer, serverPort] = await agentTestUtils.openTestAgentServer({
-      db: serverDb,
-      keyRing: serverKeyRing,
-      vaultManager: serverVaultManager,
-      nodeConnectionManager: serverNodeConnectionManager,
-      nodeManager: serverNodeManager,
-      nodeGraph: serverNodeGraph,
-      sigchain: serverSigchain,
-      notificationsManager: serverNotificationsManager,
-      acl: serverACL,
-      gestaltGraph: serverGestaltGraph,
-      proxy: serverProxy,
-      logger: logger,
-    });
-    await serverProxy.start({
-      serverHost: localHost,
-      serverPort: serverPort,
-      proxyHost: localHost,
-      tlsConfig: serverTLSConfig,
-    });
-    targetPort = serverProxy.getProxyPort();
-    targetNodeId = serverKeyRing.getNodeId();
-
-    // Client setup
-    clientDataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-client'),
-    );
-    const clientKeysPath = path.join(clientDataDir, 'clientKeys');
-    clientKeyRing = await KeyRing.createKeyRing({
-      password,
-      keysPath: clientKeysPath,
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-    });
-
-    const clientTLSConfig = await testsUtils.createTLSConfig(
-      clientKeyRing.keyPair,
+    // Setting up handling
+    logger.info('Setting up connection handling for server');
+    quicServer.addEventListener('serverConnection', handleConnection);
+    quicServer.addEventListener(
+      'serverStop',
+      () => {
+        quicServer.removeEventListener('serverConnection', handleConnection);
+      },
+      { once: true },
     );
 
-    sourceNodeId = clientKeyRing.getNodeId();
-    clientProxy = new Proxy({
-      authToken: authToken,
-      logger: logger,
+    await quicServer.start();
+    clientSocket = new QUICSocket({
+      logger: logger.getChild('clientSocket'),
     });
-    await clientProxy.start({
-      forwardHost: localHost,
-      tlsConfig: clientTLSConfig,
-      proxyHost: localHost,
-      serverHost: localHost,
-      serverPort: 0 as Port,
-    });
-    sourcePort = clientProxy.getProxyPort();
-
-    clientNodeConnectionManager = new NodeConnectionManager({
-      keyRing: clientKeyRing,
-      nodeGraph: {} as NodeGraph,
-      proxy: clientProxy,
-      taskManager: {} as TaskManager,
-      logger: logger,
-    });
-    await clientNodeConnectionManager.start({ nodeManager: {} as NodeManager });
-
-    // Other setup
-    tlsConfig = await testsUtils.createTLSConfig(keysUtils.generateKeyPair());
-  }, globalThis.polykeyStartupTimeout * 2);
-
-  afterEach(async () => {
-    await clientProxy.stop();
-    await clientKeyRing.stop();
-    await fs.promises.rm(clientDataDir, {
-      force: true,
-      recursive: true,
-    });
-
-    await serverACL.stop();
-    await serverSigchain.stop();
-    await serverGestaltGraph.stop();
-    await serverVaultManager.stop();
-    await serverNodeGraph.stop();
-    await serverNodeConnectionManager.stop();
-    await serverNodeManager.stop();
-    await serverNotificationsManager.stop();
-    await agentTestUtils.closeTestAgentServer(agentServer);
-    await serverProxy.stop();
-    await serverKeyRing.stop();
-    await serverDb.stop();
-    await fs.promises.rm(serverDataDir, {
-      force: true,
-      recursive: true,
+    await clientSocket.start({
+      host: localHost,
     });
   });
 
+  afterEach(async () => {
+    await nodeConnection_?.destroy({ force: true });
+    await clientSocket.stop({ force: true });
+    await rpcServer.destroy(true);
+    await quicServer.stop({ force: true }); // Ignore errors due to socket already stopped
+    await serverSocket.stop({ force: true });
+  });
+
   test('session readiness', async () => {
-    logger.debug('session readiness start');
     const nodeConnection = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: localHost,
-      targetPort: targetPort,
-      proxy: clientProxy,
-      destroyCallback,
-      logger: logger,
-      clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+      targetNodeIds: [serverNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
     });
     await nodeConnection.destroy();
     // Should be a noop
     await nodeConnection.destroy();
-    expect(() => {
-      nodeConnection.getRootCertChain();
-    }).toThrow(nodesErrors.ErrorNodeConnectionDestroyed);
-    // Explicitly close the connection such that there's no interference in next test
-    await serverProxy.closeConnectionReverse(
-      localHost,
-      clientProxy.getProxyPort(),
-    );
   });
-  test('connects to its target (via direct connection)', async () => {
-    const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: localHost,
-      targetPort: targetPort,
-      proxy: clientProxy,
-      destroyCallback,
-      logger: logger,
-      clientFactory: async (args) =>
-        GRPCClientAgent.createGRPCClientAgent(args),
-    });
-    // Because the connection will not have enough time to compose before we
-    // attempt to acquire the connection info, we need to wait and poll it
-    const connInfo = await poll<ConnectionInfo | undefined>(
-      async () => {
-        return serverProxy.getConnectionInfoByProxy(localHost, sourcePort);
+  test('connects to the target', async () => {
+    await NodeConnection.createNodeConnection({
+      targetNodeIds: [serverNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
       },
-      (e) => {
-        if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
-        return !(e instanceof networkErrors.ErrorConnectionNotRunning);
-      },
-    );
-    expect(connInfo).toBeDefined();
-    expect(connInfo).toMatchObject({
-      remoteNodeId: sourceNodeId,
-      remoteCertificates: expect.any(Array),
-      localHost: localHost,
-      localPort: targetPort,
-      remoteHost: localHost,
-      remotePort: sourcePort,
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
     });
-    await conn.destroy();
   });
-  test('connects to its target but proxies connect first', async () => {
-    await clientProxy.openConnectionForward(
-      [targetNodeId],
-      localHost,
-      targetPort,
-    );
-    const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: localHost,
-      targetPort: targetPort,
-      proxy: clientProxy,
-      destroyCallback,
-      logger: logger,
-      clientFactory: async (args) =>
-        GRPCClientAgent.createGRPCClientAgent(args),
-    });
-    // Because the connection will not have enough time to compose before we
-    // attempt to acquire the connection info, we need to wait and poll it
-    const connInfo = await poll<ConnectionInfo | undefined>(
-      async () => {
-        return serverProxy.getConnectionInfoByProxy(localHost, sourcePort);
-      },
-      (e) => {
-        if (e instanceof networkErrors.ErrorConnectionNotComposed) return false;
-        return !(e instanceof networkErrors.ErrorConnectionNotRunning);
-      },
-    );
-    expect(connInfo).toBeDefined();
-    expect(connInfo).toMatchObject({
-      remoteNodeId: sourceNodeId,
-      remoteCertificates: expect.any(Array),
-      localHost: localHost,
-      localPort: targetPort,
-      remoteHost: localHost,
-      remotePort: sourcePort,
-    });
-    await conn.destroy();
-  });
-  test('grpcCall after connection drops', async () => {
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    let polykeyAgent: PolykeyAgent | undefined;
-    try {
-      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-        password,
-        nodePath: path.join(dataDir, 'PolykeyAgent3'),
-        logger: logger,
-        networkConfig: {
-          proxyHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
-      });
-      // Have a nodeConnection try to connect to it
-      const killSelf = jest.fn();
-      nodeConnection = await NodeConnection.createNodeConnection(
-        {
-          proxy: clientProxy,
-          logger: logger,
-          destroyCallback: killSelf,
-          targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyRing.getNodeId(),
-          targetPort: polykeyAgent.proxy.getProxyPort(),
-          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-
-      // Resolves if the shutdownCallback was called
-      await polykeyAgent.stop();
-
-      const client = nodeConnection.getClient();
-      const echoMessage = new utilsPB.EchoMessage().setChallenge(
-        'Hello world!',
-      );
-      await expect(async () => client.echo(echoMessage)).rejects.toThrow(
-        agentErrors.ErrorAgentClientDestroyed,
-      );
-    } finally {
-      await nodeConnection?.destroy();
-      await polykeyAgent?.stop();
-    }
-  });
-  test('fails to connect to target (times out)', async () => {
-    await expect(
-      NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: '128.0.0.1' as Host,
-          targetPort: 12345 as Port,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 300 }) },
-      ),
-    ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
-  });
-  test('Times out after expected delay', async () => {
-    let timedOut = false;
-    const connProm = NodeConnection.createNodeConnection(
+  test('connection fails to target (times out)', async () => {
+    const nodeConnectionProm = NodeConnection.createNodeConnection(
       {
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: 55556 as Port,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
+        targetNodeIds: [serverNodeId],
+        targetHost: localHost as Host,
+        targetPort: 12345 as Port,
+        manifest: {},
+        quicClientConfig: {
+          key: clientTlsConfig.keyPrivatePem,
+          cert: clientTlsConfig.certChainPem,
+          maxIdleTimeout: 1000,
+        },
+        crypto,
+        quicSocket: clientSocket,
+        logger: logger.getChild(`${NodeConnection.name}`),
       },
-      { timer: new Timer({ delay: 1000 }) },
-    ).then(
-      () => {},
+      { timer: 100 },
+    ).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    await expect(nodeConnectionProm).rejects.toThrow(
+      // QuicErrors.ErrorQUICClientCreateTimeOut, // FIXME: this is not throwing the right error
+      ErrorContextsTimedTimeOut,
+    );
+  });
+  test('connection drops out (socket stops responding)', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection(
+      {
+        targetNodeIds: [serverNodeId],
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
+        manifest: {},
+        quicClientConfig: {
+          key: clientTlsConfig.keyPrivatePem,
+          cert: clientTlsConfig.certChainPem,
+          maxIdleTimeout: 100,
+        },
+        crypto,
+        quicSocket: clientSocket,
+        logger: logger.getChild(`${NodeConnection.name}`),
+      },
+      { timer: 100 },
+    ).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    const destroyProm = promise<void>();
+    nodeConnection.addEventListener(
+      'destroy',
       () => {
-        timedOut = true;
+        destroyProm.resolveP();
       },
+      { once: true },
     );
-    expect(timedOut).toBeFalse();
-    await sleep(500);
-    expect(timedOut).toBeFalse();
-    await sleep(1000);
-    expect(timedOut).toBeTrue();
-    await connProm;
+    // NodeConnection.
+    await serverSocket.stop({ force: true });
+    // Wait for destruction, may take 2+ seconds
+    await destroyProm.p;
   });
-  test('getRootCertChain', async () => {
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      nodeConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      });
-
-      expect(nodeConnection.getRootCertChain()).toBeDefined();
-    } finally {
-      await nodeConnection?.destroy();
-    }
+  test('get the root chain cert', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection({
+      targetNodeIds: [serverNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    const remoteCertPem = keysUtils.certToPEM(nodeConnection.certChain[0]);
+    expect(remoteCertPem).toEqual(serverTlsConfig.certChainPem);
   });
-  test('should call `killSelf if connection is closed based on bad certificate', async () => {
-    let proxy: Proxy | undefined;
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    let server;
-    try {
-      server = tcpServer();
-      proxy = new Proxy({
-        logger: logger,
-        authToken: '',
-      });
-      await server.serverListen(0);
-      await proxy.start({
-        serverHost: server.serverHost(),
-        serverPort: server.serverPort(),
-        proxyHost: localHost,
-        tlsConfig,
-      });
-      // Have a nodeConnection try to connect to it
-      const killSelf = jest.fn();
-      const nodeConnectionP = NodeConnection.createNodeConnection(
-        {
-          proxy: clientProxy,
-          logger: logger,
-          destroyCallback: killSelf,
-          targetHost: proxy.getProxyHost(),
-          targetNodeId: targetNodeId,
-          targetPort: proxy.getProxyPort(),
-          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 500 }) },
-      );
-      // Expecting the connection to fail
-      await expect(nodeConnectionP).rejects.toThrow(
-        nodesErrors.ErrorNodeConnectionTimeout,
-      );
-      expect(killSelf.mock.calls.length).toBe(1);
-      // Resolves if the shutdownCallback was called
-    } finally {
-      await server?.serverClose();
-      await proxy?.stop();
-      await nodeConnection?.destroy();
-    }
+  test('get the NodeId', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection({
+      targetNodeIds: [serverNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    expect(serverNodeIdEncoded).toEqual(
+      nodesUtils.encodeNodeId(nodeConnection.nodeId),
+    );
   });
-  test('should call `killSelf if connection is closed before TLS is established', async () => {
-    let proxy: Proxy | undefined;
-    let server;
-    try {
-      server = tcpServer(false, true);
-      proxy = new Proxy({
-        logger: logger,
-        authToken: '',
-      });
-      await server.serverListen(0);
-      await proxy.start({
-        serverHost: server.serverHost(),
-        serverPort: server.serverPort(),
-        proxyHost: localHost,
-        tlsConfig,
-      });
-      // Have a nodeConnection try to connect to it
-      const killSelf = jest.fn();
-      const nodeConnectionP = NodeConnection.createNodeConnection(
-        {
-          proxy: clientProxy,
-          logger: logger,
-          destroyCallback: killSelf,
-          targetHost: proxy.getProxyHost(),
-          targetNodeId: targetNodeId,
-          targetPort: proxy.getProxyPort(),
-          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 500 }) },
-      );
-
-      // Expecting the connection to fail
-      await expect(nodeConnectionP).rejects.toThrow(
-        nodesErrors.ErrorNodeConnectionTimeout,
-      );
-      expect(killSelf.mock.calls.length).toBe(1);
-      // Resolves if the shutdownCallback was called
-    } finally {
-      await server?.serverClose();
-      await proxy?.stop();
-    }
+  test('Should fail due to server rejecting client certificate (no certs)', async () => {
+    const nodeConnectionProm = NodeConnection.createNodeConnection({
+      targetNodeIds: [serverNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        // @ts-ignore: TLS not used for this test
+        key: undefined,
+        // @ts-ignore: TLS not used for this test
+        cert: undefined,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    await expect(nodeConnectionProm).rejects.toThrow(
+      quicErrors.ErrorQUICConnectionInternal,
+    );
   });
-  test('should call `killSelf if the Agent is stopped.', async () => {
-    let nodeConnection: NodeConnection<GRPCClientAgent> | undefined;
-    let polykeyAgent: PolykeyAgent | undefined;
-    try {
-      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-        password,
-        nodePath: path.join(dataDir, 'PolykeyAgent3'),
-        logger: logger,
-        networkConfig: {
-          proxyHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
-      });
-      // Have a nodeConnection try to connect to it
-      const killSelf = jest.fn();
-      nodeConnection = await NodeConnection.createNodeConnection(
-        {
-          proxy: clientProxy,
-          logger: logger,
-          destroyCallback: killSelf,
-          targetHost: polykeyAgent.proxy.getProxyHost(),
-          targetNodeId: polykeyAgent.keyRing.getNodeId(),
-          targetPort: polykeyAgent.proxy.getProxyPort(),
-          clientFactory: (args) => GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 500 }) },
-      );
-
-      // Resolves if the shutdownCallback was called
-      await polykeyAgent.stop();
-      // Kill callback should've been called
-      expect(killSelf.mock.calls.length).toBe(1);
-      // Node connection should've destroyed itself in response to connection being destroyed
-      expect(nodeConnection[destroyed]).toBe(true);
-    } finally {
-      await polykeyAgent?.stop();
-      await nodeConnection?.destroy();
-    }
+  test('Should fail due to client rejecting server certificate (missing NodeId)', async () => {
+    const nodeConnectionProm = NodeConnection.createNodeConnection({
+      targetNodeIds: [clientNodeId],
+      targetHost: localHost as Host,
+      targetPort: quicServer.port as Port,
+      manifest: {},
+      quicClientConfig: {
+        key: clientTlsConfig.keyPrivatePem,
+        cert: clientTlsConfig.certChainPem,
+      },
+      crypto,
+      quicSocket: clientSocket,
+      logger: logger.getChild(`${NodeConnection.name}`),
+    }).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    await expect(nodeConnectionProm).rejects.toThrow();
   });
-  const options = ['exit', 'kill', 'sigkill'];
-  test.each(options)(
-    "should call `killSelf and throw if the server %s's during testUnaryFail",
-    async (option) => {
-      let nodeConnection:
-        | NodeConnection<grpcTestUtils.GRPCClientTest>
-        | undefined;
-      let testProxy: Proxy | undefined;
-      let testProcess: ChildProcessWithoutNullStreams | undefined;
-      try {
-        const testProcess = await testsUtils.spawn(
-          'ts-node',
-          [
-            '--project',
-            testsUtils.tsConfigPath,
-            `${globalThis.testDir}/grpc/utils/testServer.ts`,
-          ],
-          undefined,
-          logger,
-        );
-        const waitP = promise<string>();
-        testProcess.stdout!.on('data', (data) => {
-          waitP.resolveP(data);
-        });
-        testProcess.stderr!.on('data', (data) =>
-          waitP.rejectP(data.toString()),
-        );
-
-        // Lets make a reverse proxy
-        testProxy = new Proxy({
-          authToken: '',
-          logger: logger,
-        });
-        await testProxy.start({
-          serverHost: '127.0.0.1' as Host,
-          serverPort: Number(await waitP.p) as Port,
-          proxyHost: localHost,
-          tlsConfig: serverTLSConfig,
-        });
-
-        // Have a nodeConnection try to connect to it
-        const killSelfCheck = jest.fn();
-        const killSelfP = promise<null>();
-        nodeConnection = await NodeConnection.createNodeConnection(
-          {
-            proxy: clientProxy,
-            logger: logger,
-            destroyCallback: async () => {
-              await killSelfCheck();
-              killSelfP.resolveP(null);
-            },
-            targetNodeId: serverKeyRing.getNodeId(),
-            targetHost: testProxy.getProxyHost(),
-            targetPort: testProxy.getProxyPort(),
-            clientFactory: (args) =>
-              grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
-          },
-          { timer: new Timer({ delay: 2000 }) },
-        );
-
-        const client = nodeConnection.getClient();
-        const echoMessage = new utilsPB.EchoMessage().setChallenge(option);
-        const testP = client.unaryFail(echoMessage);
-        // Should throw an error when it fails during call
-        await expect(testP).rejects.toThrow(GRPCErrors.ErrorGRPCClientCall);
-        // GRPCErrors.ErrorGRPCClientCall '14 UNAVAILABLE: Connection dropped'
-
-        // Kill self callback should've been called
-        await killSelfP.p;
-        expect(killSelfCheck).toHaveBeenCalled();
-      } finally {
-        testProcess?.kill(9);
-        await testProxy?.stop();
-        await nodeConnection?.destroy();
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test.each(options)(
-    "should call `killSelf and throw if the server %s's during testStreamFail",
-    async (option) => {
-      let nodeConnection:
-        | NodeConnection<grpcTestUtils.GRPCClientTest>
-        | undefined;
-      let testProxy: Proxy | undefined;
-      let testProcess: ChildProcessWithoutNullStreams | undefined;
-      try {
-        const testProcess = await testsUtils.spawn(
-          'ts-node',
-          [
-            '--project',
-            testsUtils.tsConfigPath,
-            `${globalThis.testDir}/grpc/utils/testServer.ts`,
-          ],
-          undefined,
-          logger,
-        );
-        const waitP = promise<string>();
-        testProcess.stdout!.on('data', (data) => {
-          waitP.resolveP(data);
-        });
-        testProcess.stderr!.on('data', (data) =>
-          waitP.rejectP(data.toString()),
-        );
-
-        // Lets make a reverse proxy
-        testProxy = new Proxy({
-          authToken: '',
-          logger: logger,
-        });
-        await testProxy.start({
-          serverHost: '127.0.0.1' as Host,
-          serverPort: Number(await waitP.p) as Port,
-          proxyHost: localHost,
-          tlsConfig: serverTLSConfig,
-        });
-
-        // Have a nodeConnection try to connect to it
-        const killSelfCheck = jest.fn();
-        const killSelfP = promise<null>();
-        nodeConnection = await NodeConnection.createNodeConnection(
-          {
-            proxy: clientProxy,
-            logger: logger,
-            destroyCallback: async () => {
-              await killSelfCheck();
-              killSelfP.resolveP(null);
-            },
-            targetNodeId: serverKeyRing.getNodeId(),
-            targetHost: testProxy.getProxyHost(),
-            targetPort: testProxy.getProxyPort(),
-            clientFactory: (args) =>
-              grpcTestUtils.GRPCClientTest.createGRPCClientTest(args),
-          },
-          { timer: new Timer({ delay: 2000 }) },
-        );
-
-        const client = nodeConnection.getClient();
-        const echoMessage = new utilsPB.EchoMessage().setChallenge(option);
-        const testGen = client.serverStreamFail(echoMessage);
-        // Should throw an error when it fails during call
-        await expect(async () => {
-          for await (const _ of testGen) {
-            // Do nothing, let it run out
-          }
-        }).rejects.toThrow(GRPCErrors.ErrorGRPCClientCall);
-
-        // Kill self callback should've been called
-        await killSelfP.p;
-        expect(killSelfCheck).toHaveBeenCalled();
-      } finally {
-        testProcess?.kill(9);
-        await testProxy?.stop();
-        await nodeConnection?.destroy();
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
-
-  test('existing connection handles a resetRootKeyPair on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('existing connection handles a renewRootKeyPair on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('existing connection handles a resetRootCert on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('existing connection handles a resetRootKeyPair on receiving side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      serverProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('existing connection handles a renewRootKeyPair on receiving side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      serverProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('existing connection handles a resetRootCert on receiving side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-
-      // Simulate key change
-      serverProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      // Try again
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a resetRootKeyPair on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a renewRootKeyPair on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a resetRootCert on sending side', async () => {
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      // Simulate key change
-      clientProxy.setTLSConfig(
-        await testsUtils.createTLSConfig(keysUtils.generateKeyPair()),
-      );
-
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: targetNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
-        },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
-  });
-  test('new connection handles a resetRootKeyPair on receiving side', async () => {
-    // Simulate key change
-    const keyPair = keysUtils.generateKeyPair();
-    serverProxy.setTLSConfig(await testsUtils.createTLSConfig(keyPair));
-    const newNodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-    const connProm = NodeConnection.createNodeConnection(
+  test('Should fail and destroy due to connection failure', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection(
       {
-        targetNodeId: targetNodeId,
-        targetHost: localHost,
-        targetPort: targetPort,
-        proxy: clientProxy,
-        destroyCallback,
-        logger: logger,
-        clientFactory: async (args) =>
-          GRPCClientAgent.createGRPCClientAgent(args),
-      },
-      { timer: new Timer({ delay: 2000 }) },
-    );
-
-    await expect(connProm).rejects.toThrow(
-      nodesErrors.ErrorNodeConnectionTimeout,
-    );
-
-    // Connect with the new NodeId
-    let conn: NodeConnection<GRPCClientAgent> | undefined;
-    try {
-      conn = await NodeConnection.createNodeConnection(
-        {
-          targetNodeId: newNodeId,
-          targetHost: localHost,
-          targetPort: targetPort,
-          proxy: clientProxy,
-          destroyCallback,
-          logger: logger,
-          clientFactory: async (args) =>
-            GRPCClientAgent.createGRPCClientAgent(args),
+        targetNodeIds: [serverNodeId],
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
+        manifest: {},
+        quicClientConfig: {
+          key: clientTlsConfig.keyPrivatePem,
+          cert: clientTlsConfig.certChainPem,
+          keepAliveIntervalTime: 100,
+          maxIdleTimeout: 200,
         },
-        { timer: new Timer({ delay: 2000 }) },
-      );
-      const client = conn.getClient();
-      await client.echo(new utilsPB.EchoMessage().setChallenge('hello!'));
-    } finally {
-      await conn?.destroy();
-    }
+        crypto,
+        quicSocket: clientSocket,
+        logger: logger.getChild(`${NodeConnection.name}`),
+      },
+      { timer: 150 },
+    ).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    const destroyProm = promise<void>();
+    nodeConnection.addEventListener('destroy', () => {
+      destroyProm.resolveP();
+    });
+    await serverSocket.stop({ force: true });
+    await destroyProm.p;
+  });
+  test('Should fail and destroy due to connection ending local', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection(
+      {
+        targetNodeIds: [serverNodeId],
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
+        manifest: {},
+        quicClientConfig: {
+          key: clientTlsConfig.keyPrivatePem,
+          cert: clientTlsConfig.certChainPem,
+          maxIdleTimeout: 200,
+          keepAliveIntervalTime: 100,
+        },
+        crypto,
+        quicSocket: clientSocket,
+        logger: logger.getChild(`${NodeConnection.name}`),
+      },
+      { timer: 150 },
+    ).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    const destroyProm = promise<void>();
+    nodeConnection.addEventListener('destroy', () => {
+      destroyProm.resolveP();
+    });
+    await nodeConnection.quicClient.connection.stop({
+      applicationError: true,
+      errorCode: 0,
+      force: false,
+    });
+    await destroyProm.p;
+  });
+  test('Should fail and destroy due to connection ending remote', async () => {
+    const nodeConnection = await NodeConnection.createNodeConnection(
+      {
+        targetNodeIds: [serverNodeId],
+        targetHost: localHost as Host,
+        targetPort: quicServer.port as Port,
+        manifest: {},
+        quicClientConfig: {
+          key: clientTlsConfig.keyPrivatePem,
+          cert: clientTlsConfig.certChainPem,
+          maxIdleTimeout: 200,
+          keepAliveIntervalTime: 100,
+        },
+        crypto,
+        quicSocket: clientSocket,
+        logger: logger.getChild(`${NodeConnection.name}`),
+      },
+      { timer: 150 },
+    ).then((n) => {
+      nodeConnection_ = n;
+      return n;
+    });
+    const destroyProm = promise<void>();
+    nodeConnection.addEventListener('destroy', () => {
+      destroyProm.resolveP();
+    });
+    serverSocket.connectionMap.forEach((connection) => {
+      void connection.stop({
+        applicationError: true,
+        errorCode: 0,
+        force: false,
+      });
+    });
+    await destroyProm.p;
   });
 });

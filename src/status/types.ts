@@ -1,5 +1,4 @@
 import type { NodeId } from '../ids/types';
-import type { Host, Port } from '../network/types';
 
 type StatusStarting = {
   status: 'STARTING';
@@ -14,14 +13,10 @@ type StatusLive = {
   data: {
     pid: number;
     nodeId: NodeId;
-    clientHost: Host;
-    clientPort: Port;
-    agentHost: Host;
-    agentPort: Port;
-    forwardHost: Host;
-    forwardPort: Port;
-    proxyHost: Host;
-    proxyPort: Port;
+    clientHost: string;
+    clientPort: number;
+    agentHost: string;
+    agentPort: number;
     [key: string]: any;
   };
 };

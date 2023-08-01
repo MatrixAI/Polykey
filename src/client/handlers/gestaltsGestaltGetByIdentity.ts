@@ -1,13 +1,13 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { IdentityId, ProviderId } from 'ids/index';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { DB } from '@matrixai/db';
-import type { GestaltMessage, IdentityMessage } from 'client/handlers/types';
+import type { GestaltMessage, IdentityMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type { IdentityId, ProviderId } from '../../ids/index';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
 import * as nodesUtils from '../../nodes/utils';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
-import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils/index';
 
 class GestaltsGestaltGetByIdentityHandler extends UnaryHandler<
   {

@@ -25,9 +25,6 @@ class CommandUntrust extends CommandPolykey {
       const { default: WebSocketClient } = await import(
         '../../websockets/WebSocketClient'
       );
-      const { clientManifest } = await import(
-        '../../client/handlers/clientManifest'
-      );
       const utils = await import('../../utils');
       const nodesUtils = await import('../../nodes/utils');
       const clientOptions = await binProcessors.processClientOptions(
@@ -43,7 +40,7 @@ class CommandUntrust extends CommandPolykey {
         this.fs,
       );
       let webSocketClient: WebSocketClient;
-      let pkClient: PolykeyClient<typeof clientManifest>;
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
         if (webSocketClient != null) await webSocketClient.destroy(true);
@@ -58,7 +55,6 @@ class CommandUntrust extends CommandPolykey {
         pkClient = await PolykeyClient.createPolykeyClient({
           streamFactory: (ctx) => webSocketClient.startConnection(ctx),
           nodePath: options.nodePath,
-          manifest: clientManifest,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const action = 'notify';
@@ -69,7 +65,7 @@ class CommandUntrust extends CommandPolykey {
               // Setting by Node.
               await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.rpcClient.methods.gestaltsActionsUnsetByNode({
+                  pkClient.rpcClientClient.methods.gestaltsActionsUnsetByNode({
                     metadata: auth,
                     nodeIdEncoded: nodesUtils.encodeNodeId(id),
                     action,
@@ -83,12 +79,14 @@ class CommandUntrust extends CommandPolykey {
               //  Setting by Identity
               await binUtils.retryAuthentication(
                 (auth) =>
-                  pkClient.rpcClient.methods.gestaltsActionsUnsetByIdentity({
-                    metadata: auth,
-                    providerId: id[0],
-                    identityId: id[1],
-                    action,
-                  }),
+                  pkClient.rpcClientClient.methods.gestaltsActionsUnsetByIdentity(
+                    {
+                      metadata: auth,
+                      providerId: id[0],
+                      identityId: id[1],
+                      action,
+                    },
+                  ),
                 auth,
               );
             }

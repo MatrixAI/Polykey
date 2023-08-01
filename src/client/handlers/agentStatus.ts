@@ -1,5 +1,5 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { StatusResultMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
@@ -20,12 +20,8 @@ class AgentStatusHandler extends UnaryHandler<
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
       clientHost: pkAgent.webSocketServerClient.getHost(),
       clientPort: pkAgent.webSocketServerClient.getPort(),
-      proxyHost: pkAgent.proxy.getProxyHost(),
-      proxyPort: pkAgent.proxy.getProxyPort(),
-      agentHost: pkAgent.grpcServerAgent.getHost(),
-      agentPort: pkAgent.grpcServerAgent.getPort(),
-      forwardHost: pkAgent.proxy.getForwardHost(),
-      forwardPort: pkAgent.proxy.getForwardPort(),
+      agentHost: pkAgent.quicSocket.host,
+      agentPort: pkAgent.quicSocket.port,
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     };

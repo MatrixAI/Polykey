@@ -26,7 +26,7 @@ class ErrorValidation extends ErrorPolykey<void> {
 
   /**
    * This packages an `ErrorParse` array into the `data` property
-   * This is to allow encoding to and decoding from GRPC errors
+   * This is to allow encoding to and decoding from RPC errors
    */
   static createFromErrors(errors: Array<ErrorParse>): ErrorValidation {
     const message = errors.map((e) => e.message).join('; ');

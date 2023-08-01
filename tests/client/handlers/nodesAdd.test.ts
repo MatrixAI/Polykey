@@ -1,12 +1,13 @@
 import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { NodeIdEncoded } from '@/ids';
-import type { Host, Port } from '@/network/types';
+import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -20,9 +21,9 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import * as validationErrors from '@/validation/errors';
 import { nodesAdd } from '@/client';
-import Proxy from '../../../src/network/Proxy';
 import TaskManager from '../../../src/tasks/TaskManager';
-import * as testsUtils from '../../utils';
+import * as testsUtils from '../../utils/utils';
+import * as tlsTestsUtils from '../../utils/tls';
 import Sigchain from '../../../src/sigchain/Sigchain';
 
 describe('nodesAdd', () => {
@@ -33,7 +34,6 @@ describe('nodesAdd', () => {
   ]);
   const password = 'helloWorld';
   const host = '127.0.0.1';
-  const authToken = 'abc123';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -43,9 +43,9 @@ describe('nodesAdd', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
+  let quicSocket: QUICSocket;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
-  let proxy: Proxy;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -65,16 +65,7 @@ describe('nodesAdd', () => {
       passwordMemLimit: keysUtils.passwordMemLimits.min,
       strictMemoryLock: false,
     });
-    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
-    proxy = new Proxy({
-      authToken,
-      logger,
-    });
-    await proxy.start({
-      tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-      serverHost: '127.0.0.1' as Host,
-      serverPort: 0 as Port,
-    });
+    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     sigchain = await Sigchain.createSigchain({
       db,
       keyRing,
@@ -90,13 +81,26 @@ describe('nodesAdd', () => {
       logger,
       lazy: true,
     });
+    const crypto = tlsTestsUtils.createCrypto();
+    quicSocket = new QUICSocket({
+      logger,
+    });
+    await quicSocket.start({
+      host: '127.0.0.1' as QUICHost,
+    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      proxy,
-      taskManager,
-      connConnectTime: 2000,
-      connTimeoutTime: 2000,
+      quicClientConfig: {
+        // @ts-ignore: TLS not needed for this test
+        key: undefined,
+        // @ts-ignore: TLS not needed for this test
+        cert: undefined,
+      },
+      crypto,
+      quicSocket,
+      connectionConnectTime: 2000,
+      connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -118,9 +122,9 @@ describe('nodesAdd', () => {
     await taskManager.stopTasks();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
+    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
-    await proxy.stop();
     await db.stop();
     await keyRing.stop();
     await webSocketServer.stop(true);

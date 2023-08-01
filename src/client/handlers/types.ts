@@ -1,30 +1,25 @@
 import type { IdentityId, ProviderId, VaultIdEncoded } from '../../ids';
-import type { GestaltAction } from 'gestalts/types';
-import type { ProviderToken } from 'identities/types';
+import type { GestaltAction } from '../../gestalts/types';
+import type { ProviderToken } from '../../identities/types';
 import type { GestaltIdEncoded, NodeIdEncoded } from '../../ids';
 import type {
   CertificatePEM,
   CertificatePEMChain,
   JWKEncrypted,
   PublicKeyJWK,
-} from 'keys/types';
+} from '../../keys/types';
 import type { Notification } from '../../notifications/types';
 import type { CommitId, VaultAction, VaultName } from '../../vaults/types';
-import type { Host, Port } from '../../network/types';
 
 // Agent messages
 export type StatusResultMessage = {
   pid: number;
 } & NodeIdMessage &
   PublicKeyMessage & {
-    clientHost: Host;
-    clientPort: Port;
-    proxyHost: Host;
-    proxyPort: Port;
-    agentHost: Host;
-    agentPort: Port;
-    forwardHost: Host;
-    forwardPort: Port;
+    clientHost: string;
+    clientPort: number;
+    agentHost: string;
+    agentPort: number;
     certChainPEM: CertificatePEMChain;
   };
 
