@@ -8,11 +8,11 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { HolePunchRelayMessage } from './types';
 import * as agentErrors from '../errors';
-import * as networkUtils from '../../network/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
+import * as agentUtils from '../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesHolePunchMessageSendHandler extends UnaryHandler<
@@ -56,7 +56,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
       },
     );
     // Connections should always be validated
-    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+    const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }

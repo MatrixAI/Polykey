@@ -2,10 +2,10 @@ import type { AgentClaimMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type ACL from '../../acl/ACL';
 import type NodeManager from '../../nodes/NodeManager';
-import * as networkUtils from '../../network/utils';
 import * as nodesErrors from '../../nodes/errors';
 import { DuplexHandler } from '../../rpc/handlers';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 
 class NodesCrossSignClaimHandler extends DuplexHandler<
   {
@@ -21,7 +21,7 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { acl, nodeManager } = this.container;
-    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+    const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }

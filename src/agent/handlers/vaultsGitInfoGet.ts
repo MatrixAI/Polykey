@@ -7,7 +7,6 @@ import type Logger from '@matrixai/logger';
 import type { VaultsGitInfoGetMessage } from './types';
 import type { VaultAction } from '../../vaults/types';
 import * as agentErrors from '../errors';
-import * as networkUtils from '../../network/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { ServerHandler } from '../../rpc/handlers';
@@ -15,6 +14,7 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
+import * as agentUtils from '../utils';
 
 class VaultsGitInfoGetHandler extends ServerHandler<
   {
@@ -65,7 +65,7 @@ class VaultsGitInfoGetHandler extends ServerHandler<
         throw new vaultsErrors.ErrorVaultsVaultUndefined();
       }
       // Getting the NodeId from the connection metadata
-      const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+      const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
       if (requestingNodeId == null) {
         throw new agentErrors.ErrorAgentNodeIdMissing();
       }

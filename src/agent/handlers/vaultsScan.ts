@@ -3,9 +3,9 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { DB } from '@matrixai/db';
 import * as agentErrors from '../errors';
-import * as networkUtils from '../../network/utils';
 import { ServerHandler } from '../../rpc/handlers';
 import * as vaultsUtils from '../../vaults/utils';
+import * as agentUtils from '../utils';
 
 class VaultsScanHandler extends ServerHandler<
   {
@@ -21,7 +21,7 @@ class VaultsScanHandler extends ServerHandler<
     meta,
   ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager, db } = this.container;
-    const requestingNodeId = networkUtils.nodeIdFromMeta(meta);
+    const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
