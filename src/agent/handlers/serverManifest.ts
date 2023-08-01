@@ -17,6 +17,12 @@ import { VaultsScanHandler } from './vaultsScan';
 import { VaultsGitInfoGetHandler } from './vaultsGitInfoGet';
 import { VaultsGitPackGetHandler } from './vaultsGitPackGet';
 
+/**
+ * All the server handler definitions for the AgentServer RPC.
+ * This will take the container of all the required dependencies and create the server handlers.
+ *
+ * Used by the RPCServer to register handlers and enforce types.
+ */
 const serverManifest = (container: {
   db: DB;
   sigchain: Sigchain;

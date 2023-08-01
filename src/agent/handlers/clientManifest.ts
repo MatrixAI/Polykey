@@ -54,7 +54,12 @@ const vaultsScan = new ServerCaller<
   AgentRPCResponseResult<VaultsScanMessage>
 >();
 
-// No type used here, it will override type inference
+/**
+ * All the client caller definitions for the AgentClient RPC.
+ * Used by the RPCClient to register callers and enforce types.
+ *
+ * No type used here, it will override type inference.
+ */
 const clientManifest = {
   nodesClaimsGet,
   nodesClosestLocalNodesGet,

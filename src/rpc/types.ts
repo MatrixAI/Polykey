@@ -291,7 +291,14 @@ type ConvertCaller<T extends Caller> = T extends DuplexCaller
   ? RawCallerImplementation
   : never;
 
+/**
+ * Contains the handler Classes that defines the handling logic and types for the server handlers.
+ */
 type ServerManifest = Record<string, Handler>;
+
+/**
+ * Contains the Caller classes that defines the types for the client callers.
+ */
 type ClientManifest = Record<string, Caller>;
 
 type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';

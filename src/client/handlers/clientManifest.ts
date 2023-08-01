@@ -403,7 +403,12 @@ const vaultsVersion = new UnaryCaller<
   ClientRPCResponseResult<VaultsLatestVersionMessage>
 >();
 
-// No type used here, it will override type inference
+/**
+ * All the client caller definitions for the ClientClient RPC.
+ * Used by the RPCClient to register callers and enforce types.
+ *
+ * No type used here, it will override type inference.
+ */
 const clientManifest = {
   agentLockAll,
   agentStatus,

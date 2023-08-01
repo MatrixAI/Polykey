@@ -83,6 +83,12 @@ import { VaultsVersionHandler } from './vaultsVersion';
 import { KeysVerifyHandler } from '../../client/handlers/keysVerify';
 import { KeysSignHandler } from '../../client/handlers/keysSign';
 
+/**
+ * All the server handler definitions for the ClientServer RPC.
+ * This will take the container of all the required dependencies and create the server handlers.
+ *
+ * Used by the RPCServer to register handlers and enforce types.
+ */
 const serverManifest = (container: {
   pkAgentProm: Promise<PolykeyAgent>;
   keyRing: KeyRing;
