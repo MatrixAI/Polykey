@@ -1,9 +1,9 @@
 import type { DB } from '@matrixai/db';
+import type { SignedNotificationEncoded } from './types';
+import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { SignedNotification } from '../../notifications/types';
-import type { SignedNotificationEncoded } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import { UnaryHandler } from '../../rpc/handlers';
 import * as notificationsUtils from '../../notifications/utils';
 

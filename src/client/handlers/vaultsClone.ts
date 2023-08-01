@@ -1,7 +1,7 @@
+import type { DB } from '@matrixai/db';
+import type { CloneMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { CloneMessage, SuccessMessage } from './types';
-import type { DB } from '@matrixai/db';
 import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';

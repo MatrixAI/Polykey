@@ -1,11 +1,11 @@
+import type { DB } from '@matrixai/db';
 import type { VaultsScanMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { DB } from '@matrixai/db';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 import { ServerHandler } from '../../rpc/handlers';
 import * as vaultsUtils from '../../vaults/utils';
-import * as agentUtils from '../utils';
 
 class VaultsScanHandler extends ServerHandler<
   {

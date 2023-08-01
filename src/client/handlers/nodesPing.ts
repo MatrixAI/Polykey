@@ -3,8 +3,8 @@ import type { NodeId } from '../../ids';
 import type { NodeIdMessage, SuccessMessage } from '../handlers/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesPingHandler extends UnaryHandler<

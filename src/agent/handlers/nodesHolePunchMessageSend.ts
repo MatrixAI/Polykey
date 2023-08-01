@@ -1,18 +1,18 @@
 import type { DB } from '@matrixai/db';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
-import type KeyRing from '../../keys/KeyRing';
 import type Logger from '@matrixai/logger';
-import type { Host, Port } from '../../network/types';
-import type NodeManager from '../../nodes/NodeManager';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type { NodeId } from '../../ids';
 import type { HolePunchRelayMessage } from './types';
+import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+import type NodeManager from '../../nodes/NodeManager';
+import type KeyRing from '../../keys/KeyRing';
+import type { Host, Port } from '../../network/types';
+import type { NodeId } from '../../ids';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
-import * as agentUtils from '../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesHolePunchMessageSendHandler extends UnaryHandler<

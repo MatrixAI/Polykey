@@ -1,11 +1,11 @@
+import type { NotificationSendMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { General } from '../../notifications/types';
-import type { NotificationSendMessage } from './types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class NotificationsSendHandler extends UnaryHandler<

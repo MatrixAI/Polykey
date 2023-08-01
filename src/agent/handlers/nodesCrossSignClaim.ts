@@ -2,10 +2,10 @@ import type { AgentClaimMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type ACL from '../../acl/ACL';
 import type NodeManager from '../../nodes/NodeManager';
-import * as nodesErrors from '../../nodes/errors';
-import { DuplexHandler } from '../../rpc/handlers';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
+import * as nodesErrors from '../../nodes/errors';
+import { DuplexHandler } from '../../rpc/handlers';
 
 class NodesCrossSignClaimHandler extends DuplexHandler<
   {

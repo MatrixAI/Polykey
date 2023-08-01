@@ -1,9 +1,9 @@
 import type Logger from '@matrixai/logger';
+import type { DB } from '@matrixai/db';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type PolykeyAgent from '../../PolykeyAgent';
-import type { DB } from '@matrixai/db';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type Discovery from '../../discovery/Discovery';
 import type IdentitiesManager from '../../identities/IdentitiesManager';

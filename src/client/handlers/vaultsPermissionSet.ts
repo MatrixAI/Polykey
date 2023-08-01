@@ -1,17 +1,17 @@
+import type { DB } from '@matrixai/db';
+import type { PermissionSetMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
-import type { PermissionSetMessage, SuccessMessage } from './types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
-import type { DB } from '@matrixai/db';
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class VaultsPermissionSetHandler extends UnaryHandler<

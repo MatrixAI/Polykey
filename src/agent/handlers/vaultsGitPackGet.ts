@@ -1,10 +1,11 @@
-import type { VaultAction, VaultName } from '../../vaults/types';
-import type VaultManager from '../../vaults/VaultManager';
-import type ACL from '../../acl/ACL';
 import type { DB } from '@matrixai/db';
 import type { GitPackMessage, VaultsGitPackGetMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
+import type { VaultAction, VaultName } from '../../vaults/types';
+import type VaultManager from '../../vaults/VaultManager';
+import type ACL from '../../acl/ACL';
 import * as agentErrors from '../errors';
+import * as agentUtils from '../utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
@@ -12,7 +13,6 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import { ServerHandler } from '../../rpc/handlers';
-import * as agentUtils from '../utils';
 
 class VaultsGitPackGetHandler extends ServerHandler<
   {

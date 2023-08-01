@@ -1,5 +1,5 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { StatusResultMessage } from './types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';

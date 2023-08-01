@@ -1,11 +1,11 @@
 import type { DB } from '@matrixai/db';
-import type Sigchain from '../../sigchain/Sigchain';
-import type NodeGraph from '../../nodes/NodeGraph';
-import type ACL from '../../acl/ACL';
-import type NodeManager from '../../nodes/NodeManager';
-import type KeyRing from '../../keys/KeyRing';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type Logger from '@matrixai/logger';
+import type KeyRing from '../../keys/KeyRing';
+import type Sigchain from '../../sigchain/Sigchain';
+import type ACL from '../../acl/ACL';
+import type NodeGraph from '../../nodes/NodeGraph';
+import type NodeManager from '../../nodes/NodeManager';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import type { NotificationsManager } from '../../notifications';
 import type { VaultManager } from '../../vaults';
 import { NodesClosestLocalNodesGetHandler } from './nodesClosestLocalNodesGet';

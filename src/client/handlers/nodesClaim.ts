@@ -1,8 +1,8 @@
+import type { DB } from '@matrixai/db';
+import type { ClaimNodeMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type NodeManager from '../../nodes/NodeManager';
-import type { DB } from '@matrixai/db';
-import type { ClaimNodeMessage, SuccessMessage } from './types';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';

@@ -1,13 +1,12 @@
+import type { DB } from '@matrixai/db';
+import type { IdentityMessage, TokenMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { IdentityMessage } from './types';
-import type { DB } from '@matrixai/db';
-import type { TokenMessage } from './types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
-import { matchSync } from '../../utils/index';
 import * as validationUtils from '../../validation/utils';
+import { matchSync } from '../../utils/index';
 
 class IdentitiesTokenGetHandler extends UnaryHandler<
   {

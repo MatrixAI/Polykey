@@ -1,7 +1,7 @@
-import type { NodeAddressMessage, NodeIdMessage } from './types';
-import type { NodeGraph } from '../../nodes';
 import type { DB } from '@matrixai/db';
+import type { NodeAddressMessage, NodeIdMessage } from './types';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
+import type { NodeGraph } from '../../nodes';
 import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';

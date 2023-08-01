@@ -1,6 +1,6 @@
+import type { PasswordMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type CertManager from '../../keys/CertManager';
-import type { PasswordMessage } from './types';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class KeysKeyPairResethandler extends UnaryHandler<

@@ -1,14 +1,14 @@
+import type { DB } from '@matrixai/db';
+import type { NodesAddMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NodeAddress } from '../../nodes/types';
 import type NodeManager from '../../nodes/NodeManager';
-import type { DB } from '@matrixai/db';
-import type { NodesAddMessage } from './types';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
-import * as nodeErrors from '../../nodes/errors';
 import * as validationUtils from '../../validation/utils';
+import * as nodeErrors from '../../nodes/errors';
 import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesAddHandler extends UnaryHandler<

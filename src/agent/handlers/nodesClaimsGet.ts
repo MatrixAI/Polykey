@@ -1,6 +1,6 @@
-import type Sigchain from '../../sigchain/Sigchain';
 import type { DB } from '@matrixai/db';
 import type { ClaimIdMessage, AgentClaimMessage } from './types';
+import type Sigchain from '../../sigchain/Sigchain';
 import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import * as claimsUtils from '../../claims/utils';
 import { ServerHandler } from '../../rpc/handlers';
