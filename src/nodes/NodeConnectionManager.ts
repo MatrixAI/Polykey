@@ -697,7 +697,7 @@ class NodeConnectionManager {
       ctx.signal.removeEventListener('abort', onAbort);
     };
     ctx.signal.addEventListener('abort', onAbort);
-    void ctx.timer.catch(() => {}).finally(() => onAbort());
+    const timer = ctx.timer.catch(() => {}).finally(() => onAbort());
     let delay = this.connectionHolePunchIntervalTime;
     // Setting up established event checking
     try {
@@ -710,6 +710,7 @@ class NodeConnectionManager {
       }
     } finally {
       onAbort();
+      await timer;
     }
   }
 

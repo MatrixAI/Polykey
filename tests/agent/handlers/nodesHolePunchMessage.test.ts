@@ -221,7 +221,6 @@ describe('nodesHolePunchMessage', () => {
     await nodeGraph.stop();
     await nodeManager.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await taskManager.stop();
     await sigchain.stop();
     await acl.stop();

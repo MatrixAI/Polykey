@@ -1,5 +1,5 @@
 import type { WritableStream, ReadableStream } from 'stream/web';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type {
   HandlerType,
   JSONRPCRequestMessage,
@@ -156,7 +156,7 @@ class RPCClient<M extends ClientManifest> {
   public async unaryCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-    ctx: Partial<ContextTimed> = {},
+    ctx: Partial<ContextTimedInput> = {},
   ): Promise<O> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method, ctx);
     const reader = callerInterface.readable.getReader();
@@ -191,7 +191,7 @@ class RPCClient<M extends ClientManifest> {
   public async serverStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
     parameters: I,
-    ctx: Partial<ContextTimed> = {},
+    ctx: Partial<ContextTimedInput> = {},
   ): Promise<ReadableStream<O>> {
     const callerInterface = await this.duplexStreamCaller<I, O>(method, ctx);
     const writer = callerInterface.writable.getWriter();
@@ -219,7 +219,7 @@ class RPCClient<M extends ClientManifest> {
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async clientStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    ctx: Partial<ContextTimed> = {},
+    ctx: Partial<ContextTimedInput> = {},
   ): Promise<{
     output: Promise<O>;
     writable: WritableStream<I>;
@@ -252,7 +252,7 @@ class RPCClient<M extends ClientManifest> {
   @ready(new rpcErrors.ErrorRPCDestroyed())
   public async duplexStreamCaller<I extends JSONValue, O extends JSONValue>(
     method: string,
-    ctx: Partial<ContextTimed> = {},
+    ctx: Partial<ContextTimedInput> = {},
   ): Promise<RPCStream<O, I>> {
     const abortController = new AbortController();
     const signal = abortController.signal;
@@ -270,11 +270,14 @@ class RPCClient<M extends ClientManifest> {
       if (ctx.signal.aborted) abortHandler();
       ctx.signal.addEventListener('abort', abortHandler);
     }
-    const timer =
-      ctx.timer ??
-      new Timer({
-        delay: this.streamKeepAliveTimeoutTime,
+    let timer: Timer;
+    if (!(ctx.timer instanceof Timer)) {
+      timer = new Timer({
+        delay: ctx.timer ?? this.streamKeepAliveTimeoutTime,
       });
+    } else {
+      timer = ctx.timer;
+    }
     const cleanUp = () => {
       // Clean up the timer and signal
       if (ctx.timer == null) timer.cancel(timerCleanupReasonSymbol);

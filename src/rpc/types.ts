@@ -1,5 +1,5 @@
 import type { ReadableStream, ReadableWritablePair } from 'stream/web';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { Handler } from './handlers';
 import type {
   Caller,
@@ -239,28 +239,31 @@ type MiddlewareFactory<FR, FW, RR, RW> = (
 type UnaryCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I, ctx?: Partial<ContextTimed>) => Promise<O>;
+> = (parameters: I, ctx?: Partial<ContextTimedInput>) => Promise<O>;
 
 type ServerCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (parameters: I, ctx?: Partial<ContextTimed>) => Promise<ReadableStream<O>>;
+> = (
+  parameters: I,
+  ctx?: Partial<ContextTimedInput>,
+) => Promise<ReadableStream<O>>;
 
 type ClientCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
 > = (
-  ctx?: Partial<ContextTimed>,
+  ctx?: Partial<ContextTimedInput>,
 ) => Promise<{ output: Promise<O>; writable: WritableStream<I> }>;
 
 type DuplexCallerImplementation<
   I extends JSONValue = JSONValue,
   O extends JSONValue = JSONValue,
-> = (ctx?: Partial<ContextTimed>) => Promise<RPCStream<O, I>>;
+> = (ctx?: Partial<ContextTimedInput>) => Promise<RPCStream<O, I>>;
 
 type RawCallerImplementation = (
   headerParams: JSONValue,
-  ctx?: Partial<ContextTimed>,
+  ctx?: Partial<ContextTimedInput>,
 ) => Promise<RPCStream<Uint8Array, Uint8Array>>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>

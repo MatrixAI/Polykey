@@ -51,7 +51,7 @@
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
     "ts-node": "ts-node",
     "ts-node-inspect": "node --require ts-node/register --inspect",
-    "test": "jest",
+    "test": "node --expose-gc ./node_modules/.bin/jest",
     "lint": "eslint '{src,tests,scripts}/**/*.{js,ts,json}' 'benches/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests,scripts}/**/*.{js,ts,json}' 'benches/**/*.{js,ts}' --fix",
     "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",

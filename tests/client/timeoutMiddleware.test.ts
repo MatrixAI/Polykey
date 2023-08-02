@@ -68,6 +68,8 @@ describe('timeoutMiddleware', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await clientServer?.stop(true);
     await clientClient?.destroy(true);
     await certManager.stop();
@@ -142,6 +144,13 @@ describe('timeoutMiddleware', () => {
 
     const ctx = await ctxProm.p;
     expect(ctx.timer.delay).toBe(100);
+    timer.cancel();
+    await timer.then(
+      () => {},
+      () => {},
+    );
+    await rpcServer.destroy(true);
+    await rpcClient.destroy();
   });
   test('client side timeout updates', async () => {
     // Setup
@@ -201,5 +210,6 @@ describe('timeoutMiddleware', () => {
     });
     await rpcClient.methods.testHandler({}, { timer });
     expect(timer.delay).toBe(100);
+    timer.cancel();
   });
 });
