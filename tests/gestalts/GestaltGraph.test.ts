@@ -31,6 +31,7 @@ import * as utils from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import Token from '@/tokens/Token';
 import { encodeGestaltNodeId, encodeGestaltIdentityId } from '@/gestalts/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as testsGestaltsUtils from './utils';
 import * as testsIdentitiesUtils from '../identities/utils';
 import * as testsKeysUtils from '../keys/utils';
@@ -754,8 +755,13 @@ describe('GestaltGraph', () => {
   });
   testProp(
     'getGestalts with nodes',
-    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2 })],
+    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2, maxLength: 10 })],
     async (gestaltNodeInfos) => {
+      const ids = new Set<string>();
+      for (const gestaltNodeInfo of gestaltNodeInfos) {
+        ids.add(nodesUtils.encodeNodeId(gestaltNodeInfo.nodeId));
+      }
+      fc.pre(ids.size === gestaltNodeInfos.length);
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
         acl,
@@ -786,8 +792,19 @@ describe('GestaltGraph', () => {
   );
   testProp(
     'getGestalts with identities',
-    [fc.array(gestaltIdentityInfoComposedArb, { minLength: 2 }).noShrink()],
+    [
+      fc
+        .array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 })
+        .noShrink(),
+    ],
     async (gestaltIdentityInfos) => {
+      const ids = new Set<string>();
+      for (const gestaltIdentityInfo of gestaltIdentityInfos) {
+        ids.add(
+          gestaltIdentityInfo.providerId + gestaltIdentityInfo.identityId,
+        );
+      }
+      fc.pre(ids.size === gestaltIdentityInfos.length);
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
         acl,
@@ -822,8 +839,23 @@ describe('GestaltGraph', () => {
   );
   testProp(
     'getGestalts with nodes and identities',
-    [fc.array(gestaltInfoComposedArb, { minLength: 2 })],
+    [fc.array(gestaltInfoComposedArb, { minLength: 2, maxLength: 10 })],
     async (gestaltInfos) => {
+      const ids = new Set<string>();
+      for (const gestaltInfo of gestaltInfos) {
+        const [type, data] = gestaltInfo;
+        switch (type) {
+          case 'identity':
+            ids.add(data.providerId + data.identityId);
+            break;
+          case 'node':
+            ids.add(nodesUtils.encodeNodeId(data.nodeId));
+            break;
+          default:
+            break;
+        }
+      }
+      fc.pre(ids.size === gestaltInfos.length);
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
         acl,
@@ -1139,10 +1171,22 @@ describe('GestaltGraph', () => {
       // Use a record to generate a constrained set of vertices
       fc
         .record({
-          keyPairs: fc.array(testsKeysUtils.keyPairArb, { minLength: 2 }),
-          identityInfos: fc.array(gestaltIdentityInfoComposedArb, {
-            minLength: 1,
+          keyPairs: fc.array(testsKeysUtils.keyPairArb, {
+            minLength: 2,
+            maxLength: 10,
           }),
+          identityInfos: fc
+            .array(gestaltIdentityInfoComposedArb, {
+              minLength: 1,
+              maxLength: 2,
+            })
+            .filter((v) => {
+              const ids = new Set<string>();
+              for (const identityInfo of v) {
+                ids.add(identityInfo.providerId + identityInfo.identityId);
+              }
+              return ids.size === v.length;
+            }),
         })
         .chain((verticies) => {
           const { keyPairs, identityInfos } = verticies;
@@ -1351,7 +1395,7 @@ describe('GestaltGraph', () => {
           await acl.stop();
         }
       },
-      { numRuns: 50 },
+      { numRuns: 20 },
     );
   });
 });

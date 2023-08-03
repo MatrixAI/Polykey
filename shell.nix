@@ -9,8 +9,6 @@ in
       nodejs
       shellcheck
       gitAndTools.gh
-      awscli2
-      skopeo
       jq
     ];
     PKG_CACHE_PATH = utils.pkgCachePath;
