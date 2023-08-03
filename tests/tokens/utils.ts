@@ -21,14 +21,13 @@ const tokenPayloadArb = fc
     }),
   })
   .chain((value) => {
-    return fc.jsonValue().chain((json) => {
+    return fc.json().chain((json) => {
       return fc.constant({
-        ...(json as object),
+        ...(JSON.parse(json) as object),
         ...value,
       });
     });
   });
-
 const tokenProtectedHeaderArb = fc
   .oneof(
     fc.record({
@@ -40,9 +39,9 @@ const tokenProtectedHeaderArb = fc
     }),
   )
   .chain((value) => {
-    return fc.jsonValue().chain((json) => {
+    return fc.json().chain((json) => {
       return fc.constant({
-        ...(json as object),
+        ...(JSON.parse(json) as object),
         ...value,
       });
     });
