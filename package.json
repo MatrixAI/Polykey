@@ -56,10 +56,7 @@
     "lintfix": "eslint '{src,tests,scripts}/**/*.{js,ts,json}' 'benches/**/*.{js,ts}' --fix",
     "lint-shell": "find ./src ./tests ./scripts -type f -regextype posix-extended -regex '.*\\.(sh)' -exec shellcheck {} +",
     "docs": "shx rm -rf ./docs && typedoc --gitRevision master --tsconfig ./tsconfig.build.json --out ./docs src",
-    "bench": "shx rm -rf ./benches/results && ts-node ./benches",
-    "polykey": "ts-node src/bin/polykey.ts",
-    "start": "ts-node src/bin/polykey.ts -- agent start --verbose",
-    "dev": "nodemon src/bin/polykey.ts -- agent start --verbose"
+    "bench": "shx rm -rf ./benches/results && ts-node ./benches"
   },
   "dependencies": {
     "@matrixai/async-cancellable": "^1.1.1",
