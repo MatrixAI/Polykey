@@ -36,7 +36,6 @@ import NotificationsManager from '@/notifications/NotificationsManager';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
 
-// FIXME: holding the process open
 describe('notificationsClear', () => {
   const logger = new Logger('notificationsClear test', LogLevel.WARN, [
     new StreamHandler(
@@ -149,10 +148,19 @@ describe('notificationsClear', () => {
   });
   afterEach(async () => {
     mockedClearNotifications.mockRestore();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await sigchain.stop();
+    await acl.stop();
+    await notificationsManager.stop();
+    await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
     await webSocketServer.stop(true);
     await webSocketClient.destroy(true);
-    await quicSocket.stop();
+    await taskManager.stop();
     await keyRing.stop();
+    await quicSocket.stop({ force: true });
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
