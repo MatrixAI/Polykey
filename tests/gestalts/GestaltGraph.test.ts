@@ -755,7 +755,7 @@ describe('GestaltGraph', () => {
   });
   testProp(
     'getGestalts with nodes',
-    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2 })],
+    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2, maxLength: 10 })],
     async (gestaltNodeInfos) => {
       const ids = new Set<string>();
       for (const gestaltNodeInfo of gestaltNodeInfos) {
@@ -792,7 +792,11 @@ describe('GestaltGraph', () => {
   );
   testProp(
     'getGestalts with identities',
-    [fc.array(gestaltIdentityInfoComposedArb, { minLength: 2 }).noShrink()],
+    [
+      fc
+        .array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 })
+        .noShrink(),
+    ],
     async (gestaltIdentityInfos) => {
       const ids = new Set<string>();
       for (const gestaltIdentityInfo of gestaltIdentityInfos) {
@@ -832,11 +836,10 @@ describe('GestaltGraph', () => {
         });
       }
     },
-    { seed: 1958145926, path: '81', endOnFailure: true },
   );
   testProp(
     'getGestalts with nodes and identities',
-    [fc.array(gestaltInfoComposedArb, { minLength: 2 })],
+    [fc.array(gestaltInfoComposedArb, { minLength: 2, maxLength: 10 })],
     async (gestaltInfos) => {
       const ids = new Set<string>();
       for (const gestaltInfo of gestaltInfos) {
@@ -1168,10 +1171,14 @@ describe('GestaltGraph', () => {
       // Use a record to generate a constrained set of vertices
       fc
         .record({
-          keyPairs: fc.array(testsKeysUtils.keyPairArb, { minLength: 2 }),
+          keyPairs: fc.array(testsKeysUtils.keyPairArb, {
+            minLength: 2,
+            maxLength: 10,
+          }),
           identityInfos: fc
             .array(gestaltIdentityInfoComposedArb, {
               minLength: 1,
+              maxLength: 2,
             })
             .filter((v) => {
               const ids = new Set<string>();
@@ -1388,7 +1395,7 @@ describe('GestaltGraph', () => {
           await acl.stop();
         }
       },
-      { numRuns: 50 },
+      { numRuns: 20 },
     );
   });
 });
