@@ -13,11 +13,11 @@ import type {
   SeedNodes,
 } from './types';
 import type NodeManager from './NodeManager';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { LockRequest } from '@matrixai/async-locks/dist/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
 import type { ClientCrypto } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
+import type { RPCStream } from '../rpc/types';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -25,6 +25,7 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -79,6 +80,7 @@ class NodeConnectionManager {
    */
   public readonly connectionHolePunchIntervalTime: number;
 
+  protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
   protected logger: Logger;
   protected nodeGraph: NodeGraph;
   protected keyRing: KeyRing;
@@ -111,6 +113,7 @@ class NodeConnectionManager {
   };
 
   public constructor({
+    handleStream,
     keyRing,
     nodeGraph,
     quicSocket,
@@ -125,6 +128,7 @@ class NodeConnectionManager {
     connectionHolePunchIntervalTime = 250,
     logger,
   }: {
+    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
     quicSocket: QUICSocket;
@@ -141,6 +145,7 @@ class NodeConnectionManager {
     connectionHolePunchIntervalTime?: number;
     logger?: Logger;
   }) {
+    this.handleStream = handleStream;
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
@@ -511,10 +516,10 @@ class NodeConnectionManager {
       await Promise.allSettled(connProms);
     }
     if (connectionsResults.size === 0) {
+      // TODO: This needs to throw if none were established.
+      //  The usual use case is a single node, this shouldn't be a aggregate error type.
       throw Error('No connections established!');
     }
-    // TODO: This needs to throw if none were established.
-    //  The usual use case is a single node, this shouldn't be a aggregate error type.
     return connectionsResults;
   }
 
@@ -537,14 +542,15 @@ class NodeConnectionManager {
   ) {
     // TODO: do we bother with a concurrency limit for now? It's simple to use a semaphore.
     // TODO: if all connections fail then this needs to throw. Or does it? Do we just report the allSettled result?
-    // TODO: add ICE. Create hole punch relay proms.
     // 1. attempt connection to an address
     this.logger.debug(
       `establishing single connection for address ${address.host}:${address.port}`,
     );
+    const iceProm = this.initiateIce();
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
+          handleStream: this.handleStream,
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
           quicClientConfig: this.quicClientConfig,
@@ -557,13 +563,17 @@ class NodeConnectionManager {
           ),
         },
         ctx,
-      ).catch((e) => {
-        this.logger.debug(
-          `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
-        );
-        throw e;
-      });
-    // TODO: finally cancel ICE. Use signal and await all settled
+      )
+        .catch((e) => {
+          this.logger.debug(
+            `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
+          );
+          throw e;
+        })
+        .finally(async () => {
+          iceProm.cancel();
+          await iceProm;
+        });
     // 2. if established then add to result map
     const nodeId = connection.nodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
@@ -936,7 +946,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Performs a RPC request to retrieve the closest nodes relative to the given
+   * Performs an RPC request to retrieve the closest nodes relative to the given
    * target node ID.
    * @param nodeId the node ID to search on
    * @param targetNodeId the node ID to find other nodes closest to it
@@ -1002,7 +1012,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Performs a RPC request to send a hole-punch message to the target. Used to
+   * Performs an RPC request to send a hole-punch message to the target. Used to
    * initially establish the NodeConnection from source to target.
    *
    * @param relayNodeId node ID of the relay node (i.e. the seed node)
@@ -1132,7 +1142,7 @@ class NodeConnectionManager {
   /**
    * Checks if a connection can be made to the target. Returns true if the
    * connection can be authenticated, it's certificate matches the nodeId and
-   * the addresses match if provided. Otherwise returns false.
+   * the addresses match if provided. Otherwise, returns false.
    * @param nodeId - NodeId of the target
    * @param host - Host of the target node
    * @param port - Port of the target node
@@ -1274,6 +1284,13 @@ class NodeConnectionManager {
 
   protected removeBackoff(nodeId: NodeId): void {
     this.nodesBackoffMap.delete(nodeId.toString());
+  }
+
+  protected initiateIce(): PromiseCancellable<void> {
+    // TODO: this is a placeholder for ICE operation
+    return new PromiseCancellable<void>((resolve) => {
+      resolve();
+    });
   }
 }
 

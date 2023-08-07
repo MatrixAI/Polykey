@@ -154,12 +154,14 @@ async function bootstrapState({
       lazy: true,
     });
     const nodeConnectionManager = new NodeConnectionManager({
+      // No streams are created
+      handleStream: () => {},
       keyRing,
       nodeGraph,
       quicClientConfig: {} as any, // No connections are attempted
       crypto: {} as any, // No connections are attempted
       quicSocket: {} as any, // No connections are attempted
-      logger: logger.getChild(NodeConnectionManager.name),
+      logger: logger.getChild(NodeConnectionManager.name)
     });
     const nodeManager = new NodeManager({
       db,
