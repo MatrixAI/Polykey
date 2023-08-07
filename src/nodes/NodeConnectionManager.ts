@@ -125,6 +125,7 @@ class NodeConnectionManager {
   };
 
   public constructor({
+    handleStream,
     keyRing,
     nodeGraph,
     quicSocket,
@@ -140,6 +141,7 @@ class NodeConnectionManager {
     connectionHolePunchIntervalTime = 250,
     logger,
   }: {
+    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
     quicSocket: QUICSocket;
@@ -153,8 +155,9 @@ class NodeConnectionManager {
     pingTimeoutTime?: number;
     connectionHolePunchTimeoutTime?: number;
     connectionHolePunchIntervalTime?: number;
-    logger: Logger;
+    logger?: Logger;
   }) {
+    this.handleStream = handleStream;
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
