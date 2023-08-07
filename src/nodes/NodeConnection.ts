@@ -4,7 +4,7 @@ import type { NodeId, QUICClientConfig } from './types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { CertificatePEM } from '../keys/types';
 import type { ClientManifest } from '../rpc/types';
-import type { QUICSocket, ClientCrypto } from '@matrixai/quic';
+import type { QUICSocket, ClientCrypto, QUICConnection } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
@@ -174,6 +174,21 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     );
     logger.info(`Created ${this.name}`);
     return nodeConnection;
+  }
+
+  static createNodeConnectionReverse<M extends ClientManifest>({
+    quicConnection,
+    manifest,
+    logger = new Logger(this.name),
+  }: {
+    quicConnection: QUICConnection;
+    manifest: M;
+    logger?: Logger;
+  }): NodeConnection<M> {
+    logger.info(`Creating ${this.name}`);
+
+    logger.info(`Created ${this.name}`);
+    throw Error('TMP IMP');
   }
 
   constructor({
