@@ -201,7 +201,7 @@ for (const [key, code] of Object.entries(multihashCodes)) {
 }
 
 type DigestFormats = keyof typeof multihashCodes;
-type DigestCode<K extends DigestFormats> = typeof multihashCodes[K];
+type DigestCode<K extends DigestFormats> = (typeof multihashCodes)[K];
 type Digest<K extends DigestFormats> = Opaque<K, Buffer>;
 
 /**

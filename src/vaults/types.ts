@@ -6,7 +6,7 @@ import type { Opaque } from '../types';
 
 const vaultActions = ['clone', 'pull'] as const;
 
-type VaultAction = typeof vaultActions[number];
+type VaultAction = (typeof vaultActions)[number];
 
 /**
  * Special tags that are managed by VaultInternal
@@ -20,7 +20,7 @@ const tagLast = 'last';
  */
 const refs = ['HEAD', tagLast] as const;
 
-type VaultRef = typeof refs[number];
+type VaultRef = (typeof refs)[number];
 
 type CommitId = Opaque<'CommitId', string>;
 

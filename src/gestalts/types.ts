@@ -116,7 +116,7 @@ type Gestalt = {
   identities: GestaltIdentities;
 };
 
-type GestaltAction = typeof gestaltActions[number];
+type GestaltAction = (typeof gestaltActions)[number];
 type GestaltActions = Partial<Record<GestaltAction, null>>;
 
 export { gestaltActions };

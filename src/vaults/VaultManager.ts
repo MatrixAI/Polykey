@@ -54,8 +54,6 @@ type VaultMetadata = {
   remoteInfo?: RemoteInfo;
 };
 
-// FIXME: The DB is not managed by the EFS anymore.
-
 interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),
@@ -262,7 +260,28 @@ class VaultManager {
 
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
+    await this.efsDb.start({
+      fresh: false,
+      crypto: {
+        key: this.vaultKey,
+        ops: {
+          encrypt: async (key, plainText) => {
+            return keysUtils.encryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(plainText),
+            );
+          },
+          decrypt: async (key, cipherText) => {
+            return keysUtils.decryptWithKey(
+              utils.bufferWrap(key) as Key,
+              utils.bufferWrap(cipherText),
+            );
+          },
+        },
+      },
+    });
     await this.efs.destroy();
+    await this.efsDb.stop();
     await this.efsDb.destroy();
     // Clearing all vaults db data
     await this.db.clear(this.vaultsDbPath);
