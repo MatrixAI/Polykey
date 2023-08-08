@@ -2,6 +2,7 @@ import type { Host, Port, TLSConfig } from '@/network/types';
 import type * as quicEvents from '@matrixai/quic/dist/events';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { RPCStream } from '@/rpc/types';
+import type { CertificatePEM } from '@/keys/types';
 import { QUICServer, QUICSocket } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
@@ -10,7 +11,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import NodeConnection from '@/nodes/NodeConnection';
-import { promise } from '@/utils';
+import { never, promise } from '@/utils';
 import * as networkUtils from '@/network/utils';
 import * as tlsTestUtils from '../utils/tls';
 
@@ -370,9 +371,19 @@ describe(`${NodeConnection.name}`, () => {
       'serverConnection',
       async (event: quicEvents.QUICServerConnectionEvent) => {
         const quicConnection = event.detail;
+        const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
+          const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+          if (cert == null) never();
+          return cert;
+        });
+        if (certChain == null) never();
+        const nodeId = keysUtils.certNodeId(certChain[0]);
+        if (nodeId == null) never();
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
             handleStream: () => {},
+            nodeId,
+            certChain,
             manifest: {},
             quicConnection,
             logger,
@@ -411,11 +422,21 @@ describe(`${NodeConnection.name}`, () => {
       'serverConnection',
       async (event: quicEvents.QUICServerConnectionEvent) => {
         const quicConnection = event.detail;
+        const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
+          const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+          if (cert == null) never();
+          return cert;
+        });
+        if (certChain == null) never();
+        const nodeId = keysUtils.certNodeId(certChain[0]);
+        if (nodeId == null) never();
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
             handleStream: (stream) => {
               reverseStreamProm.resolveP(stream);
             },
+            nodeId,
+            certChain,
             manifest: {},
             quicConnection,
             logger,
