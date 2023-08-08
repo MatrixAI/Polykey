@@ -3,8 +3,13 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId, QUICClientConfig } from './types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { CertificatePEM } from '../keys/types';
-import type { ClientManifest } from '../rpc/types';
-import type { QUICSocket, ClientCrypto, QUICConnection } from '@matrixai/quic';
+import type { ClientManifest, RPCStream } from '../rpc/types';
+import type {
+  QUICSocket,
+  ClientCrypto,
+  QUICConnection,
+  events as quicEvents,
+} from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
@@ -46,11 +51,13 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
   public readonly certChain: Readonly<X509Certificate>[];
 
   protected logger: Logger;
-  public readonly quicClient: QUICClient;
+  public readonly quicClient: QUICClient | undefined;
+  public readonly quicConnection: QUICConnection;
   public readonly rpcClient: RPCClient<M>;
 
   static createNodeConnection<M extends ClientManifest>(
     {
+      handleStream,
       targetNodeIds,
       targetHost,
       targetPort,
@@ -60,6 +67,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       manifest,
       logger,
     }: {
+      handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
       targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
@@ -77,6 +85,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
   @timedCancellable(true, 20000)
   static async createNodeConnection<M extends ClientManifest>(
     {
+      handleStream,
       targetNodeIds,
       targetHost,
       targetPort,
@@ -87,6 +96,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       manifest,
       logger = new Logger(this.name),
     }: {
+      handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
       targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
@@ -106,7 +116,6 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     if (networkUtils.isHostWildcard(targetHost)) {
       throw new nodesErrors.ErrorNodeConnectionHostWildcard();
     }
-    const clientLogger = logger.getChild(RPCClient.name);
     let validatedNodeId: NodeId | undefined;
     const quicClient = await QUICClient.createQUICClient(
       {
@@ -130,13 +139,32 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       },
       ctx,
     );
+    const quicConnection = quicClient.connection;
+    // Setting up stream handling
+    const handleConnectionStream = (
+      streamEvent: quicEvents.QUICConnectionStreamEvent,
+    ) => {
+      const stream = streamEvent.detail;
+      handleStream(stream);
+    };
+    quicConnection.addEventListener('connectionStream', handleConnectionStream);
+    quicConnection.addEventListener(
+      'connectionStop',
+      () => {
+        quicConnection.removeEventListener(
+          'connectionStream',
+          handleConnectionStream,
+        );
+      },
+      { once: true },
+    );
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
       streamFactory: () => {
-        return quicClient.connection.streamNew();
+        return quicConnection.streamNew();
       },
-      logger: clientLogger,
+      logger: logger.getChild(RPCClient.name),
     });
     if (validatedNodeId == null) never();
     // Obtaining remote node ID from certificate chain. It should always exist in the chain if validated.
@@ -161,6 +189,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       certChain,
       hostname: targetHostname,
       quicClient,
+      quicConnection,
       rpcClient,
       logger,
     });
@@ -176,19 +205,80 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     return nodeConnection;
   }
 
-  static createNodeConnectionReverse<M extends ClientManifest>({
+  static async createNodeConnectionReverse<M extends ClientManifest>({
+    handleStream,
     quicConnection,
     manifest,
     logger = new Logger(this.name),
   }: {
+    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
     quicConnection: QUICConnection;
     manifest: M;
     logger?: Logger;
-  }): NodeConnection<M> {
+  }): Promise<NodeConnection<M>> {
     logger.info(`Creating ${this.name}`);
-
+    // No specific error here, validation is handled by the QUICServer
+    const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
+      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+      if (cert == null) never();
+      return cert;
+    });
+    if (certChain == null) never();
+    const nodeId = keysUtils.certNodeId(certChain[0]);
+    if (nodeId == null) never();
+    // Creating RPCClient
+    const rpcClient = await RPCClient.createRPCClient<M>({
+      manifest,
+      middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
+      streamFactory: () => {
+        return quicConnection.streamNew();
+      },
+      logger: logger.getChild(RPCClient.name),
+    });
+    // Setting up stream handling
+    const handleConnectionStream = (
+      streamEvent: quicEvents.QUICConnectionStreamEvent,
+    ) => {
+      const stream = streamEvent.detail;
+      handleStream(stream);
+    };
+    quicConnection.addEventListener('connectionStream', handleConnectionStream);
+    quicConnection.addEventListener(
+      'connectionStop',
+      () => {
+        quicConnection.removeEventListener(
+          'connectionStream',
+          handleConnectionStream,
+        );
+      },
+      { once: true },
+    );
+    // Creating NodeConnection
+    const nodeConnection = new this<M>({
+      validatedNodeId: nodeId,
+      nodeId: nodeId,
+      localHost: quicConnection.localHost as Host,
+      localPort: quicConnection.localPort as Port,
+      host: quicConnection.remoteHost as Host,
+      port: quicConnection.remotePort as Port,
+      certChain,
+      // Hostname and client are not available on reverse connections
+      hostname: undefined,
+      quicClient: undefined,
+      quicConnection,
+      rpcClient,
+      logger,
+    });
+    quicConnection.addEventListener(
+      'connectionStop',
+      async () => {
+        // Trigger the nodeConnection destroying
+        await nodeConnection.destroy({ force: false });
+      },
+      { once: true },
+    );
     logger.info(`Created ${this.name}`);
-    throw Error('TMP IMP');
+    return nodeConnection;
   }
 
   constructor({
@@ -201,6 +291,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     certChain,
     hostname,
     quicClient,
+    quicConnection,
     rpcClient,
     logger,
   }: {
@@ -212,7 +303,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     localPort: Port;
     certChain: Readonly<X509Certificate>[];
     hostname?: Hostname;
-    quicClient: QUICClient;
+    quicClient?: QUICClient;
+    quicConnection: QUICConnection;
     rpcClient: RPCClient<M>;
     logger: Logger;
   }) {
@@ -226,6 +318,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     this.certChain = certChain;
     this.hostname = hostname;
     this.quicClient = quicClient;
+    this.quicConnection = quicConnection;
     this.rpcClient = rpcClient;
     this.logger = logger;
   }
@@ -236,7 +329,18 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     force?: boolean;
   } = {}) {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.quicClient.destroy({ force });
+    await this.quicClient?.destroy({ force });
+    // This is only needed for reverse connections, otherwise it is handled by the quicClient.
+    await this.quicConnection.stop(
+      force
+        ? {
+            applicationError: true,
+            errorCode: 0,
+            errorMessage: 'NodeConnection is forcing destruction',
+            force: true,
+          }
+        : {},
+    );
     await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
     this.dispatchEvent(new nodesEvents.NodeConnectionDestroyEvent());
