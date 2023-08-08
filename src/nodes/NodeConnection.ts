@@ -2,7 +2,7 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId, QuicConfig } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
-import type { CertificatePEM } from '../keys/types';
+import type { Certificate, CertificatePEM } from '../keys/types';
 import type { ClientManifest, RPCStream } from '../rpc/types';
 import type {
   QUICSocket,
@@ -22,6 +22,7 @@ import RPCClient from '../rpc/RPCClient';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
+import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 
 /**
@@ -183,6 +184,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     if (certChain == null) never();
     const nodeId = keysUtils.certNodeId(certChain[0]);
     if (nodeId == null) never();
+    const newLogger = logger.getParent() ?? new Logger(this.name);
     const nodeConnection = new this<M>({
       validatedNodeId,
       nodeId,
@@ -195,7 +197,11 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       quicClient,
       quicConnection,
       rpcClient,
-      logger,
+      logger: newLogger.getChild(
+        `${this.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+          quicConnection.remoteHost
+        }:${quicConnection.remotePort}]`,
+      ),
     });
     quicClient.addEventListener(
       'clientDestroy',
@@ -211,25 +217,20 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
 
   static async createNodeConnectionReverse<M extends ClientManifest>({
     handleStream,
+    certChain,
+    nodeId,
     quicConnection,
     manifest,
     logger = new Logger(this.name),
   }: {
     handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
+    certChain: Array<Certificate>;
+    nodeId: NodeId;
     quicConnection: QUICConnection;
     manifest: M;
     logger?: Logger;
   }): Promise<NodeConnection<M>> {
     logger.info(`Creating ${this.name}`);
-    // No specific error here, validation is handled by the QUICServer
-    const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
-      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
-      if (cert == null) never();
-      return cert;
-    });
-    if (certChain == null) never();
-    const nodeId = keysUtils.certNodeId(certChain[0]);
-    if (nodeId == null) never();
     // Creating RPCClient
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
