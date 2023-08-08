@@ -1,7 +1,7 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { NodeId, QUICClientConfig } from './types';
-import type { Host, Hostname, Port } from '../network/types';
+import type { NodeId, QuicConfig } from './types';
+import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { CertificatePEM } from '../keys/types';
 import type { ClientManifest, RPCStream } from '../rpc/types';
 import type {
@@ -62,7 +62,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHost,
       targetPort,
       targetHostname,
-      quicClientConfig,
+      tlsConfig,
+      quicConfig = {},
       quicSocket,
       manifest,
       logger,
@@ -72,10 +73,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      quicClientConfig: QUICClientConfig;
-      crypto: {
-        ops: ClientCrypto;
-      };
+      crypto: ClientCrypto;
+      tlsConfig: TLSConfig;
+      quicConfig?: QuicConfig;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -90,8 +90,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHost,
       targetPort,
       targetHostname,
-      quicClientConfig,
       crypto,
+      tlsConfig,
+      quicConfig = {},
       quicSocket,
       manifest,
       logger = new Logger(this.name),
@@ -101,10 +102,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      quicClientConfig: QUICClientConfig;
-      crypto: {
-        ops: ClientCrypto;
-      };
+      crypto: ClientCrypto;
+      tlsConfig: TLSConfig;
+      quicConfig?: QuicConfig;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -123,10 +123,12 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         port: targetPort,
         socket: quicSocket,
         config: {
+          ...quicConfig,
           verifyPeer: true,
           verifyAllowFail: true,
           ca: undefined,
-          ...quicClientConfig,
+          key: tlsConfig.keyPrivatePem,
+          cert: tlsConfig.certChainPem,
         },
         verifyCallback: async (certPEMs) => {
           validatedNodeId = await networkUtils.verifyServerCertificateChain(
@@ -134,7 +136,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
             certPEMs,
           );
         },
-        crypto: crypto,
+        crypto: {
+          ops: crypto,
+        },
         logger: logger.getChild(QUICClient.name),
       },
       ctx,

@@ -88,7 +88,10 @@ describe(`${NodeConnection.name}`, () => {
         verifyAllowFail: true,
       },
       verifyCallback: networkUtils.verifyClientCertificateChain,
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       socket: serverSocket,
       logger: logger.getChild(`${QUICServer.name}`),
     });
@@ -134,10 +137,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -153,10 +153,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -170,11 +167,10 @@ describe(`${NodeConnection.name}`, () => {
         targetHost: localHost as Host,
         targetPort: 12345 as Port,
         manifest: {},
-        quicClientConfig: {
-          key: clientTlsConfig.keyPrivatePem,
-          cert: clientTlsConfig.certChainPem,
+        quicConfig: {
           maxIdleTimeout: 1000,
         },
+        tlsConfig: clientTlsConfig,
         crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
@@ -194,11 +190,10 @@ describe(`${NodeConnection.name}`, () => {
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
         manifest: {},
-        quicClientConfig: {
-          key: clientTlsConfig.keyPrivatePem,
-          cert: clientTlsConfig.certChainPem,
+        quicConfig: {
           maxIdleTimeout: 100,
         },
+        tlsConfig: clientTlsConfig,
         crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
@@ -225,10 +220,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -243,10 +235,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -262,12 +251,8 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        // @ts-ignore: TLS not used for this test
-        key: undefined,
-        // @ts-ignore: TLS not used for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not used for this test
+      tlsConfig: {},
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -283,10 +268,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -301,12 +283,11 @@ describe(`${NodeConnection.name}`, () => {
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
         manifest: {},
-        quicClientConfig: {
-          key: clientTlsConfig.keyPrivatePem,
-          cert: clientTlsConfig.certChainPem,
+        quicConfig: {
           keepAliveIntervalTime: 100,
           maxIdleTimeout: 200,
         },
+        tlsConfig: clientTlsConfig,
         crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
@@ -328,12 +309,11 @@ describe(`${NodeConnection.name}`, () => {
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
         manifest: {},
-        quicClientConfig: {
-          key: clientTlsConfig.keyPrivatePem,
-          cert: clientTlsConfig.certChainPem,
+        quicConfig: {
           maxIdleTimeout: 200,
           keepAliveIntervalTime: 100,
         },
+        tlsConfig: clientTlsConfig,
         crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
@@ -359,12 +339,11 @@ describe(`${NodeConnection.name}`, () => {
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
         manifest: {},
-        quicClientConfig: {
-          key: clientTlsConfig.keyPrivatePem,
-          cert: clientTlsConfig.certChainPem,
+        quicConfig: {
           maxIdleTimeout: 200,
           keepAliveIntervalTime: 100,
         },
+        tlsConfig: clientTlsConfig,
         crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
@@ -409,10 +388,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
@@ -456,10 +432,7 @@ describe(`${NodeConnection.name}`, () => {
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
       manifest: {},
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),

@@ -35,6 +35,11 @@ type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 type QUICClientConfig = Pick<QUICConfig, 'key' | 'cert'> &
   Omit<Partial<QUICConfig>, 'ca' | 'verifyPeer' | 'verifyAllowFail'>;
 
+type QuicConfig = Omit<
+  Partial<QUICConfig>,
+  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
+>;
+
 export type {
   NodeId,
   NodeIdString,
@@ -47,4 +52,5 @@ export type {
   NodeData,
   NodeGraphSpace,
   QUICClientConfig,
+  QuicConfig,
 };
