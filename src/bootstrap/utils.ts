@@ -14,7 +14,7 @@ import { Sigchain } from '../sigchain';
 import { ACL } from '../acl';
 import { GestaltGraph } from '../gestalts';
 import { KeyRing } from '../keys';
-import { NodeGraph, NodeManager } from '../nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
 import { NotificationsManager } from '../notifications';
 import { mkdirExists } from '../utils';
@@ -153,11 +153,21 @@ async function bootstrapState({
       logger,
       lazy: true,
     });
+    const nodeConnectionManager = new NodeConnectionManager({
+      // No streams are created
+      handleStream: () => {},
+      keyRing,
+      nodeGraph,
+      quicClientConfig: {} as any, // No connections are attempted
+      crypto: {} as any, // No connections are attempted
+      quicSocket: {} as any, // No connections are attempted
+      logger: logger.getChild(NodeConnectionManager.name),
+    });
     const nodeManager = new NodeManager({
       db,
       keyRing,
       nodeGraph,
-      nodeConnectionManager: {} as any, // No connections are attempted
+      nodeConnectionManager,
       sigchain,
       taskManager,
       gestaltGraph,
@@ -167,7 +177,7 @@ async function bootstrapState({
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager: {} as any, // No connections are attempted
+        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger: logger.getChild(NotificationsManager.name),
@@ -178,7 +188,7 @@ async function bootstrapState({
       db,
       gestaltGraph,
       keyRing,
-      nodeConnectionManager: {} as any, // No connections are attempted
+      nodeConnectionManager,
       vaultsPath,
       notificationsManager,
       logger: logger.getChild(VaultManager.name),

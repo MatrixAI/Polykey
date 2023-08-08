@@ -55,6 +55,7 @@ type NetworkConfig = {
   clientHost?: string;
   clientPort?: number;
   // Websocket server config
+  maxReadableStreamBytes?: number;
   maxIdleTimeout?: number;
   pingIntervalTime?: number;
   pingTimeoutTimeTime?: number;
@@ -95,7 +96,8 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    quicConfig = {},
+    quicServerConfig = {},
+    quicClientConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -147,7 +149,8 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-    quicConfig?: PolykeyQUICConfig;
+    quicServerConfig?: PolykeyQUICConfig;
+    quicClientConfig?: PolykeyQUICConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -195,9 +198,14 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-    const quicConfig_ = {
-      ...config.defaults.quicConfig,
-      ...utils.filterEmptyObject(quicConfig),
+    const quicServerConfig_ = {
+      ...config.defaults.quicServerConfig,
+      ...utils.filterEmptyObject(quicServerConfig),
+    };
+    // TODO: rename
+    const quicClientConfig_ = {
+      ...config.defaults.quicClientConfig,
+      ...utils.filterEmptyObject(quicClientConfig),
     };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -393,7 +401,7 @@ class PolykeyAgent {
           nodeGraph,
           seedNodes,
           quicSocket,
-          quicConfig: quicConfig_,
+          quicConfig: quicClientConfig_,
           ...nodeConnectionManagerConfig_,
           tlsConfig,
           crypto,
@@ -495,9 +503,11 @@ class PolykeyAgent {
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (rpcStream) =>
             rpcServerClient!.handleStream(rpcStream),
+          fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
           tlsConfig,
+          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
           maxIdleTimeout: networkConfig_.maxIdleTimeout,
           pingIntervalTime: networkConfig_.pingIntervalTime,
           pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
@@ -739,7 +749,10 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
-          this.webSocketServerClient.setTlsConfig(tlsConfig);
+          // FIXME: Can we even support updating TLS config anymore?
+          //  We would need to shut down the Websocket server and re-create it with the new config.
+          //  Right now graceful shutdown is not supported.
+          // this.grpcServerClient.setTLSConfig(tlsConfig);
           this.nodeConnectionManager.updateTlsConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
         },
