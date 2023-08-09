@@ -448,12 +448,8 @@ describe('gestaltsDiscoverByIdentity', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -471,7 +467,7 @@ describe('gestaltsDiscoverByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -637,12 +633,8 @@ describe('gestaltsDiscoverByNode', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -660,7 +652,7 @@ describe('gestaltsDiscoverByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1264,10 +1256,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -1285,7 +1275,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1785,12 +1775,8 @@ describe('gestaltsGestaltTrustByNode', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -1808,10 +1794,10 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await nodeManager.setNode(nodeIdRemote, {
-      host: node.quicServerAgent.host as Host,
-      port: node.quicServerAgent.port as Port,
+      host: node.quicSocket.host as Host,
+      port: node.quicSocket.port as Port,
     });
     discovery = await Discovery.createDiscovery({
       db,

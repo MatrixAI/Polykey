@@ -86,7 +86,10 @@ describe('nodesClosestLocalNode', () => {
         cert: tlsConfig.certChainPem,
         verifyPeer: false,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       logger,
     });
     const handleStream = async (
@@ -133,7 +136,9 @@ describe('nodesClosestLocalNode', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto,
+      crypto: {
+        ops: crypto,
+      },
       config: {
         verifyPeer: false,
       },

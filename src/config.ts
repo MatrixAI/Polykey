@@ -107,11 +107,7 @@ const config = {
       handlerTimeoutTime: 60_000, // 1 minute
       handlerTimeoutGraceTime: 2_000, // 2 seconds
     },
-    quicServerConfig: {
-      keepAliveIntervalTime: 10_000, // 10 seconds
-      maxIdleTimeout: 60_000, // 1 minute
-    },
-    quicClientConfig: {
+    quicConfig: {
       keepAliveIntervalTime: 10_000, // 10 seconds
       maxIdleTimeout: 60_000, // 1 minute
     },
