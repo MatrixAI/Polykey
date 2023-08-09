@@ -63,6 +63,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
   let tlsConfig: TLSConfig;
+  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -195,10 +196,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
@@ -216,6 +214,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -236,11 +235,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
+      quicConfig: {
         keepAliveIntervalTime: 1000,
       },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -264,6 +262,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -284,12 +283,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
+      quicConfig: {
         maxIdleTimeout: 1000,
         keepAliveIntervalTime: 500,
       },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -309,6 +307,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -336,11 +335,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
+      quicConfig: {
         keepAliveIntervalTime: 1000,
       },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -360,6 +358,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -384,11 +383,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
+      quicConfig: {
         keepAliveIntervalTime: 1000,
       },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -408,6 +406,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -427,11 +426,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
+      quicConfig: {
         keepAliveIntervalTime: 1000,
       },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -451,6 +449,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 

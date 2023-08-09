@@ -358,17 +358,17 @@ describe(`${NodeGraph.name} test`, () => {
     ).toBe(true);
     // Sort by lastUpdated asc
     bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated', 'asc');
-    let bucketLastUpdateds = bucket.map(([, nodeData]) => nodeData.lastUpdated);
+    let bucketLastUpdated = bucket.map(([, nodeData]) => nodeData.lastUpdated);
     expect(
-      bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
-        return bucketLastUpdateds[i] <= lastUpdated;
+      bucketLastUpdated.slice(1).every((lastUpdated, i) => {
+        return bucketLastUpdated[i] <= lastUpdated;
       }),
     ).toBe(true);
     bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated', 'desc');
-    bucketLastUpdateds = bucket.map(([, nodeData]) => nodeData.lastUpdated);
+    bucketLastUpdated = bucket.map(([, nodeData]) => nodeData.lastUpdated);
     expect(
-      bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
-        return bucketLastUpdateds[i] >= lastUpdated;
+      bucketLastUpdated.slice(1).every((lastUpdated, i) => {
+        return bucketLastUpdated[i] >= lastUpdated;
       }),
     ).toBe(true);
     await nodeGraph.stop();
@@ -526,12 +526,12 @@ describe(`${NodeGraph.name} test`, () => {
         expect(nodeData.address.port < 2 ** 16).toBe(true);
         expect(nodeData.lastUpdated >= now).toBe(true);
       }
-      const bucketLastUpdateds = bucket.map(
+      const bucketLastUpdated = bucket.map(
         ([, nodeData]) => nodeData.lastUpdated,
       );
       expect(
-        bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
-          return bucketLastUpdateds[i] <= lastUpdated;
+        bucketLastUpdated.slice(1).every((lastUpdated, i) => {
+          return bucketLastUpdated[i] <= lastUpdated;
         }),
       ).toBe(true);
     }
@@ -556,12 +556,12 @@ describe(`${NodeGraph.name} test`, () => {
         expect(nodeData.address.port < 2 ** 16).toBe(true);
         expect(nodeData.lastUpdated >= now).toBe(true);
       }
-      const bucketLastUpdateds = bucket.map(
+      const bucketLastUpdated = bucket.map(
         ([, nodeData]) => nodeData.lastUpdated,
       );
       expect(
-        bucketLastUpdateds.slice(1).every((lastUpdated, i) => {
-          return bucketLastUpdateds[i] >= lastUpdated;
+        bucketLastUpdated.slice(1).every((lastUpdated, i) => {
+          return bucketLastUpdated[i] >= lastUpdated;
         }),
       ).toBe(true);
     }
@@ -661,8 +661,8 @@ describe(`${NodeGraph.name} test`, () => {
   );
   testProp(
     'reset buckets should re-order the buckets',
-    [testNodesUtils.uniqueNodeIdArb(2), testNodesUtils.nodeIdArrayArb(50)],
-    async (nodeIds, initialNodes) => {
+    [testNodesUtils.uniqueNodeIdArb(2)],
+    async (nodeIds) => {
       const getNodeIdMock = jest.fn();
       const dummyKeyRing = {
         getNodeId: getNodeIdMock,
@@ -674,7 +674,8 @@ describe(`${NodeGraph.name} test`, () => {
         fresh: true,
         logger,
       });
-      for (const nodeId of initialNodes) {
+      for (let i = 1; i < 255 / 25; i += 50) {
+        const nodeId = nodesUtils.generateRandomNodeIdForBucket(nodeIds[0], i);
         await nodeGraph.setNode(nodeId, {
           host: '127.0.0.1',
           port: utils.getRandomInt(0, 2 ** 16),
@@ -866,7 +867,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -910,7 +911,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -954,7 +955,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -998,7 +999,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -1042,7 +1043,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -1086,7 +1087,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -1130,7 +1131,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
@@ -1161,7 +1162,7 @@ describe(`${NodeGraph.name} test`, () => {
     nodesUtils.bucketSortByDistance(nodeIds, targetNodeId);
     const a = nodeIds.map((a) => nodesUtils.encodeNodeId(a[0]));
     const b = result.map((a) => nodesUtils.encodeNodeId(a[0]));
-    // Are the closest nodes out of all of the nodes
+    // Are the closest nodes out of all the nodes
     expect(a.slice(0, b.length)).toEqual(b);
 
     // Check that the list is strictly ascending
