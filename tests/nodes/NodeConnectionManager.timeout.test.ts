@@ -53,6 +53,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
   let tlsConfig: TLSConfig;
+  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -153,10 +154,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -175,6 +173,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -210,10 +209,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -232,6 +228,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -282,10 +279,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -304,6 +298,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -338,10 +333,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -361,6 +353,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -380,10 +373,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -403,6 +393,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -428,10 +419,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -451,6 +439,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
