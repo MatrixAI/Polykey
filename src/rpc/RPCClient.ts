@@ -257,15 +257,12 @@ class RPCClient<M extends ClientManifest> {
     const abortController = new AbortController();
     const signal = abortController.signal;
     // A promise that will reject if there is an abort signal or timeout
-    const abortRaceProm = promise<never>();
     // Prevent unhandled rejection when we're done with the promise
-    abortRaceProm.p.catch(() => {});
     let abortHandler: () => void;
     if (ctx.signal != null) {
       // Propagate signal events
       abortHandler = () => {
         abortController.abort(ctx.signal?.reason);
-        abortRaceProm.rejectP(ctx.signal?.reason);
       };
       if (ctx.signal.aborted) abortHandler();
       ctx.signal.addEventListener('abort', abortHandler);
@@ -288,20 +285,24 @@ class RPCClient<M extends ClientManifest> {
     void timer.then(
       () => {
         abortController.abort(timeoutError);
-        abortRaceProm.rejectP(timeoutError);
       },
       () => {}, // Ignore cancellation error
     );
     // Hooking up agnostic stream side
     let rpcStream: RPCStream<Uint8Array, Uint8Array>;
     try {
-      rpcStream = await Promise.race([
-        this.streamFactory({ signal, timer }),
-        abortRaceProm.p,
-      ]);
+      rpcStream = await this.streamFactory({ signal, timer });
     } catch (e) {
       cleanUp();
       throw e;
+    }
+    const cancelStream = () => {
+      rpcStream.cancel(signal.reason);
+    };
+    if (signal.aborted) {
+      cancelStream();
+    } else {
+      signal.addEventListener('abort', cancelStream);
     }
     // Setting up event for stream timeout
     void timer.then(
@@ -345,6 +346,7 @@ class RPCClient<M extends ClientManifest> {
         .catch(() => {}),
     ]).finally(() => {
       cleanUp();
+      signal.removeEventListener('abort', cancelStream);
     });
 
     // Returning interface

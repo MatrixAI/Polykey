@@ -21,7 +21,6 @@ import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import { sleep } from '@/utils';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
@@ -314,7 +313,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
     await nodeManager.syncNodeGraph(true, 100);
-    await sleep(1000);
     expect(mockedRefreshBucket).toHaveBeenCalled();
 
     await nodeConnectionManager.stop();

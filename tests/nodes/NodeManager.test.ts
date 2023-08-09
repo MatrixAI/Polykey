@@ -382,7 +382,8 @@ describe(`${NodeManager.name} test`, () => {
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       // Do nothing
     });
-
+    // Wait for background logic to settle
+    await sleep(100);
     const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
     expect(nodeData2).toBeDefined();
     expect(nodeData2?.address.host).toEqual(expectedHost);
