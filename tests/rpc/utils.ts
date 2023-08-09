@@ -82,8 +82,8 @@ const messagesToReadableStream = (messages: Array<JSONRPCMessage>) => {
  * a json stringify and parse cycle.
  */
 const safeJsonValueArb = fc
-  .jsonValue()
-  .map((value) => JSON.parse(JSON.stringify(value)) as JSONValue);
+  .json()
+  .map((value) => JSON.parse(value.replace('__proto__', 'proto')) as JSONValue);
 
 const idArb = fc.oneof(fc.string(), fc.integer(), fc.constant(null));
 
