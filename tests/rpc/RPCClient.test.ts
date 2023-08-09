@@ -870,7 +870,6 @@ describe(`${RPCClient.name}`, () => {
       expect(ctx?.signal.reason).toBe(rejectReason);
     });
   });
-  // FIXME: revert timeout changes with stream
   describe('duplex caller', () => {
     test('duplex caller uses default timeout when creating stream', async () => {
       const holdProm = promise();
