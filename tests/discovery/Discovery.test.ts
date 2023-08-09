@@ -164,10 +164,7 @@ describe('Discovery', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -185,7 +182,7 @@ describe('Discovery', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -219,8 +216,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.quicServerAgent.host as Host,
-      port: nodeA.quicServerAgent.port as Port,
+      host: nodeA.quicSocket.host as Host,
+      port: nodeA.quicSocket.port as Port,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());

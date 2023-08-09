@@ -105,10 +105,7 @@ describe('nodesHolePunchMessage', () => {
       keyRing.keyPair,
     );
     nodeConnectionManager = new NodeConnectionManager({
-      quicClientConfig: {
-        key: tlsConfigClient.keyPrivatePem,
-        cert: tlsConfigClient.certChainPem,
-      },
+      tlsConfig: tlsConfigClient,
       crypto,
       quicSocket,
       keyRing,
@@ -128,7 +125,7 @@ describe('nodesHolePunchMessage', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
 
     // Setting up server
@@ -153,7 +150,10 @@ describe('nodesHolePunchMessage', () => {
         verifyPeer: true,
         verifyAllowFail: true,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       logger,
     });
     const handleStream = async (
@@ -200,7 +200,9 @@ describe('nodesHolePunchMessage', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto,
+      crypto: {
+        ops: crypto,
+      },
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,

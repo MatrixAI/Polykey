@@ -111,12 +111,8 @@ describe('notificationsClear', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -134,7 +130,7 @@ describe('notificationsClear', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -281,12 +277,8 @@ describe('notificationsRead', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -304,7 +296,7 @@ describe('notificationsRead', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -833,12 +825,8 @@ describe('notificationsSend', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -856,7 +844,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({

@@ -96,8 +96,7 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    quicServerConfig = {},
-    quicClientConfig = {},
+    quicConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -149,8 +148,7 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-    quicServerConfig?: PolykeyQUICConfig;
-    quicClientConfig?: PolykeyQUICConfig;
+    quicConfig?: PolykeyQUICConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -198,14 +196,9 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-    const quicServerConfig_ = {
-      ...config.defaults.quicServerConfig,
-      ...utils.filterEmptyObject(quicServerConfig),
-    };
-    // TODO: rename
-    const quicClientConfig_ = {
-      ...config.defaults.quicClientConfig,
-      ...utils.filterEmptyObject(quicClientConfig),
+    const quicConfig_ = {
+      ...config.defaults.quicConfig,
+      ...utils.filterEmptyObject(quicConfig),
     };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -401,7 +394,7 @@ class PolykeyAgent {
           nodeGraph,
           seedNodes,
           quicSocket,
-          quicConfig: quicClientConfig_,
+          quicConfig: quicConfig_,
           ...nodeConnectionManagerConfig_,
           tlsConfig,
           crypto,
