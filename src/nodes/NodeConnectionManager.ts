@@ -21,6 +21,7 @@ import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
 import type { QuicConfig } from './types';
 import type { ServerCrypto, events as QuicEvents } from '@matrixai/quic';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import { withF } from '@matrixai/resources';
 import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -28,7 +29,6 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { QUICServer } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
@@ -599,7 +599,7 @@ class NodeConnectionManager {
     this.logger.debug(
       `establishing single connection for address ${address.host}:${address.port}`,
     );
-    const iceProm = this.initiateIce();
+    const iceProm = this.initiateHolePunch(nodeIds, ctx);
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
@@ -625,7 +625,7 @@ class NodeConnectionManager {
           throw e;
         })
         .finally(async () => {
-          iceProm.cancel();
+          iceProm.cancel('Connection was established');
           await iceProm;
         });
     // 2. if established then add to result map
@@ -1426,11 +1426,50 @@ class NodeConnectionManager {
     this.nodesBackoffMap.delete(nodeId.toString());
   }
 
-  protected initiateIce(): PromiseCancellable<void> {
-    // TODO: this is a placeholder for ICE operation
-    return new PromiseCancellable<void>((resolve) => {
-      resolve();
-    });
+  /**
+   * This attempts the NAT hole punch procedure. It will return a
+   * `PromiseCancellable` that will resolve once the procedure times out, is
+   * cancelled or the other end responds.
+   *
+   * This is pretty simple, it will contact all known seed nodes and get them to
+   * relay a punch signal message.
+   *
+   * Note: Avoid using a large set of target nodes, It could trigger a large
+   * amount of pings to a single target.
+   */
+  protected initiateHolePunch(
+    targetNodeIds: Array<NodeId>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(true)
+  protected async initiateHolePunch(
+    targetNodeIds: Array<NodeId>,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
+    const seedNodes = this.getSeedNodes();
+    const allProms: Array<Promise<Array<void>>> = [];
+    for (const targetNodeId of targetNodeIds) {
+      if (!this.isSeedNode(targetNodeId)) {
+        const holePunchProms = seedNodes.map((seedNodeId) => {
+          return (
+            this.sendSignalingMessage(
+              seedNodeId,
+              this.keyRing.getNodeId(),
+              targetNodeId,
+              undefined,
+              ctx,
+            )
+              // Ignore results
+              .then(
+                () => {},
+                () => {},
+              )
+          );
+        });
+        allProms.push(Promise.all(holePunchProms));
+      }
+    }
+    await Promise.all(allProms).catch();
   }
 }
 

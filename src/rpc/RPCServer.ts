@@ -1,3 +1,4 @@
+import type { ReadableStreamDefaultReadResult } from 'stream/web';
 import type {
   ClientHandlerImplementation,
   DuplexHandlerImplementation,
@@ -442,7 +443,6 @@ class RPCServer extends EventTarget {
         });
     };
     abortController.signal.addEventListener('abort', handleAbort);
-
     const prom = (async () => {
       const headTransformStream = rpcUtilsMiddleware.binaryToJsonMessageStream(
         rpcUtils.parseJSONRPCRequest,
@@ -469,30 +469,80 @@ class RPCServer extends EventTarget {
         await inputStream.cancel(reason);
         await rpcStream.writable.abort(reason);
         await inputStreamEndProm;
+        timer.cancel(cleanupReason);
+        graceTimer?.cancel(cleanupReason);
+        await timer.catch(() => {});
+        await graceTimer?.catch(() => {});
       };
       // Read a single empty value to consume the first message
       const reader = headTransformStream.readable.getReader();
       // Allows timing out when waiting for the first message
-      const headerMessage = await Promise.race([
-        reader.read(),
-        timer.then(
-          () => undefined,
-          () => {},
-        ),
-      ]);
+      let headerMessage:
+        | ReadableStreamDefaultReadResult<JSONRPCRequest>
+        | undefined
+        | void;
+      try {
+        headerMessage = await Promise.race([
+          reader.read(),
+          timer.then(
+            () => undefined,
+            () => {},
+          ),
+        ]);
+      } catch (e) {
+        const newErr = new rpcErrors.ErrorRPCHandlerFailed(
+          'Stream failed waiting for header',
+          { cause: e },
+        );
+        await inputStreamEndProm;
+        timer.cancel(cleanupReason);
+        graceTimer?.cancel(cleanupReason);
+        await timer.catch(() => {});
+        await graceTimer?.catch(() => {});
+        this.dispatchEvent(
+          new rpcEvents.RPCErrorEvent({
+            detail: new rpcErrors.ErrorRPCOutputStreamError(
+              'Stream failed waiting for header',
+              {
+                cause: newErr,
+              },
+            ),
+          }),
+        );
+        return;
+      }
       // Downgrade back to the raw stream
       await reader.cancel();
       // There are 2 conditions where we just end here
       //  1. The timeout timer resolves before the first message
       //  2. the stream ends before the first message
       if (headerMessage == null) {
-        await cleanUp(
-          new rpcErrors.ErrorRPCHandlerFailed('Timed out waiting for header'),
+        const newErr = new rpcErrors.ErrorRPCHandlerFailed(
+          'Timed out waiting for header',
+        );
+        await cleanUp(newErr);
+        this.dispatchEvent(
+          new rpcEvents.RPCErrorEvent({
+            detail: new rpcErrors.ErrorRPCOutputStreamError(
+              'Timed out waiting for header',
+              {
+                cause: newErr,
+              },
+            ),
+          }),
         );
         return;
       }
       if (headerMessage.done) {
-        await cleanUp(new rpcErrors.ErrorRPCHandlerFailed('Missing header'));
+        const newErr = new rpcErrors.ErrorRPCHandlerFailed('Missing header');
+        await cleanUp(newErr);
+        this.dispatchEvent(
+          new rpcEvents.RPCErrorEvent({
+            detail: new rpcErrors.ErrorRPCOutputStreamError('Missing header', {
+              cause: newErr,
+            }),
+          }),
+        );
         return;
       }
       const method = headerMessage.value.method;
@@ -514,6 +564,7 @@ class RPCServer extends EventTarget {
         // Otherwise refresh
         timer.refresh();
       }
+      this.logger.info(`Handling stream with method (${method})`);
       const outputStream = handler(
         [headerMessage.value, inputStream],
         rpcStream.cancel,
@@ -524,6 +575,7 @@ class RPCServer extends EventTarget {
         .pipeTo(rpcStream.writable)
         .catch(() => {}); // Ignore any errors, we only care that it finished
       await Promise.allSettled([inputStreamEndProm, outputStreamEndProm]);
+      this.logger.info(`Handled stream with method (${method})`);
       // Cleaning up abort and timer
       timer.cancel(cleanupReason);
       abortController.signal.removeEventListener('abort', handleAbort);
