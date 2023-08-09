@@ -57,6 +57,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let nodeManager: NodeManager;
 
   let nodeConnectionManager: NodeConnectionManager;
+  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -80,7 +81,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         key: serverTlsConfig.keyPrivatePem,
         cert: serverTlsConfig.certChainPem,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       socket: serverSocket,
       logger: logger.getChild(`${QUICServer.name}`),
     });
@@ -172,11 +176,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
       crypto,
+      tlsConfig: clientTlsConfig,
       quicSocket: clientSocket,
       seedNodes: undefined,
     });
@@ -193,6 +194,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
 
     await nodeConnectionManager.stop();
@@ -204,10 +206,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -225,6 +224,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -240,10 +240,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -261,6 +258,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -276,10 +274,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -297,6 +292,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -320,10 +316,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -341,6 +334,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
@@ -364,10 +358,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -385,6 +376,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
@@ -416,10 +408,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -437,6 +426,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -458,10 +448,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -479,6 +466,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     const waitProm = promise<void>();
@@ -508,10 +496,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -529,6 +514,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -557,10 +543,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -578,6 +561,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -598,10 +582,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -619,6 +600,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
@@ -636,10 +618,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -657,6 +636,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
@@ -675,10 +655,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: clientTlsConfig.keyPrivatePem,
-        cert: clientTlsConfig.certChainPem,
-      },
+      tlsConfig: clientTlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -696,6 +673,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
