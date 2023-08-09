@@ -87,7 +87,10 @@ describe('nodesClaimsGet', () => {
         cert: tlsConfig.certChainPem,
         verifyPeer: false,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       logger,
     });
     const handleStream = async (
@@ -134,7 +137,9 @@ describe('nodesClaimsGet', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto,
+      crypto: {
+        ops: crypto,
+      },
       config: {
         verifyPeer: false,
       },

@@ -103,12 +103,8 @@ describe('nodesAdd', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -126,7 +122,7 @@ describe('nodesAdd', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -360,12 +356,8 @@ describe('nodesClaim', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -383,7 +375,7 @@ describe('nodesClaim', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -568,19 +560,18 @@ describe('nodesFind', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
       connectionTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start({ nodeManager: {} as NodeManager });
+    await nodeConnectionManager.start({
+      nodeManager: {} as NodeManager,
+      handleStream: () => {},
+    });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -745,12 +736,8 @@ describe('nodesPing', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        // @ts-ignore: TLS not needed for this test
-        key: undefined,
-        // @ts-ignore: TLS not needed for this test
-        cert: undefined,
-      },
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
       crypto,
       quicSocket,
       connectionConnectTime: 2000,
@@ -767,7 +754,7 @@ describe('nodesPing', () => {
       gestaltGraph: {} as GestaltGraph,
       logger,
     });
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
   });
   afterEach(async () => {

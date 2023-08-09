@@ -128,10 +128,7 @@ describe('notificationsSend', () => {
       keyRing.keyPair,
     );
     nodeConnectionManager = new NodeConnectionManager({
-      quicClientConfig: {
-        key: tlsConfigClient.keyPrivatePem,
-        cert: tlsConfigClient.certChainPem,
-      },
+      tlsConfig: tlsConfigClient,
       crypto,
       quicSocket,
       keyRing,
@@ -151,7 +148,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -183,7 +180,10 @@ describe('notificationsSend', () => {
         verifyPeer: true,
         verifyAllowFail: true,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       logger,
     });
     const handleStream = async (
@@ -230,7 +230,9 @@ describe('notificationsSend', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto,
+      crypto: {
+        ops: crypto,
+      },
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
