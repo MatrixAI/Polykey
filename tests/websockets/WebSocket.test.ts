@@ -1,7 +1,6 @@
 import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
 import type { KeyPair } from '@/keys/types';
-import type { NodeId } from '@/ids/types';
 import type http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -11,6 +10,7 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import { Timer } from '@matrixai/timer';
 import { status } from '@matrixai/async-init';
+import { KeyRing } from '@/keys/index';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import { promise } from '@/utils';
@@ -28,8 +28,8 @@ describe('WebSocket', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  let keyPair: KeyPair;
-  let nodeId: NodeId;
+  let dataDir: string;
+  let keyRing: KeyRing;
   let tlsConfig: TLSConfig;
   const host = '127.0.0.2';
   let webSocketServer: WebSocketServer;
@@ -63,14 +63,19 @@ describe('WebSocket', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    keyPair = keysUtils.generateKeyPair();
-    nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-    tlsConfig = await testsUtils.createTLSConfig(keyPair);
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      keysPath: keysPath,
+      password: 'password',
+      logger: logger.getChild('keyRing'),
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
     logger.info('AFTEREACH');
     await webSocketServer?.stop(true);
     await webSocketClient?.destroy(true);
+    await keyRing.stop();
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
 
@@ -84,6 +89,7 @@ describe('WebSocket', () => {
           .catch(() => {})
           .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
+      basePath: dataDir,
       tlsConfig,
       host,
       logger: logger.getChild('server'),
@@ -92,7 +98,7 @@ describe('WebSocket', () => {
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
       port: webSocketServer.getPort(),
-      expectedNodeIds: [nodeId],
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await webSocketClient.startConnection();
@@ -109,42 +115,6 @@ describe('WebSocket', () => {
     expect((await reader.read()).done).toBeTrue();
     logger.info('ending');
   });
-  test('can change TLS config', async () => {
-    const keyPairNew = keysUtils.generateKeyPair();
-    const nodeIdNew = keysUtils.publicKeyToNodeId(keyPairNew.publicKey);
-    const tlsConfigNew = await testsUtils.createTLSConfig(keyPairNew);
-
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        logger.info('inside callback');
-        void streamPair.readable
-          .pipeTo(streamPair.writable)
-          .catch(() => {})
-          .finally(() => logger.info('STREAM HANDLING ENDED'));
-      },
-      tlsConfig,
-      host,
-      logger: logger.getChild('server'),
-    });
-    logger.info(`Server started on port ${webSocketServer.getPort()}`);
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      host,
-      port: webSocketServer.getPort(),
-      expectedNodeIds: [nodeId, nodeIdNew],
-      logger: logger.getChild('clientClient'),
-    });
-    const websocket = await webSocketClient.startConnection();
-    expect(websocket.meta.nodeId).toBe(nodesUtils.encodeNodeId(nodeId));
-    websocket.cancel();
-
-    // Changing certs
-    webSocketServer.setTlsConfig(tlsConfigNew);
-    const websocket2 = await webSocketClient.startConnection();
-    expect(websocket2.meta.nodeId).toBe(nodesUtils.encodeNodeId(nodeIdNew));
-    websocket2.cancel();
-
-    logger.info('ending');
-  });
   test('makes a connection over IPv6', async () => {
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => {
@@ -154,6 +124,7 @@ describe('WebSocket', () => {
           .catch(() => {})
           .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
+      basePath: dataDir,
       tlsConfig,
       host: '::1',
       logger: logger.getChild('server'),
@@ -162,7 +133,7 @@ describe('WebSocket', () => {
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host: '::1',
       port: webSocketServer.getPort(),
-      expectedNodeIds: [nodeId],
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await webSocketClient.startConnection();
@@ -188,6 +159,7 @@ describe('WebSocket', () => {
           .catch(() => {})
           .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
+      basePath: dataDir,
       tlsConfig,
       host,
       logger: logger.getChild('server'),
@@ -196,7 +168,7 @@ describe('WebSocket', () => {
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
       port: webSocketServer.getPort(),
-      expectedNodeIds: [nodeId],
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await webSocketClient.startConnection();
@@ -218,6 +190,7 @@ describe('WebSocket', () => {
               .catch(() => {})
               .finally(() => logger.info('STREAM HANDLING ENDED'));
           },
+          basePath: dataDir,
           tlsConfig,
           host,
           logger: logger.getChild('server'),
@@ -226,7 +199,7 @@ describe('WebSocket', () => {
         webSocketClient = await WebSocketClient.createWebSocketClient({
           host,
           port: webSocketServer.getPort(),
-          expectedNodeIds: [nodeId],
+          expectedNodeIds: [keyRing.getNodeId()],
           logger: logger.getChild('clientClient'),
         });
 
@@ -263,6 +236,7 @@ describe('WebSocket', () => {
           .catch(() => {})
           .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
+      basePath: dataDir,
       tlsConfig,
       host,
       logger: logger.getChild('server'),
@@ -289,6 +263,7 @@ describe('WebSocket', () => {
           .catch(() => {})
           .finally(() => logger.info('STREAM HANDLING ENDED'));
       },
+      basePath: dataDir,
       tlsConfig,
       host,
       logger: logger.getChild('server'),
@@ -314,6 +289,7 @@ describe('WebSocket', () => {
         logger.info('inside callback');
         streamPairProm.resolveP(streamPair);
       },
+      basePath: dataDir,
       tlsConfig,
       host,
       logger: logger.getChild('server'),
@@ -331,7 +307,7 @@ describe('WebSocket', () => {
         env: {
           PK_TEST_HOST: host,
           PK_TEST_PORT: `${webSocketServer.getPort()}`,
-          PK_TEST_NODE_ID: nodesUtils.encodeNodeId(nodeId),
+          PK_TEST_NODE_ID: nodesUtils.encodeNodeId(keyRing.getNodeId()),
         },
       },
       logger,
@@ -393,7 +369,7 @@ describe('WebSocket', () => {
     webSocketClient = await WebSocketClient.createWebSocketClient({
       host,
       port: await startedProm.p,
-      expectedNodeIds: [nodeId],
+      expectedNodeIds: [keyRing.getNodeId()],
       logger: logger.getChild('clientClient'),
     });
     const websocket = await webSocketClient.startConnection();
@@ -436,6 +412,7 @@ describe('WebSocket', () => {
                 }
               })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
+            basePath: dataDir,
             tlsConfig,
             host,
             logger: logger.getChild('server'),
@@ -444,7 +421,7 @@ describe('WebSocket', () => {
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
             port: webSocketServer.getPort(),
-            expectedNodeIds: [nodeId],
+            expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
           const websocket = await webSocketClient.startConnection();
@@ -476,6 +453,7 @@ describe('WebSocket', () => {
                 await writer.close();
               })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
+            basePath: dataDir,
             tlsConfig,
             host,
             logger: logger.getChild('server'),
@@ -484,7 +462,7 @@ describe('WebSocket', () => {
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
             port: webSocketServer.getPort(),
-            expectedNodeIds: [nodeId],
+            expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
           const websocket = await webSocketClient.startConnection();
@@ -514,6 +492,7 @@ describe('WebSocket', () => {
                 await writer.close();
               })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
+            basePath: dataDir,
             tlsConfig,
             host,
             logger: logger.getChild('server'),
@@ -522,7 +501,7 @@ describe('WebSocket', () => {
           webSocketClient = await WebSocketClient.createWebSocketClient({
             host,
             port: webSocketServer.getPort(),
-            expectedNodeIds: [nodeId],
+            expectedNodeIds: [keyRing.getNodeId()],
             logger: logger.getChild('clientClient'),
           });
           const websocket = await webSocketClient.startConnection();
@@ -542,6 +521,7 @@ describe('WebSocket', () => {
           logger.info('inside callback');
           streamPairProm.resolveP(streamPair);
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -550,7 +530,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
       const websocket = await webSocketClient.startConnection();
@@ -582,6 +562,7 @@ describe('WebSocket', () => {
             .catch(() => {})
             .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -611,6 +592,7 @@ describe('WebSocket', () => {
           logger.info('inside callback');
           // Hang connection
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         pingTimeoutTimeTime: 100,
@@ -620,7 +602,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
       await webSocketClient.startConnection();
@@ -637,6 +619,7 @@ describe('WebSocket', () => {
           logger.info('inside callback');
           streamPairProm.resolveP(streamPair);
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -645,7 +628,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
       const websocket = await webSocketClient.startConnection();
@@ -680,6 +663,7 @@ describe('WebSocket', () => {
             .catch(() => {})
             .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -702,7 +686,7 @@ describe('WebSocket', () => {
     });
     test('authenticates with multiple certs in chain', async () => {
       const keyPairs: Array<KeyPair> = [
-        keyPair,
+        keyRing.keyPair,
         keysUtils.generateKeyPair(),
         keysUtils.generateKeyPair(),
         keysUtils.generateKeyPair(),
@@ -718,6 +702,7 @@ describe('WebSocket', () => {
             .catch(() => {})
             .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -747,6 +732,7 @@ describe('WebSocket', () => {
             .catch(() => {})
             .finally(() => logger.info('STREAM HANDLING ENDED'));
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -755,7 +741,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId, alternativeNodeId],
+        expectedNodeIds: [keyRing.getNodeId(), alternativeNodeId],
         logger: logger.getChild('clientClient'),
       });
       await expect(webSocketClient.startConnection()).toResolve();
@@ -768,7 +754,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: 12345,
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         connectionTimeoutTime: 0,
         logger: logger.getChild('clientClient'),
       });
@@ -786,6 +772,7 @@ describe('WebSocket', () => {
           logger.info('inside callback');
           // Hang connection
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -794,7 +781,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         pingTimeoutTimeTime: 100,
         logger: logger.getChild('clientClient'),
       });
@@ -822,6 +809,7 @@ describe('WebSocket', () => {
             })().catch(() => {}),
           ]);
         },
+        basePath: dataDir,
         tlsConfig,
         host,
         logger: logger.getChild('server'),
@@ -830,7 +818,7 @@ describe('WebSocket', () => {
       webSocketClient = await WebSocketClient.createWebSocketClient({
         host,
         port: webSocketServer.getPort(),
-        expectedNodeIds: [nodeId],
+        expectedNodeIds: [keyRing.getNodeId()],
         logger: logger.getChild('clientClient'),
       });
       const abortController = new AbortController();
