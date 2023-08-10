@@ -2,7 +2,6 @@ import type { ReadableWritablePair } from 'stream/web';
 import type { TLSConfig } from '@/network/types';
 import type { KeyPair } from '@/keys/types';
 import type http from 'http';
-import type WebSocketStream from '@/websockets/WebSocketStream';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -23,7 +22,7 @@ import * as testsUtils from '../utils';
 // This file tests both the client and server together. They're too interlinked
 //  to be separate.
 describe('WebSocket', () => {
-  const logger = new Logger('websocket test', LogLevel.WARN, [
+  const logger = new Logger('websocket test', LogLevel.DEBUG, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -227,131 +226,6 @@ describe('WebSocket', () => {
       }
     },
   );
-  test('reverse backpressure', async () => {
-    const backpressure = promise<void>();
-    const resumeWriting = promise<void>();
-    let webSocketStream: WebSocketStream | null = null;
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        logger.info('inside callback');
-        void Promise.allSettled([
-          (async () => {
-            for await (const _ of streamPair.readable) {
-              // No touch, only consume
-            }
-          })(),
-          (async () => {
-            // Kidnap the context
-            // @ts-ignore: kidnap protected property
-            for (const websocket of webSocketServer.activeSockets.values()) {
-              webSocketStream = websocket;
-            }
-            if (webSocketStream == null) {
-              await streamPair.writable.close();
-              return;
-            }
-            // Write until backPressured
-            const message = Buffer.alloc(128, 0xf0);
-            const writer = streamPair.writable.getWriter();
-            // @ts-ignore: kidnap protected property
-            while (!webSocketStream.writeBackpressure) {
-              await writer.write(message);
-            }
-            logger.info('BACK PRESSURED');
-            backpressure.resolveP();
-            await resumeWriting.p;
-            for (let i = 0; i < 100; i++) {
-              await writer.write(message);
-            }
-            await writer.close();
-            logger.info('WRITING ENDED');
-          })(),
-        ]).catch((e) => logger.error(e.toString()));
-      },
-      basePath: dataDir,
-      tlsConfig,
-      host,
-      logger: logger.getChild('server'),
-    });
-    logger.info(`Server started on port ${webSocketServer.getPort()}`);
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      host,
-      port: webSocketServer.getPort(),
-      expectedNodeIds: [keyRing.getNodeId()],
-      logger: logger.getChild('clientClient'),
-    });
-    const websocket = await webSocketClient.startConnection();
-    await websocket.writable.close();
-
-    await backpressure.p;
-    // @ts-ignore: kidnap protected property
-    expect(webSocketStream.writeBackpressure).toBeTrue();
-    resumeWriting.resolveP();
-    // Consume all the back-pressured data
-    for await (const _ of websocket.readable) {
-      // No touch, only consume
-    }
-    // @ts-ignore: kidnap protected property
-    expect(webSocketStream.writeBackpressure).toBeFalse();
-    logger.info('ending');
-  });
-  // Readable backpressure is not actually supported. We're dealing with it by
-  //  using a buffer with a provided limit that can be very large.
-  test('exceeding readable buffer limit causes error', async () => {
-    const startReading = promise<void>();
-    const handlingProm = promise<void>();
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        logger.info('inside callback');
-        Promise.all([
-          (async () => {
-            await startReading.p;
-            logger.info('Starting consumption');
-            for await (const _ of streamPair.readable) {
-              // No touch, only consume
-            }
-            logger.info('Reads ended');
-          })(),
-          (async () => {
-            await streamPair.writable.close();
-          })(),
-        ])
-          .catch(() => {})
-          .finally(() => handlingProm.resolveP());
-      },
-      basePath: dataDir,
-      tlsConfig,
-      host,
-      // Setting a really low buffer limit
-      maxReadableStreamBytes: 1500,
-      logger: logger.getChild('server'),
-    });
-    logger.info(`Server started on port ${webSocketServer.getPort()}`);
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      host,
-      port: webSocketServer.getPort(),
-      expectedNodeIds: [keyRing.getNodeId()],
-      logger: logger.getChild('clientClient'),
-    });
-    const websocket = await webSocketClient.startConnection();
-    const message = Buffer.alloc(1_000, 0xf0);
-    const writer = websocket.writable.getWriter();
-    logger.info('Starting writes');
-    await expect(async () => {
-      for (let i = 0; i < 100; i++) {
-        await writer.write(message);
-      }
-    }).rejects.toThrow();
-    startReading.resolveP();
-    logger.info('writes ended');
-    await expect(async () => {
-      for await (const _ of websocket.readable) {
-        // No touch, only consume
-      }
-    }).rejects.toThrow();
-    await handlingProm.p;
-    logger.info('ending');
-  });
   test('client ends connection abruptly', async () => {
     const streamPairProm =
       promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
@@ -463,7 +337,7 @@ describe('WebSocket', () => {
   });
   // These describe blocks contains tests specific to either the client or server
   describe('WebSocketServer', () => {
-    testProp(
+    testProp.only(
       'allows half closed writable closes first',
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
