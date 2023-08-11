@@ -125,8 +125,6 @@ class WebSocketServer extends EventTarget {
       cert: tlsConfig.certChainPem,
     });
     this.webSocketServer = new ws.WebSocketServer({
-      host: this._host,
-      port: this._port,
       server: this.server,
     });
 
