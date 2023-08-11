@@ -1,5 +1,6 @@
 import type { TLSConfig } from '../network/types';
 import type { IncomingMessage, ServerResponse } from 'http';
+import type tls from 'tls';
 import https from 'https';
 import { startStop, status } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
@@ -24,7 +25,6 @@ class WebSocketServer extends EventTarget {
    * @param obj
    * @param obj.connectionCallback -
    * @param obj.tlsConfig - TLSConfig containing the private key and cert chain used for TLS.
-   * @param obj.basePath - Directory path used for storing temp cert files for starting the `uWebsocket` server.
    * @param obj.host - Listen address to bind to.
    * @param obj.port - Listen port to bind to.
    * @param obj.maxIdleTimeout - Timeout time for when the connection is cleaned up after no activity.
@@ -38,7 +38,6 @@ class WebSocketServer extends EventTarget {
   static async createWebSocketServer({
     connectionCallback,
     tlsConfig,
-    basePath,
     host,
     port,
     maxIdleTimeout = 120,
@@ -48,7 +47,6 @@ class WebSocketServer extends EventTarget {
   }: {
     connectionCallback: ConnectionCallback;
     tlsConfig: TLSConfig;
-    basePath?: string;
     host?: string;
     port?: number;
     maxIdleTimeout?: number;
@@ -66,7 +64,6 @@ class WebSocketServer extends EventTarget {
     await wsServer.start({
       connectionCallback,
       tlsConfig,
-      basePath,
       host,
       port,
     });
@@ -106,7 +103,6 @@ class WebSocketServer extends EventTarget {
     connectionCallback,
   }: {
     tlsConfig: TLSConfig;
-    basePath?: string;
     host?: string;
     port?: number;
     connectionCallback?: ConnectionCallback;
@@ -210,6 +206,15 @@ class WebSocketServer extends EventTarget {
   @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
   public getHost(): string {
     return this._host;
+  }
+
+  @startStop.ready(new webSocketErrors.ErrorWebSocketServerNotRunning())
+  public setTlsConfig(tlsConfig: TLSConfig): void {
+    const tlsServer = this.server as tls.Server;
+    tlsServer.setSecureContext({
+      key: tlsConfig.keyPrivatePem,
+      cert: tlsConfig.certChainPem,
+    });
   }
 
   /**
