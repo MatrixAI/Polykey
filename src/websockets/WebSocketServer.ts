@@ -1,11 +1,5 @@
-import type {
-  ReadableStreamController,
-  WritableStreamDefaultController,
-} from 'stream/web';
-import type { JSONValue } from '../types';
 import type { TLSConfig } from '../network/types';
 import type { IncomingMessage, ServerResponse } from 'http';
-import { WritableStream, ReadableStream } from 'stream/web';
 import https from 'https';
 import { startStop, status } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
@@ -39,7 +33,6 @@ class WebSocketServer extends EventTarget {
    * Default is 1,000 milliseconds.
    * @param obj.pingTimeoutTimeTime - Time before connection is cleaned up after no ping responses.
    * Default is 10,000 milliseconds.
-   * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
    * @param obj.logger
    */
   static async createWebSocketServer({
@@ -93,7 +86,6 @@ class WebSocketServer extends EventTarget {
   /**
    *
    * @param logger
-   * @param maxReadableStreamBytes Max number of bytes stored in read buffer before error
    * @param maxIdleTimeout
    * @param pingIntervalTime
    * @param pingTimeoutTimeTime
@@ -145,21 +137,10 @@ class WebSocketServer extends EventTarget {
     this.server.on('error', this.errorHandler);
     this.server.on('request', this.requestHandler);
 
-    // This.server.any('/*', (res, _) => {
-    //   // Reject normal requests with an upgrade code
-    //   res
-    //     .writeStatus('426')
-    //     .writeHeader('connection', 'Upgrade')
-    //     .writeHeader('upgrade', 'websocket')
-    //     .end('426 Upgrade Required', true);
-    // });
-
-    // TODO: tell normal requests to upgrade.
     const listenProm = promise<void>();
     this.server.listen(port ?? 0, host, listenProm.resolveP);
     await listenProm.p;
     const address = this.server.address();
-    // TODO: handle string
     if (address == null || typeof address === 'string') never();
     this._port = address.port;
     this.logger.debug(`Listening on port ${this._port}`);
@@ -241,18 +222,18 @@ class WebSocketServer extends EventTarget {
     webSocket: ws.WebSocket,
     request: IncomingMessage,
   ) => {
-    const socket = request.connection;
-    const webSocketStream = new WebSocketStreamServerInternal(
+    const connection = request.connection;
+    const webSocketStream = new WebSocketStream(
       webSocket,
       this.pingIntervalTime,
       this.pingTimeoutTimeTime,
       {
-        localHost: socket.localAddress ?? '',
-        localPort: socket.localPort ?? 0,
-        remoteHost: socket.remoteAddress ?? '',
-        remotePort: socket.remotePort ?? '',
+        localHost: connection.localAddress ?? '',
+        localPort: connection.localPort ?? 0,
+        remoteHost: connection.remoteAddress ?? '',
+        remotePort: connection.remotePort ?? 0,
       },
-      this.logger.getChild(WebSocketStreamServerInternal.name),
+      this.logger.getChild(WebSocketStream.name),
     );
     // Adding socket to the active sockets map
     this.activeSockets.add(webSocketStream);
@@ -304,191 +285,6 @@ class WebSocketServer extends EventTarget {
       })
       .end('426 Upgrade Required');
   };
-}
-
-class WebSocketStreamServerInternal extends WebSocketStream {
-  protected writableController: WritableStreamDefaultController | undefined;
-  protected readableController:
-    | ReadableStreamController<Uint8Array>
-    | undefined;
-  protected messageHandler: (data: ws.RawData, isBinary: boolean) => void;
-
-  constructor(
-    protected webSocket: ws.WebSocket,
-    pingInterval: number,
-    pingTimeoutTime: number,
-    protected metadata: Record<string, JSONValue>,
-    protected logger: Logger,
-  ) {
-    super();
-    logger.info('WS opened');
-    const writableLogger = logger.getChild('Writable');
-    const readableLogger = logger.getChild('Readable');
-    // Setting up the writable stream
-    this.writable = new WritableStream<Uint8Array>({
-      start: (controller) => {
-        this.writableController = controller;
-      },
-      write: async (chunk, controller) => {
-        const writeResultProm = promise<void>();
-        this.webSocket.send(chunk, (err) => {
-          if (err == null) writeResultProm.resolveP();
-          else writeResultProm.rejectP(err);
-        });
-        try {
-          await writeResultProm.p;
-          writableLogger.debug(`Sending ${Buffer.from(chunk).toString()}`);
-        } catch (e) {
-          this.logger.error(e);
-          controller.error(new webSocketErrors.ErrorServerSendFailed());
-        }
-      },
-      close: async () => {
-        writableLogger.info('Closed, sending null message');
-        if (!this._webSocketEnded) {
-          const endProm = promise<void>();
-          this.webSocket.send(Buffer.from([]), (err) => {
-            if (err == null) endProm.resolveP();
-            else endProm.rejectP(err);
-          });
-          await endProm.p;
-        }
-        this.signalWritableEnd();
-        if (this._readableEnded && !this._webSocketEnded) {
-          writableLogger.debug('Ending socket');
-          this.signalWebSocketEnd();
-          this.webSocket.close();
-        }
-      },
-      abort: (reason) => {
-        writableLogger.info('Aborted');
-        if (this._readableEnded && !this._webSocketEnded) {
-          writableLogger.debug('Ending socket');
-          this.signalWebSocketEnd(reason);
-          this.webSocket.close(4000, 'Aborting connection');
-        }
-      },
-    },
-    {
-      highWaterMark: 1,
-    });
-    // Setting up the readable stream
-    this.messageHandler = (data: ws.RawData, isBinary: boolean) => {
-      if (!isBinary) never();
-      if (data instanceof Array) never();
-      const messageBuffer = Buffer.from(data);
-      readableLogger.debug(`Received ${messageBuffer.toString()}`);
-      if (messageBuffer.byteLength === 0) {
-        readableLogger.debug('Null message received');
-        this.webSocket.off('message', this.messageHandler);
-        if (!this._readableEnded) {
-          readableLogger.debug('Closing');
-          this.signalReadableEnd();
-          this.readableController!.close();
-          if (this._writableEnded && !this._webSocketEnded) {
-            readableLogger.debug('Ending socket');
-            this.signalWebSocketEnd();
-            this.webSocket.close();
-          }
-        }
-        return;
-      }
-      this.readableController!.enqueue(messageBuffer);
-      if (
-        this.readableController!.desiredSize != null &&
-        this.readableController!.desiredSize < 0
-      ) {
-        this.webSocket.pause();
-      }
-    };
-    this.readable = new ReadableStream<Uint8Array>(
-      {
-        start: (controller) => {
-          this.readableController = controller;
-          this.webSocket.on('message', this.messageHandler);
-        },
-        pull: () => {
-          this.webSocket.resume();
-        },
-        cancel: (reason) => {
-          this.webSocket.off('message', this.messageHandler);
-          this.signalReadableEnd(reason);
-          if (this._writableEnded && !this._webSocketEnded) {
-            readableLogger.debug('Ending socket');
-            this.signalWebSocketEnd();
-            this.webSocket.close();
-          }
-        },
-      },
-      {
-        highWaterMark: 1,
-      },
-    );
-
-    const pingTimer = setInterval(() => {
-      this.webSocket.ping();
-    }, pingInterval);
-    const pingTimeoutTimeTimer = setTimeout(() => {
-      logger.debug('Ping timed out');
-      this.webSocket.close();
-    }, pingTimeoutTime);
-    const pongHandler = (data: Buffer) => {
-      logger.debug(`Received pong with (${data.toString()})`);
-      pingTimeoutTimeTimer.refresh();
-    };
-    this.webSocket.on('pong', pongHandler);
-
-    const closeHandler = () => {
-      logger.debug('Closing');
-      this.signalWebSocketEnd();
-      // Cleaning up timers
-      logger.debug('Cleaning up timers');
-      clearTimeout(pingTimer);
-      clearTimeout(pingTimeoutTimeTimer);
-      // Closing streams
-      logger.debug('Cleaning streams');
-      this.webSocket.off('message', this.messageHandler);
-      const err = new webSocketErrors.ErrorServerConnectionEndedEarly();
-      if (!this._readableEnded) {
-        readableLogger.debug('Closing');
-        this.signalReadableEnd(err);
-        this.webSocket.off('message', this.messageHandler);
-        this.readableController?.error(err);
-      }
-      if (!this._writableEnded) {
-        writableLogger.debug('Closing');
-        this.signalWritableEnd(err);
-        this.writableController?.error(err);
-      }
-    };
-    this.webSocket.once('close', closeHandler);
-  }
-
-  get meta(): Record<string, JSONValue> {
-    return {
-      ...this.metadata,
-    };
-  }
-
-  cancel(reason?: any): void {
-    // Default error
-    const err = reason ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
-    // Close the streams with the given error,
-    if (!this._readableEnded) {
-      this.webSocket.off('message', this.messageHandler);
-      this.readableController?.error(err);
-      this.signalReadableEnd(err);
-    }
-    if (!this._writableEnded) {
-      this.writableController?.error(err);
-      this.signalWritableEnd(err);
-    }
-    // Then close the websocket
-    if (!this._webSocketEnded) {
-      this.webSocket.terminate();
-      this.signalWebSocketEnd(err);
-    }
-  }
 }
 
 export default WebSocketServer;

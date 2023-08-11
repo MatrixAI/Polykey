@@ -55,7 +55,6 @@ type NetworkConfig = {
   clientHost?: string;
   clientPort?: number;
   // Websocket server config
-  maxReadableStreamBytes?: number;
   maxIdleTimeout?: number;
   pingIntervalTime?: number;
   pingTimeoutTimeTime?: number;
@@ -496,11 +495,9 @@ class PolykeyAgent {
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (rpcStream) =>
             rpcServerClient!.handleStream(rpcStream),
-          fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
           maxIdleTimeout: networkConfig_.maxIdleTimeout,
           pingIntervalTime: networkConfig_.pingIntervalTime,
           pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
