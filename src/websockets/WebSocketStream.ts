@@ -6,7 +6,6 @@ import type {
 import type * as ws from 'ws';
 import type Logger from '@matrixai/logger';
 import type { NodeIdEncoded } from '../ids/types';
-import type { JSONValue } from '../types';
 import { WritableStream, ReadableStream } from 'stream/web';
 import * as webSocketErrors from './errors';
 import * as utilsErrors from '../utils/errors';
@@ -297,7 +296,7 @@ class WebSocketStream implements ReadableWritablePair<Uint8Array, Uint8Array> {
     return this._endedProm;
   }
 
-  get meta(): Record<string, JSONValue> {
+  get meta() {
     // Spreading to avoid modifying the data
     return {
       ...this.metadata,

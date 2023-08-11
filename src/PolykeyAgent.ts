@@ -739,10 +739,7 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
-          // FIXME: Can we even support updating TLS config anymore?
-          //  We would need to shut down the Websocket server and re-create it with the new config.
-          //  Right now graceful shutdown is not supported.
-          // this.grpcServerClient.setTLSConfig(tlsConfig);
+          this.webSocketServerClient.setTlsConfig(tlsConfig);
           this.nodeConnectionManager.updateTlsConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
         },
