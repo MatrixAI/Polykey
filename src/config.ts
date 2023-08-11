@@ -98,7 +98,6 @@ const config = {
       clientHost: '127.0.0.1',
       clientPort: 0,
       // Websocket server config
-      maxReadableStreamBytes: 1_000_000_000, // About 1 GB
       maxIdleTimeout: 120, // 2 minutes
       pingIntervalTime: 1_000, // 1 second
       pingTimeoutTimeTime: 10_000, // 10 seconds

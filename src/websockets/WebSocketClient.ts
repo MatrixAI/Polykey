@@ -1,12 +1,6 @@
 import type { TLSSocket } from 'tls';
-import type {
-  ReadableStreamController,
-  WritableStreamDefaultController,
-} from 'stream/web';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId, NodeIdEncoded } from '../ids';
-import type { JSONValue } from '../types';
-import { WritableStream, ReadableStream } from 'stream/web';
 import { createDestroy } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
 import WebSocket from 'ws';
@@ -33,7 +27,6 @@ class WebSocketClient {
    * Default is 1,000 milliseconds.
    * @param obj.pingTimeoutTimeTime - Time before connection is cleaned up after no ping responses.
    * Default is 10,000 milliseconds.
-   * @param obj.maxReadableStreamBytes - The number of bytes the readable stream will buffer until pausing.
    * @param obj.logger
    */
   static async createWebSocketClient({
@@ -43,7 +36,6 @@ class WebSocketClient {
     connectionTimeoutTime = Infinity,
     pingIntervalTime = 1_000,
     pingTimeoutTimeTime = 10_000,
-    maxReadableStreamBytes = 1_000, // About 1kB
     logger = new Logger(this.name),
   }: {
     host: string;
@@ -52,7 +44,6 @@ class WebSocketClient {
     connectionTimeoutTime?: number;
     pingIntervalTime?: number;
     pingTimeoutTimeTime?: number;
-    maxReadableStreamBytes?: number;
     logger?: Logger;
   }): Promise<WebSocketClient> {
     logger.info(`Creating ${this.name}`);
@@ -60,7 +51,6 @@ class WebSocketClient {
       logger,
       host,
       port,
-      maxReadableStreamBytes,
       expectedNodeIds,
       connectionTimeoutTime,
       pingIntervalTime,
@@ -77,7 +67,6 @@ class WebSocketClient {
     protected logger: Logger,
     host: string,
     protected port: number,
-    protected maxReadableStreamBytes: number,
     protected expectedNodeIds: Array<NodeId>,
     protected connectionTimeoutTime: number,
     protected pingIntervalTime: number,
@@ -126,7 +115,7 @@ class WebSocketClient {
   @createDestroy.ready(new webSocketErrors.ErrorClientDestroyed())
   public async startConnection(
     ctx: Partial<ContextTimed> = {},
-  ): Promise<WebSocketStreamClientInternal> {
+  ): Promise<WebSocketStream> {
     // Setting up abort/cancellation logic
     const abortRaceProm = promise<never>();
     // Ignore unhandled rejection
@@ -161,7 +150,13 @@ class WebSocketClient {
     const address = `wss://${this.host}:${this.port}`;
     this.logger.info(`Connecting to ${address}`);
     const connectProm = promise<void>();
-    const authenticateProm = promise<NodeId>();
+    const authenticateProm = promise<{
+      nodeId: NodeIdEncoded;
+      localHost: string;
+      localPort: number;
+      remoteHost: string;
+      remotePort: number;
+    }>();
     const ws = new WebSocket(address, {
       rejectUnauthorized: false,
     });
@@ -178,12 +173,21 @@ class WebSocketClient {
     ws.once('upgrade', async (request) => {
       const tlsSocket = request.socket as TLSSocket;
       const peerCert = tlsSocket.getPeerCertificate(true);
-      webSocketUtils
-        .verifyServerCertificateChain(
+      try {
+        const nodeId = await webSocketUtils.verifyServerCertificateChain(
           this.expectedNodeIds,
           webSocketUtils.detailedToCertChain(peerCert),
-        )
-        .then(authenticateProm.resolveP, authenticateProm.rejectP);
+        );
+        authenticateProm.resolveP({
+          nodeId: nodesUtils.encodeNodeId(nodeId),
+          localHost: request.connection.localAddress ?? '',
+          localPort: request.connection.localPort ?? 0,
+          remoteHost: request.connection.remoteAddress ?? '',
+          remotePort: request.connection.remotePort ?? 0,
+        });
+      } catch (e) {
+        authenticateProm.rejectP(e);
+      }
     });
     ws.once('open', () => {
       this.logger.info('starting connection');
@@ -222,17 +226,14 @@ class WebSocketClient {
 
     // Constructing the `ReadableWritablePair`, the lifecycle is handed off to
     //  the webSocketStream at this point.
-    const webSocketStreamClient = new WebSocketStreamClientInternal(
+    const webSocketStreamClient = new WebSocketStream(
       ws,
-      this.maxReadableStreamBytes,
       this.pingIntervalTime,
       this.pingTimeoutTimeTime,
       {
-        host: this.host,
-        nodeId: nodesUtils.encodeNodeId(await authenticateProm.p),
-        port: this.port,
+        ...(await authenticateProm.p),
       },
-      this.logger,
+      this.logger.getChild(WebSocketStream.name),
     );
     const abortStream = () => {
       webSocketStreamClient.cancel(
@@ -258,219 +259,4 @@ class WebSocketClient {
 }
 
 // This is the internal implementation of the client's stream pair.
-class WebSocketStreamClientInternal extends WebSocketStream {
-  protected readableController:
-    | ReadableStreamController<Uint8Array>
-    | undefined;
-  protected writableController: WritableStreamDefaultController | undefined;
-
-  constructor(
-    protected ws: WebSocket,
-    maxReadableStreamBytes: number,
-    pingInterval: number,
-    pingTimeoutTime: number,
-    protected clientMetadata: {
-      nodeId: NodeIdEncoded;
-      host: string;
-      port: number;
-    },
-    logger: Logger,
-  ) {
-    super();
-    const readableLogger = logger.getChild('readable');
-    const writableLogger = logger.getChild('writable');
-
-    this.readable = new ReadableStream<Uint8Array>(
-      {
-        start: (controller) => {
-          this.readableController = controller;
-          readableLogger.info('Starting');
-          const messageHandler = (data) => {
-            readableLogger.debug(`Received ${data.toString()}`);
-            if (controller.desiredSize == null) {
-              controller.error(Error('NEVER'));
-              return;
-            }
-            if (controller.desiredSize < 0) {
-              readableLogger.debug('Applying readable backpressure');
-              ws.pause();
-            }
-            const message = data as Buffer;
-            if (message.length === 0) {
-              readableLogger.debug('Null message received');
-              ws.removeListener('message', messageHandler);
-              if (!this._readableEnded) {
-                this.signalReadableEnd();
-                readableLogger.debug('Closing');
-                controller.close();
-              }
-              if (this._writableEnded) {
-                logger.debug('Closing socket');
-                ws.close();
-              }
-              return;
-            }
-            controller.enqueue(message);
-          };
-          readableLogger.debug('Registering socket message handler');
-          ws.on('message', messageHandler);
-          ws.once('close', (code, reason) => {
-            logger.info('Socket closed');
-            ws.removeListener('message', messageHandler);
-            if (!this._readableEnded) {
-              readableLogger.debug(
-                `Closed early, ${code}, ${reason.toString()}`,
-              );
-              const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
-              this.signalReadableEnd(e);
-              controller.error(e);
-            }
-          });
-          ws.once('error', (e) => {
-            if (!this._readableEnded) {
-              readableLogger.error(e);
-              this.signalReadableEnd(e);
-              controller.error(e);
-            }
-          });
-        },
-        cancel: (reason) => {
-          readableLogger.debug('Cancelled');
-          this.signalReadableEnd(reason);
-          if (!this._writableEnded) {
-            readableLogger.debug('Closing socket');
-            this.signalWritableEnd(reason);
-            ws.close();
-          }
-        },
-        pull: () => {
-          readableLogger.debug('Releasing backpressure');
-          ws.resume();
-        },
-      },
-      {
-        highWaterMark: maxReadableStreamBytes,
-        size: (chunk) => chunk?.byteLength ?? 0,
-      },
-    );
-    this.writable = new WritableStream<Uint8Array>({
-      start: (controller) => {
-        this.writableController = controller;
-        writableLogger.info('Starting');
-        ws.once('error', (e) => {
-          if (!this._writableEnded) {
-            writableLogger.error(e);
-            this.signalWritableEnd(e);
-            controller.error(e);
-          }
-        });
-        ws.once('close', (code, reason) => {
-          if (!this._writableEnded) {
-            writableLogger.debug(`Closed early, ${code}, ${reason.toString()}`);
-            const e = new webSocketErrors.ErrorClientConnectionEndedEarly();
-            this.signalWritableEnd(e);
-            controller.error(e);
-          }
-        });
-      },
-      close: () => {
-        writableLogger.debug('Closing, sending null message');
-        ws.send(Buffer.from([]));
-        this.signalWritableEnd();
-        if (this._readableEnded) {
-          writableLogger.debug('Closing socket');
-          ws.close();
-        }
-      },
-      abort: (reason) => {
-        writableLogger.debug('Aborted');
-        this.signalWritableEnd(reason);
-        if (this._readableEnded) {
-          writableLogger.debug('Closing socket');
-          ws.close();
-        }
-      },
-      write: async (chunk, controller) => {
-        if (this._writableEnded) return;
-        writableLogger.debug(`Sending ${chunk?.toString()}`);
-        const wait = promise<void>();
-        ws.send(chunk, (e) => {
-          if (e != null && !this._writableEnded) {
-            // Opting to debug message here and not log an error, sending
-            //  failure is common if we send before the close event.
-            writableLogger.debug('failed to send');
-            const err = new webSocketErrors.ErrorClientConnectionEndedEarly(
-              undefined,
-              {
-                cause: e,
-              },
-            );
-            this.signalWritableEnd(err);
-            controller.error(err);
-          }
-          wait.resolveP();
-        });
-        await wait.p;
-      },
-    });
-
-    // Setting up heartbeat
-    const pingTimer = setInterval(() => {
-      ws.ping();
-    }, pingInterval);
-    const pingTimeoutTimeTimer = setTimeout(() => {
-      logger.debug('Ping timed out');
-      ws.close(4002, 'Timed out');
-    }, pingTimeoutTime);
-    ws.on('ping', () => {
-      logger.debug('Received ping');
-      ws.pong();
-    });
-    ws.on('pong', () => {
-      logger.debug('Received pong');
-      pingTimeoutTimeTimer.refresh();
-    });
-    ws.once('close', (code, reason) => {
-      logger.debug('WebSocket closed');
-      const err =
-        code !== 1000
-          ? new webSocketErrors.ErrorClientConnectionEndedEarly(
-              `ended with code ${code}, ${reason.toString()}`,
-            )
-          : undefined;
-      this.signalWebSocketEnd(err);
-      logger.debug('Cleaning up timers');
-      // Clean up timers
-      clearTimeout(pingTimer);
-      clearTimeout(pingTimeoutTimeTimer);
-    });
-  }
-
-  get meta(): Record<string, JSONValue> {
-    // Spreading to avoid modifying the data
-    return {
-      ...this.clientMetadata,
-    };
-  }
-
-  cancel(reason?: any): void {
-    // Default error
-    const err = reason ?? new webSocketErrors.ErrorClientConnectionEndedEarly();
-    // Close the streams with the given error,
-    if (!this._readableEnded) {
-      this.readableController?.error(err);
-      this.signalReadableEnd(err);
-    }
-    if (!this._writableEnded) {
-      this.writableController?.error(err);
-      this.signalWritableEnd(err);
-    }
-    // Then close the websocket
-    if (!this._webSocketEnded) {
-      this.ws.close(4000, 'Ending connection');
-      this.signalWebSocketEnd(err);
-    }
-  }
-}
-
 export default WebSocketClient;
