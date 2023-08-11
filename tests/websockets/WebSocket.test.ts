@@ -9,6 +9,7 @@ import https from 'https';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
 import { Timer } from '@matrixai/timer';
+import { status } from '@matrixai/async-init';
 import { KeyRing } from '@/keys/index';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
@@ -22,7 +23,7 @@ import * as testsUtils from '../utils';
 // This file tests both the client and server together. They're too interlinked
 //  to be separate.
 describe('WebSocket', () => {
-  const logger = new Logger('websocket test', LogLevel.DEBUG, [
+  const logger = new Logger('websocket test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -226,6 +227,60 @@ describe('WebSocket', () => {
       }
     },
   );
+  test('handles https server failure', async () => {
+    webSocketServer = await WebSocketServer.createWebSocketServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => logger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: logger.getChild('server'),
+    });
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
+
+    const closeP = promise<void>();
+    // @ts-ignore: protected property
+    webSocketServer.server.close(() => {
+      closeP.resolveP();
+    });
+    await closeP.p;
+    // The webSocketServer should stop itself
+    expect(webSocketServer[status]).toBe(null);
+
+    logger.info('ending');
+  });
+  test('handles webSocketServer server failure', async () => {
+    webSocketServer = await WebSocketServer.createWebSocketServer({
+      connectionCallback: (streamPair) => {
+        logger.info('inside callback');
+        void streamPair.readable
+          .pipeTo(streamPair.writable)
+          .catch(() => {})
+          .finally(() => logger.info('STREAM HANDLING ENDED'));
+      },
+      basePath: dataDir,
+      tlsConfig,
+      host,
+      logger: logger.getChild('server'),
+    });
+    logger.info(`Server started on port ${webSocketServer.getPort()}`);
+
+    const closeP = promise<void>();
+    // @ts-ignore: protected property
+    webSocketServer.webSocketServer.close(() => {
+      closeP.resolveP();
+    });
+    await closeP.p;
+    // The webSocketServer should stop itself
+    expect(webSocketServer[status]).toBe(null);
+
+    logger.info('ending');
+  });
   test('client ends connection abruptly', async () => {
     const streamPairProm =
       promise<ReadableWritablePair<Uint8Array, Uint8Array>>();
@@ -337,11 +392,12 @@ describe('WebSocket', () => {
   });
   // These describe blocks contains tests specific to either the client or server
   describe('WebSocketServer', () => {
-    testProp.only(
+    testProp(
       'allows half closed writable closes first',
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
+          const serverStreamProm = promise<void>();
           webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
@@ -354,7 +410,7 @@ describe('WebSocket', () => {
                 for await (const _ of streamPair.readable) {
                   // No touch, only consume
                 }
-              })().catch((e) => logger.error(e));
+              })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
             basePath: dataDir,
             tlsConfig,
@@ -370,6 +426,7 @@ describe('WebSocket', () => {
           });
           const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
+          await serverStreamProm.p;
           logger.info('ending');
         } finally {
           await webSocketServer.stop(true);
@@ -381,6 +438,7 @@ describe('WebSocket', () => {
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
+          const serverStreamProm = promise<void>();
           webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
@@ -393,7 +451,7 @@ describe('WebSocket', () => {
                   await writer.write(val);
                 }
                 await writer.close();
-              })().catch((e) => logger.error(e));
+              })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
             basePath: dataDir,
             tlsConfig,
@@ -409,6 +467,7 @@ describe('WebSocket', () => {
           });
           const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
+          await serverStreamProm.p;
           logger.info('ending');
         } finally {
           await webSocketServer.stop(true);
@@ -420,6 +479,7 @@ describe('WebSocket', () => {
       [messagesArb, messagesArb],
       async (messages1, messages2) => {
         try {
+          const serverStreamProm = promise<void>();
           webSocketServer = await WebSocketServer.createWebSocketServer({
             connectionCallback: (streamPair) => {
               logger.info('inside callback');
@@ -430,7 +490,7 @@ describe('WebSocket', () => {
                   await writer.write(val);
                 }
                 await writer.close();
-              })().catch((e) => logger.error(e));
+              })().then(serverStreamProm.resolveP, serverStreamProm.rejectP);
             },
             basePath: dataDir,
             tlsConfig,
@@ -446,6 +506,7 @@ describe('WebSocket', () => {
           });
           const websocket = await webSocketClient.startConnection();
           await asyncReadWrite(messages1, websocket);
+          await serverStreamProm.p;
           logger.info('ending');
         } finally {
           await webSocketServer.stop(true);
