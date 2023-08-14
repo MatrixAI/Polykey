@@ -4,7 +4,7 @@ import type { JSONValue } from '@/types';
 import { TransformStream } from 'stream/web';
 import { fc, testProp } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { sleep } from 'ix/asynciterable/_sleep';
+import * as utils from '@/utils';
 import RPCServer from '@/rpc/RPCServer';
 import RPCClient from '@/rpc/RPCClient';
 import {
@@ -43,10 +43,10 @@ describe('RPC', () => {
       class TestMethod extends RawHandler {
         public handle(
           input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-        ): ReadableStream<Uint8Array> {
+        ): [JSONValue, ReadableStream<Uint8Array>] {
           const [header_, stream] = input;
           header = header_;
-          return stream;
+          return ['some leading data', stream];
         }
       }
       const rpcServer = await RPCServer.createRPCServer({
@@ -89,8 +89,90 @@ describe('RPC', () => {
         id: null,
       };
       expect(header).toStrictEqual(expectedHeader);
+      expect(callerInterface.meta?.result).toBe('some leading data');
       expect(await outputResult).toStrictEqual(inputData);
       await pipeProm;
+      await rpcServer.destroy();
+      await rpcClient.destroy();
+    },
+  );
+  test(
+    'RPC communication with raw stream times out waiting for leading message',
+    async () => {
+      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+        Uint8Array,
+        Uint8Array
+      >();
+      void (async () => {
+        for await (const _ of serverPair.readable) {
+          // just consume
+        }
+      })();
+
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {
+          testMethod: new RawCaller(),
+        },
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
+        logger,
+      });
+
+      await expect(rpcClient.methods.testMethod({
+        hello: 'world',
+      },
+        { timer: 100 },
+        )).rejects.toThrow(rpcErrors.ErrorRPCTimedOut);
+      await rpcClient.destroy();
+    },
+  );
+  test(
+    'RPC communication with raw stream, raw handler throws',
+    async () => {
+      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+        Uint8Array,
+        Uint8Array
+      >();
+
+      class TestMethod extends RawHandler {
+        public handle(
+          input: [JSONRPCRequest, ReadableStream<Uint8Array>],
+        ): [JSONValue, ReadableStream<Uint8Array>] {
+          throw Error('some error');
+        }
+      }
+      const rpcServer = await RPCServer.createRPCServer({
+        manifest: {
+          testMethod: new TestMethod({}),
+        },
+        logger,
+      });
+      rpcServer.handleStream({
+        ...serverPair,
+        cancel: () => {},
+      });
+
+      const rpcClient = await RPCClient.createRPCClient({
+        manifest: {
+          testMethod: new RawCaller(),
+        },
+        streamFactory: async () => {
+          return {
+            ...clientPair,
+            cancel: () => {},
+          };
+        },
+        logger,
+      });
+
+      await expect(rpcClient.methods.testMethod({
+        hello: 'world',
+      })).rejects.toThrow(rpcErrors.ErrorPolykeyRemote)
+
       await rpcServer.destroy();
       await rpcClient.destroy();
     },
@@ -466,7 +548,7 @@ describe('RPC', () => {
     const writer = callerInterface.writable.getWriter();
     await writer.write({});
     // Allow time to process buffer
-    await sleep(0);
+    await utils.sleep(0);
     await expect(writer.write({})).toReject();
     const reader = callerInterface.readable.getReader();
     await expect(reader.read()).toReject();

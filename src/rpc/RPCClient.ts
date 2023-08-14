@@ -5,8 +5,8 @@ import type {
   JSONRPCRequestMessage,
   StreamFactory,
   ClientManifest,
-  RPCStream,
-} from './types';
+  RPCStream, JSONRPCResponseResult
+} from "./types";
 import type { JSONValue } from '../types';
 import type {
   JSONRPCRequest,
@@ -20,7 +20,8 @@ import { Timer } from '@matrixai/timer';
 import * as rpcUtilsMiddleware from './utils/middleware';
 import * as rpcErrors from './errors';
 import * as rpcUtils from './utils/utils';
-import { promise } from '../utils';
+import { never, promise } from "../utils";
+import { parseJSONRPCResponse } from "./utils/utils";
 
 const timerCleanupReasonSymbol = Symbol('timerCleanUpReasonSymbol');
 
@@ -260,12 +261,14 @@ class RPCClient<M extends ClientManifest> {
     const abortRaceProm = promise<never>();
     // Prevent unhandled rejection when we're done with the promise
     abortRaceProm.p.catch(() => {});
+    signal.addEventListener('abort', () => {
+      abortRaceProm.rejectP(signal.reason);
+    }, { once: true});
     let abortHandler: () => void;
     if (ctx.signal != null) {
       // Propagate signal events
       abortHandler = () => {
         abortController.abort(ctx.signal?.reason);
-        abortRaceProm.rejectP(ctx.signal?.reason);
       };
       if (ctx.signal.aborted) abortHandler();
       ctx.signal.addEventListener('abort', abortHandler);
@@ -288,7 +291,6 @@ class RPCClient<M extends ClientManifest> {
     void timer.then(
       () => {
         abortController.abort(timeoutError);
-        abortRaceProm.rejectP(timeoutError);
       },
       () => {}, // Ignore cancellation error
     );
@@ -384,29 +386,27 @@ class RPCClient<M extends ClientManifest> {
   public async rawStreamCaller(
     method: string,
     headerParams: JSONValue,
-    ctx: Partial<ContextTimed> = {},
-  ): Promise<RPCStream<Uint8Array, Uint8Array>> {
+    ctx: Partial<ContextTimedInput> = {},
+  ): Promise<RPCStream<Uint8Array, Uint8Array, Record<string, JSONValue> & {result: JSONValue, command: string}>> {
     const abortController = new AbortController();
     const signal = abortController.signal;
-    // A promise that will reject if there is an abort signal or timeout
-    const abortRaceProm = promise<never>();
-    // Prevent unhandled rejection when we're done with the promise
-    abortRaceProm.p.catch(() => {});
     let abortHandler: () => void;
     if (ctx.signal != null) {
       // Propagate signal events
       abortHandler = () => {
         abortController.abort(ctx.signal?.reason);
-        abortRaceProm.rejectP(ctx.signal?.reason);
       };
       if (ctx.signal.aborted) abortHandler();
       ctx.signal.addEventListener('abort', abortHandler);
     }
-    const timer =
-      ctx.timer ??
-      new Timer({
-        delay: this.streamKeepAliveTimeoutTime,
+    let timer: Timer;
+    if (!(ctx.timer instanceof Timer)) {
+      timer = new Timer({
+        delay: ctx.timer ?? this.streamKeepAliveTimeoutTime,
       });
+    } else {
+      timer = ctx.timer;
+    }
     const cleanUp = () => {
       // Clean up the timer and signal
       if (ctx.timer == null) timer.cancel(timerCleanupReasonSymbol);
@@ -416,13 +416,22 @@ class RPCClient<M extends ClientManifest> {
     void timer.then(
       () => {
         abortController.abort(timeoutError);
-        abortRaceProm.rejectP(timeoutError);
       },
       () => {},
     );
-    let rpcStream: RPCStream<Uint8Array, Uint8Array>;
-    const setupStream = async () => {
-      const rpcStream = await this.streamFactory({ signal, timer });
+    let streamCreation: [JSONValue, RPCStream<Uint8Array, Uint8Array>];
+    const setupStream = async (): Promise<[JSONValue, RPCStream<Uint8Array, Uint8Array>]> => {
+      if (signal.aborted) throw signal.reason;
+      const abortProm = promise<never>();
+      // ignore error if orphaned
+      void abortProm.p.catch(() => {});
+      signal.addEventListener('abort', () => {
+        abortProm.rejectP(signal.reason);
+      }, {once: true});
+      const rpcStream = await Promise.race([
+        this.streamFactory({ signal, timer }),
+        abortProm.p,
+      ]);
       const tempWriter = rpcStream.writable.getWriter();
       const header: JSONRPCRequestMessage = {
         jsonrpc: '2.0',
@@ -432,15 +441,51 @@ class RPCClient<M extends ClientManifest> {
       };
       await tempWriter.write(Buffer.from(JSON.stringify(header)));
       tempWriter.releaseLock();
-      return rpcStream;
+      const headTransformStream = rpcUtilsMiddleware.binaryToJsonMessageStream(
+        rpcUtils.parseJSONRPCResponse,
+      );
+      void rpcStream.readable
+        // Allow us to re-use the readable after reading the first message
+        .pipeTo(headTransformStream.writable, {
+          preventClose: true,
+          preventCancel: true,
+        })
+        // Ignore any errors here, we only care that it ended
+        .catch(() => {});
+      const tempReader = headTransformStream.readable.getReader();
+      let leadingMessage: JSONRPCResponseResult;
+      try {
+        const message = await Promise.race([
+          tempReader.read(),
+          abortProm.p,
+        ]);
+        if (message.done) never();
+        if ('error'in message.value) {
+          const metadata = {
+            ...(rpcStream.meta ?? {}),
+            command: method,
+          };
+          throw rpcUtils.toError(message.value.error.data, metadata);
+        }
+        leadingMessage = message.value;
+      } catch (e) {
+        await tempReader.cancel();
+        rpcStream.cancel(Error('TMP received error in leading response'));
+        throw e;
+      }
+      // Downgrade back to the raw stream
+      await tempReader.cancel();
+      return [leadingMessage.result, rpcStream];
     };
     try {
-      rpcStream = await Promise.race([setupStream(), abortRaceProm.p]);
+      streamCreation = await setupStream();
     } finally {
       cleanUp();
     }
+    const [result, rpcStream] = streamCreation
     const metadata = {
       ...(rpcStream.meta ?? {}),
+      result,
       command: method,
     };
     return {

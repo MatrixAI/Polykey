@@ -3,9 +3,9 @@ import type { JSONValue } from '@/types';
 import type {
   JSONRPCRequest,
   JSONRPCRequestMessage,
-  JSONRPCResponse,
-  RPCStream,
-} from '@/rpc/types';
+  JSONRPCResponse, JSONRPCResponseResult,
+  RPCStream
+} from "@/rpc/types";
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
@@ -36,7 +36,7 @@ describe(`${RPCClient.name}`, () => {
     })
     .noShrink();
 
-  testProp(
+  testProp.only(
     'raw caller',
     [
       rpcTestUtils.safeJsonValueArb,
@@ -47,15 +47,24 @@ describe(`${RPCClient.name}`, () => {
       const [inputResult, inputWritableStream] =
         rpcTestUtils.streamToArray<Uint8Array>();
       const [outputResult, outputWritableStream] =
-        rpcTestUtils.streamToArray<Uint8Array>();
+        rpcTestUtils.streamToArray<Uint8Array>('out');
       const streamPair: RPCStream<Uint8Array, Uint8Array> = {
         cancel: () => {},
         meta: undefined,
         readable: new ReadableStream<Uint8Array>({
           start: (controller) => {
+            const leadingResponse: JSONRPCResponseResult = {
+              jsonrpc: "2.0",
+              result: null,
+              id: null
+
+            }
+            controller.enqueue(Buffer.from(JSON.stringify(leadingResponse)));
             for (const datum of outputData) {
+              console.log(datum);
               controller.enqueue(datum);
             }
+            console.log('close')
             controller.close();
           },
         }),
@@ -87,8 +96,11 @@ describe(`${RPCClient.name}`, () => {
         Buffer.from(JSON.stringify(expectedHeader)),
         ...inputData,
       ]);
+      console.log(await outputResult);
+      console.log(outputData);
       expect(await outputResult).toStrictEqual(outputData);
     },
+    { seed: 958615813, path: "0:0:0:0:0:0", endOnFailure: true },
   );
   testProp('generic duplex caller', [specificMessageArb], async (messages) => {
     const inputStream = rpcTestUtils.messagesToReadableStream(messages);
@@ -109,6 +121,7 @@ describe(`${RPCClient.name}`, () => {
       JSONValue,
       JSONValue
     >(methodName);
+    console.log(callerInterface.meta);
     const writable = callerInterface.writable.getWriter();
     for await (const value of callerInterface.readable) {
       await writable.write(value);

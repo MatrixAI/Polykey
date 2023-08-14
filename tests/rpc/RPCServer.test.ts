@@ -67,18 +67,19 @@ describe(`${RPCServer.name}`, () => {
           rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
       class TestHandler extends RawHandler {
-        public handle([_header, input]): ReadableStream<Uint8Array> {
+        public handle([_header, input]): [JSONValue, ReadableStream<Uint8Array>] {
           void (async () => {
             for await (const _ of input) {
               // No touch, only consume
             }
           })().catch(() => {});
-          return new ReadableStream<Uint8Array>({
+          const readableStream = new ReadableStream<Uint8Array>({
             start: (controller) => {
               controller.enqueue(Buffer.from('hello world!'));
               controller.close();
             },
           });
+          return [null, readableStream];
         }
       }
       const rpcServer = await RPCServer.createRPCServer({
@@ -769,7 +770,7 @@ describe(`${RPCServer.name}`, () => {
   test('timeout with default time after handler selected', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
+      public handle(_input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         let controller: ReadableStreamController<Uint8Array>;
@@ -781,7 +782,7 @@ describe(`${RPCServer.name}`, () => {
         ctx_.signal.addEventListener('abort', () => {
           controller!.error(Error('ending'));
         });
-        return stream;
+        return [null, stream];
       }
     }
     const rpcServer = await RPCServer.createRPCServer({
@@ -987,7 +988,7 @@ describe(`${RPCServer.name}`, () => {
   test('stream ending cleans up timer and abortSignal', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
+      public handle(input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         void (async () => {
@@ -995,11 +996,12 @@ describe(`${RPCServer.name}`, () => {
             // Do nothing, only consume
           }
         })();
-        return new ReadableStream<Uint8Array>({
+        const readableStream = new ReadableStream<Uint8Array>({
           start: (controller) => {
             controller.close();
           },
         });
+        return [null, readableStream];
       }
     }
     const rpcServer = await RPCServer.createRPCServer({
@@ -1034,10 +1036,10 @@ describe(`${RPCServer.name}`, () => {
   test('Timeout has a grace period before forcing the streams closed', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
+      public handle(_input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
-        return new ReadableStream<Uint8Array>();
+        return [null, new ReadableStream<Uint8Array>()];
       }
     }
     const rpcServer = await RPCServer.createRPCServer({
@@ -1125,10 +1127,10 @@ describe(`${RPCServer.name}`, () => {
   test('destroying the `RPCServer` sends an abort signal and closes connection', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _cancel, _meta, ctx_): ReadableStream<Uint8Array> {
+      public handle(input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Echo messages
-        return input[1];
+        return [null, input[1]];
       }
     }
     const rpcServer = await RPCServer.createRPCServer({
