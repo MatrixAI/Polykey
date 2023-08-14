@@ -29,7 +29,7 @@ abstract class RawHandler<
     cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): ReadableStream<Uint8Array>;
+  ): [JSONValue, ReadableStream<Uint8Array>];
 }
 
 abstract class DuplexHandler<

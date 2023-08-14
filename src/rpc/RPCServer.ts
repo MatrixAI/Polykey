@@ -344,7 +344,7 @@ class RPCServer extends EventTarget {
       });
       // Ignore any errors here, it should propagate to the ends of the stream
       void reverseMiddlewareStream.pipeTo(reverseStream).catch(() => {});
-      return middleware.reverse.readable;
+      return [undefined, middleware.reverse.readable];
     };
     this.registerRawStreamHandler(method, rawSteamHandler, timeout);
   }
@@ -565,12 +565,47 @@ class RPCServer extends EventTarget {
         timer.refresh();
       }
       this.logger.info(`Handling stream with method (${method})`);
-      const outputStream = handler(
-        [headerMessage.value, inputStream],
-        rpcStream.cancel,
-        rpcStream.meta,
-        { signal: abortController.signal, timer },
-      );
+      let handlerResult: [JSONValue | undefined, ReadableStream<Uint8Array>];
+      const headerWriter = rpcStream.writable.getWriter();
+      try {
+        handlerResult = handler(
+          [headerMessage.value, inputStream],
+          rpcStream.cancel,
+          rpcStream.meta,
+          { signal: abortController.signal, timer },
+        );
+      } catch (e) {
+        const rpcError: JSONRPCError = {
+          code: e.exitCode ?? sysexits.UNKNOWN,
+          message: e.description ?? '',
+          data: rpcUtils.fromError(e, this.sensitive),
+        };
+        const rpcErrorMessage: JSONRPCResponseError = {
+          jsonrpc: '2.0',
+          error: rpcError,
+          id: null,
+        };
+        await headerWriter.write(Buffer.from(JSON.stringify(rpcErrorMessage)));
+        // Clean up and return
+        timer.cancel(cleanupReason);
+        abortController.signal.removeEventListener('abort', handleAbort);
+        graceTimer?.cancel(cleanupReason);
+        abortController.abort(new rpcErrors.ErrorRPCStreamEnded());
+        rpcStream.cancel(Error('TMP header message was an error'));
+        return;
+      }
+      const [leadingResult, outputStream] = handlerResult;
+
+      if (leadingResult !== undefined) {
+        // Writing leading metadata
+        const leadingMessage: JSONRPCResponseResult = {
+          jsonrpc: '2.0',
+          result: leadingResult,
+          id: null,
+        };
+        await headerWriter.write(Buffer.from(JSON.stringify(leadingMessage)));
+      }
+      headerWriter.releaseLock();
       const outputStreamEndProm = outputStream
         .pipeTo(rpcStream.writable)
         .catch(() => {}); // Ignore any errors, we only care that it finished
