@@ -5,7 +5,7 @@ import type { SeedNodes } from './nodes/types';
 import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type { ClientCrypto, QUICConfig, ServerCrypto } from '@matrixai/quic';
+import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -51,11 +51,12 @@ type NetworkConfig = {
   agentHost?: string;
   agentPort?: number;
   ipv6Only?: boolean;
+  agentKeepAliveIntervalTime?: number;
+  agentMaxIdleTimeout?: number;
   // RPCServer for client service
   clientHost?: string;
   clientPort?: number;
   // Websocket server config
-  maxReadableStreamBytes?: number;
   maxIdleTimeout?: number;
   pingIntervalTime?: number;
   pingTimeoutTimeTime?: number;
@@ -64,11 +65,6 @@ type NetworkConfig = {
   handlerTimeoutTime?: number;
   handlerTimeoutGraceTime?: number;
 };
-
-type PolykeyQUICConfig = Omit<
-  Partial<QUICConfig>,
-  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
->;
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -96,8 +92,6 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    quicServerConfig = {},
-    quicClientConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -149,8 +143,6 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-    quicServerConfig?: PolykeyQUICConfig;
-    quicClientConfig?: PolykeyQUICConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -198,15 +190,7 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-    const quicServerConfig_ = {
-      ...config.defaults.quicServerConfig,
-      ...utils.filterEmptyObject(quicServerConfig),
-    };
-    // TODO: rename
-    const quicClientConfig_ = {
-      ...config.defaults.quicClientConfig,
-      ...utils.filterEmptyObject(quicClientConfig),
-    };
+
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
     const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
@@ -401,8 +385,10 @@ class PolykeyAgent {
           nodeGraph,
           seedNodes,
           quicSocket,
-          quicConfig: quicClientConfig_,
           ...nodeConnectionManagerConfig_,
+          connectionKeepAliveIntervalTime:
+            networkConfig_.agentKeepAliveIntervalTime,
+          connectionMaxIdleTimeout: networkConfig_.agentMaxIdleTimeout,
           tlsConfig,
           crypto,
           logger: logger.getChild(NodeConnectionManager.name),
@@ -503,11 +489,9 @@ class PolykeyAgent {
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (rpcStream) =>
             rpcServerClient!.handleStream(rpcStream),
-          fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
           maxIdleTimeout: networkConfig_.maxIdleTimeout,
           pingIntervalTime: networkConfig_.pingIntervalTime,
           pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
@@ -749,10 +733,7 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
-          // FIXME: Can we even support updating TLS config anymore?
-          //  We would need to shut down the Websocket server and re-create it with the new config.
-          //  Right now graceful shutdown is not supported.
-          // this.grpcServerClient.setTLSConfig(tlsConfig);
+          this.webSocketServerClient.setTlsConfig(tlsConfig);
           this.nodeConnectionManager.updateTlsConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
         },

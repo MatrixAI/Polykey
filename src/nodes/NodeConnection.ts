@@ -1,6 +1,6 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { NodeId, QuicConfig } from './types';
+import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { CertificatePEM } from '../keys/types';
 import type { ClientManifest, RPCStream } from '../rpc/types';
@@ -64,7 +64,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetPort,
       targetHostname,
       tlsConfig,
-      quicConfig = {},
+      connectionKeepAliveIntervalTime,
+      connectionMaxIdleTimeout,
       quicSocket,
       manifest,
       logger,
@@ -76,7 +77,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHostname?: Hostname;
       crypto: ClientCrypto;
       tlsConfig: TLSConfig;
-      quicConfig?: QuicConfig;
+      connectionKeepAliveIntervalTime?: number;
+      connectionMaxIdleTimeout?: number;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -94,7 +96,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       crypto,
       tlsConfig,
       manifest,
-      quicConfig = {},
+      connectionKeepAliveIntervalTime,
+      connectionMaxIdleTimeout,
       quicSocket,
       logger = new Logger(this.name),
     }: {
@@ -106,7 +109,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       crypto: ClientCrypto;
       tlsConfig: TLSConfig;
       manifest: M;
-      quicConfig?: QuicConfig;
+      connectionKeepAliveIntervalTime?: number;
+      connectionMaxIdleTimeout?: number;
       quicSocket?: QUICSocket;
       logger?: Logger;
     },
@@ -124,7 +128,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         port: targetPort,
         socket: quicSocket,
         config: {
-          ...quicConfig,
+          keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+          maxIdleTimeout: connectionMaxIdleTimeout,
           verifyPeer: true,
           verifyAllowFail: true,
           ca: undefined,
