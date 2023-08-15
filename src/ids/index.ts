@@ -3,6 +3,7 @@ import type {
   CertId,
   CertIdEncoded,
   NodeId,
+  NodeIdString,
   NodeIdEncoded,
   VaultId,
   VaultIdEncoded,
@@ -25,11 +26,22 @@ import type {
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
 
-function createPermIdGenerator() {
+function createPermIdGenerator(): () => PermissionId {
   const generator = new IdRandom<PermissionId>({
     randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
+}
+
+/**
+ * Creates a NodeId generator.
+ * This does not use `IdRandom` because it is not a UUID4.
+ * Instead this just generates random 32 bytes.
+ */
+function createNodeIdGenerator(): () => NodeId {
+  return () => {
+    return IdInternal.fromBuffer<NodeId>(keysUtilsRandom.getRandomBytes(32));
+  };
 }
 
 /**
@@ -47,6 +59,26 @@ function decodeNodeId(nodeIdEncoded: unknown): NodeId | undefined {
     return;
   }
   const nodeId = IdInternal.fromMultibase<NodeId>(nodeIdEncoded);
+  if (nodeId == null) {
+    return;
+  }
+  // All NodeIds are 32 bytes long
+  // The NodeGraph requires a fixed size for Node Ids
+  if (nodeId.length !== 32) {
+    return;
+  }
+  return nodeId;
+}
+
+function encodeNodeIdString(nodeId: NodeId): NodeIdString {
+  return nodeId.toString() as NodeIdString;
+}
+
+function decodeNodeIdString(nodeIdString: unknown): NodeId | undefined {
+  if (typeof nodeIdString !== 'string') {
+    return;
+  }
+  const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
   if (nodeId == null) {
     return;
   }
@@ -328,8 +360,11 @@ function decodeNotificationId(
 
 export {
   createPermIdGenerator,
+  createNodeIdGenerator,
   encodeNodeId,
   decodeNodeId,
+  encodeNodeIdString,
+  decodeNodeIdString,
   createCertIdGenerator,
   encodeCertId,
   decodeCertId,
