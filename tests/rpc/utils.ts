@@ -198,16 +198,14 @@ const jsonMessagesArb = fc
 
 const rawDataArb = fc.array(fc.uint8Array({ minLength: 1 }), { minLength: 1 });
 
-function streamToArray<T>(label = ''): [Promise<Array<T>>, WritableStream<T>] {
+function streamToArray<T>(): [Promise<Array<T>>, WritableStream<T>] {
   const outputArray: Array<T> = [];
   const result = utils.promise<Array<T>>();
   const outputStream = new WritableStream<T>({
     write: (chunk) => {
-      console.log(label, chunk);
       outputArray.push(chunk);
     },
     close: () => {
-      console.log(label, outputArray)
       result.resolveP(outputArray);
     },
     abort: (reason) => {

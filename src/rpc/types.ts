@@ -264,7 +264,13 @@ type DuplexCallerImplementation<
 type RawCallerImplementation = (
   headerParams: JSONValue,
   ctx?: Partial<ContextTimedInput>,
-) => Promise<RPCStream<Uint8Array, Uint8Array, Record<string, JSONValue> & {result: JSONValue, command: string}>>;
+) => Promise<
+  RPCStream<
+    Uint8Array,
+    Uint8Array,
+    Record<string, JSONValue> & { result: JSONValue; command: string }
+  >
+>;
 
 type ConvertDuplexCaller<T> = T extends DuplexCaller<infer I, infer O>
   ? DuplexCallerImplementation<I, O>

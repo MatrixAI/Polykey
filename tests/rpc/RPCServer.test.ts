@@ -67,7 +67,10 @@ describe(`${RPCServer.name}`, () => {
           rpcTestUtils.binaryStreamToSnippedStream([4, 7, 13, 2, 6]),
         );
       class TestHandler extends RawHandler {
-        public handle([_header, input]): [JSONValue, ReadableStream<Uint8Array>] {
+        public handle([_header, input]): [
+          JSONValue,
+          ReadableStream<Uint8Array>,
+        ] {
           void (async () => {
             for await (const _ of input) {
               // No touch, only consume
@@ -770,7 +773,12 @@ describe(`${RPCServer.name}`, () => {
   test('timeout with default time after handler selected', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
+      public handle(
+        _input,
+        _cancel,
+        _meta,
+        ctx_,
+      ): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         let controller: ReadableStreamController<Uint8Array>;
@@ -988,7 +996,12 @@ describe(`${RPCServer.name}`, () => {
   test('stream ending cleans up timer and abortSignal', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
+      public handle(
+        input,
+        _cancel,
+        _meta,
+        ctx_,
+      ): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         void (async () => {
@@ -1036,7 +1049,12 @@ describe(`${RPCServer.name}`, () => {
   test('Timeout has a grace period before forcing the streams closed', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(_input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
+      public handle(
+        _input,
+        _cancel,
+        _meta,
+        ctx_,
+      ): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Do nothing, expecting timeout
         return [null, new ReadableStream<Uint8Array>()];
@@ -1127,7 +1145,12 @@ describe(`${RPCServer.name}`, () => {
   test('destroying the `RPCServer` sends an abort signal and closes connection', async () => {
     const ctxProm = promise<ContextTimed>();
     class TestHandler extends RawHandler {
-      public handle(input, _cancel, _meta, ctx_): [JSONValue, ReadableStream<Uint8Array>] {
+      public handle(
+        input,
+        _cancel,
+        _meta,
+        ctx_,
+      ): [JSONValue, ReadableStream<Uint8Array>] {
         ctxProm.resolveP(ctx_);
         // Echo messages
         return [null, input[1]];

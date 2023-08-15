@@ -31,7 +31,6 @@ import * as rpcEvents from './events';
 import * as rpcUtils from './utils/utils';
 import * as rpcErrors from './errors';
 import * as rpcUtilsMiddleware from './utils/middleware';
-import * as utils from '../utils/utils';
 import { never } from '../utils/utils';
 import { sysexits } from '../errors';
 
@@ -586,8 +585,8 @@ class RPCServer extends EventTarget {
           error: rpcError,
           id: null,
         };
-        await headerWriter.write(Buffer.from(JSON.stringify(rpcErrorMessage)))
-        // clean up and return
+        await headerWriter.write(Buffer.from(JSON.stringify(rpcErrorMessage)));
+        // Clean up and return
         timer.cancel(cleanupReason);
         abortController.signal.removeEventListener('abort', handleAbort);
         graceTimer?.cancel(cleanupReason);
@@ -597,12 +596,12 @@ class RPCServer extends EventTarget {
       }
       const [leadingResult, outputStream] = handlerResult;
 
-      if (leadingResult !== undefined){
-        // writing leading metadata
+      if (leadingResult !== undefined) {
+        // Writing leading metadata
         const leadingMessage: JSONRPCResponseResult = {
-          jsonrpc: "2.0",
+          jsonrpc: '2.0',
           result: leadingResult,
-          id: null
+          id: null,
         };
         await headerWriter.write(Buffer.from(JSON.stringify(leadingMessage)));
       }

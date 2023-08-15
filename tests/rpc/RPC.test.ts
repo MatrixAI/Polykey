@@ -96,87 +96,84 @@ describe('RPC', () => {
       await rpcClient.destroy();
     },
   );
-  test(
-    'RPC communication with raw stream times out waiting for leading message',
-    async () => {
-      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Uint8Array,
-        Uint8Array
-      >();
-      void (async () => {
-        for await (const _ of serverPair.readable) {
-          // just consume
-        }
-      })();
-
-      const rpcClient = await RPCClient.createRPCClient({
-        manifest: {
-          testMethod: new RawCaller(),
-        },
-        streamFactory: async () => {
-          return {
-            ...clientPair,
-            cancel: () => {},
-          };
-        },
-        logger,
-      });
-
-      await expect(rpcClient.methods.testMethod({
-        hello: 'world',
-      },
-        { timer: 100 },
-        )).rejects.toThrow(rpcErrors.ErrorRPCTimedOut);
-      await rpcClient.destroy();
-    },
-  );
-  test(
-    'RPC communication with raw stream, raw handler throws',
-    async () => {
-      const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
-        Uint8Array,
-        Uint8Array
-      >();
-
-      class TestMethod extends RawHandler {
-        public handle(
-          input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-        ): [JSONValue, ReadableStream<Uint8Array>] {
-          throw Error('some error');
-        }
+  test('RPC communication with raw stream times out waiting for leading message', async () => {
+    const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+      Uint8Array,
+      Uint8Array
+    >();
+    void (async () => {
+      for await (const _ of serverPair.readable) {
+        // Just consume
       }
-      const rpcServer = await RPCServer.createRPCServer({
-        manifest: {
-          testMethod: new TestMethod({}),
-        },
-        logger,
-      });
-      rpcServer.handleStream({
-        ...serverPair,
-        cancel: () => {},
-      });
+    })();
 
-      const rpcClient = await RPCClient.createRPCClient({
-        manifest: {
-          testMethod: new RawCaller(),
-        },
-        streamFactory: async () => {
-          return {
-            ...clientPair,
-            cancel: () => {},
-          };
-        },
-        logger,
-      });
+    const rpcClient = await RPCClient.createRPCClient({
+      manifest: {
+        testMethod: new RawCaller(),
+      },
+      streamFactory: async () => {
+        return {
+          ...clientPair,
+          cancel: () => {},
+        };
+      },
+      logger,
+    });
 
-      await expect(rpcClient.methods.testMethod({
+    await expect(
+      rpcClient.methods.testMethod(
+        {
+          hello: 'world',
+        },
+        { timer: 100 },
+      ),
+    ).rejects.toThrow(rpcErrors.ErrorRPCTimedOut);
+    await rpcClient.destroy();
+  });
+  test('RPC communication with raw stream, raw handler throws', async () => {
+    const { clientPair, serverPair } = rpcTestUtils.createTapPairs<
+      Uint8Array,
+      Uint8Array
+    >();
+
+    class TestMethod extends RawHandler {
+      public handle(): [JSONValue, ReadableStream<Uint8Array>] {
+        throw Error('some error');
+      }
+    }
+    const rpcServer = await RPCServer.createRPCServer({
+      manifest: {
+        testMethod: new TestMethod({}),
+      },
+      logger,
+    });
+    rpcServer.handleStream({
+      ...serverPair,
+      cancel: () => {},
+    });
+
+    const rpcClient = await RPCClient.createRPCClient({
+      manifest: {
+        testMethod: new RawCaller(),
+      },
+      streamFactory: async () => {
+        return {
+          ...clientPair,
+          cancel: () => {},
+        };
+      },
+      logger,
+    });
+
+    await expect(
+      rpcClient.methods.testMethod({
         hello: 'world',
-      })).rejects.toThrow(rpcErrors.ErrorPolykeyRemote)
+      }),
+    ).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
 
-      await rpcServer.destroy();
-      await rpcClient.destroy();
-    },
-  );
+    await rpcServer.destroy();
+    await rpcClient.destroy();
+  });
   testProp(
     'RPC communication with duplex stream',
     [fc.array(rpcTestUtils.safeJsonValueArb, { minLength: 1 })],
