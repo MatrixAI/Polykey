@@ -130,7 +130,7 @@ class NodeConnectionManager {
     quicSocket,
     crypto,
     tlsConfig,
-    quicConfig = {},
+    // quicConfig = {},
     seedNodes = {},
     initialClosestNodes = 3,
     connectionConnectTime = 2000,
@@ -145,7 +145,7 @@ class NodeConnectionManager {
     quicSocket: QUICSocket;
     crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
-    quicConfig?: QuicConfig;
+    // quicConfig?: QuicConfig;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connectionConnectTime?: number;
@@ -160,7 +160,7 @@ class NodeConnectionManager {
     this.nodeGraph = nodeGraph;
     this.quicSocket = quicSocket;
     this.tlsConfig = tlsConfig;
-    this.quicConfig = quicConfig;
+    // this.quicConfig = quicConfig;
     this.crypto = crypto;
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];

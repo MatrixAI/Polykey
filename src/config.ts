@@ -90,25 +90,55 @@ const config = {
       certDuration: 31536000,
     },
     networkConfig: {
-      // Config for the QUICSocket
-      agentHost: '127.0.0.1',
+      /**
+       * Agent host defaults to `::` dual stack.
+       * This is because the agent service is supposed to be public.
+       */
+      agentHost: '::',
       agentPort: 0,
-      ipv6Only: false,
-      // Config for the websocket server
-      clientHost: '127.0.0.1',
+      /**
+       * Client host defaults to `localhost`.
+       * This will depend on the OS configuration.
+       * Usually it will be IPv4 `127.0.0.1` or IPv6 `::1`.
+       * This is because the client service is private most of the time.
+       */
+      clientHost: 'localhost',
       clientPort: 0,
-      // Websocket server config
-      maxIdleTimeout: 120, // 2 minutes
-      pingIntervalTime: 1_000, // 1 second
-      pingTimeoutTimeTime: 10_000, // 10 seconds
-      // RPC config
+      /**
+       * If using dual stack `::`, then this forces only IPv6 bindings.
+       */
+      ipv6Only: false,
+
+      /**
+       * Agent service transport keep alive interval time.
+       * This the maxmum time between keep alive messages.
+       * This only has effect if `agentMaxIdleTimeout` is greater than 0.
+       * See the transport layer for further details.
+       */
+      agentKeepAliveIntervalTime: 10_000, // 10 seconds
+
+
+      /**
+       * Agent service transport max idle timeout.
+       * This is the maximum time that a connection can be idle.
+       * This also controls how long the transport layer will dial
+       * for a client connection.
+       * See the transport layer for further details.
+       */
+      agentMaxIdleTimeout: 60_000, // 1 minute
+
+      clientMaxIdleTimeout: 120, // 2 minutes
+      clientPingIntervalTime: 1_000, // 1 second
+      clientPingTimeoutTimeTime: 10_000, // 10 seconds
+
+      /**
+       * Controls the stream parser buffer limit.
+       * This is the maximum number of bytes that the stream parser
+       * will buffer before rejecting the RPC call.
+       */
       clientParserBufferByteLimit: 1_000_000, // About 1MB
-      handlerTimeoutTime: 60_000, // 1 minute
-      handlerTimeoutGraceTime: 2_000, // 2 seconds
-    },
-    quicConfig: {
-      keepAliveIntervalTime: 10_000, // 10 seconds
-      maxIdleTimeout: 60_000, // 1 minute
+      clientHandlerTimeoutTime: 60_000, // 1 minute
+      clientHandlerTimeoutGraceTime: 2_000, // 2 seconds
     },
     nodeConnectionManagerConfig: {
       connectionConnectTime: 2000,

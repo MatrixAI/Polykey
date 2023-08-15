@@ -5,7 +5,7 @@ import type { SeedNodes } from './nodes/types';
 import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type { ClientCrypto, QUICConfig, ServerCrypto } from '@matrixai/quic';
+import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -64,10 +64,10 @@ type NetworkConfig = {
   handlerTimeoutGraceTime?: number;
 };
 
-type PolykeyQUICConfig = Omit<
-  Partial<QUICConfig>,
-  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
->;
+// type PolykeyQUICConfig = Omit<
+//   Partial<QUICConfig>,
+//   'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
+// >;
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -95,7 +95,7 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    quicConfig = {},
+    // quicConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -147,7 +147,9 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-    quicConfig?: PolykeyQUICConfig;
+
+    // quicConfig?: PolykeyQUICConfig;
+
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -195,10 +197,12 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-    const quicConfig_ = {
-      ...config.defaults.quicConfig,
-      ...utils.filterEmptyObject(quicConfig),
-    };
+
+    // const quicConfig_ = {
+    //   ...config.defaults.quicConfig,
+    //   ...utils.filterEmptyObject(quicConfig),
+    // };
+
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
     const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
@@ -393,7 +397,7 @@ class PolykeyAgent {
           nodeGraph,
           seedNodes,
           quicSocket,
-          quicConfig: quicConfig_,
+          // quicConfig: quicConfig_,
           ...nodeConnectionManagerConfig_,
           tlsConfig,
           crypto,
