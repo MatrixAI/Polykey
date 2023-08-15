@@ -41,8 +41,8 @@ const serverManifest = (container: {
     nodesCrossSignClaim: new NodesCrossSignClaimHandler(container),
     nodesHolePunchMessageSend: new NodesHolePunchMessageSendHandler(container),
     notificationsSend: new NotificationsSendHandler(container),
-    VaultsGitInfoGet: new VaultsGitInfoGetHandler(container),
-    VaultsGitPackGet: new VaultsGitPackGetHandler(container),
+    vaultsGitInfoGet: new VaultsGitInfoGetHandler(container),
+    vaultsGitPackGet: new VaultsGitPackGetHandler(container),
     vaultsScan: new VaultsScanHandler(container),
   };
 };
