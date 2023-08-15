@@ -16,7 +16,7 @@ const nodeIdArb = fc
   .uint8Array({ minLength: 32, maxLength: 32 })
   .map(IdInternal.create) as fc.Arbitrary<NodeId>;
 
-const nodeIdStringArb = nodeIdArb.map((id) => id.toString());
+const nodeIdStringArb = nodeIdArb.map(ids.encodeNodeIdString);
 
 const nodeIdEncodedArb = nodeIdArb.map(ids.encodeNodeId);
 
