@@ -429,12 +429,20 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
+// TODO: remove this, quick hack to allow errors to jump the network
+const codeMap = new Map<number, any>();
+let code = 1;
+
 const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
-  return 0;
+  codeMap.set(code, _reason);
+  const returnCode = code;
+  code++;
+  return returnCode;
 };
 
 const codeToReason = (type: 'recv' | 'send', code: number): any => {
-  return Error(`${type} ${code}`);
+  const asd = codeMap.get(code);
+  return asd;
 };
 
 export {

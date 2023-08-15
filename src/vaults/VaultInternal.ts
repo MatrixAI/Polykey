@@ -26,6 +26,8 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF, withG } from '@matrixai/resources';
 import { RWLockWriter } from '@matrixai/async-locks';
+import * as utils from '@/utils';
+import * as validationUtils from '@/validation/utils';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 import { tagLast } from './types';
@@ -756,91 +758,93 @@ class VaultInternal {
   }
 
   protected async request(
-    _client: RPCClient<typeof agentClientManifest>,
-    _vaultNameOrId: VaultId | VaultName,
-    _vaultAction: VaultAction,
+    client: RPCClient<typeof agentClientManifest>,
+    vaultNameOrId: VaultId | VaultName,
+    vaultAction: VaultAction,
   ): Promise<any[]> {
-    throw Error('TMP IMP');
-    // Const vaultNameOrId_ = typeof vaultNameOrId === 'string' ?
-    //   vaultNameOrId :
-    //   vaultsUtils.encodeVaultId(vaultNameOrId);
-    // const response = client.methods.vaultsGitInfoGet({
-    //   vaultNameOrId: vaultNameOrId_,
-    //   action: vaultAction,
-    // });
-    // let vaultName, remoteVaultId;
-    // response.stream.on('metadata', async (meta) => {
-    //   // Receive the Id of the remote vault
-    //   vaultName = meta.get('vaultName').pop();
-    //   if (vaultName) vaultName = vaultName.toString();
-    //   const vId = meta.get('vaultId').pop();
-    //   if (vId) remoteVaultId = validationUtils.parseVaultId(vId.toString());
-    // });
-    // // Collect the response buffers from the GET request
-    // const infoResponse: Uint8Array[] = [];
-    // for await (const resp of response) {
-    //   infoResponse.push(resp.getChunk_asU8());
-    // }
-    // const metadata = new grpc.Metadata();
-    // metadata.set('vaultAction', vaultAction);
-    // if (typeof vaultNameOrId === 'string') {
-    //   metadata.set('vaultNameOrId', vaultNameOrId);
-    // } else {
-    //   // Metadata only accepts the user readable form of the vault Id
-    //   // as the string form has illegal characters
-    //   metadata.set('vaultNameOrId', vaultsUtils.encodeVaultId(vaultNameOrId));
-    // }
-    // return [
-    //   async function ({
-    //     url,
-    //     method = 'GET',
-    //     headers = {},
-    //     body = [Buffer.from('')],
-    //   }: {
-    //     url: string;
-    //     method: string;
-    //     headers: POJO;
-    //     body: Buffer[];
-    //   }) {
-    //     if (method === 'GET') {
-    //       // Send back the GET request info response
-    //       return {
-    //         url: url,
-    //         method: method,
-    //         body: infoResponse,
-    //         headers: headers,
-    //         statusCode: 200,
-    //         statusMessage: 'OK',
-    //       };
-    //     } else if (method === 'POST') {
-    //       const responseBuffers: Array<Uint8Array> = [];
-    //       const stream = client.vaultsGitPackGet(metadata);
-    //       const chunk = new vaultsPB.PackChunk();
-    //       // Body is usually an async generator but in the cases we are using,
-    //       // only the first value is used
-    //       chunk.setChunk(body[0]);
-    //       // Tell the server what commit we need
-    //       await stream.write(chunk);
-    //       let packResponse = (await stream.read()).value;
-    //       while (packResponse != null) {
-    //         responseBuffers.push(packResponse.getChunk_asU8());
-    //         packResponse = (await stream.read()).value;
-    //       }
-    //       return {
-    //         url: url,
-    //         method: method,
-    //         body: responseBuffers,
-    //         headers: headers,
-    //         statusCode: 200,
-    //         statusMessage: 'OK',
-    //       };
-    //     } else {
-    //       never();
-    //     }
-    //   },
-    //   vaultName,
-    //   remoteVaultId,
-    // ];
+    const vaultNameOrId_ =
+      typeof vaultNameOrId === 'string'
+        ? vaultNameOrId
+        : vaultsUtils.encodeVaultId(vaultNameOrId);
+    console.log('a');
+    const response = await client.methods.vaultsGitInfoGet({
+      vaultNameOrId: vaultNameOrId_,
+      action: vaultAction,
+    });
+    console.log('a');
+    console.log(response.meta);
+
+    const result = response.meta?.result;
+    if (result == null || !utils.isObject(result)) never();
+    if (!('vaultName' in result) || typeof result.vaultName != 'string') {
+      never();
+    }
+    if (
+      !('vaultIdEncoded' in result) ||
+      typeof result.vaultIdEncoded != 'string'
+    ) {
+      never();
+    }
+    const vaultName = result.vaultName;
+    const remoteVaultId = validationUtils.parseVaultId(result.vaultIdEncoded);
+
+    // Collect the response buffers from the GET request
+    const infoResponse: Uint8Array[] = [];
+    for await (const chunk of response.readable) {
+      infoResponse.push(chunk);
+    }
+    // TODO: complete
+    return [
+      async function ({
+        url,
+        method = 'GET',
+        headers = {},
+        body = [Buffer.from('')],
+      }: {
+        url: string;
+        method: string;
+        headers: POJO;
+        body: Buffer[];
+      }) {
+        if (method === 'GET') {
+          // Send back the GET request info response
+          return {
+            url: url,
+            method: method,
+            body: infoResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else if (method === 'POST') {
+          const responseBuffers: Array<Uint8Array> = [];
+          const stream = client.methods.vaultsGitPackGet(metadata);
+          const chunk = new vaultsPB.PackChunk();
+          // Body is usually an async generator but in the cases we are using,
+          // only the first value is used
+          chunk.setChunk(body[0]);
+          // Tell the server what commit we need
+          await stream.write(chunk);
+          let packResponse = (await stream.read()).value;
+          while (packResponse != null) {
+            responseBuffers.push(packResponse.getChunk_asU8());
+            packResponse = (await stream.read()).value;
+          }
+          return {
+            url: url,
+            method: method,
+            body: responseBuffers,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else {
+          never();
+        }
+      },
+      vaultName,
+      remoteVaultId,
+    ];
   }
 
   /**

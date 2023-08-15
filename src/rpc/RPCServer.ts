@@ -568,7 +568,7 @@ class RPCServer extends EventTarget {
       let handlerResult: [JSONValue | undefined, ReadableStream<Uint8Array>];
       const headerWriter = rpcStream.writable.getWriter();
       try {
-        handlerResult = handler(
+        handlerResult = await handler(
           [headerMessage.value, inputStream],
           rpcStream.cancel,
           rpcStream.meta,

@@ -23,6 +23,7 @@ import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
+import * as utils from '../utils';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -92,9 +93,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHostname,
       crypto,
       tlsConfig,
+      manifest,
       quicConfig = {},
       quicSocket,
-      manifest,
       logger = new Logger(this.name),
     }: {
       handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
@@ -104,9 +105,9 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHostname?: Hostname;
       crypto: ClientCrypto;
       tlsConfig: TLSConfig;
+      manifest: M;
       quicConfig?: QuicConfig;
       quicSocket?: QUICSocket;
-      manifest: M;
       logger?: Logger;
     },
     @context ctx: ContextTimed,
@@ -139,6 +140,8 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         crypto: {
           ops: crypto,
         },
+        reasonToCode: utils.reasonToCode,
+        codeToReason: utils.codeToReason,
         logger: logger.getChild(QUICClient.name),
       },
       ctx,
