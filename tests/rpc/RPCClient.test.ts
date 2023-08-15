@@ -1023,7 +1023,6 @@ describe(`${RPCClient.name}`, () => {
       expect(ctx?.signal.aborted).toBeTrue();
       expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
     });
-    // FIXME
     test('duplex caller handles abort awaiting stream', async () => {
       const forwardPassThroughStream = new TransformStream<
         Uint8Array,
