@@ -83,24 +83,10 @@ type ProviderIdentityClaimId = Opaque<'ProviderIdentityClaimId', string>;
  */
 type GestaltId = ['node', NodeId] | ['identity', ProviderIdentityId];
 
-// Type GestaltNodeId = ['node', NodeId];
-// type GestaltIdentityId = ['identity', ProviderIdentityId];
-
 /**
  * GestaltId encoded.
  */
 type GestaltIdEncoded = Opaque<'GestaltIdEncoded', string>;
-// Type GestaltIdEncoded = GestaltNodeIdEncoded | GestaltIdentityIdEncoded;
-
-// /**
-//  * Concatenation of `'node'` and `NodeIdEncoded`
-//  */
-// type GestaltNodeIdEncoded = Opaque<'GestaltNodeIdEncoded', string>;
-
-// /**
-//  * Concatenation of `'identity'` and `ProviderIdentityIdEncoded`
-//  */
-// type GestaltIdentityIdEncoded = Opaque<'GestaltIdentityIdEncoded', string>;
 
 type GestaltLinkId = Opaque<'GestaltLinkId', Id>;
 type GestaltLinkIdString = Opaque<'GestaltLinkIdString', string>;
@@ -136,11 +122,7 @@ export type {
   ProviderIdentityIdEncoded,
   ProviderIdentityClaimId,
   GestaltId,
-  // GestaltNodeId,
-  // GestaltIdentityId,
   GestaltIdEncoded,
-  // GestaltNodeIdEncoded,
-  // GestaltIdentityIdEncoded,
   GestaltLinkId,
   GestaltLinkIdString,
   NotificationId,
