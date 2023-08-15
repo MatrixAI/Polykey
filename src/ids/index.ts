@@ -16,11 +16,7 @@ import type {
   NotificationId,
   NotificationIdEncoded,
   GestaltId,
-  // GestaltNodeId,
-  // GestaltIdentityId,
   GestaltIdEncoded,
-  // GestaltNodeIdEncoded,
-  // GestaltIdentityIdEncoded,
   GestaltLinkId,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
@@ -243,9 +239,6 @@ function decodeProviderIdentityId(
   return providerIdentityId as ProviderIdentityId;
 }
 
-// Function encodeGestaltId(gestaltId: GestaltNodeId): GestaltNodeIdEncoded;
-// function encodeGestaltId(gestaltId: GestaltIdentityId): GestaltIdentityIdEncoded;
-// function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded;
 function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
   switch (gestaltId[0]) {
     case 'node':
@@ -271,10 +264,6 @@ function encodeGestaltIdentityId(
     encodeProviderIdentityId(gestaltIdentityId[1])) as GestaltIdEncoded;
 }
 
-// Function decodeGestaltId(gestaltIdEncoded: GestaltNodeIdEncoded): GestaltNodeId;
-// function decodeGestaltId(gestaltIdEncoded: GestaltIdentityIdEncoded): GestaltIdentityId;
-// function decodeGestaltId(gestaltIdEncoded: GestaltIdEncoded): GestaltId;
-// function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined;
 function decodeGestaltId(gestaltIdEncoded: unknown): GestaltId | undefined {
   if (typeof gestaltIdEncoded !== 'string') {
     return;
