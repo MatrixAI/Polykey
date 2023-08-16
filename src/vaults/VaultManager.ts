@@ -796,11 +796,11 @@ class VaultManager {
     tran?: DBTransaction,
   ): AsyncGenerator<Buffer> {
     if (tran == null) {
-      return this.db.withTransactionF(async (tran) =>
-        this.handleInfoRequest(vaultId, tran),
-      );
+      const handleInfoRequest = (tran) => this.handleInfoRequest(vaultId, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* handleInfoRequest(tran);
+      });
     }
-
     const efs = this.efs;
     const vault = await this.getVault(vaultId, tran);
     return yield* withG(
@@ -986,7 +986,6 @@ class VaultManager {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.getVault(vaultId, tran));
     }
-
     const vaultIdString = vaultId.toString() as VaultIdString;
     // 1. get the vault, if it exists then return that
     const vault = this.vaultMap.get(vaultIdString);
@@ -1035,7 +1034,6 @@ class VaultManager {
         return [vaultId.toString(), RWLockWriter, 'read'];
       },
     );
-
     // Running the function with locking
     return await this.vaultLocks.withF(...vaultLocks, async () => {
       // Getting the vaults while locked
@@ -1044,7 +1042,7 @@ class VaultManager {
           return await this.getVault(vaultId, tran);
         }),
       );
-      return f(...vaults);
+      return await f(...vaults);
     });
   }
 

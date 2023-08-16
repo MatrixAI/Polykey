@@ -26,7 +26,6 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
-
 export type {
   NodeId,
   NodeIdString,

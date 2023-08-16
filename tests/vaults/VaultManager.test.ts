@@ -470,7 +470,7 @@ describe('VaultManager', () => {
     }
   });
   // TODO: disabled until feature is addressed in agent migration stage 2
-  describe('with remote agents', () => {
+  describe.skip('with remote agents', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;

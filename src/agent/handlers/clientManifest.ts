@@ -7,8 +7,6 @@ import type {
   NodeAddressMessage,
   NodeIdMessage,
   SignedNotificationEncoded,
-  VaultInfo,
-  VaultsGitInfoGetMessage,
   VaultsGitPackGetMessage,
   VaultsScanMessage,
 } from './types';
