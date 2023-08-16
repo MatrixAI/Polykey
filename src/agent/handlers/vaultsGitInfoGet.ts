@@ -30,12 +30,7 @@ class VaultsGitInfoGetHandler extends RawHandler<{
   ): Promise<[JSONValue, ReadableStream<Uint8Array>]> {
     const { db, vaultManager, acl } = this.container;
     const [headerMessage, inputStream] = input;
-    const readableProm = (async () => {
-      for await (const _ of inputStream) {
-        // Input stream is not used here, wait for finish.
-        // It should be closed by the caller immediately
-      }
-    })();
+    await inputStream.cancel();
     const params = headerMessage.params;
     if (params == null || !utils.isObject(params)) never();
     if (
@@ -82,29 +77,30 @@ class VaultsGitInfoGetHandler extends RawHandler<{
           )}`,
         );
       }
-
       return {
         vaultId,
         vaultName,
       };
     });
 
-    // TODO: Needs to handle cancellation
+    let handleInfoRequestGen: AsyncGenerator<Buffer>;
     const stream = new ReadableStream({
-      start: async (controller) => {
-        for await (const buffer of vaultManager.handleInfoRequest(
-          data.vaultId,
-        )) {
-          if (buffer != null) {
-            controller.enqueue(buffer);
-          } else {
-            break;
-          }
+      start: async () => {
+        handleInfoRequestGen = vaultManager.handleInfoRequest(data.vaultId);
+      },
+      pull: async (controller) => {
+        const result = await handleInfoRequestGen.next();
+        if (result.done) {
+          controller.close();
+          return;
+        } else {
+          controller.enqueue(result.value);
         }
-        controller.close();
+      },
+      cancel: async (reason) => {
+        await handleInfoRequestGen.throw(reason).catch(() => {});
       },
     });
-    await readableProm;
     return [
       {
         vaultName: data.vaultName,
