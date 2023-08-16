@@ -35,4 +35,4 @@ export * as tasks from './tasks';
 export * as tokens from './tokens';
 export * as validation from './validation';
 export * as vaults from './vaults';
-export * as workers from './workers'
+export * as workers from './workers';
