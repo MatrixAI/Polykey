@@ -117,7 +117,6 @@ const config = {
        */
       agentKeepAliveIntervalTime: 10_000, // 10 seconds
 
-
       /**
        * Agent service transport max idle timeout.
        * This is the maximum time that a connection can be idle.

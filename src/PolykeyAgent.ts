@@ -51,6 +51,8 @@ type NetworkConfig = {
   agentHost?: string;
   agentPort?: number;
   ipv6Only?: boolean;
+  agentKeepAliveIntervalTime?: number;
+  agentMaxIdleTimeout?: number;
   // RPCServer for client service
   clientHost?: string;
   clientPort?: number;
@@ -63,11 +65,6 @@ type NetworkConfig = {
   handlerTimeoutTime?: number;
   handlerTimeoutGraceTime?: number;
 };
-
-// type PolykeyQUICConfig = Omit<
-//   Partial<QUICConfig>,
-//   'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
-// >;
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -95,7 +92,6 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    // quicConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -147,9 +143,6 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-
-    // quicConfig?: PolykeyQUICConfig;
-
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -197,11 +190,6 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-
-    // const quicConfig_ = {
-    //   ...config.defaults.quicConfig,
-    //   ...utils.filterEmptyObject(quicConfig),
-    // };
 
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -397,8 +385,10 @@ class PolykeyAgent {
           nodeGraph,
           seedNodes,
           quicSocket,
-          // quicConfig: quicConfig_,
           ...nodeConnectionManagerConfig_,
+          connectionKeepAliveIntervalTime:
+            networkConfig_.agentKeepAliveIntervalTime,
+          connectionMaxIdleTimeout: networkConfig_.agentMaxIdleTimeout,
           tlsConfig,
           crypto,
           logger: logger.getChild(NodeConnectionManager.name),

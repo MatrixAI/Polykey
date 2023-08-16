@@ -1,6 +1,5 @@
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
-import type { QUICConfig } from '@matrixai/quic';
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -27,10 +26,6 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
-// type QuicConfig = Omit<
-//   Partial<QUICConfig>,
-//   'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
-// >;
 
 export type {
   NodeId,
@@ -43,5 +38,4 @@ export type {
   NodeBucket,
   NodeData,
   NodeGraphSpace,
-  // QuicConfig,
 };

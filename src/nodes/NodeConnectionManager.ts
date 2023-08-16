@@ -19,7 +19,6 @@ import type { ClientCrypto } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
-import type { QuicConfig } from './types';
 import type { ServerCrypto, events as QuicEvents } from '@matrixai/quic';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import { withF } from '@matrixai/resources';
@@ -115,7 +114,8 @@ class NodeConnectionManager {
   protected backoffDefault: number = 1000 * 60 * 5; // 5 min
   protected backoffMultiplier: number = 2; // Doubles every failure
   protected tlsConfig: TLSConfig;
-  protected quicConfig: QuicConfig;
+  protected connectionKeepAliveIntervalTime: number;
+  protected connectionMaxIdleTimeout: number;
   protected crypto: ServerCrypto & ClientCrypto;
   protected serverConnectionHandler = async (
     connectionEvent: QuicEvents.QUICServerConnectionEvent,
@@ -130,14 +130,15 @@ class NodeConnectionManager {
     quicSocket,
     crypto,
     tlsConfig,
-    // quicConfig = {},
     seedNodes = {},
     initialClosestNodes = 3,
-    connectionConnectTime = 2000,
-    connectionTimeoutTime = 60000,
-    pingTimeoutTime = 2000,
-    connectionHolePunchTimeoutTime = 4000,
+    connectionConnectTime = 2_000,
+    connectionTimeoutTime = 60_000,
+    pingTimeoutTime = 2_000,
+    connectionHolePunchTimeoutTime = 4_000,
     connectionHolePunchIntervalTime = 250,
+    connectionKeepAliveIntervalTime = 10_000,
+    connectionMaxIdleTimeout = 60_000,
     logger,
   }: {
     keyRing: KeyRing;
@@ -145,7 +146,6 @@ class NodeConnectionManager {
     quicSocket: QUICSocket;
     crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
-    // quicConfig?: QuicConfig;
     seedNodes?: SeedNodes;
     initialClosestNodes?: number;
     connectionConnectTime?: number;
@@ -153,6 +153,8 @@ class NodeConnectionManager {
     pingTimeoutTime?: number;
     connectionHolePunchTimeoutTime?: number;
     connectionHolePunchIntervalTime?: number;
+    connectionKeepAliveIntervalTime?: number;
+    connectionMaxIdleTimeout?: number;
     logger: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -160,7 +162,6 @@ class NodeConnectionManager {
     this.nodeGraph = nodeGraph;
     this.quicSocket = quicSocket;
     this.tlsConfig = tlsConfig;
-    // this.quicConfig = quicConfig;
     this.crypto = crypto;
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
@@ -171,13 +172,16 @@ class NodeConnectionManager {
     this.connectionHolePunchTimeoutTime = connectionHolePunchTimeoutTime;
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     this.pingTimeoutTime = pingTimeoutTime;
+    this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
+    this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
     // Setting up QUICServer
     const resolveHostname = (host) => {
       return networkUtils.resolveHostname(host)[0] ?? '';
     };
     this.quicServer = new QUICServer({
       config: {
-        ...quicConfig,
+        keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+        maxIdleTimeout: connectionMaxIdleTimeout,
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
@@ -610,7 +614,8 @@ class NodeConnectionManager {
           targetHost: address.host,
           targetPort: address.port,
           tlsConfig: this.tlsConfig,
-          quicConfig: this.quicConfig,
+          connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
+          connectionMaxIdleTimeout: this.connectionMaxIdleTimeout,
           quicSocket: this.quicSocket,
           logger: this.logger.getChild(
             `${NodeConnection.name} [${address.host}:${address.port}]`,
@@ -1382,12 +1387,23 @@ class NodeConnectionManager {
     return results;
   }
 
-  public updateQuicConfig(config: QuicConfig) {
-    this.quicConfig = {
-      ...this.quicConfig,
-      ...config,
-    };
-    this.quicServer.updateConfig(config);
+  public updateQuicConfig({
+    connectionKeepAliveIntervalTime,
+    connectionMaxIdleTimeout,
+  }: {
+    connectionKeepAliveIntervalTime?: number;
+    connectionMaxIdleTimeout?: number;
+  }) {
+    if (connectionKeepAliveIntervalTime != null) {
+      this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
+    }
+    if (connectionMaxIdleTimeout != null) {
+      this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
+    }
+    this.quicServer.updateConfig({
+      keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+      maxIdleTimeout: connectionMaxIdleTimeout,
+    });
   }
 
   public updateTlsConfig(tlsConfig: TLSConfig) {
