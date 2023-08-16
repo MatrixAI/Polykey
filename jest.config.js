@@ -22,7 +22,6 @@ const globals = {
   ),
   // Default asynchronous test timeout
   defaultTimeout: 20000,
-  polykeyStartupTimeout: 30000,
   failedConnectionTimeout: 50000,
   // Timeouts rely on setTimeout which takes 32 bit numbers
   maxTimeout: Math.pow(2, 31) - 1,
