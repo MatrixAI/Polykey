@@ -240,7 +240,7 @@ class RPCServer extends EventTarget {
     handler: DuplexHandlerImplementation<I, O>,
     timeout: number | undefined,
   ): void {
-    const rawSteamHandler: RawHandlerImplementation = (
+    const rawSteamHandler: RawHandlerImplementation = async (
       [header, input],
       cancel,
       meta,

@@ -65,7 +65,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       targetHostname,
       tlsConfig,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout,
+      connectionMaxIdleTimeout = 60_000,
       quicSocket,
       manifest,
       logger,
@@ -97,7 +97,7 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       tlsConfig,
       manifest,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout,
+      connectionMaxIdleTimeout = 60_000,
       quicSocket,
       logger = new Logger(this.name),
     }: {

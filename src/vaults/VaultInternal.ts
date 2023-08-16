@@ -17,6 +17,7 @@ import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type RPCClient from '../rpc/RPCClient';
 import type { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
+import type { POJO } from '../types';
 import path from 'path';
 import git from 'isomorphic-git';
 import Logger from '@matrixai/logger';
@@ -26,11 +27,11 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF, withG } from '@matrixai/resources';
 import { RWLockWriter } from '@matrixai/async-locks';
-import * as utils from '@/utils';
-import * as validationUtils from '@/validation/utils';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 import { tagLast } from './types';
+import * as validationUtils from '../validation/utils';
+import * as utils from '../utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
 
@@ -139,7 +140,7 @@ class VaultInternal {
 
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Cloning ${this.name} - ${vaultIdEncoded}`);
-    const vault = new VaultInternal({
+    const vault = new this({
       vaultId,
       db,
       vaultsDbPath,
@@ -766,13 +767,11 @@ class VaultInternal {
       typeof vaultNameOrId === 'string'
         ? vaultNameOrId
         : vaultsUtils.encodeVaultId(vaultNameOrId);
-    console.log('a');
     const response = await client.methods.vaultsGitInfoGet({
       vaultNameOrId: vaultNameOrId_,
       action: vaultAction,
     });
-    console.log('a');
-    console.log(response.meta);
+    await response.writable.close();
 
     const result = response.meta?.result;
     if (result == null || !utils.isObject(result)) never();
@@ -793,7 +792,6 @@ class VaultInternal {
     for await (const chunk of response.readable) {
       infoResponse.push(chunk);
     }
-    // TODO: complete
     return [
       async function ({
         url,
@@ -818,17 +816,13 @@ class VaultInternal {
           };
         } else if (method === 'POST') {
           const responseBuffers: Array<Uint8Array> = [];
-          const stream = client.methods.vaultsGitPackGet(metadata);
-          const chunk = new vaultsPB.PackChunk();
-          // Body is usually an async generator but in the cases we are using,
-          // only the first value is used
-          chunk.setChunk(body[0]);
-          // Tell the server what commit we need
-          await stream.write(chunk);
-          let packResponse = (await stream.read()).value;
-          while (packResponse != null) {
-            responseBuffers.push(packResponse.getChunk_asU8());
-            packResponse = (await stream.read()).value;
+          const stream = await client.methods.vaultsGitPackGet({
+            body: body[0].toString('binary'),
+            nameOrId: result.vaultIdEncoded as string,
+            vaultAction,
+          });
+          for await (const value of stream) {
+            responseBuffers.push(Buffer.from(value.chunk, 'binary'));
           }
           return {
             url: url,

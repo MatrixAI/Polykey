@@ -14,6 +14,7 @@ import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import { ServerHandler } from '../../rpc/handlers';
 
+// TODO: This needs to be a raw handler
 class VaultsGitPackGetHandler extends ServerHandler<
   {
     vaultManager: VaultManager;
@@ -34,7 +35,7 @@ class VaultsGitPackGetHandler extends ServerHandler<
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
     const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
-    const nameOrId = meta.get('vaultNameOrId').pop()!.toString();
+    const nameOrId = input.nameOrId;
     yield* db.withTransactionG(async function* (
       tran,
     ): AsyncGenerator<AgentRPCResponseResult<GitPackMessage>> {
@@ -58,7 +59,7 @@ class VaultsGitPackGetHandler extends ServerHandler<
           );
         },
         {
-          actionType: meta.get('vaultAction').pop()!.toString(),
+          actionType: input.vaultAction,
         },
       );
       // Checking permissions
