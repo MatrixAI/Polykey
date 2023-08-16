@@ -13,6 +13,3 @@ declare var defaultTimeout: number;
 declare var polykeyStartupTimeout: number;
 declare var failedConnectionTimeout: number;
 declare var maxTimeout: number;
-declare var testCmd: string | undefined;
-declare var testPlatform: string;
-declare var tmpDir: string;
