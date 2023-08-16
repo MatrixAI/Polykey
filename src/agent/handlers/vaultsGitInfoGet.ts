@@ -1,21 +1,16 @@
-import type { GitPackMessage, VaultInfo } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type { VaultManager } from '../../vaults';
 import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
-import type { VaultsGitInfoGetMessage } from './types';
-import type { VaultAction } from '../../vaults/types';
-import type { JSONRPCRequest } from '@/rpc/types';
+import type { JSONRPCRequest } from '../../rpc/types';
 import type { ContextTimed } from '@matrixai/contexts';
-import type { JSONValue } from '@/types';
+import type { JSONValue } from '../../types';
 import { ReadableStream } from 'stream/web';
 import * as agentErrors from '../errors';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { RawHandler } from '../../rpc/handlers';
-import { validateSync } from '../../validation';
-import { matchSync, never } from '../../utils';
+import { never } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as agentUtils from '../utils';
@@ -29,12 +24,18 @@ class VaultsGitInfoGetHandler extends RawHandler<{
 }> {
   public async handle(
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-    cancel: (reason?: any) => void,
+    _cancel,
     meta: Record<string, JSONValue> | undefined,
-    ctx: ContextTimed,
+    _ctx: ContextTimed, // TODO: use
   ): Promise<[JSONValue, ReadableStream<Uint8Array>]> {
     const { db, vaultManager, acl } = this.container;
     const [headerMessage, inputStream] = input;
+    const readableProm = (async () => {
+      for await (const _ of inputStream) {
+        // Input stream is not used here, wait for finish.
+        // It should be closed by the caller immediately
+      }
+    })();
     const params = headerMessage.params;
     if (params == null || !utils.isObject(params)) never();
     if (
@@ -103,7 +104,7 @@ class VaultsGitInfoGetHandler extends RawHandler<{
         controller.close();
       },
     });
-
+    await readableProm;
     return [
       {
         vaultName: data.vaultName,

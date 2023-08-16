@@ -55,4 +55,6 @@ export type GitPackMessage = {
 
 export type VaultsGitPackGetMessage = {
   body: string;
+  nameOrId: VaultIdEncoded | VaultName;
+  vaultAction: VaultAction;
 };

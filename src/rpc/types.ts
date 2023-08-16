@@ -164,7 +164,7 @@ type HandlerImplementation<I, O> = (
 
 type RawHandlerImplementation = HandlerImplementation<
   [JSONRPCRequest, ReadableStream<Uint8Array>],
-  [JSONValue | undefined, ReadableStream<Uint8Array>]
+  Promise<[JSONValue | undefined, ReadableStream<Uint8Array>]>
 >;
 
 type DuplexHandlerImplementation<
