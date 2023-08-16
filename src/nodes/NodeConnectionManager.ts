@@ -1386,7 +1386,7 @@ class NodeConnectionManager {
     return results;
   }
 
-  public updateQuicConfig({
+  public updateConnectionConfig({
     connectionKeepAliveIntervalTime,
     connectionMaxIdleTimeout,
   }: {
