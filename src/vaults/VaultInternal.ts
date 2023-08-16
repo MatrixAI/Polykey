@@ -767,13 +767,11 @@ class VaultInternal {
       typeof vaultNameOrId === 'string'
         ? vaultNameOrId
         : vaultsUtils.encodeVaultId(vaultNameOrId);
-    const response = await client.methods.vaultsGitInfoGet({
+    const vaultsGitInfoGetStream = await client.methods.vaultsGitInfoGet({
       vaultNameOrId: vaultNameOrId_,
       action: vaultAction,
     });
-    await response.writable.close();
-
-    const result = response.meta?.result;
+    const result = vaultsGitInfoGetStream.meta?.result;
     if (result == null || !utils.isObject(result)) never();
     if (!('vaultName' in result) || typeof result.vaultName != 'string') {
       never();
@@ -789,7 +787,7 @@ class VaultInternal {
 
     // Collect the response buffers from the GET request
     const infoResponse: Uint8Array[] = [];
-    for await (const chunk of response.readable) {
+    for await (const chunk of vaultsGitInfoGetStream.readable) {
       infoResponse.push(chunk);
     }
     return [
@@ -816,13 +814,15 @@ class VaultInternal {
           };
         } else if (method === 'POST') {
           const responseBuffers: Array<Uint8Array> = [];
-          const stream = await client.methods.vaultsGitPackGet({
-            body: body[0].toString('binary'),
+          const vaultsGitPackGetStream = await client.methods.vaultsGitPackGet({
             nameOrId: result.vaultIdEncoded as string,
             vaultAction,
           });
-          for await (const value of stream) {
-            responseBuffers.push(Buffer.from(value.chunk, 'binary'));
+          const writer = vaultsGitPackGetStream.writable.getWriter();
+          await writer.write(body[0]);
+          await writer.close();
+          for await (const value of vaultsGitPackGetStream.readable) {
+            responseBuffers.push(value);
           }
           return {
             url: url,

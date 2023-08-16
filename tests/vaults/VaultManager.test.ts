@@ -469,8 +469,7 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  // TODO: disabled until feature is addressed in agent migration stage 2
-  describe.skip('with remote agents', () => {
+  describe('with remote agents', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
@@ -653,7 +652,6 @@ describe('VaultManager', () => {
           localNodeId,
           'pull',
         );
-
         await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
         const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');

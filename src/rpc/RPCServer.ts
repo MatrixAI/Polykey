@@ -586,6 +586,7 @@ class RPCServer extends EventTarget {
           id: null,
         };
         await headerWriter.write(Buffer.from(JSON.stringify(rpcErrorMessage)));
+        await headerWriter.close();
         // Clean up and return
         timer.cancel(cleanupReason);
         abortController.signal.removeEventListener('abort', handleAbort);

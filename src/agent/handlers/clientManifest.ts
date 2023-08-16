@@ -2,12 +2,10 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type {
   AgentClaimMessage,
   ClaimIdMessage,
-  GitPackMessage,
   HolePunchRelayMessage,
   NodeAddressMessage,
   NodeIdMessage,
   SignedNotificationEncoded,
-  VaultsGitPackGetMessage,
   VaultsScanMessage,
 } from './types';
 import {
@@ -44,10 +42,7 @@ const notificationsSend = new UnaryCaller<
 
 const vaultsGitInfoGet = new RawCaller();
 
-const vaultsGitPackGet = new ServerCaller<
-  AgentRPCRequestParams<VaultsGitPackGetMessage>,
-  AgentRPCResponseResult<GitPackMessage>
->();
+const vaultsGitPackGet = new RawCaller();
 
 const vaultsScan = new ServerCaller<
   AgentRPCRequestParams,

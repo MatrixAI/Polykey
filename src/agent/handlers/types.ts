@@ -40,21 +40,3 @@ export type VaultInfo = {
 export type VaultsScanMessage = VaultInfo & {
   vaultPermissions: Array<VaultAction>;
 };
-
-export type VaultsGitInfoGetMessage = {
-  vaultNameOrId: VaultIdEncoded | VaultName;
-  action: VaultAction;
-};
-
-export type GitPackMessage = {
-  /**
-   * Chunk of data in binary form;
-   */
-  chunk: string;
-};
-
-export type VaultsGitPackGetMessage = {
-  body: string;
-  nameOrId: VaultIdEncoded | VaultName;
-  vaultAction: VaultAction;
-};

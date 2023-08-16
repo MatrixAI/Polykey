@@ -1,106 +1,108 @@
 import type { DB } from '@matrixai/db';
-import type { GitPackMessage, VaultsGitPackGetMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type { VaultAction, VaultName } from '../../vaults/types';
+import type { VaultName } from '../../vaults/types';
 import type VaultManager from '../../vaults/VaultManager';
 import type ACL from '../../acl/ACL';
+import type { JSONValue } from '../../types';
+import type { PassThrough } from 'readable-stream';
+import type { JSONRPCRequest } from '../../rpc/types';
+import { ReadableStream } from 'stream/web';
+import * as utils from '../../utils';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import { never } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { ServerHandler } from '../../rpc/handlers';
+import { RawHandler } from '../../rpc/handlers';
 
-// TODO: This needs to be a raw handler
-class VaultsGitPackGetHandler extends ServerHandler<
-  {
-    vaultManager: VaultManager;
-    acl: ACL;
-    db: DB;
-  },
-  AgentRPCRequestParams<VaultsGitPackGetMessage>,
-  AgentRPCResponseResult<GitPackMessage>
-> {
-  public async *handle(
-    input: AgentRPCRequestParams<VaultsGitPackGetMessage>,
+class VaultsGitPackGetHandler extends RawHandler<{
+  vaultManager: VaultManager;
+  acl: ACL;
+  db: DB;
+}> {
+  public async handle(
+    input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     _cancel,
     meta,
-  ): AsyncGenerator<AgentRPCResponseResult<GitPackMessage>> {
+  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> {
     const { vaultManager, acl, db } = this.container;
+    const [headerMessage, inputStream] = input;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
     const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
-    const nameOrId = input.nameOrId;
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<AgentRPCResponseResult<GitPackMessage>> {
-      const vaultIdFromName = await vaultManager.getVaultId(
-        nameOrId as VaultName,
-        tran,
-      );
-      const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
-      if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      }
-      const {
-        actionType,
-      }: {
-        actionType: VaultAction;
-      } = validateSync(
-        (keyPath, value) => {
-          return matchSync(keyPath)(
-            [['actionType'], () => validationUtils.parseVaultAction(value)],
-            () => value,
-          );
-        },
-        {
-          actionType: input.vaultAction,
-        },
-      );
-      // Checking permissions
-      const permissions = await acl.getNodePerm(requestingNodeId, tran);
-      const vaultPerms = permissions?.vaults[vaultId];
-      if (vaultPerms?.[actionType] !== null) {
-        throw new vaultsErrors.ErrorVaultsPermissionDenied(
-          `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
-            vaultId,
-          )}`,
+    const params = headerMessage.params;
+    if (params == null || !utils.isObject(params)) never();
+    if (!('nameOrId' in params) || typeof params.nameOrId != 'string') {
+      never();
+    }
+    if (!('vaultAction' in params) || typeof params.vaultAction != 'string') {
+      never();
+    }
+    const nameOrId = params.nameOrId;
+    const actionType = validationUtils.parseVaultAction(params.vaultAction);
+    const [vaultIdFromName, permissions] = await db.withTransactionF(
+      async (tran) => {
+        const vaultIdFromName = await vaultManager.getVaultId(
+          nameOrId as VaultName,
+          tran,
         );
-      }
-      const [sideBand, progressStream] = await vaultManager.handlePackRequest(
-        vaultId,
-        Buffer.from(input.body, 'utf-8'),
-        tran,
+        const permissions = await acl.getNodePerm(requestingNodeId, tran);
+
+        return [vaultIdFromName, permissions];
+      },
+    );
+    const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
+    if (vaultId == null) {
+      throw new vaultsErrors.ErrorVaultsVaultUndefined();
+    }
+    // Checking permissions
+    const vaultPerms = permissions?.vaults[vaultId];
+    if (vaultPerms?.[actionType] !== null) {
+      throw new vaultsErrors.ErrorVaultsPermissionDenied(
+        `${nodeIdEncoded} does not have permission to ${actionType} from vault ${vaultsUtils.encodeVaultId(
+          vaultId,
+        )}`,
       );
-      yield {
-        chunk: Buffer.from('0008NAK\n').toString('binary'),
-      };
-      const responseBuffers: Uint8Array[] = [];
-      // FIXME: this WHOLE thing needs to change, why are we streaming when we send monolithic messages?
-      const result = await new Promise<string>((resolve, reject) => {
+    }
+
+    // Getting data
+    let sideBand: PassThrough;
+    let progressStream: PassThrough;
+    const outputStream = new ReadableStream({
+      start: async (controller) => {
+        const body = new Array<Uint8Array>();
+        for await (const message of inputStream) {
+          body.push(message);
+        }
+        [sideBand, progressStream] = await vaultManager.handlePackRequest(
+          vaultId,
+          Buffer.concat(body),
+        );
+        controller.enqueue(Buffer.from('0008NAK\n'));
         sideBand.on('data', async (data: Uint8Array) => {
-          responseBuffers.push(data);
+          controller.enqueue(data);
+          sideBand.pause();
         });
         sideBand.on('end', async () => {
-          const result = Buffer.concat(responseBuffers).toString('binary');
-          resolve(result);
+          controller.close();
         });
-        sideBand.on('error', (err) => {
-          reject(err);
+        sideBand.on('error', (e) => {
+          controller.error(e);
         });
         progressStream.write(Buffer.from('0014progress is at 50%\n'));
         progressStream.end();
-      });
-      yield {
-        chunk: result,
-      };
+      },
+      pull: () => {
+        sideBand.resume();
+      },
+      cancel: (e) => {
+        sideBand.destroy(e);
+      },
     });
-    return;
+    return [null, outputStream];
   }
 }
 
