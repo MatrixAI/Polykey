@@ -2,7 +2,6 @@ import type {
   CertId,
   Certificate,
   CertificatePEMChain,
-  Key,
   KeyPair,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
@@ -64,8 +63,8 @@ async function createTLSConfigWithChain(
   };
 }
 
-function createCrypto(key: Key = keysUtils.generateKey()) {
-  const ops: ClientCrypto & ServerCrypto = {
+function createCrypto(): ServerCrypto & ClientCrypto {
+  return {
     randomBytes: async (data: ArrayBuffer) => {
       const randomBytes = keysUtils.getRandomBytes(data.byteLength);
       const dataBuf = Buffer.from(data);
@@ -73,10 +72,6 @@ function createCrypto(key: Key = keysUtils.generateKey()) {
     },
     sign: testNodesUtils.sign,
     verify: testNodesUtils.verify,
-  };
-  return {
-    key: key,
-    ops,
   };
 }
 

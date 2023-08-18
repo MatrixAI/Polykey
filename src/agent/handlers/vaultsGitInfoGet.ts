@@ -1,64 +1,57 @@
-import type { GitPackMessage, VaultInfo } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type { DB } from '@matrixai/db';
 import type { VaultManager } from '../../vaults';
 import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
-import type { VaultsGitInfoGetMessage } from './types';
-import type { VaultAction } from '../../vaults/types';
+import type { JSONRPCRequest } from '../../rpc/types';
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '../../types';
+import { ReadableStream } from 'stream/web';
 import * as agentErrors from '../errors';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { ServerHandler } from '../../rpc/handlers';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import { RawHandler } from '../../rpc/handlers';
+import { never } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesUtils from '../../nodes/utils';
 import * as agentUtils from '../utils';
+import * as utils from '../../utils';
 
-class VaultsGitInfoGetHandler extends ServerHandler<
-  {
-    db: DB;
-    vaultManager: VaultManager;
-    acl: ACL;
-    logger: Logger;
-  },
-  AgentRPCRequestParams<VaultsGitInfoGetMessage>,
-  AgentRPCResponseResult<VaultInfo | GitPackMessage>
-> {
-  public async *handle(
-    input: AgentRPCRequestParams<VaultsGitInfoGetMessage>,
+class VaultsGitInfoGetHandler extends RawHandler<{
+  db: DB;
+  vaultManager: VaultManager;
+  acl: ACL;
+  logger: Logger;
+}> {
+  public async handle(
+    input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     _cancel,
-    meta,
-  ): AsyncGenerator<VaultInfo | GitPackMessage> {
+    meta: Record<string, JSONValue> | undefined,
+    _ctx: ContextTimed, // TODO: use
+  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> {
     const { db, vaultManager, acl } = this.container;
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<VaultInfo | GitPackMessage> {
+    const [headerMessage, inputStream] = input;
+    await inputStream.cancel();
+    const params = headerMessage.params;
+    if (params == null || !utils.isObject(params)) never();
+    if (
+      !('vaultNameOrId' in params) ||
+      typeof params.vaultNameOrId != 'string'
+    ) {
+      never();
+    }
+    if (!('action' in params) || typeof params.action != 'string') never();
+    const vaultNameOrId = params.vaultNameOrId;
+    const actionType = validationUtils.parseVaultAction(params.action);
+    const data = await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
-        input.vaultNameOrId,
+        vaultNameOrId,
         tran,
       );
       const vaultId =
-        vaultIdFromName ?? vaultsUtils.decodeVaultId(input.vaultNameOrId);
+        vaultIdFromName ?? vaultsUtils.decodeVaultId(vaultNameOrId);
       if (vaultId == null) {
         throw new vaultsErrors.ErrorVaultsVaultUndefined();
       }
-      const {
-        actionType,
-      }: {
-        actionType: VaultAction;
-      } = validateSync(
-        (keyPath, value) => {
-          return matchSync(keyPath)(
-            [['actionType'], () => validationUtils.parseVaultAction(value)],
-            () => value,
-          );
-        },
-        {
-          actionType: input.action,
-        },
-      );
       const vaultName = (await vaultManager.getVaultMeta(vaultId, tran))
         ?.vaultName;
       if (vaultName == null) {
@@ -84,21 +77,37 @@ class VaultsGitInfoGetHandler extends ServerHandler<
           )}`,
         );
       }
-
-      yield {
-        vaultName: vaultName,
-        vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
+      return {
+        vaultId,
+        vaultName,
       };
-      for await (const byte of vaultManager.handleInfoRequest(vaultId, tran)) {
-        if (byte !== null) {
-          yield {
-            chunk: byte.toString('binary'),
-          };
-        } else {
-          return;
-        }
-      }
     });
+
+    let handleInfoRequestGen: AsyncGenerator<Buffer>;
+    const stream = new ReadableStream({
+      start: async () => {
+        handleInfoRequestGen = vaultManager.handleInfoRequest(data.vaultId);
+      },
+      pull: async (controller) => {
+        const result = await handleInfoRequestGen.next();
+        if (result.done) {
+          controller.close();
+          return;
+        } else {
+          controller.enqueue(result.value);
+        }
+      },
+      cancel: async (reason) => {
+        await handleInfoRequestGen.throw(reason).catch(() => {});
+      },
+    });
+    return [
+      {
+        vaultName: data.vaultName,
+        vaultIdEncoded: vaultsUtils.encodeVaultId(data.vaultId),
+      },
+      stream,
+    ];
   }
 }
 

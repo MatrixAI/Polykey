@@ -1,12 +1,11 @@
 import type { FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { ConnectionData, Host, Port, TLSConfig } from './network/types';
+import type { ConnectionData, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { CertificatePEM, CertManagerChangeData, Key } from './keys/types';
+import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { ClientCrypto, QUICConfig, ServerCrypto } from '@matrixai/quic';
+import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
 import path from 'path';
 import process from 'process';
 import { webcrypto } from 'crypto';
@@ -52,11 +51,12 @@ type NetworkConfig = {
   agentHost?: string;
   agentPort?: number;
   ipv6Only?: boolean;
+  agentKeepAliveIntervalTime?: number;
+  agentMaxIdleTimeout?: number;
   // RPCServer for client service
   clientHost?: string;
   clientPort?: number;
   // Websocket server config
-  maxReadableStreamBytes?: number;
   maxIdleTimeout?: number;
   pingIntervalTime?: number;
   pingTimeoutTimeTime?: number;
@@ -65,11 +65,6 @@ type NetworkConfig = {
   handlerTimeoutTime?: number;
   handlerTimeoutGraceTime?: number;
 };
-
-type PolykeyQUICConfig = Omit<
-  Partial<QUICConfig>,
-  'ca' | 'key' | 'cert' | 'verifyPeer' | 'verifyAllowFail'
->;
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -97,8 +92,6 @@ class PolykeyAgent {
     keyRingConfig = {},
     certManagerConfig = {},
     networkConfig = {},
-    quicServerConfig = {},
-    quicClientConfig = {},
     nodeConnectionManagerConfig = {},
     seedNodes = {},
     workers,
@@ -124,7 +117,6 @@ class PolykeyAgent {
     webSocketServerClient,
     rpcServerAgent,
     quicSocket,
-    quicServerAgent,
     fs = require('fs'),
     logger = new Logger(this.name),
     fresh = false,
@@ -151,8 +143,6 @@ class PolykeyAgent {
       connectionHolePunchIntervalTime?: number;
     };
     networkConfig?: NetworkConfig;
-    quicServerConfig?: PolykeyQUICConfig;
-    quicClientConfig?: PolykeyQUICConfig;
     seedNodes?: SeedNodes;
     workers?: number;
     status?: Status;
@@ -176,7 +166,6 @@ class PolykeyAgent {
     webSocketServerClient?: WebSocketServer;
     rpcServerAgent?: RPCServer;
     quicSocket?: QUICSocket;
-    quicServerAgent?: QUICServer;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -201,14 +190,7 @@ class PolykeyAgent {
       ...config.defaults.networkConfig,
       ...utils.filterEmptyObject(networkConfig),
     };
-    const quicServerConfig_ = {
-      ...config.defaults.quicServerConfig,
-      ...utils.filterEmptyObject(quicServerConfig),
-    };
-    const quicClientConfig_ = {
-      ...config.defaults.quicClientConfig,
-      ...utils.filterEmptyObject(quicClientConfig),
-    };
+
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
     const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
@@ -358,29 +340,57 @@ class PolykeyAgent {
           logger: logger.getChild(QUICSocket.name),
           resolveHostname,
         });
-      const clientCrypto: ClientCrypto = {
+      const crypto: ServerCrypto & ClientCrypto = {
         randomBytes: async (data: ArrayBuffer) => {
           const randomBytes = keysUtils.getRandomBytes(data.byteLength);
           const dataBuf = Buffer.from(data);
           dataBuf.write(randomBytes.toString('binary'), 'binary');
         },
+        async sign(key: ArrayBuffer, data: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
+        },
+        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
+          const cryptoKey = await webcrypto.subtle.importKey(
+            'raw',
+            key,
+            {
+              name: 'HMAC',
+              hash: 'SHA-256',
+            },
+            true,
+            ['sign', 'verify'],
+          );
+          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
+        },
+      };
+      const tlsConfig: TLSConfig = {
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: await certManager.getCertPEMsChainPEM(),
       };
       nodeConnectionManager =
         nodeConnectionManager ??
         new NodeConnectionManager({
+          handleStream: () => {},
           keyRing,
           nodeGraph,
           seedNodes,
           quicSocket,
-          quicClientConfig: {
-            ...quicClientConfig_,
-            key: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-            cert: await certManager.getCertPEMsChainPEM(),
-          },
           ...nodeConnectionManagerConfig_,
-          crypto: {
-            ops: clientCrypto,
-          },
+          connectionKeepAliveIntervalTime:
+            networkConfig_.agentKeepAliveIntervalTime,
+          connectionMaxIdleTimeout: networkConfig_.agentMaxIdleTimeout,
+          tlsConfig,
+          crypto,
           logger: logger.getChild(NodeConnectionManager.name),
         });
       nodeManager =
@@ -474,20 +484,14 @@ class PolykeyAgent {
           logger: logger.getChild(RPCServer.name + 'Client'),
         });
       }
-      const tlsConfig: TLSConfig = {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: await certManager.getCertPEMsChainPEM(),
-      };
       webSocketServerClient =
         webSocketServerClient ??
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (rpcStream) =>
             rpcServerClient!.handleStream(rpcStream),
-          fs,
           host: networkConfig_.clientHost,
           port: networkConfig_.clientPort,
           tlsConfig,
-          maxReadableStreamBytes: networkConfig_.maxReadableStreamBytes,
           maxIdleTimeout: networkConfig_.maxIdleTimeout,
           pingIntervalTime: networkConfig_.pingIntervalTime,
           pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
@@ -517,58 +521,8 @@ class PolykeyAgent {
           logger: logger.getChild(RPCServer.name + 'Agent'),
         });
       }
-      const serverCrypto: ServerCrypto = {
-        async sign(key: ArrayBuffer, data: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
-        },
-        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
-        },
-      };
-      quicServerAgent =
-        quicServerAgent ??
-        new QUICServer({
-          config: {
-            ...quicServerConfig_,
-            key: tlsConfig.keyPrivatePem,
-            cert: tlsConfig.certChainPem,
-            verifyPeer: true,
-            verifyAllowFail: true,
-          },
-          crypto: {
-            key: keysUtils.generateKey(),
-            ops: serverCrypto,
-          },
-          verifyCallback: networkUtils.verifyClientCertificateChain,
-          logger: logger.getChild(QUICServer.name + 'Agent'),
-          socket: quicSocket,
-          resolveHostname,
-          reasonToCode: utils.reasonToCode,
-          codeToReason: utils.codeToReason,
-        });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await quicServerAgent?.stop({ force: true });
       await quicSocket?.stop({ force: true });
       await rpcServerAgent?.destroy(true);
       await rpcServerClient?.destroy();
@@ -612,7 +566,6 @@ class PolykeyAgent {
       webSocketServerClient,
       rpcServerAgent,
       quicSocket,
-      quicServerAgent,
       events,
       fs,
       logger,
@@ -653,7 +606,6 @@ class PolykeyAgent {
   public readonly webSocketServerClient: WebSocketServer;
   public readonly rpcServerAgent: RPCServer;
   public readonly quicSocket: QUICSocket;
-  public readonly quicServerAgent: QUICServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   constructor({
@@ -679,7 +631,6 @@ class PolykeyAgent {
     webSocketServerClient,
     rpcServerAgent,
     quicSocket,
-    quicServerAgent,
     events,
     fs,
     logger,
@@ -706,7 +657,6 @@ class PolykeyAgent {
     webSocketServerClient: WebSocketServer;
     rpcServerAgent: RPCServer;
     quicSocket: QUICSocket;
-    quicServerAgent: QUICServer;
     events: EventBus;
     fs: FileSystem;
     logger: Logger;
@@ -734,7 +684,6 @@ class PolykeyAgent {
     this.webSocketServerClient = webSocketServerClient;
     this.rpcServerAgent = rpcServerAgent;
     this.quicSocket = quicSocket;
-    this.quicServerAgent = quicServerAgent;
     this.events = events;
     this.fs = fs;
   }
@@ -784,14 +733,8 @@ class PolykeyAgent {
             keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
             certChainPem: await this.certManager.getCertPEMsChainPEM(),
           };
-          // FIXME: Can we even support updating TLS config anymore?
-          //  We would need to shut down the Websocket server and re-create it with the new config.
-          //  Right now graceful shutdown is not supported.
-          // this.grpcServerClient.setTLSConfig(tlsConfig);
-          this.quicServerAgent.updateConfig({
-            key: tlsConfig.keyPrivatePem,
-            cert: tlsConfig.certChainPem,
-          });
+          this.webSocketServerClient.setTlsConfig(tlsConfig);
+          this.nodeConnectionManager.updateTlsConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
         },
       );
@@ -876,79 +819,11 @@ class PolykeyAgent {
         port: _networkConfig.agentPort,
         ipv6Only: _networkConfig.ipv6Only,
       });
-      // Setting up stream handling
-      const handleStream = async (
-        event: quicEvents.QUICConnectionStreamEvent,
-      ) => {
-        // Streams are handled via the RPCServer.
-        const stream = event.detail;
-        this.rpcServerAgent.handleStream(stream);
-      };
-
-      const handleConnection = async (
-        event: quicEvents.QUICServerConnectionEvent,
-      ) => {
-        // Needs to setup stream handler
-        const connection = event.detail;
-        try {
-          // Dispatch connection event
-          const remoteCertificates = connection.getRemoteCertsChain();
-          if (remoteCertificates.length === 0) {
-            throw Error('remote certificates were not provided');
-          }
-          const remoteCertPem = remoteCertificates[0];
-          const remoteCert = keysUtils.certFromPEM(
-            remoteCertPem as CertificatePEM,
-          );
-          if (remoteCert == null) throw Error('failed to parse certificate');
-          const nodeId = keysUtils.certNodeId(remoteCert);
-          if (nodeId == null) throw Error('failed to extract NodeId from cert');
-          const data: ConnectionData = {
-            remoteNodeId: nodeId,
-            remoteHost: connection.remoteHost as Host,
-            remotePort: connection.remotePort as Port,
-          };
-          await this.events.emitAsync(
-            PolykeyAgent.eventSymbols.QUICServer,
-            data,
-          );
-        } catch (e) {
-          this.logger.error(e.message);
-          await connection.stop({
-            applicationError: true,
-            errorMessage: e.message,
-            force: true,
-          });
-        }
-
-        connection.addEventListener('connectionStream', handleStream);
-        connection.addEventListener(
-          'connectionStop',
-          () => {
-            connection.removeEventListener('connectionStream', handleStream);
-          },
-          { once: true },
-        );
-      };
-      this.quicServerAgent.addEventListener(
-        'serverConnection',
-        handleConnection,
-      );
-      this.quicServerAgent.addEventListener(
-        'serverStop',
-        () => {
-          this.quicServerAgent.removeEventListener(
-            'serverConnection',
-            handleConnection,
-          );
-        },
-        { once: true },
-      );
-      // Finished setting up handling.
-      // No host or port is provided here, it's configured in the shared QUICSocket.
-      await this.quicServerAgent.start();
       await this.nodeManager.start();
-      await this.nodeConnectionManager.start({ nodeManager: this.nodeManager });
+      await this.nodeConnectionManager.start({
+        nodeManager: this.nodeManager,
+        handleStream: (stream) => this.rpcServerAgent.handleStream(stream),
+      });
       await this.nodeGraph.start({ fresh });
       await this.nodeManager.syncNodeGraph(false);
       await this.discovery.start({ fresh });
@@ -989,7 +864,6 @@ class PolykeyAgent {
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
-      await this.quicServerAgent.stop();
       await this.quicSocket.stop();
       await this.webSocketServerClient.stop(true);
       await this.identitiesManager?.stop();
@@ -1025,7 +899,6 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    await this.quicServerAgent.stop();
     await this.quicSocket.stop();
     await this.webSocketServerClient.stop(true);
     await this.identitiesManager.stop();

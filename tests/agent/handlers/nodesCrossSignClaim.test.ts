@@ -136,7 +136,10 @@ describe('nodesCrossSignClaim', () => {
         verifyPeer: true,
         verifyAllowFail: true,
       },
-      crypto,
+      crypto: {
+        key: keysUtils.generateKey(),
+        ops: crypto,
+      },
       logger,
     });
     const handleStream = async (
@@ -186,7 +189,9 @@ describe('nodesCrossSignClaim', () => {
     localNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
     const tlsConfigClient = await tlsTestsUtils.createTLSConfig(clientKeyPair);
     quicClient = await QUICClient.createQUICClient({
-      crypto,
+      crypto: {
+        ops: crypto,
+      },
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,

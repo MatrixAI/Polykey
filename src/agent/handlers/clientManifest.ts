@@ -2,17 +2,18 @@ import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
 import type {
   AgentClaimMessage,
   ClaimIdMessage,
-  GitPackMessage,
   HolePunchRelayMessage,
   NodeAddressMessage,
   NodeIdMessage,
   SignedNotificationEncoded,
-  VaultInfo,
-  VaultsGitInfoGetMessage,
-  VaultsGitPackGetMessage,
   VaultsScanMessage,
 } from './types';
-import { DuplexCaller, ServerCaller, UnaryCaller } from '../../rpc/callers';
+import {
+  DuplexCaller,
+  RawCaller,
+  ServerCaller,
+  UnaryCaller,
+} from '../../rpc/callers';
 
 const nodesClaimsGet = new ServerCaller<
   AgentRPCRequestParams<ClaimIdMessage>,
@@ -39,15 +40,9 @@ const notificationsSend = new UnaryCaller<
   AgentRPCResponseResult
 >();
 
-const vaultsGitInfoGet = new ServerCaller<
-  AgentRPCRequestParams<VaultsGitInfoGetMessage>,
-  AgentRPCResponseResult<VaultInfo | GitPackMessage>
->();
+const vaultsGitInfoGet = new RawCaller();
 
-const vaultsGitPackGet = new ServerCaller<
-  AgentRPCRequestParams<VaultsGitPackGetMessage>,
-  AgentRPCResponseResult<GitPackMessage>
->();
+const vaultsGitPackGet = new RawCaller();
 
 const vaultsScan = new ServerCaller<
   AgentRPCRequestParams,

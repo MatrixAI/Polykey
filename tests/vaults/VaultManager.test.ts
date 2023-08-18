@@ -469,8 +469,7 @@ describe('VaultManager', () => {
       await vaultManager?.destroy();
     }
   });
-  // TODO: disabled until feature is addressed in agent migration stage 2
-  describe.skip('with remote agents', () => {
+  describe('with remote agents', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
@@ -517,12 +516,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicServerAgent.host as Host,
-        port: remoteKeynode2.quicServerAgent.port as Port,
+        host: remoteKeynode2.quicSocket.host as Host,
+        port: remoteKeynode2.quicSocket.port as Port,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicServerAgent.host as Host,
-        port: remoteKeynode1.quicServerAgent.port as Port,
+        host: remoteKeynode1.quicSocket.host as Host,
+        port: remoteKeynode1.quicSocket.port as Port,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -580,25 +579,23 @@ describe('VaultManager', () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         nodeGraph,
-        quicClientConfig: {
-          key: tlsConfig.keyPrivatePem,
-          cert: tlsConfig.certChainPem,
-        },
+        tlsConfig,
         crypto,
         quicSocket,
         logger,
       });
       await nodeConnectionManager.start({
         nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
+        handleStream: () => {},
       });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicServerAgent.host as Host,
-        port: remoteKeynode1.quicServerAgent.port as Port,
+        host: remoteKeynode1.quicSocket.host as Host,
+        port: remoteKeynode1.quicSocket.port as Port,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicServerAgent.host as Host,
-        port: remoteKeynode2.quicServerAgent.port as Port,
+        host: remoteKeynode2.quicSocket.host as Host,
+        port: remoteKeynode2.quicSocket.port as Port,
       });
     });
     afterEach(async () => {
@@ -655,7 +652,6 @@ describe('VaultManager', () => {
           localNodeId,
           'pull',
         );
-
         await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
         const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');
@@ -1400,8 +1396,8 @@ describe('VaultManager', () => {
 
         // Letting nodeGraph know where the remote agent is
         await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.quicServerAgent.host as Host,
-          port: remoteKeynode1.quicServerAgent.port as Port,
+          host: remoteKeynode1.quicSocket.host as Host,
+          port: remoteKeynode1.quicSocket.port as Port,
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

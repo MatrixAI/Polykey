@@ -333,10 +333,7 @@ describe(`${NodeManager.name} test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger,
@@ -369,8 +366,8 @@ describe(`${NodeManager.name} test`, () => {
     });
     const serverNodeId = server.keyRing.getNodeId();
     const serverNodeAddress: NodeAddress = {
-      host: server.quicServerAgent.host as Host,
-      port: server.quicServerAgent.port as Port,
+      host: server.quicSocket.host as Host,
+      port: server.quicSocket.port as Port,
     };
     await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
@@ -385,7 +382,8 @@ describe(`${NodeManager.name} test`, () => {
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       // Do nothing
     });
-
+    // Wait for background logic to settle
+    await sleep(100);
     const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
     expect(nodeData2).toBeDefined();
     expect(nodeData2?.address.host).toEqual(expectedHost);
@@ -557,10 +555,7 @@ describe(`${NodeManager.name} test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       logger,
@@ -637,6 +632,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     await nodeManager.start();
+    await taskManager.stopProcessing();
 
     // Creating dummy tasks
     const task1 = await taskManager.scheduleTask({
@@ -651,7 +647,6 @@ describe(`${NodeManager.name} test`, () => {
     });
 
     // Stopping nodeManager should cancel any nodeManager tasks
-    await taskManager.stopProcessing();
     await nodeManager.stop();
     const tasks: Array<any> = [];
     for await (const task of taskManager.getTasks('asc', true, [

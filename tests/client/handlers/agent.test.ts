@@ -200,8 +200,8 @@ describe('agentStatus', () => {
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
       clientHost: pkAgent.webSocketServerClient.getHost(),
       clientPort: pkAgent.webSocketServerClient.getPort(),
-      agentHost: pkAgent.quicServerAgent.host,
-      agentPort: pkAgent.quicServerAgent.port,
+      agentHost: pkAgent.quicSocket.host,
+      agentPort: pkAgent.quicSocket.port,
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     });

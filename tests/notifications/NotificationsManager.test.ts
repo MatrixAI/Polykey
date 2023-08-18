@@ -123,10 +123,7 @@ describe('NotificationsManager', () => {
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyRing,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket,
       logger,
@@ -142,7 +139,7 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
     await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
@@ -160,8 +157,8 @@ describe('NotificationsManager', () => {
       },
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.quicServerAgent.host as Host,
-      port: receiver.quicServerAgent.port as Port,
+      host: receiver.quicSocket.host as Host,
+      port: receiver.quicSocket.port as Port,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {

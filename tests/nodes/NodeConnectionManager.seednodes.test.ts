@@ -21,7 +21,6 @@ import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
-import { sleep } from '@/utils';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
@@ -63,6 +62,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
   let tlsConfig: TLSConfig;
+  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -195,10 +195,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
@@ -216,6 +213,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -236,11 +234,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -264,6 +259,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -284,12 +280,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 1000,
-        keepAliveIntervalTime: 500,
-      },
+      connectionMaxIdleTimeout: 1000,
+      connectionKeepAliveIntervalTime: 500,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -309,13 +302,13 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
     await nodeManager.syncNodeGraph(true, 100);
-    await sleep(1000);
     expect(mockedRefreshBucket).toHaveBeenCalled();
 
     await nodeConnectionManager.stop();
@@ -336,11 +329,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -360,6 +350,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -384,11 +375,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -408,6 +396,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -427,11 +416,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: {
@@ -451,6 +437,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 

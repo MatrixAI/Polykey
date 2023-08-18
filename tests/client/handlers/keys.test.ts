@@ -546,7 +546,7 @@ describe('keysKeyPairRenew', () => {
     const rootKeyPair1 = pkAgent.keyRing.keyPair;
     const nodeId1 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
-    const config1 = pkAgent.quicServerAgent.config;
+    const config1 = pkAgent.nodeConnectionManager.quicServer.config;
     const fwdTLSConfig1 = {
       keyPrivatePem: config1.key,
       certChainPem: config1.cert,
@@ -566,7 +566,7 @@ describe('keysKeyPairRenew', () => {
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
-    const config2 = pkAgent.quicServerAgent.config;
+    const config2 = pkAgent.nodeConnectionManager.quicServer.config;
     const fwdTLSConfig2 = {
       keyPrivatePem: config2.key,
       certChainPem: config2.cert,
@@ -662,7 +662,7 @@ describe('keysKeyPairReset', () => {
     const rootKeyPair1 = pkAgent.keyRing.keyPair;
     const nodeId1 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
-    const config1 = pkAgent.quicServerAgent.config;
+    const config1 = pkAgent.nodeConnectionManager.quicServer.config;
     const fwdTLSConfig1 = {
       keyPrivatePem: config1.key,
       certChainPem: config1.cert,
@@ -682,7 +682,7 @@ describe('keysKeyPairReset', () => {
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
-    const config2 = pkAgent.quicServerAgent.config;
+    const config2 = pkAgent.nodeConnectionManager.quicServer.config;
     const fwdTLSConfig2 = {
       keyPrivatePem: config2.key,
       certChainPem: config2.cert,

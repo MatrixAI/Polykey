@@ -92,6 +92,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let nodeManager: NodeManager;
 
   let nodeConnectionManager: NodeConnectionManager;
+  // Default stream handler, just drop the stream
+  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -195,10 +197,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-      },
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -216,6 +215,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -238,12 +238,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -261,6 +258,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -294,12 +292,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -317,6 +312,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -343,12 +339,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -366,6 +359,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -427,12 +421,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -450,6 +441,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -511,12 +503,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -534,6 +523,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -577,12 +567,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      quicClientConfig: {
-        key: tlsConfig.keyPrivatePem,
-        cert: tlsConfig.certChainPem,
-        maxIdleTimeout: 10000,
-        keepAliveIntervalTime: 1000,
-      },
+      connectionMaxIdleTimeout: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
       crypto,
       quicSocket: clientSocket,
       seedNodes: undefined,
@@ -600,6 +587,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       nodeManager,
+      handleStream,
     });
     await taskManager.startProcessing();
 
@@ -641,4 +629,5 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  test.todo('Handles reverse streams');
 });

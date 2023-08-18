@@ -13,6 +13,7 @@ import type {
 import type { JSONValue } from '../../types';
 import type { Timer } from '@matrixai/timer';
 import { TransformStream } from 'stream/web';
+import { JSONParser } from '@streamparser/json';
 import { AbstractError } from '@matrixai/errors';
 import * as rpcErrors from '../errors';
 import * as utils from '../../utils';
@@ -429,6 +430,72 @@ function getHandlerTypes(
   return out;
 }
 
+/**
+ * This function is a factory to create a TransformStream that will
+ * transform a `Uint8Array` stream to a JSONRPC message stream.
+ * The parsed messages will be validated with the provided messageParser, this
+ * also infers the type of the stream output.
+ * @param messageParser - Validates the JSONRPC messages, so you can select for a
+ *  specific type of message
+ * @param bufferByteLimit - sets the number of bytes buffered before throwing an
+ *  error. This is used to avoid infinitely buffering the input.
+ */
+function parseHeadStream<T extends JSONRPCMessage>(
+  messageParser: (message: unknown) => T,
+  bufferByteLimit: number = 1024 * 1024,
+): TransformStream<Uint8Array, T | Uint8Array> {
+  const parser = new JSONParser({
+    separator: '',
+    paths: ['$'],
+  });
+  let bytesWritten: number = 0;
+  let parsing = true;
+  let ended = false;
+
+  const endP = utils.promise();
+  parser.onEnd = () => endP.resolveP();
+
+  return new TransformStream<Uint8Array, T | Uint8Array>(
+    {
+      flush: async () => {
+        if (!parser.isEnded) parser.end();
+        await endP.p;
+      },
+      start: (controller) => {
+        parser.onValue = async (value) => {
+          const jsonMessage = messageParser(value.value);
+          controller.enqueue(jsonMessage);
+          bytesWritten = 0;
+          parsing = false;
+        };
+      },
+      transform: async (chunk, controller) => {
+        if (parsing) {
+          try {
+            bytesWritten += chunk.byteLength;
+            parser.write(chunk);
+          } catch (e) {
+            throw new rpcErrors.ErrorRPCParse(undefined, { cause: e });
+          }
+          if (bytesWritten > bufferByteLimit) {
+            throw new rpcErrors.ErrorRPCMessageLength();
+          }
+        } else {
+          // Wait for parser to end
+          if (!ended) {
+            parser.end();
+            await endP.p;
+            ended = true;
+          }
+          // Pass through normal chunks
+          controller.enqueue(chunk);
+        }
+      },
+    },
+    { highWaterMark: 1 },
+  );
+}
+
 export {
   parseJSONRPCRequest,
   parseJSONRPCRequestMessage,
@@ -442,4 +509,5 @@ export {
   clientInputTransformStream,
   clientOutputTransformStream,
   getHandlerTypes,
+  parseHeadStream,
 };

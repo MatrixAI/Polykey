@@ -4,12 +4,12 @@ import type {
   JSONRPCRequest,
   JSONRPCRequestMessage,
   JSONRPCResponse,
+  JSONRPCResponseResult,
   RPCStream,
 } from '@/rpc/types';
 import { TransformStream, ReadableStream } from 'stream/web';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { testProp, fc } from '@fast-check/jest';
-import { Timer } from '@matrixai/timer';
 import RPCClient from '@/rpc/RPCClient';
 import RPCServer from '@/rpc/RPCServer';
 import * as rpcErrors from '@/rpc/errors';
@@ -53,6 +53,12 @@ describe(`${RPCClient.name}`, () => {
         meta: undefined,
         readable: new ReadableStream<Uint8Array>({
           start: (controller) => {
+            const leadingResponse: JSONRPCResponseResult = {
+              jsonrpc: '2.0',
+              result: null,
+              id: null,
+            };
+            controller.enqueue(Buffer.from(JSON.stringify(leadingResponse)));
             for (const datum of outputData) {
               controller.enqueue(datum);
             }
@@ -618,6 +624,12 @@ describe(`${RPCClient.name}`, () => {
         meta: undefined,
         readable: new ReadableStream<Uint8Array>({
           start: (controller) => {
+            const leadingResponse: JSONRPCResponseResult = {
+              jsonrpc: '2.0',
+              result: null,
+              id: null,
+            };
+            controller.enqueue(Buffer.from(JSON.stringify(leadingResponse)));
             for (const datum of outputData) {
               controller.enqueue(datum);
             }
@@ -653,6 +665,7 @@ describe(`${RPCClient.name}`, () => {
       ]);
       expect(await outputResult).toStrictEqual(outputData);
     },
+    { seed: -783452149, path: '0:0:0:0:0:0:0', endOnFailure: true },
   );
   testProp(
     'manifest duplex caller',
@@ -748,7 +761,7 @@ describe(`${RPCClient.name}`, () => {
       const callerInterfaceProm = rpcClient.rawStreamCaller(
         'testMethod',
         {},
-        { timer: new Timer({ delay: 100 }) },
+        { timer: 100 },
       );
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
@@ -759,11 +772,11 @@ describe(`${RPCClient.name}`, () => {
     });
     test('raw caller handles abort when creating stream', async () => {
       const holdProm = promise();
-      let ctx: ContextTimed | undefined;
+      const ctxProm = promise<ContextTimed>();
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async (ctx_) => {
-          ctx = ctx_;
+          ctxProm.resolveP(ctx_);
           await holdProm.p;
           // Should never reach this when testing
           return {} as RPCStream<Uint8Array, Uint8Array>;
@@ -772,7 +785,6 @@ describe(`${RPCClient.name}`, () => {
       });
       const abortController = new AbortController();
       const rejectReason = Symbol('rejectReason');
-      abortController.abort(rejectReason);
 
       // Timing out on stream creation
       const callerInterfaceProm = rpcClient.rawStreamCaller(
@@ -780,6 +792,8 @@ describe(`${RPCClient.name}`, () => {
         {},
         { signal: abortController.signal },
       );
+      abortController.abort(rejectReason);
+      const ctx = await ctxProm.p;
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toBe(rejectReason);
       expect(ctx?.signal.aborted).toBeTrue();
@@ -800,24 +814,23 @@ describe(`${RPCClient.name}`, () => {
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
       };
-      let ctx: ContextTimed | undefined;
+      const ctxProm = promise<ContextTimed>();
       const rpcClient = await RPCClient.createRPCClient({
         manifest: {},
         streamFactory: async (ctx_) => {
-          ctx = ctx_;
+          ctxProm.resolveP(ctx_);
           return streamPair;
         },
         logger,
       });
       // Timing out on stream
-      await Promise.all([
-        rpcClient.rawStreamCaller(
-          'testMethod',
-          {},
-          { timer: new Timer({ delay: 100 }) },
-        ),
-        forwardPassThroughStream.readable.getReader().read(),
-      ]);
+      await expect(
+        Promise.all([
+          rpcClient.rawStreamCaller('testMethod', {}, { timer: 100 }),
+          forwardPassThroughStream.readable.getReader().read(),
+        ]),
+      ).rejects.toThrow(rpcErrors.ErrorRPCTimedOut);
+      const ctx = await ctxProm.p;
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
       expect(ctx?.signal.reason).toBeInstanceOf(rpcErrors.ErrorRPCTimedOut);
@@ -850,21 +863,22 @@ describe(`${RPCClient.name}`, () => {
       const rejectReason = Symbol('rejectReason');
       // Timing out on stream
       const reader = forwardPassThroughStream.readable.getReader();
-      await Promise.all([
-        rpcClient.rawStreamCaller(
-          'testMethod',
-          {},
-          { signal: abortController.signal },
-        ),
-        reader.read(),
-      ]);
-      const ctx = await ctxProm.p;
       const abortProm = promise<void>();
-      if (ctx.signal.aborted) abortProm.resolveP();
-      ctx.signal.addEventListener('abort', () => {
-        abortProm.resolveP();
+      const ctxWaitProm = ctxProm.p.then((ctx) => {
+        if (ctx.signal.aborted) abortProm.resolveP();
+        ctx.signal.addEventListener('abort', () => {
+          abortProm.resolveP();
+        });
+        abortController.abort(rejectReason);
       });
-      abortController.abort(rejectReason);
+      const rawStreamProm = rpcClient.rawStreamCaller(
+        'testMethod',
+        {},
+        { signal: abortController.signal },
+      );
+      await Promise.allSettled([rawStreamProm, reader.read(), ctxWaitProm]);
+      await expect(rawStreamProm).rejects.toBe(rejectReason);
+      const ctx = await ctxProm.p;
       await abortProm.p;
       expect(ctx?.signal.aborted).toBeTrue();
       expect(ctx?.signal.reason).toBe(rejectReason);
@@ -909,7 +923,7 @@ describe(`${RPCClient.name}`, () => {
       });
       // Timing out on stream creation
       const callerInterfaceProm = rpcClient.duplexStreamCaller('testMethod', {
-        timer: new Timer({ delay: 100 }),
+        timer: 100,
       });
       await expect(callerInterfaceProm).toReject();
       await expect(callerInterfaceProm).rejects.toThrow(
@@ -1003,7 +1017,7 @@ describe(`${RPCClient.name}`, () => {
 
       // Timing out on stream
       await rpcClient.duplexStreamCaller('testMethod', {
-        timer: new Timer({ delay: 100 }),
+        timer: 100,
       });
       await ctx?.timer;
       expect(ctx?.signal.aborted).toBeTrue();
@@ -1019,7 +1033,10 @@ describe(`${RPCClient.name}`, () => {
         Uint8Array
       >();
       const streamPair: RPCStream<Uint8Array, Uint8Array> = {
-        cancel: () => {},
+        cancel: async (reason) => {
+          await forwardPassThroughStream.readable.cancel(reason);
+          await reversePassThroughStream.writable.abort(reason);
+        },
         meta: undefined,
         writable: forwardPassThroughStream.writable,
         readable: reversePassThroughStream.readable,
@@ -1037,7 +1054,7 @@ describe(`${RPCClient.name}`, () => {
       const rejectReason = Symbol('rejectReason');
       abortController.abort(rejectReason);
       // Timing out on stream
-      await rpcClient.duplexStreamCaller('testMethod', {
+      const stream = await rpcClient.duplexStreamCaller('testMethod', {
         signal: abortController.signal,
       });
       const ctx = await ctxProm.p;
@@ -1048,6 +1065,7 @@ describe(`${RPCClient.name}`, () => {
       });
       expect(ctx?.signal.aborted).toBeTrue();
       expect(ctx?.signal.reason).toBe(rejectReason);
+      stream.cancel(Error('asd'));
     });
     testProp(
       'duplex caller timeout is refreshed when sending message',
@@ -1123,7 +1141,7 @@ describe(`${RPCClient.name}`, () => {
           },
           middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
             (ctx) => {
-              ctx.timer.reset(1000);
+              ctx.timer.reset(123);
               return {
                 forward: new TransformStream(),
                 reverse: new TransformStream(),
@@ -1141,7 +1159,7 @@ describe(`${RPCClient.name}`, () => {
         // Writing should refresh timer engage the middleware
         const writer = callerInterface.writable.getWriter();
         await writer.write({});
-        expect(ctx.timer.delay).toBe(1000);
+        expect(ctx.timer.delay).toBe(123);
         await writer.close();
 
         await outputResult;
