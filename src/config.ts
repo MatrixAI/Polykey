@@ -115,29 +115,44 @@ const config = {
    * These are not meant to be changed by the user.
    * These constants are tuned for optimal operation by the developers.
    */
-  defaultSystem: {
+  defaultsSystem: {
     /**
-     * Controls the stream parser buffer limit.
-     * This is the maximum number of bytes that the stream parser
-     * will buffer before rejecting the RPC call.
+     * Timeout for each stream used in RPC.
+     * The timer is reset upon sending or receiving any data on the stream.
+     * This is a one-shot timer on unary calls.
+     * This repeats for every chunk of data on streaming calls.
+     * This is the default for both client calls and server handlers.
+     * Note that the server handler will always choose the minimum of the timeouts between
+     * client and server, and it is possible for the handler to override this default timeout
      */
-    rpcParserBufferByteLimit: 1_000_000, // About 1MB
-    rpcHandlerTimeoutTime: 60_000, // 1 minute
-    rpcHandlerTimeoutGraceTime: 2_000, // 2 seconds
+    rpcTimeoutTime: 15_000, // 15 seconds
+    /**
+     * This buffer size sets the largest parseable JSON message.
+     * Any JSON RPC message that is greater than this is rejected.
+     * The stream is then closed with an error.
+     * This has no effect on raw streams as raw streams do not use a parser.
+     */
+    rpcParserBufferSize: 64 * 1024, // 64 KiB
 
-    nodesInitialClosestNodes: 3,
+    clientConnectTimeoutTime: 15_000, // 15 seconds
+    clientKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+    clientKeepAliveIntervalTime: 10_000, // 10 seconds
 
-    nodesConnectionConnectTime: 2000,
-    nodesConnectionTimeoutTime: 60000,
+    nodesConnectionFindConcurrencyLimit: 3,
+    /**
+     * This is the timeout for idle node connections.
+     * A node connection is idle, if nothing is using the connection.
+     * This has nothing to do with the data being sent or received on the connection.
+     * It's intended as a way of garbage collecting unused connections.
+     */
+    nodesConnectionIdleTimeoutTime: 60_000, // 60 seconds
 
-    nodesConnectionHolePunchTimeoutTime: 4000,
-    nodesConnectionHolePunchIntervalTime: 250,
-
-    nodesPingTimeoutTime: 2000,
-
-    clientTransportMaxIdleTimeoutTime: 120, // 2 minutes
-    clientTransportPingIntervalTime: 1_000, // 1 second
-    clientTransportPingTimeoutTime: 10_000, // 10 seconds
+    /**
+     * Default timeout for connecting to a node.
+     * This is used when you connect node forward or reverse.
+     * This means this time includes any potential hole punching operation.
+     */
+    nodesConnectionConnectTimeoutTime: 15_000, // 15 seconds
 
     /**
      * Agent service transport keep alive interval time.
@@ -145,24 +160,21 @@ const config = {
      * This only has effect if `agentMaxIdleTimeout` is greater than 0.
      * See the transport layer for further details.
      */
-    agentConnectionKeepAliveIntervalTime: 10_000, // 10 seconds
+    nodesConnectionKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+
     /**
-     * Agent service transport max idle timeout.
-     * This is the maximum time that a connection can be idle.
-     * This also controls how long the transport layer will dial
-     * for a client connection.
-     * See the transport layer for further details.
+     * Minimum interval time between keep alive messages.
+     * This is the minimum because optimisations may increase the effective
+     * interval time when a keep alive message is not necessary.
      */
-    agentConnectionMaxIdleTimeoutTime: 60_000, // 1 minute
+    nodesConnectionKeepAliveIntervalTime: 10_000, // 10 seconds
 
-
-
-
-    // Why are these done separately?
-    // Shouldn't we have a consistent time from NCM down to agent connection?
-
-    // Transport layer is sort should be controlled separately?
-
+    /**
+     * Hole punching interval time.
+     * Note that the time spent hole punching is determined by the handler.
+     * As it is a fire and forget operation, and ultimately part of the connect timeout.
+     */
+    nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
   },
   /**
    * Default user configuration.
