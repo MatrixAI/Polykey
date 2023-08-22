@@ -117,62 +117,132 @@ const config = {
    */
   defaultsSystem: {
     /**
-     * Timeout for each stream used in RPC.
-     * The timer is reset upon sending or receiving any data on the stream.
-     * This is a one-shot timer on unary calls.
-     * This repeats for every chunk of data on streaming calls.
-     * This is the default for both client calls and server handlers.
-     * Note that the server handler will always choose the minimum of the timeouts between
-     * client and server, and it is possible for the handler to override this default timeout
+     * Timeout for each RPC stream.
+     *
+     * The semantics of this timeout changes depending on the context of how it
+     * is used.
+     *
+     * It is reset upon sending or receiving any data on the stream. This is a
+     * one-shot timer on unary calls. This repeats for every chunk of data on
+     * streaming calls.
+     *
+     * This is the default for both client calls and server handlers. Both the
+     * client callers and server handlers can optionally override this default.
+     *
+     * When the server handler receives a desired timeout from the client call,
+     * the server handler will always choose the minimum of the timeouts between
+     * the client call and server handler.
+     *
+     * With respect to client calls, this timeout bounds the time that the client
+     * will wait for responses from the server, as well as the time to wait for
+     * additional to be sent to the server.
+     *
+     * With respect to server handlers, this timeout bounds the time that the
+     * server waits to send data back to the client, as well as the time to wait
+     * for additional client data.
+     *
+     * Therefore it is expected that specific clients calls and server handlers
+     * will override this timeout to cater to their specific circumstances.
      */
     rpcTimeoutTime: 15_000, // 15 seconds
     /**
-     * This buffer size sets the largest parseable JSON message.
-     * Any JSON RPC message that is greater than this is rejected.
-     * The stream is then closed with an error.
-     * This has no effect on raw streams as raw streams do not use a parser.
+     * Buffer size of the JSON RPC parser.
+     *
+     * This limits the largest parseable JSON message. Any JSON RPC message
+     * greater than this byte size will be rejecte by closing the RPC stream
+     * with an error.
+     *
+     * This has no effect on raw streams as raw streams do not use any parser.
      */
     rpcParserBufferSize: 64 * 1024, // 64 KiB
-
-    clientConnectTimeoutTime: 15_000, // 15 seconds
-    clientKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
-    clientKeepAliveIntervalTime: 10_000, // 10 seconds
-
+    /**
+     * Timeout for the transport connecting to the client service.
+     *
+     * This bounds the amount of time that the client transport will wait to
+     * establish a connection to the client service of a Polykey Agent.
+     */
+    clientServiceConnectTimeoutTime: 15_000, // 15 seconds
+    /**
+     * Timeout for the keep alive of the transport connection to the client
+     * service.
+     *
+     * It is reset upon sending or receiving any data on the client service
+     * transport connection.
+     *
+     * This is the default for both sides (client and server) of the connection.
+     *
+     * This should always be greater than the connect timeout.
+     */
+    clientServiceKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+    /**
+     * Interval for the keep alive of the transport connection to the client
+     * service.
+     *
+     * This is the minimum interval time because transport optimisations may
+     * increase the effective interval time when a keep alive message is not
+     * necessary, possibly due to other data being sent or received on the
+     * connection.
+     */
+    clientServiceKeepAliveIntervalTime: 10_000, // 10 seconds
+    /**
+     * Concurrency pool limit when finding other nodes.
+     *
+     * This is the parallel constant in the kademlia algorithm. It controls
+     * how many parallel connections when attempting to find a node across
+     * the network.
+     */
     nodesConnectionFindConcurrencyLimit: 3,
     /**
-     * This is the timeout for idle node connections.
-     * A node connection is idle, if nothing is using the connection.
-     * This has nothing to do with the data being sent or received on the connection.
-     * It's intended as a way of garbage collecting unused connections.
+     * Timeout for idle node connections.
+     *
+     * A node connection is idle, if nothing is using the connection. A
+     * connection is being used when its resource counter is above 0.
+     *
+     * The resource counter of node connections is incremented above 0
+     * when a reference to the node connection is maintained, usually with
+     * the bracketing pattern.
+     *
+     * This has nothing to do with the data being sent or received on the
+     * connection. It's intended as a way of garbage collecting unused
+     * connections.
+     *
+     * This should always be greater than the keep alive timeout.
      */
     nodesConnectionIdleTimeoutTime: 60_000, // 60 seconds
-
     /**
-     * Default timeout for connecting to a node.
-     * This is used when you connect node forward or reverse.
-     * This means this time includes any potential hole punching operation.
+     * Timeout for establishing a node connection.
+     *
+     * This applies to both normal "forward" connections and "reverse"
+     * connections started by hole punching. Reverse connections
+     * is started by signalling requests that result in hole punching.
+     *
+     * This is the default for both client and server sides of the connection.
+     *
+     * Due to transport layer implementation peculiarities, this should never
+     * be greater than the keep alive timeout.
      */
     nodesConnectionConnectTimeoutTime: 15_000, // 15 seconds
-
     /**
-     * Agent service transport keep alive interval time.
-     * This the maxmum time between keep alive messages.
-     * This only has effect if `agentMaxIdleTimeout` is greater than 0.
-     * See the transport layer for further details.
+     * Timeout for the keep alive of the node connection.
+     *
+     * It is reset upon sending or receiving any data on the connection.
+     *
+     * This is the default for both sides (client and server) of the connection.
+     *
+     * This should always be greater than the connect timeout.
      */
     nodesConnectionKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
-
     /**
-     * Minimum interval time between keep alive messages.
-     * This is the minimum because optimisations may increase the effective
-     * interval time when a keep alive message is not necessary.
+     * Interval for the keep alive of the node connection.
+     *
+     * This is the minimum interval time because transport optimisations may
+     * increase the effective interval time when a keep alive message is not
+     * necessary, possibly due to other data being sent or received on the
+     * connection.
      */
     nodesConnectionKeepAliveIntervalTime: 10_000, // 10 seconds
-
     /**
-     * Hole punching interval time.
-     * Note that the time spent hole punching is determined by the handler.
-     * As it is a fire and forget operation, and ultimately part of the connect timeout.
+     * Interval for hole punching reverse node connections.
      */
     nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
   },
