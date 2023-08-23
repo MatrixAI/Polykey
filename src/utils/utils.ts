@@ -1,6 +1,5 @@
 import type {
   POJO,
-  DeepMerge,
   FileSystem,
   Timer,
   PromiseDeconstructed,
@@ -113,11 +112,25 @@ function isEmptyObject(o) {
  * Filters out all undefined properties recursively
  */
 function filterEmptyObject(o) {
+  return filterObject(o, ([_, v]) => v !== undefined)
+    .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]);
+}
+
+function filterObject<
+  T extends Record<K, V>,
+  K extends string,
+  V extends unknown
+>(
+  obj: T,
+  f: (
+    element: [K, V],
+    index: number,
+    arr: Array<[K, V]>
+  ) => boolean
+): Partial<T> {
   return Object.fromEntries(
-    Object.entries(o)
-      .filter(([_, v]) => v !== undefined)
-      .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]),
-  );
+    Object.entries(obj).filter(f)
+  ) as Partial<T>;
 }
 
 /**
@@ -452,22 +465,6 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
-// TODO: remove this, quick hack to allow errors to jump the network
-const codeMap = new Map<number, any>();
-let code = 1;
-
-const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
-  codeMap.set(code, _reason);
-  const returnCode = code;
-  code++;
-  return returnCode;
-};
-
-const codeToReason = (type: 'recv' | 'send', code: number): any => {
-  const asd = codeMap.get(code);
-  return asd;
-};
-
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -481,6 +478,7 @@ export {
   isObject,
   isEmptyObject,
   filterEmptyObject,
+  filterObject,
   mergeObjects,
   getUnixtime,
   poll,
@@ -504,6 +502,4 @@ export {
   lexiUnpackBuffer,
   bufferWrap,
   isBufferSource,
-  reasonToCode,
-  codeToReason,
 };

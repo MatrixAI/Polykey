@@ -313,6 +313,22 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
+// TODO: remove this, quick hack to allow errors to jump the network
+const codeMap = new Map<number, any>();
+let code = 1;
+
+const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
+  codeMap.set(code, _reason);
+  const returnCode = code;
+  code++;
+  return returnCode;
+};
+
+const codeToReason = (type: 'recv' | 'send', code: number): any => {
+  const asd = codeMap.get(code);
+  return asd;
+};
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -335,4 +351,6 @@ export {
   generateRandomNodeIdForBucket,
   isConnectionError,
   refreshBucketsDelayJitter,
+  reasonToCode,
+  codeToReason,
 };
