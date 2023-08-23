@@ -507,7 +507,7 @@ class PolykeyAgent {
           }),
           middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
             clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
-            networkConfig_.clientParserBufferByteLimit,
+            optionsDefaulted.rpc.parserBufferSize,
           ),
           sensitive: false,
           handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
