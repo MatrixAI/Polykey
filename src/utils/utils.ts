@@ -123,10 +123,10 @@ function filterEmptyObject(o) {
 /**
  * Merges an input object to a default object.
  */
-function mergeObjects<A extends POJO, B extends POJO>(
-  object1: A,
-  object2: B
-): DeepMerge<A, B> {
+function mergeObjects(
+  object1: POJO,
+  object2: POJO
+): POJO {
   const keys = new Set([...Object.keys(object2), ...Object.keys(object1)]);
   const mergedObject = {};
   for (const key of keys) {
@@ -138,7 +138,7 @@ function mergeObjects<A extends POJO, B extends POJO>(
       mergedObject[key] = object2[key];
     }
   }
-  return mergedObject as DeepMerge<A, B>;
+  return mergedObject;
 }
 
 function getUnixtime(date: Date = new Date()) {

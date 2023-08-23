@@ -254,6 +254,7 @@ const config = {
   defaultsUser: {
     nodePath: getDefaultNodePath(),
     certDuration: 31536000,
+    certRenewLeadTime: 86400,
     /**
      * Client host defaults to `localhost`.
      * This will depend on the OS configuration.

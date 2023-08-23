@@ -66,6 +66,7 @@ type PolykeyAgentOptions = {
     passwordMemLimit: PasswordMemLimit;
     strictMemoryLock: boolean;
     certDuration: number;
+    certRenewLeadTime: number;
   };
   rpc: {
     callTimeoutTime: number;
@@ -190,6 +191,7 @@ class PolykeyAgent {
         ipv6Only: config.defaultsUser.ipv6Only,
         keys: {
           certDuration: config.defaultsUser.certDuration,
+          certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
         },
         rpc: {
           callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
@@ -249,20 +251,22 @@ class PolykeyAgent {
       keyRing =
         keyRing ??
         (await KeyRing.createKeyRing({
-          fresh,
-          fs,
           keysPath,
+          passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+          passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+          strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
+          fs,
+          fresh,
           password,
-          ...keyRingConfig,
           logger: logger.getChild(KeyRing.name),
         }));
       // Remove your own node ID if provided as a seed node
       const nodeIdOwn = keyRing.getNodeId();
-      const nodeIdEncodedOwn = Object.keys(seedNodes).find((nodeIdEncoded) => {
+      const nodeIdEncodedOwn = Object.keys(optionsDefaulted.seedNodes).find((nodeIdEncoded) => {
         return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
       });
       if (nodeIdEncodedOwn != null) {
-        delete seedNodes[nodeIdEncodedOwn];
+        delete optionsDefaulted.seedNodes[nodeIdEncodedOwn];
       }
       db =
         db ??
@@ -300,14 +304,15 @@ class PolykeyAgent {
       certManager =
         certManager ??
         (await CertManager.createCertManager({
-          keyRing,
           db,
+          keyRing,
           taskManager,
+          certDuration: optionsDefaulted.keys.certDuration,
+          certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
           changeCallback: async (data) =>
             events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
           logger: logger.getChild(CertManager.name),
           fresh,
-          ...certManagerConfig_,
         }));
       sigchain =
         sigchain ??
@@ -476,8 +481,8 @@ class PolykeyAgent {
           fresh,
         }));
       // If a recovery code is provided then we reset any sessions in case the
-      //  password changed.
-      if (keyRingConfig.recoveryCode != null) await sessionManager.resetKey();
+      // password changed.
+      if (optionsDefaulted.keys.recoveryCode != null) await sessionManager.resetKey();
       if (rpcServerClient == null) {
         pkAgentProm = utils.promise();
         rpcServerClient = await RPCServer.createRPCServer({
@@ -569,7 +574,7 @@ class PolykeyAgent {
       throw e;
     }
     const pkAgent = new this({
-      nodePath,
+      nodePath: optionsDefaulted.nodePath,
       status,
       schema,
       keyRing,
@@ -599,7 +604,7 @@ class PolykeyAgent {
     await pkAgent.start({
       password,
       networkConfig,
-      workers,
+      workers: optionsDefaulted.workers,
       fresh,
     });
     logger.info(`Created ${this.name}`);
