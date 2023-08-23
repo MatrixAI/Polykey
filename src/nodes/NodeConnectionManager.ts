@@ -1,9 +1,11 @@
-import type { QUICConnection, QUICSocket } from '@matrixai/quic';
+import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
-import type { ContextTimed } from '@matrixai/contexts';
-import type { CertificatePEM } from '../keys/types';
-import type KeyRing from '../keys/KeyRing';
-import type { Host, Hostname, Port } from '../network/types';
+import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type {
+  ClientCrypto,
+  events as quicEvents
+} from '@matrixai/quic';
 import type NodeGraph from './NodeGraph';
 import type {
   NodeAddress,
@@ -12,32 +14,35 @@ import type {
   NodeIdString,
   SeedNodes,
 } from './types';
-import type NodeManager from './NodeManager';
-import type { LockRequest } from '@matrixai/async-locks/dist/types';
-import type { HolePunchRelayMessage } from '../agent/handlers/types';
-import type { ClientCrypto } from '@matrixai/quic';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
+import type KeyRing from '../keys/KeyRing';
+import type { Key, CertificatePEM } from '../keys/types';
+import type { Host, Hostname, Port } from '../network/types';
 import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
-import type { ServerCrypto, events as QuicEvents } from '@matrixai/quic';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import { withF } from '@matrixai/resources';
+import type { HolePunchRelayMessage } from '../agent/handlers/types';
+
 import Logger from '@matrixai/logger';
+import { withF } from '@matrixai/resources';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { QUICServer } from '@matrixai/quic';
+import {
+  QUICSocket,
+  QUICServer,
+  QUICConnection,
+} from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
+
+
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
-import { never } from '../utils';
-import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
-import * as keysUtils from '../keys/utils';
+import * as utils from '../utils';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -47,50 +52,90 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
+// Backoff is intended for connections
+// If you want to prevent this, you should use a cache or locks
+/**
+ * Tracks the backoff period for offline nodes
+ */
+// protected nodesBackoffMap: Map<
+//   string,
+//   { lastAttempt: number; delay: number }
+// > = new Map();
+// protected backoffDefault: number = 1000 * 60 * 5; // 5 min
+// protected backoffMultiplier: number = 2; // Doubles every failure
+// Seems it's better to use `handleStream?: ...` if it could be `undefined`
+
+
+/**
+ * NodeConnectionManager is a server that manages all node connections.
+ * It manages both initiated and received connections
+ *
+ * It's an event target that emits events for new connections.
+ *
+ * We will need to fully encapsulate all the errors in NCM if we can.
+ * Otherwise it goes all the way to PolykeyAgent.
+ *
+ * That means the QUICSocket, QUICServer and QUICClient
+ * As well as the QUICConnection and QUICStream.
+ * The NCM basically encapsulates it.
+ *
+ * The NCM and NC both must encapsulate all of the QUIC transport.
+ *
+ * Events:
+ *
+ * - connectionManagerStop
+ * - connectionManagerError
+ * - nodeConnection
+ * - nodeConnectionError
+ * - nodeConnectionStream
+ * - nodeConnectionDestroy
+ */
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
-class NodeConnectionManager {
-  /**
-   * Time used to establish `NodeConnection`
-   */
-  public readonly connectionConnectTime: number;
-
-  /**
-   * Time to live for `NodeConnection`
-   */
-  public readonly connectionTimeoutTime: number;
-
-  /**
-   * Default timeout for pinging nodes
-   */
-  public readonly pingTimeoutTime: number;
-
+class NodeConnectionManager extends EventTarget {
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
    */
-  public readonly initialClosestNodes: number;
+  public readonly connectionFindConcurrencyLimit: number;
 
   /**
-   * Default timeout for reverse hole punching.
+   * Time to wait to garbage collect un-used node connections.
    */
-  public readonly connectionHolePunchTimeoutTime: number;
+  public readonly connectionIdleTimeoutTime: number;
+
+  /**
+   * Time used to establish `NodeConnection`
+   */
+  public readonly connectionConnectTimeoutTime: number;
+
+  /**
+   * Time to keep alive node connection.
+   */
+  public readonly connectionKeepAliveTimeoutTime: number;
+
+  /**
+   * Time interval for sending keep alive messages.
+   */
+  public readonly connectionKeepAliveIntervalTime: number;
 
   /**
    * Initial delay between punch packets, delay doubles each attempt.
    */
   public readonly connectionHolePunchIntervalTime: number;
 
-  protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
-    () => never() as (stream: RPCStream<Uint8Array, Uint8Array>) => void;
   protected logger: Logger;
-  protected nodeGraph: NodeGraph;
   protected keyRing: KeyRing;
+  protected nodeGraph: NodeGraph;
+  protected tlsConfig: TLSConfig;
+  protected seedNodes: SeedNodes;
+
+
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
-  // NodeManager has to be passed in during start to allow co-dependency
-  protected nodeManager: NodeManager | undefined;
-  protected seedNodes: SeedNodes;
+
+  protected quicClientCrypto: ClientCrypto;
+
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
    * not exist, no entry for n will exist in the map. Alternatively, if a
@@ -102,133 +147,239 @@ class NodeConnectionManager {
    * NodeIds can't be used to properly retrieve a value from the map.
    */
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
+
   protected connectionLocks: LockBox<Lock> = new LockBox();
-  // Tracks the backoff period for offline nodes
-  protected nodesBackoffMap: Map<
-    string,
-    { lastAttempt: number; delay: number }
-  > = new Map();
-  protected backoffDefault: number = 1000 * 60 * 5; // 5 min
-  protected backoffMultiplier: number = 2; // Doubles every failure
-  protected tlsConfig: TLSConfig;
-  protected connectionKeepAliveIntervalTime: number;
-  protected connectionMaxIdleTimeout: number;
-  protected crypto: ServerCrypto & ClientCrypto;
-  protected serverConnectionHandler = async (
-    connectionEvent: QuicEvents.QUICServerConnectionEvent,
-  ) => {
-    const quicConnection = connectionEvent.detail;
-    await this.handleConnectionReverse(quicConnection);
+
+
+
+  // protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
+  //   () => never();
+
+  protected handleStream?: (stream) => void;
+
+
+  // Async arrow properties?
+
+  // protected handleQUICConnection = async (
+  //   event: QuicEvents.QUICServerConnectionEvent
+  // ) => {
+  //   const connection = event.detail;
+  //   await this.handleConnectionReverse(connection);
+  // };
+
+  // protected serverConnectionHandler = async (
+  //   connectionEvent: QuicEvents.QUICServerConnectionEvent,
+  // ) => {
+  //   const quicConnection = connectionEvent.detail;
+  //   await this.handleConnectionReverse(quicConnection);
+  // };
+
+  protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
+
+
   };
+
+  protected handleQUICServerEvents = (e: quicEvents.QUICServerEvent) => {
+
+
+
+  };
+
 
   public constructor({
     keyRing,
     nodeGraph,
-    quicSocket,
-    crypto,
     tlsConfig,
     seedNodes = {},
-    initialClosestNodes = 3,
-    connectionConnectTime = 2_000,
-    connectionTimeoutTime = 60_000,
-    pingTimeoutTime = 2_000,
-    connectionHolePunchTimeoutTime = 4_000,
-    connectionHolePunchIntervalTime = 250,
+    connectionFindConcurrencyLimit = 3,
+    connectionIdleTimeoutTime = 60_000,
+    connectionConnectTimeoutTime = 15_000,
+    connectionKeepAliveTimeoutTime = 30_000,
     connectionKeepAliveIntervalTime = 10_000,
-    connectionMaxIdleTimeout = 60_000,
+    connectionHolePunchIntervalTime = 1_000,
     logger,
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
-    quicSocket: QUICSocket;
-    crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
-    initialClosestNodes?: number;
-    connectionConnectTime?: number;
-    connectionTimeoutTime?: number;
-    pingTimeoutTime?: number;
-    connectionHolePunchTimeoutTime?: number;
-    connectionHolePunchIntervalTime?: number;
+    connectionFindConcurrencyLimit?: number;
+    connectionIdleTimeoutTime?: number;
+    connectionConnectTimeoutTime?: number;
+    connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
-    connectionMaxIdleTimeout?: number;
-    logger: Logger;
+    connectionHolePunchIntervalTime?: number;
+    logger?: Logger;
   }) {
-    this.logger = logger ?? new Logger(NodeConnectionManager.name);
+    super();
+    this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
-    this.quicSocket = quicSocket;
     this.tlsConfig = tlsConfig;
-    this.crypto = crypto;
-    const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    delete seedNodes[localNodeIdEncoded];
-    this.seedNodes = seedNodes;
-    this.initialClosestNodes = initialClosestNodes;
-    this.connectionConnectTime = connectionConnectTime;
-    this.connectionTimeoutTime = connectionTimeoutTime;
-    this.connectionHolePunchTimeoutTime = connectionHolePunchTimeoutTime;
-    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
-    this.pingTimeoutTime = pingTimeoutTime;
+    // Filter out own node ID
+    const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
+    this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
+      return k !== nodeIdEncodedOwn;
+    }) as SeedNodes;
+    this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
+    this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
+    this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
+    this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-    this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
-    // Setting up QUICServer
-    const resolveHostname = (host) => {
-      return networkUtils.resolveHostname(host)[0] ?? '';
+    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
+    // Note that all buffers allocated for crypto operations is using
+    // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
+    // is not shared. Also all node buffers satisfy the `ArrayBuffer` interface.
+    const quicClientCrypto = {
+      async randomBytes(data: ArrayBuffer): Promise<void> {
+        const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+        randomBytes.copy(utils.bufferWrap(data));
+      }
     };
-    this.quicServer = new QUICServer({
+    const quicServerCrypto = {
+      key: keysUtils.generateKey(),
+      ops: {
+        async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
+          return keysUtils.macWithKey(
+            utils.bufferWrap(key) as Key,
+            utils.bufferWrap(data)
+          );
+        },
+        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer): Promise<boolean> {
+          return keysUtils.authWithKey(
+            utils.bufferWrap(key) as Key,
+            utils.bufferWrap(data),
+            utils.bufferWrap(sig)
+          );
+        }
+      },
+    };
+    const quicSocket = new QUICSocket({
+      logger: this.logger.getChild(QUICSocket.name),
+    });
+    // By the time we get to using QUIC server, all hostnames would have been
+    // resolved, we would not resolve hostnames inside the QUIC server.
+    // This is because node connections require special hostname resolution
+    // procedures.
+    const quicServer = new QUICServer({
       config: {
+        maxIdleTimeout: connectionKeepAliveTimeoutTime,
         keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-        maxIdleTimeout: connectionMaxIdleTimeout,
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
         verifyAllowFail: true,
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
-      verifyCallback: networkUtils.verifyClientCertificateChain,
-      logger: logger.getChild(QUICServer.name + 'Agent'),
+      crypto: quicServerCrypto,
       socket: quicSocket,
-      resolveHostname,
-      reasonToCode: utils.reasonToCode,
-      codeToReason: utils.codeToReason,
+      reasonToCode: nodesUtils.reasonToCode,
+      codeToReason: nodesUtils.codeToReason,
+      verifyCallback: networkUtils.verifyClientCertificateChain,
+      minIdleTimeout: connectionConnectTimeoutTime,
+      logger: this.logger.getChild(QUICServer.name),
     });
+    this.quicClientCrypto = quicClientCrypto;
+    this.quicSocket = quicSocket;
+    this.quicServer = quicServer;
+  }
+
+  /**
+   * Get the host that node connection manager is bound to.
+   */
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public get host(): Host {
+    return this.quicSocket.host as Host;
+  }
+
+  /**
+   * Get the port that node connection manager is bound to.
+   */
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public get port(): Port {
+    return this.quicSocket.port as Port;
   }
 
   public async start({
-    nodeManager,
-    handleStream,
+    host = '::' as Host,
+    port = 0 as Port,
+    reuseAddr = false,
+    ipv6Only = false,
   }: {
-    nodeManager: NodeManager;
-    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
+    host?: Host;
+    port?: Port;
+    reuseAddr?: boolean;
+    ipv6Only?: boolean;
   }) {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    this.nodeManager = nodeManager;
-    // Adding seed nodes
-    for (const nodeIdEncoded in this.seedNodes) {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) never();
-      await this.nodeManager.setNode(
-        nodeId,
-        this.seedNodes[nodeIdEncoded],
-        true,
-      );
-    }
-    this.handleStream = handleStream;
-    // Starting QUICServer
-    // No host or port is provided here, it's configured in the shared QUICSocket.
-    await this.quicServer.start();
+    let address = networkUtils.buildAddress(host, port);
+    this.logger.info(`Start ${this.constructor.name} on ${address}`);
+
+    // We should expect that seed nodes are already in the node manager
+    // It should not be managed here!
+
+    await this.quicSocket.start({
+      host,
+      port,
+      reuseAddr,
+      ipv6Only,
+    });
+    // QUICServer will simply re-use the shared `QUICSocket`
+    await this.quicServer.start({
+      host,
+      port,
+      reuseAddr,
+      ipv6Only
+    });
+
+    this.quicSocket.addEventListener(
+      'socketError', this.handleQUICSocketEvents
+    );
+    this.quicSocket.addEventListener(
+      'socketStop', this.handleQUICSocketEvents
+    );
+
+    // We are encapsulating QUICSocket and QUICServer
+    // ALL events must be captured
+    // Unfortunately... we aren't able to adtach all events
+
+    this.quicServer.addEventListener(
+      'serverStop',
+      this.handleQUICServerEvents
+    );
+    this.quicServer.addEventListener(
+      'serverError',
+      this.handleQUICServerEvents
+    );
     this.quicServer.addEventListener(
       'serverConnection',
-      this.serverConnectionHandler,
+      this.handleQUICServerEvents
     );
+    this.quicServer.addEventListener(
+      'connectionStream',
+      this.handleQUICServerEvents
+    );
+    this.quicServer.addEventListener(
+      'connectionError',
+      this.handleQUICServerEvents
+    );
+
+
+
+
+    // ALL events must be captured
+    // NOT just specific events
+
+    // this.quicServer.addEventListener(
+    //   'serverConnection',
+    //   this.serverConnectionHandler,
+    // );
+
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
-    this.logger.info(`Stopping ${this.constructor.name}`);
+
+    this.logger.info(`Stop ${this.constructor.name}`);
+
     this.quicServer.removeEventListener(
       'serverConnection',
       this.serverConnectionHandler,
@@ -245,7 +396,7 @@ class NodeConnectionManager {
     }
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
-    this.handleStream = () => never();
+    this.handleStream = () => utils.never();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -362,7 +513,7 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      if (conn == null) never();
+      if (conn == null) utils.never();
       return yield* g(conn);
     } catch (e) {
       caughtError = e;
@@ -472,7 +623,7 @@ class NodeConnectionManager {
           return connAndTimer;
         }
         // Should throw before reaching here
-        never();
+        utils.never();
       })
       .finally(() => {
         this.logger.debug(`lock finished for ${targetNodeIdEncoded}`);
@@ -669,12 +820,12 @@ class NodeConnectionManager {
     // No specific error here, validation is handled by the QUICServer
     const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
       const cert = keysUtils.certFromPEM(pem as CertificatePEM);
-      if (cert == null) never();
+      if (cert == null) utils.never();
       return cert;
     });
-    if (certChain == null) never();
+    if (certChain == null) utils.never();
     const nodeId = keysUtils.certNodeId(certChain[0]);
-    if (nodeId == null) never();
+    if (nodeId == null) utils.never();
     const nodeIdString = nodeId.toString() as NodeIdString;
     // TODO: A connection can fail while awaiting lock. We should abort early in this case.
     return await this.connectionLocks.withF(
@@ -727,7 +878,7 @@ class NodeConnectionManager {
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
-    if (this.connections.has(nodeIdString)) never();
+    if (this.connections.has(nodeIdString)) utils.never();
     const handleDestroy = async () => {
       this.logger.debug('stream destroyed event');
       // To avoid deadlock only in the case where this is called
@@ -1249,7 +1400,7 @@ class NodeConnectionManager {
   public getSeedNodes(): Array<NodeId> {
     return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) never();
+      if (nodeId == null) utils.never();
       return nodeId;
     });
   }
@@ -1384,25 +1535,6 @@ class NodeConnectionManager {
     return results;
   }
 
-  public updateConnectionConfig({
-    connectionKeepAliveIntervalTime,
-    connectionMaxIdleTimeout,
-  }: {
-    connectionKeepAliveIntervalTime?: number;
-    connectionMaxIdleTimeout?: number;
-  }) {
-    if (connectionKeepAliveIntervalTime != null) {
-      this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-    }
-    if (connectionMaxIdleTimeout != null) {
-      this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
-    }
-    this.quicServer.updateConfig({
-      keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-      maxIdleTimeout: connectionMaxIdleTimeout,
-    });
-  }
-
   public updateTlsConfig(tlsConfig: TLSConfig) {
     this.tlsConfig = tlsConfig;
     this.quicServer.updateConfig({
@@ -1411,33 +1543,34 @@ class NodeConnectionManager {
     });
   }
 
-  protected hasBackoff(nodeId: NodeId): boolean {
-    const backoff = this.nodesBackoffMap.get(nodeId.toString());
-    if (backoff == null) return false;
-    const currentTime = performance.now() + performance.timeOrigin;
-    const backOffDeadline = backoff.lastAttempt + backoff.delay;
-    return currentTime < backOffDeadline;
-  }
+  // NOT NEEDED
+  // protected hasBackoff(nodeId: NodeId): boolean {
+  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
+  //   if (backoff == null) return false;
+  //   const currentTime = performance.now() + performance.timeOrigin;
+  //   const backOffDeadline = backoff.lastAttempt + backoff.delay;
+  //   return currentTime < backOffDeadline;
+  // }
 
-  protected increaseBackoff(nodeId: NodeId): void {
-    const backoff = this.nodesBackoffMap.get(nodeId.toString());
-    const currentTime = performance.now() + performance.timeOrigin;
-    if (backoff == null) {
-      this.nodesBackoffMap.set(nodeId.toString(), {
-        lastAttempt: currentTime,
-        delay: this.backoffDefault,
-      });
-    } else {
-      this.nodesBackoffMap.set(nodeId.toString(), {
-        lastAttempt: currentTime,
-        delay: backoff.delay * this.backoffMultiplier,
-      });
-    }
-  }
+  // protected increaseBackoff(nodeId: NodeId): void {
+  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
+  //   const currentTime = performance.now() + performance.timeOrigin;
+  //   if (backoff == null) {
+  //     this.nodesBackoffMap.set(nodeId.toString(), {
+  //       lastAttempt: currentTime,
+  //       delay: this.backoffDefault,
+  //     });
+  //   } else {
+  //     this.nodesBackoffMap.set(nodeId.toString(), {
+  //       lastAttempt: currentTime,
+  //       delay: backoff.delay * this.backoffMultiplier,
+  //     });
+  //   }
+  // }
 
-  protected removeBackoff(nodeId: NodeId): void {
-    this.nodesBackoffMap.delete(nodeId.toString());
-  }
+  // protected removeBackoff(nodeId: NodeId): void {
+  //   this.nodesBackoffMap.delete(nodeId.toString());
+  // }
 
   /**
    * This attempts the NAT hole punch procedure. It will return a
