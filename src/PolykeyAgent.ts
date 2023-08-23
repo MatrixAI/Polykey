@@ -1,4 +1,4 @@
-import type { FileSystem, PromiseDeconstructed } from './types';
+import type { DeepPartial, FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { ConnectionData, TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
@@ -46,6 +46,47 @@ import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import { serverManifest as agentServerManifest } from './agent/handlers';
 
+/**
+ * Optional configuration for `PolykeyAgent`.
+ */
+type PolykeyAgentOptions = {
+  nodePath: string;
+  clientServiceHost: string;
+  clientServicePort: number;
+  agentServiceHost: string;
+  agentServicePort: number;
+  seedNodes: SeedNodes;
+  workers: number;
+  ipv6Only: boolean;
+  keys: {
+    recoveryCode: RecoveryCode;
+    privateKey: PrivateKey;
+    privateKeyPath: string;
+    passwordOpsLimit: PasswordOpsLimit;
+    passwordMemLimit: PasswordMemLimit;
+    strictMemoryLock: boolean;
+    certDuration: number;
+    certRenewLeadTime: number;
+  };
+  rpc: {
+    callTimeoutTime: number;
+    parserBufferSize: number;
+  };
+  client: {
+    connectTimoutTime: number;
+    keepAliveTimeoutTime: number;
+    keepAliveIntervalTime: number;
+  };
+  nodes: {
+    connectionIdleTimeoutTime: number;
+    connectionFindConcurrencyLimit: number;
+    connectionConnectTimeoutTime: number;
+    connectionKeepAliveTimeoutTime: number;
+    connectionKeepAliveIntervalTime: number;
+    connectionHolePunchIntervalTime: number;
+  };
+};
+
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyAgentRunning(),
@@ -64,17 +105,23 @@ class PolykeyAgent {
     readonly QUICServer: unique symbol;
   };
 
+  /**
+   * Create the Polykey Agent.
+   *
+   * All optional configuration is deep-merged with defaults.
+   *
+   * If any of the optional dependencies is injected, their lifecycle will not
+   * be managed by `PolykeyAgent`. Furthermore if you inject an optional
+   * dependency, make sure you are injecting all upstream transitive
+   * dependencies at the same time. For example if you inject `acl`, you must
+   * also inject `db`.
+   */
   public static async createPolykeyAgent({
     // Required parameters
     password,
-    // Optional configuration
-    nodePath = config.defaults.nodePath,
-    keyRingConfig = {},
-    certManagerConfig = {},
-    networkConfig = {},
-    nodeConnectionManagerConfig = {},
-    seedNodes = {},
-    workers,
+    // Options
+    options = {},
+    fresh = false,
     // Optional dependencies
     status,
     schema,
@@ -99,54 +146,9 @@ class PolykeyAgent {
     quicSocket,
     fs = require('fs'),
     logger = new Logger(this.name),
-    fresh = false,
   }: {
     password: string;
-    nodePath?: string;
-
-    // WHY IS THERE SO MANY CONFIGURATIONS???
-
-
-    keyRingConfig?: {
-      recoveryCode?: RecoveryCode;
-      privateKey?: PrivateKey;
-      privateKeyPath?: string;
-      passwordOpsLimit?: PasswordOpsLimit;
-      passwordMemLimit?: PasswordMemLimit;
-      strictMemoryLock?: boolean;
-    };
-    certManagerConfig?: {
-      certDuration?: number;
-    };
-    nodeConnectionManagerConfig?: {
-      connectionConnectTime?: number;
-      connectionTimeoutTime?: number;
-      initialClosestNodes?: number;
-      pingTimeoutTime?: number;
-      connectionHolePunchTimeoutTime?: number;
-      connectionHolePunchIntervalTime?: number;
-    };
-    networkConfig?: {
-      // Agent QUICSocket config
-      agentHost?: string;
-      agentPort?: number;
-      ipv6Only?: boolean;
-      agentKeepAliveIntervalTime?: number;
-      agentMaxIdleTimeout?: number;
-      // RPCServer for client service
-      clientHost?: string;
-      clientPort?: number;
-      // Websocket server config
-      maxIdleTimeout?: number;
-      pingIntervalTime?: number;
-      pingTimeoutTimeTime?: number;
-      // RPC config
-      clientParserBufferByteLimit?: number;
-      handlerTimeoutTime?: number;
-      handlerTimeoutGraceTime?: number;
-    };
-    seedNodes?: SeedNodes;
-    workers?: number;
+    options?: DeepPartial<PolykeyAgentOptions>;
     status?: Status;
     schema?: Schema;
     keyRing?: KeyRing;
@@ -176,27 +178,50 @@ class PolykeyAgent {
     const umask = 0o077;
     logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
     process.umask(umask);
-    if (nodePath == null) {
+    const optionsDefaulted = utils.mergeObjects(
+      options,
+      {
+        nodePath: config.defaultsUser.nodePath,
+        clientServiceHost: config.defaultsUser.clientServiceHost,
+        clientServicePort: config.defaultsUser.clientServicePort,
+        agentServiceHost: config.defaultsUser.agentServiceHost,
+        agentServicePort: config.defaultsUser.agentServicePort,
+        seedNodes: config.defaultsUser.seedNodes,
+        workers: config.defaultsUser.workers,
+        ipv6Only: config.defaultsUser.ipv6Only,
+        keys: {
+          certDuration: config.defaultsUser.certDuration,
+          certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
+        },
+        rpc: {
+          callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
+          parserBufferSize: config.defaultsSystem.rpcParserBufferSize,
+        },
+        client: {
+          connectTimoutTime: config.defaultsSystem.clientConnectTimeoutTime,
+          keepAliveTimeoutTime: config.defaultsSystem.clientKeepAliveTimeoutTime,
+          keepAliveIntervalTime: config.defaultsSystem.clientKeepAliveIntervalTime,
+        },
+        nodes: {
+          connectionIdleTimeoutTime: config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+          connectionFindConcurrencyLimit: config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
+          connectionConnectTimeoutTime: config.defaultsSystem.nodesConnectionConnectTimeoutTime,
+          connectionKeepAliveTimeoutTime: config.defaultsSystem.nodesConnectionKeepAliveTimeoutTime,
+          connectionKeepAliveIntervalTime: config.defaultsSystem.nodesConnectionKeepAliveIntervalTime,
+          connectionHolePunchIntervalTime: config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
+        },
+      },
+    );
+    // This can only happen if the caller didn't specify the node path and the
+    // automatic detection failed
+    if (optionsDefaulted.nodePath == null) {
       throw new errors.ErrorUtilsNodePath();
     }
-    logger.info(`Setting node path to ${nodePath}`);
-    const certManagerConfig_ = {
-      ...config.defaults.certManagerConfig,
-      ...utils.filterEmptyObject(certManagerConfig),
-    };
-    const nodeConnectionManagerConfig_ = {
-      ...config.defaults.nodeConnectionManagerConfig,
-      ...utils.filterEmptyObject(nodeConnectionManagerConfig),
-    };
-    const networkConfig_ = {
-      ...config.defaults.networkConfig,
-      ...utils.filterEmptyObject(networkConfig),
-    };
-
-    await utils.mkdirExists(fs, nodePath);
-    const statusPath = path.join(nodePath, config.paths.statusBase);
-    const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
-    const statePath = path.join(nodePath, config.paths.stateBase);
+    logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
+    await utils.mkdirExists(fs, optionsDefaulted.nodePath);
+    const statusPath = path.join(optionsDefaulted.nodePath, config.paths.statusBase);
+    const statusLockPath = path.join(optionsDefaulted.nodePath, config.paths.statusLockBase);
+    const statePath = path.join(optionsDefaulted.nodePath, config.paths.stateBase);
     const dbPath = path.join(statePath, config.paths.dbBase);
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
@@ -226,20 +251,22 @@ class PolykeyAgent {
       keyRing =
         keyRing ??
         (await KeyRing.createKeyRing({
-          fresh,
-          fs,
           keysPath,
+          passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+          passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+          strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
+          fs,
+          fresh,
           password,
-          ...keyRingConfig,
           logger: logger.getChild(KeyRing.name),
         }));
       // Remove your own node ID if provided as a seed node
       const nodeIdOwn = keyRing.getNodeId();
-      const nodeIdEncodedOwn = Object.keys(seedNodes).find((nodeIdEncoded) => {
+      const nodeIdEncodedOwn = Object.keys(optionsDefaulted.seedNodes).find((nodeIdEncoded) => {
         return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
       });
       if (nodeIdEncodedOwn != null) {
-        delete seedNodes[nodeIdEncodedOwn];
+        delete optionsDefaulted.seedNodes[nodeIdEncodedOwn];
       }
       db =
         db ??
@@ -277,14 +304,15 @@ class PolykeyAgent {
       certManager =
         certManager ??
         (await CertManager.createCertManager({
-          keyRing,
           db,
+          keyRing,
           taskManager,
+          certDuration: optionsDefaulted.keys.certDuration,
+          certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
           changeCallback: async (data) =>
             events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
           logger: logger.getChild(CertManager.name),
           fresh,
-          ...certManagerConfig_,
         }));
       sigchain =
         sigchain ??
@@ -453,8 +481,8 @@ class PolykeyAgent {
           fresh,
         }));
       // If a recovery code is provided then we reset any sessions in case the
-      //  password changed.
-      if (keyRingConfig.recoveryCode != null) await sessionManager.resetKey();
+      // password changed.
+      if (optionsDefaulted.keys.recoveryCode != null) await sessionManager.resetKey();
       if (rpcServerClient == null) {
         pkAgentProm = utils.promise();
         rpcServerClient = await RPCServer.createRPCServer({
@@ -546,7 +574,7 @@ class PolykeyAgent {
       throw e;
     }
     const pkAgent = new this({
-      nodePath,
+      nodePath: optionsDefaulted.nodePath,
       status,
       schema,
       keyRing,
@@ -576,7 +604,7 @@ class PolykeyAgent {
     await pkAgent.start({
       password,
       networkConfig,
-      workers,
+      workers: optionsDefaulted.workers,
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -971,3 +999,5 @@ class PolykeyAgent {
 }
 
 export default PolykeyAgent;
+
+export type { PolykeyAgentOptions };
