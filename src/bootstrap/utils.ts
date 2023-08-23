@@ -1,4 +1,4 @@
-import type { FileSystem } from '../types';
+import type { DeepPartial, FileSystem } from '../types';
 import type { RecoveryCode, Key, PrivateKey } from '../keys/types';
 import type { PasswordMemLimit, PasswordOpsLimit } from '../keys/types';
 import path from 'path';
@@ -23,26 +23,44 @@ import * as utils from '../utils';
 import * as keysUtils from '../keys/utils';
 import * as errors from '../errors';
 
+type BootstrapOptions = {
+  nodePath: string;
+  keys: {
+    recoveryCode: RecoveryCode;
+    privateKey: PrivateKey;
+    privateKeyPath: string;
+    passwordOpsLimit: PasswordOpsLimit;
+    passwordMemLimit: PasswordMemLimit;
+    strictMemoryLock: boolean;
+    certDuration: number;
+  };
+};
+
 /**
  * Bootstraps the Node Path
  */
 async function bootstrapState({
+  // Required parameters
   password,
-  nodePath = config.defaults.nodePath,
-  keyRingConfig = {},
+  // Optional configuration
+  // nodePath = config.defaults.nodePath,
+  // keyRingConfig = {},
+  options = {},
   fresh = false,
+  // Optional dependencies
   fs = require('fs'),
   logger = new Logger(bootstrapState.name),
 }: {
   password: string;
-  nodePath?: string;
-  keyRingConfig?: {
-    recoveryCode?: RecoveryCode;
-    privateKey?: PrivateKey;
-    privateKeyPath?: string;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-  };
+  options?: DeepPartial<BootstrapOptions>;
+  // nodePath?: string;
+  // keyRingConfig?: {
+  //   recoveryCode?: RecoveryCode;
+  //   privateKey?: PrivateKey;
+  //   privateKeyPath?: string;
+  //   passwordOpsLimit?: PasswordOpsLimit;
+  //   passwordMemLimit?: PasswordMemLimit;
+  // };
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
@@ -220,3 +238,5 @@ async function bootstrapState({
 }
 
 export { bootstrapState };
+
+export type { BootstrapOptions };

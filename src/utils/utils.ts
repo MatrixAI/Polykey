@@ -1,4 +1,6 @@
 import type {
+  POJO,
+  DeepMerge,
   FileSystem,
   Timer,
   PromiseDeconstructed,
@@ -116,6 +118,27 @@ function filterEmptyObject(o) {
       .filter(([_, v]) => v !== undefined)
       .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]),
   );
+}
+
+/**
+ * Merges an input object to a default object.
+ */
+function mergeObjects(
+  object1: POJO,
+  object2: POJO
+): POJO {
+  const keys = new Set([...Object.keys(object2), ...Object.keys(object1)]);
+  const mergedObject = {};
+  for (const key of keys) {
+    if (isObject(object1[key]) && isObject(object2[key])) {
+      mergedObject[key] = mergeObjects(object1[key], object2[key]);
+    } else if (object1[key] !== undefined) {
+      mergedObject[key] = object1[key];
+    } else {
+      mergedObject[key] = object2[key];
+    }
+  }
+  return mergedObject;
 }
 
 function getUnixtime(date: Date = new Date()) {
@@ -458,6 +481,7 @@ export {
   isObject,
   isEmptyObject,
   filterEmptyObject,
+  mergeObjects,
   getUnixtime,
   poll,
   promisify,
