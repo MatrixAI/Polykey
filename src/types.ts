@@ -6,6 +6,12 @@ import type fs from 'fs';
  */
 type POJO = { [key: string]: any };
 
+
+
+
+
+
+
 /**
  * Strict JSON values.
  * These are the only types that JSON can represent.
@@ -64,6 +70,31 @@ interface ToString {
  * Recursive readonly
  */
 type DeepReadonly<T> = { readonly [K in keyof T]: DeepReadonly<T[K]> };
+
+/**
+ * Recursive partial
+ */
+type DeepPartial<T> = T extends object ? {
+  [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
+
+/**
+ * Recursive merge, preferring A, then B
+ */
+type DeepMerge<A, B> = {
+  [K in keyof A | keyof B]: K extends keyof A & keyof B
+    ? Merge<A[K], B[K]>
+    : K extends keyof A
+    ? A[K]
+    : K extends keyof B
+    ? B[K]
+    : undefined;
+};
+
+type Merge<A, B> =
+  A extends undefined
+    ? Exclude<A, undefined> | B
+    : A | B;
 
 /**
  * Wrap a type to be reference counted
@@ -169,6 +200,8 @@ export type {
   InitialParameters,
   ToString,
   DeepReadonly,
+  DeepPartial,
+  DeepMerge,
   Ref,
   Timer,
   PromiseDeconstructed,

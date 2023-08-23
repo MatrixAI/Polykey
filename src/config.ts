@@ -144,7 +144,7 @@ const config = {
      * Therefore it is expected that specific clients calls and server handlers
      * will override this timeout to cater to their specific circumstances.
      */
-    rpcTimeoutTime: 15_000, // 15 seconds
+    rpcCallTimeoutTime: 15_000, // 15 seconds
     /**
      * Buffer size of the JSON RPC parser.
      *
@@ -161,7 +161,7 @@ const config = {
      * This bounds the amount of time that the client transport will wait to
      * establish a connection to the client service of a Polykey Agent.
      */
-    clientServiceConnectTimeoutTime: 15_000, // 15 seconds
+    clientConnectTimeoutTime: 15_000, // 15 seconds
     /**
      * Timeout for the keep alive of the transport connection to the client
      * service.
@@ -173,7 +173,7 @@ const config = {
      *
      * This should always be greater than the connect timeout.
      */
-    clientServiceKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+    clientKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
     /**
      * Interval for the keep alive of the transport connection to the client
      * service.
@@ -183,7 +183,7 @@ const config = {
      * necessary, possibly due to other data being sent or received on the
      * connection.
      */
-    clientServiceKeepAliveIntervalTime: 10_000, // 10 seconds
+    clientKeepAliveIntervalTime: 10_000, // 10 seconds
     /**
      * Concurrency pool limit when finding other nodes.
      *
@@ -253,17 +253,7 @@ const config = {
    */
   defaultsUser: {
     nodePath: getDefaultNodePath(),
-    rootCertDuration: 31536000,
-    /**
-     * If using dual stack `::`, then this forces only IPv6 bindings.
-     */
-    ipv6Only: false,
-    /**
-     * Agent host defaults to `::` dual stack.
-     * This is because the agent service is supposed to be public.
-     */
-    agentServiceHost: '::',
-    agentServicePort: 0,
+    certDuration: 31536000,
     /**
      * Client host defaults to `localhost`.
      * This will depend on the OS configuration.
@@ -272,6 +262,30 @@ const config = {
      */
     clientServiceHost: 'localhost',
     clientServicePort: 0,
+    /**
+     * Agent host defaults to `::` dual stack.
+     * This is because the agent service is supposed to be public.
+     */
+    agentServiceHost: '::',
+    agentServicePort: 0,
+    /**
+     * Seed nodes.
+     *
+     * This is defaulted to `{}` at the object-level.
+     *
+     * However Polykey-CLI will use use the `network` to fill this.
+     */
+    seedNodes: {},
+    /**
+     * Number of workers to spin up by default.
+     *
+     * Using `undefined` means all cores. Using `0` means no workers at all.
+     */
+    workers: undefined,
+    /**
+     * If using dual stack `::`, then this forces only IPv6 bindings.
+     */
+    ipv6Only: false,
   },
 };
 
