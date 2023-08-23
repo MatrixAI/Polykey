@@ -128,14 +128,12 @@ class NodeConnectionManager {
     crypto,
     tlsConfig,
     seedNodes = {},
-    initialClosestNodes = 3,
-    connectionConnectTime = 2_000,
-    connectionTimeoutTime = 60_000,
-    pingTimeoutTime = 2_000,
-    connectionHolePunchTimeoutTime = 4_000,
-    connectionHolePunchIntervalTime = 250,
+    connectionFindConcurrencyLimit = 3,
+    connectionIdleTimeoutTime = 60_000,
+    connectionConnectTimeoutTime = 15_000,
+    connectionKeepAliveTimeoutTime = 30_000,
     connectionKeepAliveIntervalTime = 10_000,
-    connectionMaxIdleTimeout = 60_000,
+    connectionHolePunchIntervalTime = 1_000,
     logger,
   }: {
     keyRing: KeyRing;
@@ -144,14 +142,12 @@ class NodeConnectionManager {
     crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
-    initialClosestNodes?: number;
-    connectionConnectTime?: number;
-    connectionTimeoutTime?: number;
-    pingTimeoutTime?: number;
-    connectionHolePunchTimeoutTime?: number;
-    connectionHolePunchIntervalTime?: number;
+    connectionFindConcurrencyLimit?: number;
+    connectionIdleTimeoutTime?: number;
+    connectionConnectTimeoutTime?: number;
+    connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
-    connectionMaxIdleTimeout?: number;
+    connectionHolePunchIntervalTime?: number;
     logger: Logger;
   }) {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
@@ -163,6 +159,7 @@ class NodeConnectionManager {
     const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
+
     this.initialClosestNodes = initialClosestNodes;
     this.connectionConnectTime = connectionConnectTime;
     this.connectionTimeoutTime = connectionTimeoutTime;

@@ -73,7 +73,7 @@ type PolykeyAgentOptions = {
     parserBufferSize: number;
   };
   client: {
-    connectTimoutTime: number;
+    connectTimeoutTime: number;
     keepAliveTimeoutTime: number;
     keepAliveIntervalTime: number;
   };
@@ -410,17 +410,18 @@ class PolykeyAgent {
       nodeConnectionManager =
         nodeConnectionManager ??
         new NodeConnectionManager({
-          handleStream: () => {},
           keyRing,
           nodeGraph,
-          seedNodes,
           quicSocket,
-          ...nodeConnectionManagerConfig_,
-          connectionKeepAliveIntervalTime:
-            networkConfig_.agentKeepAliveIntervalTime,
-          connectionMaxIdleTimeout: networkConfig_.agentMaxIdleTimeout,
-          tlsConfig,
           crypto,
+          tlsConfig,
+          seedNodes: optionsDefaulted.seedNodes,
+          connectionFindConcurrencyLimit: optionsDefaulted.nodes.connectionFindConcurrencyLimit,
+          connectionIdleTimeoutTime: optionsDefaulted.nodes.connectionIdleTimeoutTime,
+          connectionConnectTimeoutTime: optionsDefaulted.nodes.connectionConnectTimeoutTime,
+          connectionKeepAliveTimeoutTime: optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
+          connectionKeepAliveIntervalTime: optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
+          connectionHolePunchIntervalTime: optionsDefaulted.nodes.connectionHolePunchIntervalTime,
           logger: logger.getChild(NodeConnectionManager.name),
         });
       nodeManager =
