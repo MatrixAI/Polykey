@@ -1,6 +1,5 @@
 import type {
   POJO,
-  DeepMerge,
   FileSystem,
   Timer,
   PromiseDeconstructed,
