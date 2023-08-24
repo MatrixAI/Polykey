@@ -143,7 +143,6 @@ class PolykeyAgent {
     rpcServerClient,
     webSocketServerClient,
     rpcServerAgent,
-    quicSocket,
     fs = require('fs'),
     logger = new Logger(this.name),
   }: {
@@ -169,7 +168,6 @@ class PolykeyAgent {
     rpcServerClient?: RPCServer;
     webSocketServerClient?: WebSocketServer;
     rpcServerAgent?: RPCServer;
-    quicSocket?: QUICSocket;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -356,15 +354,15 @@ class PolykeyAgent {
           keyRing,
           logger: logger.getChild(NodeGraph.name),
         }));
-      const resolveHostname = (host) => {
-        return networkUtils.resolveHostname(host)[0] ?? '';
-      };
-      quicSocket =
-        quicSocket ??
-        new QUICSocket({
-          logger: logger.getChild(QUICSocket.name),
-          resolveHostname,
-        });
+      // const resolveHostname = (host) => {
+      //   return networkUtils.resolveHostname(host)[0] ?? '';
+      // };
+      // quicSocket =
+      //   quicSocket ??
+      //   new QUICSocket({
+      //     logger: logger.getChild(QUICSocket.name),
+      //     resolveHostname,
+      //   });
       const crypto: ServerCrypto & ClientCrypto = {
         randomBytes: async (data: ArrayBuffer) => {
           const randomBytes = keysUtils.getRandomBytes(data.byteLength);
@@ -407,7 +405,6 @@ class PolykeyAgent {
         new NodeConnectionManager({
           keyRing,
           nodeGraph,
-          quicSocket,
           crypto,
           tlsConfig,
           seedNodes: optionsDefaulted.seedNodes,
@@ -549,7 +546,7 @@ class PolykeyAgent {
       }
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await quicSocket?.stop({ force: true });
+      // await quicSocket?.stop({ force: true });
       await rpcServerAgent?.destroy(true);
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
@@ -591,7 +588,7 @@ class PolykeyAgent {
       rpcServerClient,
       webSocketServerClient,
       rpcServerAgent,
-      quicSocket,
+      // quicSocket,
       events,
       fs,
       logger,
@@ -631,7 +628,7 @@ class PolykeyAgent {
   public readonly rpcServerClient: RPCServer;
   public readonly webSocketServerClient: WebSocketServer;
   public readonly rpcServerAgent: RPCServer;
-  public readonly quicSocket: QUICSocket;
+  // public readonly quicSocket: QUICSocket;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   constructor({
@@ -656,7 +653,7 @@ class PolykeyAgent {
     rpcServerClient,
     webSocketServerClient,
     rpcServerAgent,
-    quicSocket,
+    // quicSocket,
     events,
     fs,
     logger,
@@ -682,7 +679,7 @@ class PolykeyAgent {
     rpcServerClient: RPCServer;
     webSocketServerClient: WebSocketServer;
     rpcServerAgent: RPCServer;
-    quicSocket: QUICSocket;
+    // quicSocket: QUICSocket;
     events: EventBus;
     fs: FileSystem;
     logger: Logger;
@@ -709,7 +706,7 @@ class PolykeyAgent {
     this.rpcServerClient = rpcServerClient;
     this.webSocketServerClient = webSocketServerClient;
     this.rpcServerAgent = rpcServerAgent;
-    this.quicSocket = quicSocket;
+    // this.quicSocket = quicSocket;
     this.events = events;
     this.fs = fs;
   }
@@ -840,11 +837,11 @@ class PolykeyAgent {
           this.rpcServerClient.handleStream(streamPair),
       });
       // Agent server
-      await this.quicSocket.start({
-        host: _networkConfig.agentHost,
-        port: _networkConfig.agentPort,
-        ipv6Only: _networkConfig.ipv6Only,
-      });
+      // await this.quicSocket.start({
+      //   host: _networkConfig.agentHost,
+      //   port: _networkConfig.agentPort,
+      //   ipv6Only: _networkConfig.ipv6Only,
+      // });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
         nodeManager: this.nodeManager,

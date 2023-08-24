@@ -1,4 +1,4 @@
-import type { QUICConnection, QUICSocket } from '@matrixai/quic';
+import { QUICConnection, QUICSocket } from '@matrixai/quic';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { CertificatePEM } from '../keys/types';
@@ -90,7 +90,9 @@ class NodeConnectionManager {
   protected tlsConfig: TLSConfig;
   protected seedNodes: SeedNodes;
 
-  // NodeManager has to be passed in during start to allow co-dependency
+  /**
+   * NodeManager has to be passed in during start to allow co-dependency
+   */
   protected nodeManager: NodeManager | undefined;
 
   /**
@@ -107,17 +109,19 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
+  // APPARENLTLY this is back off for find
+  // still don't understand why you need this
   /**
    * Tracks the backoff period for offline nodes
    */
-  protected nodesBackoffMap: Map<
-    string,
-    { lastAttempt: number; delay: number }
-  > = new Map();
-
+  // protected nodesBackoffMap: Map<
+  //   string,
+  //   { lastAttempt: number; delay: number }
+  // > = new Map();
   // protected backoffDefault: number = 1000 * 60 * 5; // 5 min
   // protected backoffMultiplier: number = 2; // Doubles every failure
 
+  // Seems it's better to use `handleStream?: ...` if it could be `undefined`
   protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
     () => never();
 
@@ -128,10 +132,11 @@ class NodeConnectionManager {
     await this.handleConnectionReverse(quicConnection);
   };
 
+
+
   public constructor({
     keyRing,
     nodeGraph,
-    quicSocket,
     crypto,
     tlsConfig,
     seedNodes = {},
@@ -145,7 +150,6 @@ class NodeConnectionManager {
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
-    quicSocket: QUICSocket;
     crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
@@ -163,7 +167,6 @@ class NodeConnectionManager {
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
-    this.quicSocket = quicSocket;
     this.tlsConfig = tlsConfig;
     this.crypto = crypto;
     this.seedNodes = seedNodes;
@@ -174,9 +177,22 @@ class NodeConnectionManager {
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     // Setting up QUICServer
-    const resolveHostname = (host) => {
-      return networkUtils.resolveHostname(host)[0] ?? '';
-    };
+
+    // We don't need this!
+    // const resolveHostname = (host) => {
+    //   return networkUtils.resolveHostname(host)[0] ?? '';
+    // };
+
+    // Are we going to construct this here?
+    // And if we are doing this?
+    // Why is it not dependency injected?
+    // What does this even mean?
+    // Does QUIC need to be
+
+    this.quicSocket = new QUICSocket({
+      logger: logger.getChild(QUICSocket.name),
+    });
+
     this.quicServer = new QUICServer({
       config: {
         maxIdleTimeout: connectionKeepAliveTimeoutTime,
@@ -190,8 +206,7 @@ class NodeConnectionManager {
         key: keysUtils.generateKey(),
         ops: crypto,
       },
-      socket: quicSocket,
-      resolveHostname,
+      socket: this.quicSocket,
       reasonToCode: utils.reasonToCode,
       codeToReason: utils.codeToReason,
       verifyCallback: networkUtils.verifyClientCertificateChain,
@@ -200,15 +215,38 @@ class NodeConnectionManager {
     });
   }
 
+  /**
+   * Start the node connection manager.
+   * This will manage connections to other nodes.
+   *
+   * The `nodeManager` is a "mutual" dependency.
+   * The node manager depends on the NCM.
+   * The NCM depends on the node manager.
+   * If they are that mutual, then they should be combined.
+   * Or the common thing has to be factored out.
+   */
   public async start({
+    host = '::' as Host,
+    port = 0 as Port,
+    ipv6Only = false,
     nodeManager,
     handleStream,
   }: {
     nodeManager: NodeManager;
     handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
+    host?: Host;
+    port?: Port;
+    ipv6Only?: boolean;
   }) {
     this.logger.info(`Starting ${this.constructor.name}`);
     this.nodeManager = nodeManager;
+
+    await this.quicSocket.start({
+      host,
+      port,
+      ipv6Only,
+    });
+
     // Adding seed nodes
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -1387,26 +1425,6 @@ class NodeConnectionManager {
     return results;
   }
 
-  // NOT NECESSARY
-  // public updateConnectionConfig({
-  //   connectionKeepAliveIntervalTime,
-  //   connectionMaxIdleTimeout,
-  // }: {
-  //   connectionKeepAliveIntervalTime?: number;
-  //   connectionMaxIdleTimeout?: number;
-  // }) {
-  //   if (connectionKeepAliveIntervalTime != null) {
-  //     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-  //   }
-  //   if (connectionMaxIdleTimeout != null) {
-  //     this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
-  //   }
-  //   this.quicServer.updateConfig({
-  //     keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-  //     maxIdleTimeout: connectionMaxIdleTimeout,
-  //   });
-  // }
-
   public updateTlsConfig(tlsConfig: TLSConfig) {
     this.tlsConfig = tlsConfig;
     this.quicServer.updateConfig({
@@ -1415,33 +1433,34 @@ class NodeConnectionManager {
     });
   }
 
-  protected hasBackoff(nodeId: NodeId): boolean {
-    const backoff = this.nodesBackoffMap.get(nodeId.toString());
-    if (backoff == null) return false;
-    const currentTime = performance.now() + performance.timeOrigin;
-    const backOffDeadline = backoff.lastAttempt + backoff.delay;
-    return currentTime < backOffDeadline;
-  }
+  // NOT NEEDED
+  // protected hasBackoff(nodeId: NodeId): boolean {
+  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
+  //   if (backoff == null) return false;
+  //   const currentTime = performance.now() + performance.timeOrigin;
+  //   const backOffDeadline = backoff.lastAttempt + backoff.delay;
+  //   return currentTime < backOffDeadline;
+  // }
 
-  protected increaseBackoff(nodeId: NodeId): void {
-    const backoff = this.nodesBackoffMap.get(nodeId.toString());
-    const currentTime = performance.now() + performance.timeOrigin;
-    if (backoff == null) {
-      this.nodesBackoffMap.set(nodeId.toString(), {
-        lastAttempt: currentTime,
-        delay: this.backoffDefault,
-      });
-    } else {
-      this.nodesBackoffMap.set(nodeId.toString(), {
-        lastAttempt: currentTime,
-        delay: backoff.delay * this.backoffMultiplier,
-      });
-    }
-  }
+  // protected increaseBackoff(nodeId: NodeId): void {
+  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
+  //   const currentTime = performance.now() + performance.timeOrigin;
+  //   if (backoff == null) {
+  //     this.nodesBackoffMap.set(nodeId.toString(), {
+  //       lastAttempt: currentTime,
+  //       delay: this.backoffDefault,
+  //     });
+  //   } else {
+  //     this.nodesBackoffMap.set(nodeId.toString(), {
+  //       lastAttempt: currentTime,
+  //       delay: backoff.delay * this.backoffMultiplier,
+  //     });
+  //   }
+  // }
 
-  protected removeBackoff(nodeId: NodeId): void {
-    this.nodesBackoffMap.delete(nodeId.toString());
-  }
+  // protected removeBackoff(nodeId: NodeId): void {
+  //   this.nodesBackoffMap.delete(nodeId.toString());
+  // }
 
   /**
    * This attempts the NAT hole punch procedure. It will return a
