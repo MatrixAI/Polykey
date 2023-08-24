@@ -51,46 +51,48 @@ interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager {
   /**
-   * Time used to establish `NodeConnection`
-   */
-  public readonly connectionConnectTime: number;
-
-  /**
-   * Time to live for `NodeConnection`
-   */
-  public readonly connectionTimeoutTime: number;
-
-  /**
-   * Default timeout for pinging nodes
-   */
-  public readonly pingTimeoutTime: number;
-
-  /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
    */
-  public readonly initialClosestNodes: number;
+  public readonly connectionFindConcurrencyLimit: number;
 
   /**
-   * Default timeout for reverse hole punching.
+   * Time to wait to garbage collect un-used node connections.
    */
-  public readonly connectionHolePunchTimeoutTime: number;
+  public readonly connectionIdleTimeoutTime: number;
+
+  /**
+   * Time used to establish `NodeConnection`
+   */
+  public readonly connectionConnectTimeoutTime: number;
+
+  /**
+   * Time to keep alive node connection.
+   */
+  public readonly connectionKeepAliveTimeoutTime: number;
+
+  /**
+   * Time interval for sending keep alive messages.
+   */
+  public readonly connectionKeepAliveIntervalTime: number;
 
   /**
    * Initial delay between punch packets, delay doubles each attempt.
    */
   public readonly connectionHolePunchIntervalTime: number;
 
-  protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
-    () => never() as (stream: RPCStream<Uint8Array, Uint8Array>) => void;
   protected logger: Logger;
-  protected nodeGraph: NodeGraph;
   protected keyRing: KeyRing;
+  protected nodeGraph: NodeGraph;
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
+  protected crypto: ServerCrypto & ClientCrypto;
+  protected tlsConfig: TLSConfig;
+  protected seedNodes: SeedNodes;
+
   // NodeManager has to be passed in during start to allow co-dependency
   protected nodeManager: NodeManager | undefined;
-  protected seedNodes: SeedNodes;
+
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
    * not exist, no entry for n will exist in the map. Alternatively, if a
@@ -102,18 +104,23 @@ class NodeConnectionManager {
    * NodeIds can't be used to properly retrieve a value from the map.
    */
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
+
   protected connectionLocks: LockBox<Lock> = new LockBox();
-  // Tracks the backoff period for offline nodes
+
+  /**
+   * Tracks the backoff period for offline nodes
+   */
   protected nodesBackoffMap: Map<
     string,
     { lastAttempt: number; delay: number }
   > = new Map();
-  protected backoffDefault: number = 1000 * 60 * 5; // 5 min
-  protected backoffMultiplier: number = 2; // Doubles every failure
-  protected tlsConfig: TLSConfig;
-  protected connectionKeepAliveIntervalTime: number;
-  protected connectionMaxIdleTimeout: number;
-  protected crypto: ServerCrypto & ClientCrypto;
+
+  // protected backoffDefault: number = 1000 * 60 * 5; // 5 min
+  // protected backoffMultiplier: number = 2; // Doubles every failure
+
+  protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
+    () => never();
+
   protected serverConnectionHandler = async (
     connectionEvent: QuicEvents.QUICServerConnectionEvent,
   ) => {
@@ -150,32 +157,30 @@ class NodeConnectionManager {
     connectionHolePunchIntervalTime?: number;
     logger: Logger;
   }) {
+    // Remove your own node ID if provided as a seed node
+    const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
+    delete seedNodes[nodeIdEncodedOwn];
     this.logger = logger ?? new Logger(NodeConnectionManager.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
     this.quicSocket = quicSocket;
     this.tlsConfig = tlsConfig;
     this.crypto = crypto;
-    const localNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    delete seedNodes[localNodeIdEncoded];
     this.seedNodes = seedNodes;
-
-    this.initialClosestNodes = initialClosestNodes;
-    this.connectionConnectTime = connectionConnectTime;
-    this.connectionTimeoutTime = connectionTimeoutTime;
-    this.connectionHolePunchTimeoutTime = connectionHolePunchTimeoutTime;
-    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
-    this.pingTimeoutTime = pingTimeoutTime;
+    this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
+    this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
+    this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
+    this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-    this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
+    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     // Setting up QUICServer
     const resolveHostname = (host) => {
       return networkUtils.resolveHostname(host)[0] ?? '';
     };
     this.quicServer = new QUICServer({
       config: {
+        maxIdleTimeout: connectionKeepAliveTimeoutTime,
         keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-        maxIdleTimeout: connectionMaxIdleTimeout,
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
@@ -185,12 +190,13 @@ class NodeConnectionManager {
         key: keysUtils.generateKey(),
         ops: crypto,
       },
-      verifyCallback: networkUtils.verifyClientCertificateChain,
-      logger: logger.getChild(QUICServer.name + 'Agent'),
       socket: quicSocket,
       resolveHostname,
       reasonToCode: utils.reasonToCode,
       codeToReason: utils.codeToReason,
+      verifyCallback: networkUtils.verifyClientCertificateChain,
+      minIdleTimeout: connectionConnectTimeoutTime,
+      logger: logger.getChild(QUICServer.name),
     });
   }
 
@@ -1381,24 +1387,25 @@ class NodeConnectionManager {
     return results;
   }
 
-  public updateConnectionConfig({
-    connectionKeepAliveIntervalTime,
-    connectionMaxIdleTimeout,
-  }: {
-    connectionKeepAliveIntervalTime?: number;
-    connectionMaxIdleTimeout?: number;
-  }) {
-    if (connectionKeepAliveIntervalTime != null) {
-      this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-    }
-    if (connectionMaxIdleTimeout != null) {
-      this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
-    }
-    this.quicServer.updateConfig({
-      keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-      maxIdleTimeout: connectionMaxIdleTimeout,
-    });
-  }
+  // NOT NECESSARY
+  // public updateConnectionConfig({
+  //   connectionKeepAliveIntervalTime,
+  //   connectionMaxIdleTimeout,
+  // }: {
+  //   connectionKeepAliveIntervalTime?: number;
+  //   connectionMaxIdleTimeout?: number;
+  // }) {
+  //   if (connectionKeepAliveIntervalTime != null) {
+  //     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
+  //   }
+  //   if (connectionMaxIdleTimeout != null) {
+  //     this.connectionMaxIdleTimeout = connectionMaxIdleTimeout;
+  //   }
+  //   this.quicServer.updateConfig({
+  //     keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+  //     maxIdleTimeout: connectionMaxIdleTimeout,
+  //   });
+  // }
 
   public updateTlsConfig(tlsConfig: TLSConfig) {
     this.tlsConfig = tlsConfig;

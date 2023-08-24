@@ -261,13 +261,8 @@ class PolykeyAgent {
           logger: logger.getChild(KeyRing.name),
         }));
       // Remove your own node ID if provided as a seed node
-      const nodeIdOwn = keyRing.getNodeId();
-      const nodeIdEncodedOwn = Object.keys(optionsDefaulted.seedNodes).find((nodeIdEncoded) => {
-        return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
-      });
-      if (nodeIdEncodedOwn != null) {
-        delete optionsDefaulted.seedNodes[nodeIdEncodedOwn];
-      }
+      const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
+      delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
       db =
         db ??
         (await DB.createDB({
