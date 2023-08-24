@@ -594,9 +594,12 @@ class PolykeyAgent {
       logger,
     });
     pkAgentProm?.resolveP(pkAgent);
+
     await pkAgent.start({
       password,
-      networkConfig,
+      host,
+      port
+      // networkConfig,
       workers: optionsDefaulted.workers,
       fresh,
     });
@@ -713,12 +716,12 @@ class PolykeyAgent {
 
   public async start({
     password,
-    networkConfig = {},
+    options,
     workers,
     fresh = false,
   }: {
     password: string;
-    networkConfig?: NetworkConfig;
+    options,
     workers?: number;
     fresh?: boolean;
   }) {
@@ -844,6 +847,7 @@ class PolykeyAgent {
       // });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
+        host: option
         nodeManager: this.nodeManager,
         handleStream: (stream) => this.rpcServerAgent.handleStream(stream),
       });
