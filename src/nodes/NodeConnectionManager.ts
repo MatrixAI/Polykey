@@ -4,9 +4,9 @@ import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type {
   ClientCrypto,
-  ServerCrypto,
   events as quicEvents
 } from '@matrixai/quic';
+import type NodeGraph from './NodeGraph';
 import type {
   NodeAddress,
   NodeData,
@@ -15,7 +15,7 @@ import type {
   SeedNodes,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
-import type { CertificatePEM } from '../keys/types';
+import type { Key, CertificatePEM } from '../keys/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
@@ -35,14 +35,13 @@ import {
 } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 
+
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
-
-// These 2 makes no sense
 import * as utils from '../utils';
 
 type AgentClientManifest = typeof agentClientManifest;
@@ -53,6 +52,28 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
+// Backoff is intended for connections
+// If you want to prevent this, you should use a cache or locks
+/**
+ * Tracks the backoff period for offline nodes
+ */
+// protected nodesBackoffMap: Map<
+//   string,
+//   { lastAttempt: number; delay: number }
+// > = new Map();
+// protected backoffDefault: number = 1000 * 60 * 5; // 5 min
+// protected backoffMultiplier: number = 2; // Doubles every failure
+// Seems it's better to use `handleStream?: ...` if it could be `undefined`
+
+/**
+ * NodeConnectionManager is a server that manages all node connections.
+ * It manages both initiated and received connections
+ *
+ * It's an event target that emits events for new connections.
+ *
+ * Events:
+ * - connection
+ */
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
 class NodeConnectionManager extends EventTarget {
@@ -88,18 +109,16 @@ class NodeConnectionManager extends EventTarget {
   public readonly connectionHolePunchIntervalTime: number;
 
   protected logger: Logger;
-
-  protected crypto: ServerCrypto & ClientCrypto;
-
-  protected seedNodes: SeedNodes;
-  protected tlsConfig: TLSConfig;
-
-
   protected keyRing: KeyRing;
   protected nodeGraph: NodeGraph;
+  protected tlsConfig: TLSConfig;
+  protected seedNodes: SeedNodes;
+
 
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
+
+  protected quicClientCrypto: ClientCrypto;
 
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -115,19 +134,6 @@ class NodeConnectionManager extends EventTarget {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
-  // APPARENLTLY this is back off for find
-  // still don't understand why you need this
-  /**
-   * Tracks the backoff period for offline nodes
-   */
-  // protected nodesBackoffMap: Map<
-  //   string,
-  //   { lastAttempt: number; delay: number }
-  // > = new Map();
-  // protected backoffDefault: number = 1000 * 60 * 5; // 5 min
-  // protected backoffMultiplier: number = 2; // Doubles every failure
-
-  // Seems it's better to use `handleStream?: ...` if it could be `undefined`
 
 
   // protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
@@ -157,7 +163,6 @@ class NodeConnectionManager extends EventTarget {
   public constructor({
     keyRing,
     nodeGraph,
-    crypto,
     tlsConfig,
     seedNodes = {},
     connectionFindConcurrencyLimit = 3,
@@ -170,7 +175,6 @@ class NodeConnectionManager extends EventTarget {
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
-    crypto: ServerCrypto & ClientCrypto;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
     connectionFindConcurrencyLimit?: number;
@@ -181,6 +185,8 @@ class NodeConnectionManager extends EventTarget {
     connectionHolePunchIntervalTime?: number;
     logger: Logger;
   }) {
+    super();
+
     // Remove your own node ID if provided as a seed node
     const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
     delete seedNodes[nodeIdEncodedOwn];
@@ -188,7 +194,7 @@ class NodeConnectionManager extends EventTarget {
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
     this.tlsConfig = tlsConfig;
-    this.crypto = crypto;
+
     this.seedNodes = seedNodes;
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
     this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
@@ -196,24 +202,42 @@ class NodeConnectionManager extends EventTarget {
     this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
-    // Setting up QUICServer
 
-    // We don't need this!
-    // const resolveHostname = (host) => {
-    //   return networkUtils.resolveHostname(host)[0] ?? '';
-    // };
-
-    // Are we going to construct this here?
-    // And if we are doing this?
-    // Why is it not dependency injected?
-    // What does this even mean?
-    // Does QUIC need to be
-
-    this.quicSocket = new QUICSocket({
+    const quicClientCrypto = {
+      async randomBytes(data: ArrayBuffer): Promise<void> {
+        const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+        randomBytes.copy(utils.bufferWrap(data));
+      }
+    };
+    // Note that all buffers allocated below is using `allocUnsafeSlow`.
+    // Which ensures that the underlying `ArrayBuffer` is not shared.
+    // Also all node buffers satisfy the `ArrayBuffer` interface.
+    const quicServerCrypto = {
+      key: keysUtils.generateKey(),
+      ops: {
+        async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
+          return keysUtils.macWithKey(
+            utils.bufferWrap(key) as Key,
+            utils.bufferWrap(data)
+          );
+        },
+        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer): Promise<boolean> {
+          return keysUtils.authWithKey(
+            utils.bufferWrap(key) as Key,
+            utils.bufferWrap(data),
+            utils.bufferWrap(sig)
+          );
+        }
+      },
+    };
+    const quicSocket = new QUICSocket({
       logger: logger.getChild(QUICSocket.name),
     });
-
-    this.quicServer = new QUICServer({
+    // By the time we get to using QUIC server, all hostnames would have been
+    // resolved, we would not resolve hostnames inside the QUIC server.
+    // This is because node connections require special hostname resolution
+    // procedures.
+    const quicServer = new QUICServer({
       config: {
         maxIdleTimeout: connectionKeepAliveTimeoutTime,
         keepAliveIntervalTime: connectionKeepAliveIntervalTime,
@@ -222,17 +246,27 @@ class NodeConnectionManager extends EventTarget {
         verifyPeer: true,
         verifyAllowFail: true,
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
-      socket: this.quicSocket,
-      reasonToCode: utils.reasonToCode,
-      codeToReason: utils.codeToReason,
+      crypto: quicServerCrypto,
+      socket: quicSocket,
+      reasonToCode: nodesUtils.reasonToCode,
+      codeToReason: nodesUtils.codeToReason,
       verifyCallback: networkUtils.verifyClientCertificateChain,
       minIdleTimeout: connectionConnectTimeoutTime,
       logger: logger.getChild(QUICServer.name),
     });
+    this.quicClientCrypto = quicClientCrypto;
+    this.quicSocket = quicSocket;
+    this.quicServer = quicServer;
+  }
+
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public get host(): Host {
+    return this.quicSocket.host as Host;
+  }
+
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public get port(): Port {
+    return this.quicSocket.port as Port;
   }
 
   /**
