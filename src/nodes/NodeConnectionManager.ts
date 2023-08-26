@@ -1,10 +1,12 @@
-import { QUICConnection, QUICSocket } from '@matrixai/quic';
+import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
-import type { ContextTimed } from '@matrixai/contexts';
-import type { CertificatePEM } from '../keys/types';
-import type KeyRing from '../keys/KeyRing';
-import type { Host, Hostname, Port } from '../network/types';
-import type NodeGraph from './NodeGraph';
+import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type {
+  ClientCrypto,
+  ServerCrypto,
+  events as quicEvents
+} from '@matrixai/quic';
 import type {
   NodeAddress,
   NodeData,
@@ -12,32 +14,36 @@ import type {
   NodeIdString,
   SeedNodes,
 } from './types';
-import type NodeManager from './NodeManager';
-import type { LockRequest } from '@matrixai/async-locks/dist/types';
-import type { HolePunchRelayMessage } from '../agent/handlers/types';
-import type { ClientCrypto } from '@matrixai/quic';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
+import type KeyRing from '../keys/KeyRing';
+import type { CertificatePEM } from '../keys/types';
+import type { Host, Hostname, Port } from '../network/types';
 import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
-import type { ServerCrypto, events as QuicEvents } from '@matrixai/quic';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import { withF } from '@matrixai/resources';
+import type { HolePunchRelayMessage } from '../agent/handlers/types';
+
 import Logger from '@matrixai/logger';
+import { withF } from '@matrixai/resources';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { QUICServer } from '@matrixai/quic';
+import {
+  QUICSocket,
+  QUICServer,
+  QUICConnection,
+} from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
+
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
-import { never } from '../utils';
-import * as utils from '../utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
-import * as keysUtils from '../keys/utils';
+
+// These 2 makes no sense
+import * as utils from '../utils';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -49,7 +55,7 @@ type ConnectionAndTimer = {
 
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
-class NodeConnectionManager {
+class NodeConnectionManager extends EventTarget {
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
@@ -82,18 +88,18 @@ class NodeConnectionManager {
   public readonly connectionHolePunchIntervalTime: number;
 
   protected logger: Logger;
+
+  protected crypto: ServerCrypto & ClientCrypto;
+
+  protected seedNodes: SeedNodes;
+  protected tlsConfig: TLSConfig;
+
+
   protected keyRing: KeyRing;
   protected nodeGraph: NodeGraph;
+
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
-  protected crypto: ServerCrypto & ClientCrypto;
-  protected tlsConfig: TLSConfig;
-  protected seedNodes: SeedNodes;
-
-  /**
-   * NodeManager has to be passed in during start to allow co-dependency
-   */
-  protected nodeManager: NodeManager | undefined;
 
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -122,15 +128,29 @@ class NodeConnectionManager {
   // protected backoffMultiplier: number = 2; // Doubles every failure
 
   // Seems it's better to use `handleStream?: ...` if it could be `undefined`
-  protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
-    () => never();
 
-  protected serverConnectionHandler = async (
-    connectionEvent: QuicEvents.QUICServerConnectionEvent,
+
+  // protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
+  //   () => never();
+
+  protected handleStream?: (stream) => void;
+
+
+  // Async arrow properties?
+
+  protected handleQUICConnection = async (
+    event: QuicEvents.QUICServerConnectionEvent
   ) => {
-    const quicConnection = connectionEvent.detail;
-    await this.handleConnectionReverse(quicConnection);
+    const connection = event.detail;
+    await this.handleConnectionReverse(connection);
   };
+
+  // protected serverConnectionHandler = async (
+  //   connectionEvent: QuicEvents.QUICServerConnectionEvent,
+  // ) => {
+  //   const quicConnection = connectionEvent.detail;
+  //   await this.handleConnectionReverse(quicConnection);
+  // };
 
 
 
@@ -250,7 +270,7 @@ class NodeConnectionManager {
     // Adding seed nodes
     for (const nodeIdEncoded in this.seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) never();
+      if (nodeId == null) utils.never();
       await this.nodeManager.setNode(
         nodeId,
         this.seedNodes[nodeIdEncoded],
@@ -286,7 +306,7 @@ class NodeConnectionManager {
     }
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
-    this.handleStream = () => never();
+    this.handleStream = () => utils.never();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -403,7 +423,7 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      if (conn == null) never();
+      if (conn == null) utils.never();
       return yield* g(conn);
     } catch (e) {
       caughtError = e;
@@ -513,7 +533,7 @@ class NodeConnectionManager {
           return connAndTimer;
         }
         // Should throw before reaching here
-        never();
+        utils.never();
       })
       .finally(() => {
         this.logger.debug(`lock finished for ${targetNodeIdEncoded}`);
@@ -710,12 +730,12 @@ class NodeConnectionManager {
     // No specific error here, validation is handled by the QUICServer
     const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
       const cert = keysUtils.certFromPEM(pem as CertificatePEM);
-      if (cert == null) never();
+      if (cert == null) utils.never();
       return cert;
     });
-    if (certChain == null) never();
+    if (certChain == null) utils.never();
     const nodeId = keysUtils.certNodeId(certChain[0]);
-    if (nodeId == null) never();
+    if (nodeId == null) utils.never();
     const nodeIdString = nodeId.toString() as NodeIdString;
     // TODO: A connection can fail while awaiting lock. We should abort early in this case.
     return await this.connectionLocks.withF(
@@ -768,7 +788,7 @@ class NodeConnectionManager {
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
-    if (this.connections.has(nodeIdString)) never();
+    if (this.connections.has(nodeIdString)) utils.never();
     const handleDestroy = async () => {
       this.logger.debug('stream destroyed event');
       // To avoid deadlock only in the case where this is called
@@ -1290,7 +1310,7 @@ class NodeConnectionManager {
   public getSeedNodes(): Array<NodeId> {
     return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) never();
+      if (nodeId == null) utils.never();
       return nodeId;
     });
   }
