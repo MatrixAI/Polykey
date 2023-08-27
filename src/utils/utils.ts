@@ -112,11 +112,25 @@ function isEmptyObject(o) {
  * Filters out all undefined properties recursively
  */
 function filterEmptyObject(o) {
+  return filterObject(o, ([_, v]) => v !== undefined)
+    .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]);
+}
+
+function filterObject<
+  T extends Record<K, V>,
+  K extends string,
+  V extends unknown
+>(
+  obj: T,
+  f: (
+    element: [K, V],
+    index: number,
+    arr: Array<[K, V]>
+  ) => boolean
+): Partial<T> {
   return Object.fromEntries(
-    Object.entries(o)
-      .filter(([_, v]) => v !== undefined)
-      .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]),
-  );
+    Object.entries(obj).filter(f)
+  ) as Partial<T>;
 }
 
 /**
@@ -464,6 +478,7 @@ export {
   isObject,
   isEmptyObject,
   filterEmptyObject,
+  filterObject,
   mergeObjects,
   getUnixtime,
   poll,

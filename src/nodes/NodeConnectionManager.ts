@@ -159,7 +159,6 @@ class NodeConnectionManager extends EventTarget {
   // };
 
 
-
   public constructor({
     keyRing,
     nodeGraph,
@@ -183,35 +182,33 @@ class NodeConnectionManager extends EventTarget {
     connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
     connectionHolePunchIntervalTime?: number;
-    logger: Logger;
+    logger?: Logger;
   }) {
     super();
-
-    // Remove your own node ID if provided as a seed node
-    const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    delete seedNodes[nodeIdEncodedOwn];
-    this.logger = logger ?? new Logger(NodeConnectionManager.name);
+    this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
     this.tlsConfig = tlsConfig;
-
-    this.seedNodes = seedNodes;
+    // Filter out own node ID
+    const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
+    this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
+      return k !== nodeIdEncodedOwn;
+    }) as SeedNodes;
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
     this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
     this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
-
+    // Note that all buffers allocated for crypto operations is using
+    // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
+    // is not shared. Also all node buffers satisfy the `ArrayBuffer` interface.
     const quicClientCrypto = {
       async randomBytes(data: ArrayBuffer): Promise<void> {
         const randomBytes = keysUtils.getRandomBytes(data.byteLength);
         randomBytes.copy(utils.bufferWrap(data));
       }
     };
-    // Note that all buffers allocated below is using `allocUnsafeSlow`.
-    // Which ensures that the underlying `ArrayBuffer` is not shared.
-    // Also all node buffers satisfy the `ArrayBuffer` interface.
     const quicServerCrypto = {
       key: keysUtils.generateKey(),
       ops: {
@@ -231,7 +228,7 @@ class NodeConnectionManager extends EventTarget {
       },
     };
     const quicSocket = new QUICSocket({
-      logger: logger.getChild(QUICSocket.name),
+      logger: this.logger.getChild(QUICSocket.name),
     });
     // By the time we get to using QUIC server, all hostnames would have been
     // resolved, we would not resolve hostnames inside the QUIC server.
@@ -252,7 +249,7 @@ class NodeConnectionManager extends EventTarget {
       codeToReason: nodesUtils.codeToReason,
       verifyCallback: networkUtils.verifyClientCertificateChain,
       minIdleTimeout: connectionConnectTimeoutTime,
-      logger: logger.getChild(QUICServer.name),
+      logger: this.logger.getChild(QUICServer.name),
     });
     this.quicClientCrypto = quicClientCrypto;
     this.quicSocket = quicSocket;
