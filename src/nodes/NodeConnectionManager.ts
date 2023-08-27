@@ -65,14 +65,30 @@ type ConnectionAndTimer = {
 // protected backoffMultiplier: number = 2; // Doubles every failure
 // Seems it's better to use `handleStream?: ...` if it could be `undefined`
 
+
 /**
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections
  *
  * It's an event target that emits events for new connections.
  *
+ * We will need to fully encapsulate all the errors in NCM if we can.
+ * Otherwise it goes all the way to PolykeyAgent.
+ *
+ * That means the QUICSocket, QUICServer and QUICClient
+ * As well as the QUICConnection and QUICStream.
+ * The NCM basically encapsulates it.
+ *
+ * The NCM and NC both must encapsulate all of the QUIC transport.
+ *
  * Events:
- * - connection
+ *
+ * - connectionManagerStop
+ * - connectionManagerError
+ * - nodeConnection
+ * - nodeConnectionError
+ * - nodeConnectionStream
+ * - nodeConnectionDestroy
  */
 interface NodeConnectionManager extends StartStop {}
 @StartStop()
@@ -144,12 +160,12 @@ class NodeConnectionManager extends EventTarget {
 
   // Async arrow properties?
 
-  protected handleQUICConnection = async (
-    event: QuicEvents.QUICServerConnectionEvent
-  ) => {
-    const connection = event.detail;
-    await this.handleConnectionReverse(connection);
-  };
+  // protected handleQUICConnection = async (
+  //   event: QuicEvents.QUICServerConnectionEvent
+  // ) => {
+  //   const connection = event.detail;
+  //   await this.handleConnectionReverse(connection);
+  // };
 
   // protected serverConnectionHandler = async (
   //   connectionEvent: QuicEvents.QUICServerConnectionEvent,
@@ -157,6 +173,17 @@ class NodeConnectionManager extends EventTarget {
   //   const quicConnection = connectionEvent.detail;
   //   await this.handleConnectionReverse(quicConnection);
   // };
+
+  protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
+
+
+  };
+
+  protected handleQUICServerEvents = (e: quicEvents.QUICServerEvent) => {
+
+
+
+  };
 
 
   public constructor({
@@ -256,71 +283,103 @@ class NodeConnectionManager extends EventTarget {
     this.quicServer = quicServer;
   }
 
+  /**
+   * Get the host that node connection manager is bound to.
+   */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get host(): Host {
     return this.quicSocket.host as Host;
   }
 
+  /**
+   * Get the port that node connection manager is bound to.
+   */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get port(): Port {
     return this.quicSocket.port as Port;
   }
 
-  /**
-   * Start the node connection manager.
-   * This will manage connections to other nodes.
-   *
-   * The `nodeManager` is a "mutual" dependency.
-   * The node manager depends on the NCM.
-   * The NCM depends on the node manager.
-   * If they are that mutual, then they should be combined.
-   * Or the common thing has to be factored out.
-   */
   public async start({
     host = '::' as Host,
     port = 0 as Port,
+    reuseAddr = false,
     ipv6Only = false,
-    nodeManager,
-    handleStream,
   }: {
-    nodeManager: NodeManager;
-    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
     host?: Host;
     port?: Port;
+    reuseAddr?: boolean;
     ipv6Only?: boolean;
   }) {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    this.nodeManager = nodeManager;
+    let address = networkUtils.buildAddress(host, port);
+    this.logger.info(`Start ${this.constructor.name} on ${address}`);
+
+    // We should expect that seed nodes are already in the node manager
+    // It should not be managed here!
 
     await this.quicSocket.start({
       host,
       port,
+      reuseAddr,
       ipv6Only,
     });
+    // QUICServer will simply re-use the shared `QUICSocket`
+    await this.quicServer.start({
+      host,
+      port,
+      reuseAddr,
+      ipv6Only
+    });
 
-    // Adding seed nodes
-    for (const nodeIdEncoded in this.seedNodes) {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) utils.never();
-      await this.nodeManager.setNode(
-        nodeId,
-        this.seedNodes[nodeIdEncoded],
-        true,
-      );
-    }
-    this.handleStream = handleStream;
-    // Starting QUICServer
-    // No host or port is provided here, it's configured in the shared QUICSocket.
-    await this.quicServer.start();
+    this.quicSocket.addEventListener(
+      'socketError', this.handleQUICSocketEvents
+    );
+    this.quicSocket.addEventListener(
+      'socketStop', this.handleQUICSocketEvents
+    );
+
+    // We are encapsulating QUICSocket and QUICServer
+    // ALL events must be captured
+    // Unfortunately... we aren't able to adtach all events
+
+    this.quicServer.addEventListener(
+      'serverStop',
+      this.handleQUICServerEvents
+    );
+    this.quicServer.addEventListener(
+      'serverError',
+      this.handleQUICServerEvents
+    );
     this.quicServer.addEventListener(
       'serverConnection',
-      this.serverConnectionHandler,
+      this.handleQUICServerEvents
     );
+    this.quicServer.addEventListener(
+      'connectionStream',
+      this.handleQUICServerEvents
+    );
+    this.quicServer.addEventListener(
+      'connectionError',
+      this.handleQUICServerEvents
+    );
+
+
+
+
+    // ALL events must be captured
+    // NOT just specific events
+
+    // this.quicServer.addEventListener(
+    //   'serverConnection',
+    //   this.serverConnectionHandler,
+    // );
+
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
-    this.logger.info(`Stopping ${this.constructor.name}`);
+
+    this.logger.info(`Stop ${this.constructor.name}`);
+
     this.quicServer.removeEventListener(
       'serverConnection',
       this.serverConnectionHandler,
