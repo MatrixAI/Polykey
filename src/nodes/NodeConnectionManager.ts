@@ -17,8 +17,7 @@ import type {
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
-import type { Host, Hostname, Port } from '../network/types';
-import type { RPCStream } from '../rpc/types';
+import type { ConnectionData, Host, Hostname, Port } from '../network/types';
 import type { TLSConfig } from '../network/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
 import Logger from '@matrixai/logger';
@@ -849,7 +848,8 @@ class NodeConnectionManager {
     //  The connection event should only contain connection metadata and not the connection itself otherwise we circumvent the locking.
     // Setting up events
     const nodeConnectionEventsHandler = (e) => {
-      console.log(e);
+      // Propagate all events upwards
+      this.dispatchEvent(e.clone());
     };
     nodeConnection.addEventListener(nodeConnectionEventsHandler);
     nodeConnection.addEventListener(
@@ -883,6 +883,16 @@ class NodeConnectionManager {
       usageCount: 0,
     };
     this.connections.set(nodeIdString, newConnAndTimer);
+    const connectionData: ConnectionData = {
+      remoteNodeId: nodeConnection.nodeId,
+      remoteHost: nodeConnection.host,
+      remotePort: nodeConnection.port,
+    };
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnection({
+        detail: connectionData,
+      }),
+    );
     return newConnAndTimer;
   }
 
