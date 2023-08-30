@@ -37,6 +37,7 @@ import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import * as nodesEvents from './events';
 import * as claimsUtils from '../claims/utils';
 import * as tasksErrors from '../tasks/errors';
 import * as claimsErrors from '../claims/errors';
@@ -190,6 +191,15 @@ class NodeManager {
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
     `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
+  handleNodeConnectionEvent = (
+    e: nodesEvents.EventNodeConnectionManagerConnection,
+  ) => {
+    this.setNode(e.detail.remoteNodeId, {
+      host: e.detail.remoteHost,
+      port: e.detail.remotePort,
+    });
+  };
+
   constructor({
     db,
     keyRing,
@@ -259,11 +269,21 @@ class NodeManager {
       lazy: true,
       path: [this.basePath, this.checkSeedConnectionsHandlerId],
     });
+    // Add handling for connections
+    this.nodeConnectionManager.addEventListener(
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleNodeConnectionEvent,
+    );
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    // Remove handling for connections
+    this.nodeConnectionManager.removeEventListener(
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleNodeConnectionEvent,
+    );
     this.logger.info('Cancelling ephemeral tasks');
     if (this.taskManager.isProcessing()) {
       throw new tasksErrors.ErrorTaskManagerProcessing();
