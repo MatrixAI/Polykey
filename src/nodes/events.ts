@@ -1,4 +1,5 @@
 import type { QUICStream } from '@matrixai/quic';
+import type { ConnectionData } from '@/network/types';
 
 type OptDetail<T> = T extends undefined ? {} : { detail: T };
 
@@ -36,4 +37,18 @@ class EventNodeStream extends EventsNode<QUICStream> {
   }
 }
 
-export { EventNodeConnectionDestroy, EventNodeStream };
+abstract class EventNodeConnectionManager<
+  T = undefined,
+> extends EventsNode<T> {}
+
+class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {
+  constructor(options?: EventInit & { detail: ConnectionData }) {
+    super(EventNodeConnectionManagerConnection.name, options);
+  }
+}
+
+export {
+  EventNodeConnectionDestroy,
+  EventNodeStream,
+  EventNodeConnectionManagerConnection,
+};
