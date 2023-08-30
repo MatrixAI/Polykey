@@ -68,9 +68,11 @@ type DeepReadonly<T> = { readonly [K in keyof T]: DeepReadonly<T[K]> };
 /**
  * Recursive partial
  */
-type DeepPartial<T> = T extends object ? {
-  [P in keyof T]?: DeepPartial<T[P]>;
-} : T;
+type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
 
 /**
  * Wrap a type to be reference counted
