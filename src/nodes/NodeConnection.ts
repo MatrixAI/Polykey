@@ -67,7 +67,7 @@ class NodeConnection<M extends ClientManifest> {
       targetHostname,
       tlsConfig,
       connectionKeepAliveIntervalTime,
-      connectionIdleTimeoutTime = 60_000,
+      connectionMaxIdleTimeout = 60_000,
       quicSocket,
       manifest,
       logger,
@@ -79,7 +79,7 @@ class NodeConnection<M extends ClientManifest> {
       crypto: ClientCrypto;
       tlsConfig: TLSConfig;
       connectionKeepAliveIntervalTime?: number;
-      connectionIdleTimeoutTime?: number;
+      connectionMaxIdleTimeout?: number;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
@@ -97,7 +97,7 @@ class NodeConnection<M extends ClientManifest> {
       tlsConfig,
       manifest,
       connectionKeepAliveIntervalTime,
-      connectionIdleTimeoutTime = 60_000,
+      connectionMaxIdleTimeout = 60_000,
       quicSocket,
       logger = new Logger(this.name),
     }: {
@@ -109,7 +109,7 @@ class NodeConnection<M extends ClientManifest> {
       tlsConfig: TLSConfig;
       manifest: M;
       connectionKeepAliveIntervalTime?: number;
-      connectionIdleTimeoutTime?: number;
+      connectionMaxIdleTimeout?: number;
       quicSocket?: QUICSocket;
       logger?: Logger;
     },
@@ -128,7 +128,7 @@ class NodeConnection<M extends ClientManifest> {
         socket: quicSocket,
         config: {
           keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-          maxIdleTimeout: connectionIdleTimeoutTime,
+          maxIdleTimeout: connectionMaxIdleTimeout,
           verifyPeer: true,
           verifyAllowFail: true,
           ca: undefined,
