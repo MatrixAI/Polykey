@@ -4,7 +4,8 @@ import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type {
   ClientCrypto,
-  events as quicEvents
+  events as quicEvents,
+  QUICConnection,
 } from '@matrixai/quic';
 import type NodeGraph from './NodeGraph';
 import type {
@@ -20,7 +21,6 @@ import type { Host, Hostname, Port } from '../network/types';
 import type { RPCStream } from '../rpc/types';
 import type { TLSConfig } from '../network/types';
 import type { HolePunchRelayMessage } from '../agent/handlers/types';
-
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -28,16 +28,12 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import {
-  QUICSocket,
-  QUICServer,
-  QUICConnection,
-} from '@matrixai/quic';
+import { Evented } from '@matrixai/events';
+import { QUICSocket, QUICServer } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
-
-
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as nodesEvents from './events';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
@@ -63,8 +59,6 @@ type ConnectionAndTimer = {
 // > = new Map();
 // protected backoffDefault: number = 1000 * 60 * 5; // 5 min
 // protected backoffMultiplier: number = 2; // Doubles every failure
-// Seems it's better to use `handleStream?: ...` if it could be `undefined`
-
 
 /**
  * NodeConnectionManager is a server that manages all node connections.
@@ -91,8 +85,10 @@ type ConnectionAndTimer = {
  * - nodeConnectionDestroy
  */
 interface NodeConnectionManager extends StartStop {}
+interface NodeConnectionManager extends Evented {}
 @StartStop()
-class NodeConnectionManager extends EventTarget {
+@Evented()
+class NodeConnectionManager {
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially
@@ -130,7 +126,6 @@ class NodeConnectionManager extends EventTarget {
   protected tlsConfig: TLSConfig;
   protected seedNodes: SeedNodes;
 
-
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
 
@@ -150,21 +145,13 @@ class NodeConnectionManager extends EventTarget {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
-
-
-  // protected handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void =
-  //   () => never();
-
-  protected handleStream?: (stream) => void;
-
-
   // Async arrow properties?
 
   // protected handleQUICConnection = async (
   //   event: QuicEvents.QUICServerConnectionEvent
   // ) => {
   //   const connection = event.detail;
-  //   await this.handleConnectionReverse(connection);
+  //   await this.handleConnectionReverse(connection);f
   // };
 
   // protected serverConnectionHandler = async (
@@ -175,16 +162,12 @@ class NodeConnectionManager extends EventTarget {
   // };
 
   protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
-
-
+    console.log(e);
   };
 
   protected handleQUICServerEvents = (e: quicEvents.QUICServerEvent) => {
-
-
-
+    console.log(e);
   };
-
 
   public constructor({
     keyRing,
@@ -211,7 +194,6 @@ class NodeConnectionManager extends EventTarget {
     connectionHolePunchIntervalTime?: number;
     logger?: Logger;
   }) {
-    super();
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
@@ -234,7 +216,7 @@ class NodeConnectionManager extends EventTarget {
       async randomBytes(data: ArrayBuffer): Promise<void> {
         const randomBytes = keysUtils.getRandomBytes(data.byteLength);
         randomBytes.copy(utils.bufferWrap(data));
-      }
+      },
     };
     const quicServerCrypto = {
       key: keysUtils.generateKey(),
@@ -242,16 +224,20 @@ class NodeConnectionManager extends EventTarget {
         async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
           return keysUtils.macWithKey(
             utils.bufferWrap(key) as Key,
-            utils.bufferWrap(data)
+            utils.bufferWrap(data),
           );
         },
-        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer): Promise<boolean> {
+        async verify(
+          key: ArrayBuffer,
+          data: ArrayBuffer,
+          sig: ArrayBuffer,
+        ): Promise<boolean> {
           return keysUtils.authWithKey(
             utils.bufferWrap(key) as Key,
             utils.bufferWrap(data),
-            utils.bufferWrap(sig)
+            utils.bufferWrap(sig),
           );
-        }
+        },
       },
     };
     const quicSocket = new QUICSocket({
@@ -310,7 +296,7 @@ class NodeConnectionManager extends EventTarget {
     reuseAddr?: boolean;
     ipv6Only?: boolean;
   }) {
-    let address = networkUtils.buildAddress(host, port);
+    const address = networkUtils.buildAddress(host, port);
     this.logger.info(`Start ${this.constructor.name} on ${address}`);
 
     // We should expect that seed nodes are already in the node manager
@@ -327,43 +313,36 @@ class NodeConnectionManager extends EventTarget {
       host,
       port,
       reuseAddr,
-      ipv6Only
+      ipv6Only,
     });
 
     this.quicSocket.addEventListener(
-      'socketError', this.handleQUICSocketEvents
+      'socketError',
+      this.handleQUICSocketEvents,
     );
-    this.quicSocket.addEventListener(
-      'socketStop', this.handleQUICSocketEvents
-    );
+    this.quicSocket.addEventListener('socketStop', this.handleQUICSocketEvents);
 
     // We are encapsulating QUICSocket and QUICServer
     // ALL events must be captured
     // Unfortunately... we aren't able to adtach all events
 
-    this.quicServer.addEventListener(
-      'serverStop',
-      this.handleQUICServerEvents
-    );
+    this.quicServer.addEventListener('serverStop', this.handleQUICServerEvents);
     this.quicServer.addEventListener(
       'serverError',
-      this.handleQUICServerEvents
+      this.handleQUICServerEvents,
     );
     this.quicServer.addEventListener(
       'serverConnection',
-      this.handleQUICServerEvents
+      this.handleQUICServerEvents,
     );
     this.quicServer.addEventListener(
       'connectionStream',
-      this.handleQUICServerEvents
+      this.handleQUICServerEvents,
     );
     this.quicServer.addEventListener(
       'connectionError',
-      this.handleQUICServerEvents
+      this.handleQUICServerEvents,
     );
-
-
-
 
     // ALL events must be captured
     // NOT just specific events
@@ -377,14 +356,13 @@ class NodeConnectionManager extends EventTarget {
   }
 
   public async stop() {
-
     this.logger.info(`Stop ${this.constructor.name}`);
 
     this.quicServer.removeEventListener(
       'serverConnection',
       this.serverConnectionHandler,
     );
-    this.nodeManager = undefined;
+
     const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndTimer] of this.connections) {
       if (connAndTimer.connection == null) continue;
@@ -396,7 +374,6 @@ class NodeConnectionManager extends EventTarget {
     }
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
-    this.handleStream = () => utils.never();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -755,7 +732,6 @@ class NodeConnectionManager extends EventTarget {
     const connection =
       await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
-          handleStream: this.handleStream,
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
           crypto: this.crypto,
@@ -799,10 +775,6 @@ class NodeConnectionManager extends EventTarget {
     // Final setup
     const newConnAndTimer = this.addConnection(nodeId, connection);
     // We can assume connection was established and destination was valid, we can add the target to the nodeGraph
-    await this.nodeManager?.setNode(nodeId, {
-      host: address.host,
-      port: address.port,
-    });
     connectionsResults.set(nodeIdString, newConnAndTimer);
     this.logger.debug(
       `Created NodeConnection for ${nodesUtils.encodeNodeId(
@@ -879,19 +851,28 @@ class NodeConnectionManager extends EventTarget {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
-    const handleDestroy = async () => {
-      this.logger.debug('stream destroyed event');
-      // To avoid deadlock only in the case where this is called
-      // we want to check for destroying connection and read lock
-      // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
-      if (!this.connections.has(nodeIdString)) return;
-      // Already locked so already destroying
-      if (this.connectionLocks.isLocked(nodeIdString)) return;
-      await this.destroyConnection(nodeId);
+    // TODO: set up event handling for all events here, need to make sure that the stream event and connection event is propagated.
+    //  The connection event should only contain connection metadata and not the connection itself otherwise we circumvent the locking.
+    // Setting up events
+    const nodeConnectionEventsHandler = (e) => {
+      console.log(e);
     };
-    nodeConnection.addEventListener('destroy', handleDestroy, {
-      once: true,
-    });
+    nodeConnection.addEventListener(nodeConnectionEventsHandler);
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionDestroy.name,
+      () => {
+        this.logger.debug('stream destroyed event');
+        nodeConnection.removeEventListener(nodeConnectionEventsHandler);
+        // To avoid deadlock only in the case where this is called
+        // we want to check for destroying connection and read lock
+        // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
+        if (!this.connections.has(nodeIdString)) return;
+        // Already locked so already destroying
+        if (this.connectionLocks.isLocked(nodeIdString)) return;
+        void this.destroyConnection(nodeId);
+      },
+      { once: true },
+    );
 
     // Creating TTL timeout.
     // We don't create a TTL for seed nodes.

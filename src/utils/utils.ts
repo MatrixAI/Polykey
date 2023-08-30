@@ -44,8 +44,8 @@ function getDefaultNodePath(): string | undefined {
   return p;
 }
 
-function never(): never {
-  throw new utilsErrors.ErrorUtilsUndefinedBehaviour();
+function never(message?: string): never {
+  throw new utilsErrors.ErrorUtilsUndefinedBehaviour(message);
 }
 
 async function mkdirExists(fs: FileSystem, path, ...args) {
@@ -112,34 +112,27 @@ function isEmptyObject(o) {
  * Filters out all undefined properties recursively
  */
 function filterEmptyObject(o) {
-  return filterObject(o, ([_, v]) => v !== undefined)
-    .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]);
+  return filterObject(o, ([_, v]) => v !== undefined).map(([k, v]) => [
+    k,
+    v === Object(v) ? filterEmptyObject(v) : v,
+  ]);
 }
 
 function filterObject<
   T extends Record<K, V>,
   K extends string,
-  V extends unknown
+  V extends unknown,
 >(
   obj: T,
-  f: (
-    element: [K, V],
-    index: number,
-    arr: Array<[K, V]>
-  ) => boolean
+  f: (element: [K, V], index: number, arr: Array<[K, V]>) => boolean,
 ): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(f)
-  ) as Partial<T>;
+  return Object.fromEntries(Object.entries(obj).filter(f)) as Partial<T>;
 }
 
 /**
  * Merges an input object to a default object.
  */
-function mergeObjects(
-  object1: POJO,
-  object2: POJO
-): POJO {
+function mergeObjects(object1: POJO, object2: POJO): POJO {
   const keys = new Set([...Object.keys(object2), ...Object.keys(object1)]);
   const mergedObject = {};
   for (const key of keys) {
