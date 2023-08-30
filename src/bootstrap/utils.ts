@@ -53,7 +53,7 @@ async function bootstrapState({
 }: {
   password: string;
   options?: DeepPartial<BootstrapOptions>;
-  // nodePath?: string;
+  // NodePath?: string;
   // keyRingConfig?: {
   //   recoveryCode?: RecoveryCode;
   //   privateKey?: PrivateKey;
