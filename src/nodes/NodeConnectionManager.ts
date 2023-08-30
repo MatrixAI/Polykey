@@ -427,7 +427,7 @@ class NodeConnectionManager {
             );
             connectionAndTimer.timer = new Timer({
               handler: async () => await this.destroyConnection(targetNodeId),
-              delay: this.connectionTimeoutTime,
+              delay: this.connectionIdleTimeoutTime,
             });
           }
         },
@@ -454,7 +454,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
@@ -513,7 +513,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   protected async getConnection(
     targetNodeId: NodeId,
@@ -574,7 +574,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   protected async getConnectionWithAddress(
     targetNodeId: NodeId,
@@ -734,12 +734,12 @@ class NodeConnectionManager {
         {
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
-          crypto: this.crypto,
+          crypto: this.quicClientCrypto,
           targetHost: address.host,
           targetPort: address.port,
           tlsConfig: this.tlsConfig,
           connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
-          connectionMaxIdleTimeout: this.connectionMaxIdleTimeout,
+          connectionMaxIdleTimeout: this.connectionKeepAliveTimeoutTime,
           quicSocket: this.quicSocket,
           logger: this.logger.getChild(
             `${NodeConnection.name} [${address.host}:${address.port}]`,
@@ -817,7 +817,6 @@ class NodeConnectionManager {
         const nodeConnection =
           await NodeConnection.createNodeConnectionReverse<AgentClientManifest>(
             {
-              handleStream: this.handleStream,
               nodeId,
               certChain,
               manifest: agentClientManifest,
@@ -831,11 +830,6 @@ class NodeConnectionManager {
           );
         // Final setup
         this.addConnection(nodeId, nodeConnection);
-        // We can add the target to the nodeGraph
-        await this.nodeManager?.setNode(nodeId, {
-          host: nodeConnection.host,
-          port: nodeConnection.port,
-        });
       },
     );
   }
@@ -879,7 +873,7 @@ class NodeConnectionManager {
     const timeToLiveTimer = !this.isSeedNode(nodeId)
       ? new Timer({
           handler: async () => await this.destroyConnection(nodeId),
-          delay: this.connectionTimeoutTime,
+          delay: this.connectionIdleTimeoutTime,
         })
       : null;
     // Add to map
@@ -936,7 +930,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionHolePunchTimeoutTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async holePunchReverse(
     host: Host,
@@ -1023,7 +1017,7 @@ class NodeConnectionManager {
     address = await this.getClosestGlobalNodes(
       targetNodeId,
       ignoreRecentOffline,
-      pingTimeoutTime ?? this.pingTimeoutTime,
+      pingTimeoutTime ?? this.connectionConnectTimeoutTime,
       ctx,
     );
     if (address != null) {
@@ -1075,7 +1069,7 @@ class NodeConnectionManager {
     // Get the closest alpha nodes to the target node (set as shortlist)
     const shortlist = await this.nodeGraph.getClosestNodes(
       targetNodeId,
-      this.initialClosestNodes,
+      this.connectionFindConcurrencyLimit,
     );
     // If we have no nodes at all in our database (even after synchronising),
     // then we should return nothing. We aren't going to find any others
@@ -1105,24 +1099,19 @@ class NodeConnectionManager {
       );
       // Skip if the node has already been contacted
       if (contacted.has(nextNodeId.toString())) continue;
-      if (ignoreRecentOffline && this.hasBackoff(nextNodeId)) continue;
       // Connect to the node (check if pre-existing connection exists, otherwise
       // create a new one)
       if (
-        await this.pingNode(
+        !(await this.pingNode(
           nextNodeId,
           nextNodeAddress.address.host,
           nextNodeAddress.address.port,
           {
             signal: ctx.signal,
-            timer: pingTimeoutTime ?? this.pingTimeoutTime,
+            timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
           },
-        )
+        ))
       ) {
-        await this.nodeManager!.setNode(nextNodeId, nextNodeAddress.address);
-        this.removeBackoff(nextNodeId);
-      } else {
-        this.increaseBackoff(nextNodeId);
         continue;
       }
       contacted[nextNodeId] = true;
@@ -1155,11 +1144,10 @@ class NodeConnectionManager {
             nodeData.address.port,
             {
               signal: ctx.signal,
-              timer: pingTimeoutTime ?? this.pingTimeoutTime,
+              timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
             },
           ))
         ) {
-          await this.nodeManager!.setNode(nodeId, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it
           // in the shortlist
@@ -1186,20 +1174,22 @@ class NodeConnectionManager {
     }
     // If the found nodes are less than nodeBucketLimit then
     //  we expect that refresh buckets won't find anything new
-    if (Object.keys(contacted).length < this.nodeGraph.nodeBucketLimit) {
-      // Reset the delay on all refresh bucket tasks
-      for (
-        let bucketIndex = 0;
-        bucketIndex < this.nodeGraph.nodeIdBits;
-        bucketIndex++
-      ) {
-        await this.nodeManager?.updateRefreshBucketDelay(
-          bucketIndex,
-          undefined,
-          true,
-        );
-      }
-    }
+    // FIXME: I don't think this is strictly needed. It think it's just delays all the bucket refresh timers if we know
+    //  the network is tiny.
+    // if (Object.keys(contacted).length < this.nodeGraph.nodeBucketLimit) {
+    //   // Reset the delay on all refresh bucket tasks
+    //   for (
+    //     let bucketIndex = 0;
+    //     bucketIndex < this.nodeGraph.nodeIdBits;
+    //     bucketIndex++
+    //   ) {
+    //     await this.nodeManager?.updateRefreshBucketDelay(
+    //       bucketIndex,
+    //       undefined,
+    //       true,
+    //     );
+    //   }
+    // }
     return foundAddress;
   }
 
@@ -1219,7 +1209,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async getRemoteNodeClosestNodes(
     nodeId: NodeId,
@@ -1290,7 +1280,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async sendSignalingMessage(
     relayNodeId: NodeId,
@@ -1354,7 +1344,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async relaySignalingMessage(
     message: HolePunchRelayMessage,
@@ -1416,7 +1406,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.pingTimeoutTime,
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,
