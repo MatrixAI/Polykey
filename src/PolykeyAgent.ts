@@ -456,8 +456,8 @@ class PolykeyAgent {
             optionsDefaulted.rpc.parserBufferSize,
           ),
           sensitive: false,
-          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
-          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
+          handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+          handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
           logger: logger.getChild(RPCServer.name + 'Client'),
         });
       }
@@ -466,12 +466,13 @@ class PolykeyAgent {
         (await WebSocketServer.createWebSocketServer({
           connectionCallback: (rpcStream) =>
             rpcServerClient!.handleStream(rpcStream),
-          host: networkConfig_.clientHost,
-          port: networkConfig_.clientPort,
+          host: optionsDefaulted.clientServiceHost,
+          port: optionsDefaulted.clientServicePort,
           tlsConfig,
-          maxIdleTimeout: networkConfig_.maxIdleTimeout,
-          pingIntervalTime: networkConfig_.pingIntervalTime,
-          pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
+          // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
+          maxIdleTimeout: optionsDefaulted.client.keepAliveTimeoutTime,
+          pingIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
+          pingTimeoutTimeTime: optionsDefaulted.client.keepAliveTimeoutTime,
           logger: logger.getChild('WebSocketServer'),
         }));
       if (rpcServerAgent == null) {
@@ -490,11 +491,11 @@ class PolykeyAgent {
           }),
           middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
             undefined,
-            networkConfig_.clientParserBufferByteLimit,
+            optionsDefaulted.rpc.parserBufferSize,
           ),
           sensitive: true,
-          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
-          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
+          handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+          handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
           logger: logger.getChild(RPCServer.name + 'Agent'),
         });
       }
@@ -769,8 +770,7 @@ class PolykeyAgent {
       });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
-        host: option
-        nodeManager: this.nodeManager,
+        host: optionss,
         handleStream: (stream) => this.rpcServerAgent.handleStream(stream),
       });
       await this.nodeGraph.start({ fresh });
