@@ -97,10 +97,8 @@ class PolykeyAgent {
    */
   public static readonly eventSymbols = {
     [CertManager.name]: Symbol(CertManager.name),
-    [QUICServer.name]: Symbol(QUICServer.name),
   } as {
     readonly CertManager: unique symbol;
-    readonly QUICServer: unique symbol;
   };
 
   /**
@@ -712,26 +710,6 @@ class PolykeyAgent {
           this.webSocketServerClient.setTlsConfig(tlsConfig);
           this.nodeConnectionManager.updateTlsConfig(tlsConfig);
           this.logger.info(`${KeyRing.name} change propagated`);
-        },
-      );
-      this.events.on(
-        PolykeyAgent.eventSymbols.QUICServer,
-        async (data: ConnectionData) => {
-          if (this.keyRing.getNodeId().equals(data.remoteNodeId)) return;
-          const address = networkUtils.buildAddress(
-            data.remoteHost,
-            data.remotePort,
-          );
-          const nodeIdEncoded = nodesUtils.encodeNodeId(data.remoteNodeId);
-          this.logger.info(
-            `Connection adding ${nodeIdEncoded}:${address} to ${NodeGraph.name}`,
-          );
-          // Reverse connection was established and authenticated,
-          //  add it to the node graph
-          await this.nodeManager.setNode(data.remoteNodeId, {
-            host: data.remoteHost,
-            port: data.remotePort,
-          });
         },
       );
       const _networkConfig = {
