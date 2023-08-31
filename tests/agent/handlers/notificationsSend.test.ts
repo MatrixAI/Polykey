@@ -1,13 +1,13 @@
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { Host as QUICHost } from '@matrixai/quic';
 import type { Notification, SignedNotification } from '@/notifications/types';
 import type { NodeId } from '@/ids';
 import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
+import type { Host } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer, QUICSocket } from '@matrixai/quic';
+import { QUICClient, QUICServer } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import RPCClient from '@/rpc/RPCClient';
 import RPCServer from '@/rpc/RPCServer';
@@ -36,7 +36,7 @@ describe('notificationsSend', () => {
   ]);
   const password = 'password';
   const crypto = tlsTestsUtils.createCrypto();
-  const localHost = '127.0.0.1' as QUICHost;
+  const localHost = '127.0.0.1' as Host;
 
   let dataDir: string;
 
@@ -46,7 +46,6 @@ describe('notificationsSend', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
@@ -118,23 +117,15 @@ describe('notificationsSend', () => {
       logger,
       lazy: true,
     });
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: localHost,
-    });
     const tlsConfigClient = await tlsTestsUtils.createTLSConfig(
       keyRing.keyPair,
     );
     nodeConnectionManager = new NodeConnectionManager({
       tlsConfig: tlsConfigClient,
-      crypto,
-      quicSocket,
       keyRing,
       nodeGraph,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -148,7 +139,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localHost });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -253,7 +244,6 @@ describe('notificationsSend', () => {
     await notificationsManager.stop();
     await nodeManager.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await sigchain.stop();
     await acl.stop();
     await nodeGraph.stop();

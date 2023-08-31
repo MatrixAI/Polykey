@@ -1,5 +1,4 @@
-import type { Host as QUICHost } from '@matrixai/quic';
-import type { TLSConfig } from '@/network/types';
+import type { Host, TLSConfig } from '@/network/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { General, Notification, VaultShare } from '@/notifications/types';
 import type { VaultIdEncoded } from '@/ids/types';
@@ -10,7 +9,6 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -43,7 +41,7 @@ describe('notificationsClear', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -54,7 +52,6 @@ describe('notificationsClear', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -101,22 +98,13 @@ describe('notificationsClear', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -130,7 +118,7 @@ describe('notificationsClear', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -156,7 +144,6 @@ describe('notificationsClear', () => {
     await webSocketClient.destroy(true);
     await taskManager.stop();
     await keyRing.stop();
-    await quicSocket.stop({ force: true });
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -205,7 +192,7 @@ describe('notificationsRead', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   const nodeIdSender = testNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const nodeIdReceiverEncoded = 'test';
@@ -219,7 +206,6 @@ describe('notificationsRead', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -267,22 +253,13 @@ describe('notificationsRead', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -296,7 +273,7 @@ describe('notificationsRead', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -318,7 +295,6 @@ describe('notificationsRead', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await acl.stop();
     await db.stop();
@@ -756,7 +732,7 @@ describe('notificationsSend', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -767,7 +743,6 @@ describe('notificationsSend', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -815,22 +790,12 @@ describe('notificationsSend', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -844,7 +809,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -866,7 +831,6 @@ describe('notificationsSend', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await acl.stop();
     await db.stop();

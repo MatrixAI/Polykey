@@ -1,5 +1,5 @@
 import type { QUICStream } from '@matrixai/quic';
-import type { ConnectionData } from '@/network/types';
+import type { ConnectionData } from '../network/types';
 import { AbstractEvent } from '@matrixai/events';
 
 abstract class EventsNode<T> extends AbstractEvent<T> {}

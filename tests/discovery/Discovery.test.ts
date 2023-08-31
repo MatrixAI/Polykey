@@ -11,7 +11,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -32,7 +31,6 @@ import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
 import { encodeProviderIdentityId } from '../../src/ids/index';
 import 'ix/add/asynciterable-operators/toarray';
-import * as tlsTestsUtils from '../utils/tls';
 import { createTLSConfig } from '../utils/tls';
 
 describe('Discovery', () => {
@@ -57,7 +55,6 @@ describe('Discovery', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let db: DB;
   let acl: ACL;
   let keyRing: KeyRing;
@@ -153,22 +150,13 @@ describe('Discovery', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1',
-    });
     const tlsConfig = await createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -182,7 +170,9 @@ describe('Discovery', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({
+      host: '127.0.0.1' as Host,
+    });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -216,8 +206,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.quicSocket.host as Host,
-      port: nodeA.quicSocket.port as Port,
+      host: nodeA.nodeConnectionManager.host as Host,
+      port: nodeA.nodeConnectionManager.port as Port,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
@@ -238,7 +228,6 @@ describe('Discovery', () => {
     await nodeA.stop();
     await nodeB.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
     await sigchain.stop();

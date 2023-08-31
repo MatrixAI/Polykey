@@ -6,7 +6,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as nodesUtils from '@/nodes/utils';
@@ -30,13 +29,12 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1';
+  const localHost = '127.0.0.1' as Host;
   const testAddress = {
     host: '127.0.0.1' as Host,
     port: 55555 as Port,
   };
   const password = 'password';
-  const crypto = tlsTestUtils.createCrypto();
 
   function createPromiseCancellableNop() {
     return () => new PromiseCancellable<void>((resolve) => resolve());
@@ -51,7 +49,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   let remoteNodeId1: NodeId;
   let remoteNodeId2: NodeId;
   let remoteNodeIdEncoded1: NodeIdEncoded;
-  let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -60,9 +57,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let tlsConfig: TLSConfig;
-  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -87,8 +84,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteNodeIdEncoded1 = nodesUtils.encodeNodeId(remoteNodeId1);
     remoteAddress1 = {
-      host: remotePolykeyAgent1.quicSocket.host as Host,
-      port: remotePolykeyAgent1.quicSocket.port as Port,
+      host: remotePolykeyAgent1.nodeConnectionManager.host as Host,
+      port: remotePolykeyAgent1.nodeConnectionManager.port as Port,
     };
 
     const nodePathB = path.join(dataDir, 'agentB');
@@ -107,16 +104,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     remoteNodeId2 = remotePolykeyAgent2.keyRing.getNodeId();
     remoteAddress2 = {
-      host: remotePolykeyAgent2.quicSocket.host as Host,
-      port: remotePolykeyAgent2.quicSocket.port as Port,
+      host: remotePolykeyAgent2.nodeConnectionManager.host as Host,
+      port: remotePolykeyAgent2.nodeConnectionManager.port as Port,
     };
-
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -163,6 +153,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
   afterEach(async () => {
     await taskManager.stop();
+    await nodeManager?.stop();
+    await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -176,7 +168,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop({ force: true });
 
     await remotePolykeyAgent1.stop();
     await remotePolykeyAgent2.stop();
@@ -191,13 +182,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       [nodesUtils.encodeNodeId(nodeId2)]: testAddress,
       [nodesUtils.encodeNodeId(nodeId3)]: testAddress,
     };
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: dummySeedNodes,
     });
     nodeManager = new NodeManager({
@@ -212,8 +201,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -230,14 +218,12 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeConnectionManager.stop();
   });
   test('should synchronise nodeGraph', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       connectionKeepAliveIntervalTime: 1000,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
       },
@@ -258,8 +244,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -276,15 +261,13 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 1000,
+      connectionKeepAliveTimeoutTime: 1000,
       connectionKeepAliveIntervalTime: 500,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
       },
@@ -301,8 +284,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -325,14 +307,12 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
 
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       connectionKeepAliveIntervalTime: 1000,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
       },
@@ -349,8 +329,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -371,14 +350,12 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
 
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       connectionKeepAliveIntervalTime: 1000,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
       },
@@ -395,8 +372,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -412,14 +388,12 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeConnectionManager.stop();
   });
   test('refreshBucket delays should be reset after finding less than 20 nodes', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       connectionKeepAliveIntervalTime: 1000,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
       },
@@ -436,8 +410,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 

@@ -12,7 +12,6 @@ import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { Evented } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
-import { QUICClientEvent } from '@matrixai/quic/dist/events';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import RPCClient from '../rpc/RPCClient';

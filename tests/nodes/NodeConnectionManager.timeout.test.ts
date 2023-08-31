@@ -6,7 +6,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
@@ -33,16 +32,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       ),
     ],
   );
-  const localHost = '127.0.0.1';
+  const localHost = '127.0.0.1' as Host;
   const password = 'password';
-  const crypto = tlsTestUtils.createCrypto();
 
   let dataDir: string;
 
   let remotePolykeyAgent1: PolykeyAgent;
   let remoteAddress1: NodeAddress;
   let remoteNodeId1: NodeId;
-  let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -52,8 +49,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   let sigchain: Sigchain;
   let taskManager: TaskManager;
   let nodeManager: NodeManager;
+  let nodeConnectionManager: NodeConnectionManager;
   let tlsConfig: TLSConfig;
-  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -77,16 +74,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteAddress1 = {
-      host: remotePolykeyAgent1.quicSocket.host as Host,
-      port: remotePolykeyAgent1.quicSocket.port as Port,
+      host: remotePolykeyAgent1.nodeConnectionManager.host as Host,
+      port: remotePolykeyAgent1.nodeConnectionManager.port as Port,
     };
-
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -131,6 +121,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
 
   afterEach(async () => {
     await taskManager.stopTasks();
+    await nodeManager?.stop();
+    await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -143,22 +135,19 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop({ force: true });
     await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
   });
 
   test('starting should add seed nodes to the node graph', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 500,
+      connectionIdleTimeoutTime: 500,
     });
     nodeManager = new NodeManager({
       db,
@@ -172,8 +161,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -205,15 +193,13 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('withConnection should extend timeout', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 1000,
+      connectionIdleTimeoutTime: 1000,
     });
     nodeManager = new NodeManager({
       db,
@@ -227,8 +213,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -275,15 +260,13 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('withConnection should extend timeout', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 1000,
+      connectionIdleTimeoutTime: 1000,
     });
     nodeManager = new NodeManager({
       db,
@@ -297,8 +280,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -329,16 +311,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('Connection can time out', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     nodeManager = new NodeManager({
       db,
@@ -352,8 +332,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -369,16 +348,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     ).rejects.toThrow();
   });
   test('Connection can time out with passed in timer', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     nodeManager = new NodeManager({
       db,
@@ -392,8 +369,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -415,16 +391,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     ).rejects.toThrow();
   });
   test('Connection can time out with passed in timer and signal', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     nodeManager = new NodeManager({
       db,
@@ -438,8 +412,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
