@@ -4,19 +4,15 @@ import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { ClientManifest } from '../rpc/types';
-import type {
-  QUICSocket,
-  ClientCrypto,
-  QUICConnection,
-  events as quicEvents,
-} from '@matrixai/quic';
+import type { QUICSocket, ClientCrypto, QUICConnection } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { Evented } from '@matrixai/events';
-import { QUICClient } from '@matrixai/quic';
+import { QUICClient, events as quicEvents } from '@matrixai/quic';
+import { QUICClientEvent } from '@matrixai/quic/dist/events';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import RPCClient from '../rpc/RPCClient';
@@ -31,6 +27,7 @@ import { never } from '../utils';
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection<M extends ClientManifest> extends Evented {}
 @CreateDestroy()
 @Evented()
@@ -196,33 +193,55 @@ class NodeConnection<M extends ClientManifest> {
         }:${quicConnection.remotePort}]`,
       ),
     });
-    // Setting up stream handling
-    const handleConnectionStream = (
-      streamEvent: quicEvents.QUICConnectionStreamEvent,
-    ) => {
-      const stream = streamEvent.detail;
-      nodeConnection.dispatchEvent(
-        new nodesEvents.EventNodeStream({ detail: stream }),
-      );
-    };
-    // TODO: All quicConnection event handling should be done under a unified handler.
+    // TODO: remove this later based on testing
     quicConnection.removeEventListener('connectionStream', throwFunction);
-    quicConnection.addEventListener('connectionStream', handleConnectionStream);
-    quicConnection.addEventListener(
-      'connectionStop',
-      () => {
-        quicConnection.removeEventListener(
-          'connectionStream',
-          handleConnectionStream,
+    // QUICClient events are...
+    //   - QUICClientEvent,
+    //   - QUICClientDestroyEvent,
+    //   - QUICClientErrorEvent,
+    // QUICConnection events are...
+    //   - QUICConnectionEvent,
+    //   - QUICConnectionStreamEvent,
+    //   - QUICConnectionStopEvent,
+    //   - QUICConnectionErrorEvent,
+    // QUICStream events are...
+    //   - QUICStreamEvent,
+    //   - QUICStreamDestroyEvent,
+    const handleNodeConnectionEvents = (e) => {
+      if (e instanceof quicEvents.QUICClientDestroyEvent) {
+        // Trigger the nodeConnection destroying
+        void nodeConnection.destroy({ force: false });
+      } else if (e instanceof quicEvents.QUICConnectionStreamEvent) {
+        const quicStream = e.detail;
+        // Setting up stream handling
+        quicStream.addEventListener(
+          quicEvents.QUICStreamDestroyEvent.name,
+          (e) => {
+            nodeConnection.dispatchEvent(e.clone());
+          },
+          { once: true },
         );
+        nodeConnection.dispatchEvent(
+          new nodesEvents.EventNodeStream({ detail: quicStream }),
+        );
+      }
+      nodeConnection.dispatchEvent(e.clone());
+    };
+    // Setting up QUICConnection events
+    quicConnection.addEventListener(handleNodeConnectionEvents);
+    quicConnection.addEventListener(
+      quicEvents.QUICConnectionStopEvent.name,
+      () => {
+        quicConnection.removeEventListener(handleNodeConnectionEvents);
       },
       { once: true },
     );
+    // Setting up QUICClient events
+    quicClient.addEventListener(handleNodeConnectionEvents);
     quicClient.addEventListener(
-      'clientDestroy',
+      quicEvents.QUICClientDestroyEvent.name,
       () => {
-        // Trigger the nodeConnection destroying
-        void nodeConnection.destroy({ force: false });
+        quicClient.removeEventListener(handleNodeConnectionEvents);
       },
       { once: true },
     );
@@ -269,31 +288,41 @@ class NodeConnection<M extends ClientManifest> {
       rpcClient,
       logger,
     });
-    // Setting up stream handling
-    // TODO: All quicConnection event handling should be done under a unified handler.
-    const handleConnectionStream = (
-      streamEvent: quicEvents.QUICConnectionStreamEvent,
-    ) => {
-      nodeConnection.dispatchEvent(
-        new nodesEvents.EventNodeStream({ detail: streamEvent.detail }),
-      );
-    };
-    quicConnection.addEventListener('connectionStream', handleConnectionStream);
-    quicConnection.addEventListener(
-      'connectionStop',
-      () => {
-        quicConnection.removeEventListener(
-          'connectionStream',
-          handleConnectionStream,
-        );
-      },
-      { once: true },
-    );
-    quicConnection.addEventListener(
-      'connectionStop',
-      async () => {
+    // QUICClient events are...
+    //   - QUICClientEvent,
+    //   - QUICClientDestroyEvent,
+    //   - QUICClientErrorEvent,
+    // QUICConnection events are...
+    //   - QUICConnectionEvent,
+    //   - QUICConnectionStreamEvent,
+    //   - QUICConnectionStopEvent,
+    //   - QUICConnectionErrorEvent,
+    const handleNodeConnectionEvents = (e) => {
+      if (e instanceof quicEvents.QUICClientDestroyEvent) {
         // Trigger the nodeConnection destroying
-        await nodeConnection.destroy({ force: false });
+        void nodeConnection.destroy({ force: false });
+      } else if (e instanceof quicEvents.QUICConnectionStreamEvent) {
+        const quicStream = e.detail;
+        // Setting up stream handling
+        quicStream.addEventListener(
+          quicEvents.QUICStreamDestroyEvent.name,
+          (e) => {
+            nodeConnection.dispatchEvent(e.clone());
+          },
+          { once: true },
+        );
+        nodeConnection.dispatchEvent(
+          new nodesEvents.EventNodeStream({ detail: quicStream }),
+        );
+      }
+      nodeConnection.dispatchEvent(e.clone());
+    };
+    // Setting up QUICConnection events
+    quicConnection.addEventListener(handleNodeConnectionEvents);
+    quicConnection.addEventListener(
+      quicEvents.QUICConnectionStopEvent.name,
+      () => {
+        quicConnection.removeEventListener(handleNodeConnectionEvents);
       },
       { once: true },
     );

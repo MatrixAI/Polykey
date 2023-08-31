@@ -2,11 +2,7 @@ import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type {
-  ClientCrypto,
-  events as quicEvents,
-  QUICConnection,
-} from '@matrixai/quic';
+import type { ClientCrypto, QUICConnection } from '@matrixai/quic';
 import type NodeGraph from './NodeGraph';
 import type {
   NodeAddress,
@@ -28,7 +24,7 @@ import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { Evented } from '@matrixai/events';
-import { QUICSocket, QUICServer } from '@matrixai/quic';
+import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -144,28 +140,28 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
-  // Async arrow properties?
-
-  // protected handleQUICConnection = async (
-  //   event: QuicEvents.QUICServerConnectionEvent
-  // ) => {
-  //   const connection = event.detail;
-  //   await this.handleConnectionReverse(connection);f
-  // };
-
-  // protected serverConnectionHandler = async (
-  //   connectionEvent: QuicEvents.QUICServerConnectionEvent,
-  // ) => {
-  //   const quicConnection = connectionEvent.detail;
-  //   await this.handleConnectionReverse(quicConnection);
-  // };
-
   protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
+    // QUICSocket events are...
+    //   - QUICSocketEvent,
+    //   - QUICSocketStartEvent,
+    //   - QUICSocketStopEvent,
+    //   - QUICSocketErrorEvent,
     console.log(e);
+    this.dispatchEvent(e.clone());
   };
 
   protected handleQUICServerEvents = (e: quicEvents.QUICServerEvent) => {
     console.log(e);
+    // QUICServer events are...
+    //   - QUICServerEvent,
+    //   - QUICServerConnectionEvent,
+    //   - QUICServerStartEvent,
+    //   - QUICServerStopEvent,
+    //   - QUICServerErrorEvent,
+    if (e instanceof quicEvents.QUICServerConnectionEvent) {
+      void this.handleConnectionReverse(e.detail);
+    }
+    this.dispatchEvent(e.clone());
   };
 
   public constructor({
@@ -315,41 +311,8 @@ class NodeConnectionManager {
       ipv6Only,
     });
 
-    this.quicSocket.addEventListener(
-      'socketError',
-      this.handleQUICSocketEvents,
-    );
-    this.quicSocket.addEventListener('socketStop', this.handleQUICSocketEvents);
-
-    // We are encapsulating QUICSocket and QUICServer
-    // ALL events must be captured
-    // Unfortunately... we aren't able to adtach all events
-
-    this.quicServer.addEventListener('serverStop', this.handleQUICServerEvents);
-    this.quicServer.addEventListener(
-      'serverError',
-      this.handleQUICServerEvents,
-    );
-    this.quicServer.addEventListener(
-      'serverConnection',
-      this.handleQUICServerEvents,
-    );
-    this.quicServer.addEventListener(
-      'connectionStream',
-      this.handleQUICServerEvents,
-    );
-    this.quicServer.addEventListener(
-      'connectionError',
-      this.handleQUICServerEvents,
-    );
-
-    // ALL events must be captured
-    // NOT just specific events
-
-    // this.quicServer.addEventListener(
-    //   'serverConnection',
-    //   this.serverConnectionHandler,
-    // );
+    this.quicSocket.addEventListener(this.handleQUICSocketEvents);
+    this.quicServer.addEventListener(this.handleQUICServerEvents);
 
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -357,10 +320,8 @@ class NodeConnectionManager {
   public async stop() {
     this.logger.info(`Stop ${this.constructor.name}`);
 
-    this.quicServer.removeEventListener(
-      'serverConnection',
-      this.serverConnectionHandler,
-    );
+    this.quicSocket.removeEventListener(this.handleQUICSocketEvents);
+    this.quicServer.removeEventListener(this.handleQUICServerEvents);
 
     const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndTimer] of this.connections) {
@@ -526,7 +487,7 @@ class NodeConnectionManager {
     // If there was no address provided then we need to find it.
     if (address == null) {
       // Find the node
-      address = await this.findNode(targetNodeId, undefined, undefined, ctx);
+      address = await this.findNode(targetNodeId, undefined, ctx);
       if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
     // Then we just get the connection, it should already exist.
@@ -784,6 +745,7 @@ class NodeConnectionManager {
 
   /**
    * This will take a `QUICConnection` emitted by the `QUICServer` and handle adding it to the connection map
+   * This will also set up some event handling for the connection.
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   protected async handleConnectionReverse(quicConnection: QUICConnection) {
@@ -807,7 +769,7 @@ class NodeConnectionManager {
           // Reject and return early.
           await quicConnection.stop({
             applicationError: true,
-            errorCode: 42,
+            errorCode: 42, // TODO: use an actual code
             errorMessage: 'Connection already exists, forcing close',
             force: true,
           });
@@ -990,13 +952,11 @@ class NodeConnectionManager {
    * Will attempt to find a connection via a Kademlia search.
    * The connection will be established in the process.
    * @param targetNodeId Id of the node we are tying to find
-   * @param ignoreRecentOffline skips nodes that are within their backoff period
    * @param pingTimeoutTime timeout for any ping attempts
    * @param ctx
    */
   public findNode(
     targetNodeId: NodeId,
-    ignoreRecentOffline?: boolean,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
@@ -1004,7 +964,6 @@ class NodeConnectionManager {
   @timedCancellable(true)
   public async findNode(
     targetNodeId: NodeId,
-    ignoreRecentOffline: boolean = false,
     pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
@@ -1026,7 +985,6 @@ class NodeConnectionManager {
     // Otherwise, attempt to locate it by contacting network
     address = await this.getClosestGlobalNodes(
       targetNodeId,
-      ignoreRecentOffline,
       pingTimeoutTime ?? this.connectionConnectTimeoutTime,
       ctx,
     );
@@ -1061,7 +1019,6 @@ class NodeConnectionManager {
    */
   public getClosestGlobalNodes(
     targetNodeId: NodeId,
-    ignoreRecentOffline?: boolean,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<NodeAddress | undefined>;
@@ -1069,7 +1026,6 @@ class NodeConnectionManager {
   @timedCancellable(true)
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
-    ignoreRecentOffline: boolean = false,
     pingTimeoutTime: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {

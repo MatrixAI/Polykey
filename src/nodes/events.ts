@@ -1,51 +1,17 @@
 import type { QUICStream } from '@matrixai/quic';
 import type { ConnectionData } from '@/network/types';
+import { AbstractEvent } from '@matrixai/events';
 
-type OptDetail<T> = T extends undefined ? {} : { detail: T };
+abstract class EventsNode<T> extends AbstractEvent<T> {}
+abstract class EventsNodeConnection<T> extends EventsNode<T> {}
 
-// FIXME
-/**
- * Used as scaffold for the clone functionality.
- * Must use the events lib implementation when available.
- */
-class TempBaseEvent<T = undefined> extends Event {
-  public readonly detail: T;
-  constructor(type: string, protected options?: EventInit & OptDetail<T>) {
-    super(type, options);
-    // @ts-ignore: Detail should be undefined here if it doesn't exist
-    this.detail = options?.detail;
-  }
+class EventNodeConnectionDestroy extends EventsNodeConnection<null> {}
 
-  public clone(): this {
-    // @ts-ignore: cheeky self prototype reference
-    return new this.constructor(this.options);
-  }
-}
+class EventNodeStream extends EventsNode<QUICStream> {}
 
-abstract class EventsNode<T = undefined> extends TempBaseEvent<T> {}
-abstract class EventsNodeConnection<T = undefined> extends EventsNode<T> {}
+abstract class EventNodeConnectionManager<T> extends EventsNode<T> {}
 
-class EventNodeConnectionDestroy extends EventsNodeConnection {
-  constructor(options?: EventInit) {
-    super(EventNodeConnectionDestroy.name, options);
-  }
-}
-
-class EventNodeStream extends EventsNode<QUICStream> {
-  constructor(options?: EventInit & { detail: QUICStream }) {
-    super(EventNodeStream.name, options);
-  }
-}
-
-abstract class EventNodeConnectionManager<
-  T = undefined,
-> extends EventsNode<T> {}
-
-class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {
-  constructor(options?: EventInit & { detail: ConnectionData }) {
-    super(EventNodeConnectionManagerConnection.name, options);
-  }
-}
+class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {}
 
 export {
   EventNodeConnectionDestroy,
