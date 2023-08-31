@@ -1,4 +1,3 @@
-import type { Host as QUICHost } from '@matrixai/quic';
 import type { TLSConfig } from '@/network/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { NodeIdEncoded } from '@/ids/types';
@@ -9,7 +8,6 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -45,7 +43,7 @@ describe('nodesAdd', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -55,7 +53,6 @@ describe('nodesAdd', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
-  let quicSocket: QUICSocket;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
 
@@ -93,22 +90,13 @@ describe('nodesAdd', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -122,7 +110,7 @@ describe('nodesAdd', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -130,7 +118,6 @@ describe('nodesAdd', () => {
     await taskManager.stopTasks();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await db.stop();
@@ -269,7 +256,7 @@ describe('nodesClaim', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   const dummyNotification: Notification = {
     typ: 'notification',
     data: {
@@ -288,7 +275,6 @@ describe('nodesClaim', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
-  let quicSocket: QUICSocket;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -346,22 +332,13 @@ describe('nodesClaim', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -375,7 +352,7 @@ describe('nodesClaim', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -396,7 +373,6 @@ describe('nodesClaim', () => {
     await webSocketServer.stop(true);
     await webSocketClient.destroy(true);
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
     await notificationsManager.stop();
@@ -496,7 +472,7 @@ describe('nodesFind', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -505,7 +481,6 @@ describe('nodesFind', () => {
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let mockedFindNode: jest.SpyInstance;
@@ -550,28 +525,16 @@ describe('nodesFind', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start({
-      nodeManager: {} as NodeManager,
-      handleStream: () => {},
-    });
+    await nodeConnectionManager.start({ host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -583,7 +546,6 @@ describe('nodesFind', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await db.stop();
     await keyRing.stop();
     await taskManager.stop();
@@ -676,7 +638,7 @@ describe('nodesPing', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const host = '127.0.0.1' as Host;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -686,7 +648,6 @@ describe('nodesPing', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
-  let quicSocket: QUICSocket;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let mockedPingNode: jest.SpyInstance;
@@ -726,22 +687,13 @@ describe('nodesPing', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      // @ts-ignore: TLS not needed for this test
-      tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -754,7 +706,7 @@ describe('nodesPing', () => {
       gestaltGraph: {} as GestaltGraph,
       logger,
     });
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -766,7 +718,6 @@ describe('nodesPing', () => {
     await sigchain.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await db.stop();
     await keyRing.stop();
     await taskManager.stop();

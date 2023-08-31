@@ -4,7 +4,6 @@ import type { Task } from '@/tasks/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICSocket } from '@matrixai/quic';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as keysUtils from '@/keys/utils';
 import NodeManager from '@/nodes/NodeManager';
@@ -29,7 +28,7 @@ describe(`${NodeManager.name} test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1';
+  const localHost = '127.0.0.1' as Host;
   const port = 55556;
   const password = 'password';
   const mockedPingNode = jest.fn();
@@ -41,7 +40,6 @@ describe(`${NodeManager.name} test`, () => {
     isSeedNode: mockedIsSeedNode,
   } as unknown as NodeConnectionManager;
   const dummySigchain = {} as Sigchain;
-  const crypto = tlsTestUtils.createCrypto();
 
   let keyRing: KeyRing;
   let db: DB;
@@ -51,11 +49,11 @@ describe(`${NodeManager.name} test`, () => {
   let sigchain: Sigchain;
   let taskManager: TaskManager;
 
-  let clientSocket: QUICSocket;
   let tlsConfig: TLSConfig;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
 
   let server: PolykeyAgent;
-  let nodeConnectionManager;
 
   beforeEach(async () => {
     // Setting up client dependencies
@@ -97,18 +95,12 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
 
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
-
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
     await taskManager.stop();
+    await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
@@ -124,7 +116,6 @@ describe(`${NodeManager.name} test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await clientSocket.stop({ force: true });
     await server?.stop();
   });
 
@@ -334,8 +325,6 @@ describe(`${NodeManager.name} test`, () => {
       keyRing,
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       logger,
     });
     const nodeManager = new NodeManager({
@@ -350,7 +339,9 @@ describe(`${NodeManager.name} test`, () => {
     });
     await nodeManager.start();
 
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
     server = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(dataDir, 'server'),
@@ -366,13 +357,13 @@ describe(`${NodeManager.name} test`, () => {
     });
     const serverNodeId = server.keyRing.getNodeId();
     const serverNodeAddress: NodeAddress = {
-      host: server.quicSocket.host as Host,
-      port: server.quicSocket.port as Port,
+      host: server.nodeConnectionManager.host as Host,
+      port: server.nodeConnectionManager.port as Port,
     };
     await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
-    const expectedHost = clientSocket.host;
-    const expectedPort = clientSocket.port;
+    const expectedHost = nodeConnectionManager.host;
+    const expectedPort = nodeConnectionManager.port;
     const expectedNodeId = keyRing.getNodeId();
 
     const nodeData = await server.nodeGraph.getNode(expectedNodeId);
@@ -556,8 +547,6 @@ describe(`${NodeManager.name} test`, () => {
       keyRing,
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       logger,
     });
     const nodeManager = new NodeManager({
@@ -570,7 +559,9 @@ describe(`${NodeManager.name} test`, () => {
       taskManager,
       logger,
     });
-    await nodeConnectionManager.start({ nodeManager });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
     await nodeManager.start();
 
     await expect(nodeManager.refreshBucket(100)).resolves.not.toThrow();

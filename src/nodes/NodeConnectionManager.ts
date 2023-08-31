@@ -281,7 +281,7 @@ class NodeConnectionManager {
   }
 
   public async start({
-    host = '::' as Host,
+    host = '::' as Host, // FIXME: Should just be string and number
     port = 0 as Port,
     reuseAddr = false,
     ipv6Only = false,
