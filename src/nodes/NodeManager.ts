@@ -199,7 +199,7 @@ class NodeManager {
   handleNodeConnectionEvent = (
     e: nodesEvents.EventNodeConnectionManagerConnection,
   ) => {
-    this.setNode(
+    void this.setNode(
       e.detail.remoteNodeId,
       {
         host: e.detail.remoteHost,

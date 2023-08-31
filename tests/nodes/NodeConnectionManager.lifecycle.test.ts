@@ -30,7 +30,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1';
+  const localHost = '127.0.0.1' as Host;
   const password = 'password';
   const crypto = tlsTestUtils.createCrypto();
 
@@ -45,7 +45,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let quicServer: QUICServer;
   let rpcServer: RPCServer;
   let serverAddress: NodeAddress;
-  let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -57,7 +56,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let nodeManager: NodeManager;
 
   let nodeConnectionManager: NodeConnectionManager;
-  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -97,12 +95,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
 
     await quicServer.start();
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -150,7 +142,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   afterEach(async () => {
     await taskManager.stop();
-    await nodeConnectionManager.stop();
+    await nodeManager?.stop();
+    await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -165,7 +158,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await clientSocket.stop({ force: true });
     await rpcServer.destroy(true);
     await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
     await serverSocket.stop({ force: true });
@@ -176,9 +168,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      crypto,
       tlsConfig: clientTlsConfig,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -193,8 +183,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
 
     await nodeConnectionManager.stop();
@@ -207,8 +196,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -223,8 +210,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -241,8 +227,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -257,8 +241,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -275,8 +258,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -291,8 +272,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
 
@@ -317,8 +297,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -333,8 +311,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
@@ -359,8 +336,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -375,8 +350,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
@@ -409,8 +383,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -425,8 +397,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -449,8 +420,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -465,8 +434,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     const waitProm = promise<void>();
@@ -497,8 +465,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -513,8 +479,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -544,8 +509,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -560,8 +523,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -583,8 +545,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -599,8 +559,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
@@ -619,8 +578,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -635,8 +592,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
@@ -656,8 +612,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -672,8 +626,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost,
     });
     await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(

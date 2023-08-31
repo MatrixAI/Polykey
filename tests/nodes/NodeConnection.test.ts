@@ -8,6 +8,7 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
 import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
 import * as nodesUtils from '@/nodes/utils';
+import * as nodesEvents from '@/nodes/events';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
 import NodeConnection from '@/nodes/NodeConnection';
@@ -133,7 +134,6 @@ describe(`${NodeConnection.name}`, () => {
 
   test('session readiness', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -149,7 +149,6 @@ describe(`${NodeConnection.name}`, () => {
   });
   test('connects to the target', async () => {
     await NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -163,7 +162,6 @@ describe(`${NodeConnection.name}`, () => {
   test('connection fails to target (times out)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection(
       {
-        handleStream: () => {},
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: 12345 as Port,
@@ -184,7 +182,6 @@ describe(`${NodeConnection.name}`, () => {
   test('connection drops out (socket stops responding)', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
-        handleStream: () => {},
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
@@ -212,7 +209,6 @@ describe(`${NodeConnection.name}`, () => {
   });
   test('get the root chain cert', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -227,7 +223,6 @@ describe(`${NodeConnection.name}`, () => {
   });
   test('get the NodeId', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -260,7 +255,6 @@ describe(`${NodeConnection.name}`, () => {
   });
   test('Should fail due to client rejecting server certificate (missing NodeId)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [clientNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -275,7 +269,6 @@ describe(`${NodeConnection.name}`, () => {
   test('Should fail and destroy due to connection failure', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
-        handleStream: () => {},
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
@@ -299,7 +292,6 @@ describe(`${NodeConnection.name}`, () => {
   test('Should fail and destroy due to connection ending local', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
-        handleStream: () => {},
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
@@ -327,7 +319,6 @@ describe(`${NodeConnection.name}`, () => {
   test('Should fail and destroy due to connection ending remote', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
-        handleStream: () => {},
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as Port,
@@ -371,7 +362,6 @@ describe(`${NodeConnection.name}`, () => {
         if (nodeId == null) never();
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
-            handleStream: () => {},
             nodeId,
             certChain,
             manifest: {},
@@ -384,7 +374,6 @@ describe(`${NodeConnection.name}`, () => {
       { once: true },
     );
     const nodeConnection = await NodeConnection.createNodeConnection({
-      handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -422,9 +411,6 @@ describe(`${NodeConnection.name}`, () => {
         if (nodeId == null) never();
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
-            handleStream: (stream) => {
-              reverseStreamProm.resolveP(stream);
-            },
             nodeId,
             certChain,
             manifest: {},
@@ -432,13 +418,19 @@ describe(`${NodeConnection.name}`, () => {
             logger,
           },
         ).then(extractNodeConnection);
+        nodeConnection.addEventListener(
+          nodesEvents.EventNodeStream.name,
+          (e: nodesEvents.EventNodeStream) => {
+            reverseStreamProm.resolveP(e.detail);
+          },
+          { once: true },
+        );
         nodeConnectionReverseProm.resolveP(nodeConnection);
       },
       { once: true },
     );
     const forwardStreamProm = promise<RPCStream<Uint8Array, Uint8Array>>();
     const nodeConnection = await NodeConnection.createNodeConnection({
-      handleStream: (stream) => forwardStreamProm.resolveP(stream),
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as Port,
@@ -448,6 +440,13 @@ describe(`${NodeConnection.name}`, () => {
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeStream.name,
+      (e: nodesEvents.EventNodeStream) => {
+        forwardStreamProm.resolveP(e.detail);
+      },
+      { once: true },
+    );
     const nodeConnectionReverse = await nodeConnectionReverseProm.p;
 
     // Checking stream creation
