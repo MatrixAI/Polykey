@@ -10,7 +10,7 @@ import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { Evented } from '@matrixai/events';
+import { EventDefault, Evented } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
@@ -207,10 +207,7 @@ class NodeConnection<M extends ClientManifest> {
     //   - QUICStreamEvent,
     //   - QUICStreamDestroyEvent,
     const handleNodeConnectionEvents = (e) => {
-      if (e instanceof quicEvents.QUICClientDestroyEvent) {
-        // Trigger the nodeConnection destroying
-        void nodeConnection.destroy({ force: false });
-      } else if (e instanceof quicEvents.QUICConnectionStreamEvent) {
+      if (e instanceof quicEvents.QUICConnectionStreamEvent) {
         const quicStream = e.detail;
         // Setting up stream handling
         quicStream.addEventListener(
@@ -227,20 +224,42 @@ class NodeConnection<M extends ClientManifest> {
       nodeConnection.dispatchEvent(e.clone());
     };
     // Setting up QUICConnection events
-    quicConnection.addEventListener(handleNodeConnectionEvents);
+    quicConnection.addEventListener(
+      EventDefault.name,
+      handleNodeConnectionEvents,
+    );
     quicConnection.addEventListener(
       quicEvents.QUICConnectionStopEvent.name,
       () => {
-        quicConnection.removeEventListener(handleNodeConnectionEvents);
+        quicConnection.removeEventListener(
+          EventDefault.name,
+          handleNodeConnectionEvents,
+        );
       },
       { once: true },
     );
     // Setting up QUICClient events
-    quicClient.addEventListener(handleNodeConnectionEvents);
+    quicClient.addEventListener(EventDefault.name, handleNodeConnectionEvents);
     quicClient.addEventListener(
       quicEvents.QUICClientDestroyEvent.name,
-      () => {
-        quicClient.removeEventListener(handleNodeConnectionEvents);
+      async (e: quicEvents.QUICConnectionErrorEvent) => {
+        quicClient.removeEventListener(
+          EventDefault.name,
+          handleNodeConnectionEvents,
+        );
+        try {
+          // Trigger the nodeConnection destroying
+          await nodeConnection.destroy({ force: false });
+          nodeConnection.dispatchEvent(
+            new nodesEvents.EventNodeConnectionError({ detail: e }),
+          );
+        } catch (err) {
+          nodeConnection.dispatchEvent(
+            new nodesEvents.EventNodeConnectionError({
+              detail: new AggregateError([err, e.detail]),
+            }),
+          );
+        }
       },
       { once: true },
     );
@@ -297,10 +316,7 @@ class NodeConnection<M extends ClientManifest> {
     //   - QUICConnectionStopEvent,
     //   - QUICConnectionErrorEvent,
     const handleNodeConnectionEvents = (e) => {
-      if (e instanceof quicEvents.QUICClientDestroyEvent) {
-        // Trigger the nodeConnection destroying
-        void nodeConnection.destroy({ force: false });
-      } else if (e instanceof quicEvents.QUICConnectionStreamEvent) {
+      if (e instanceof quicEvents.QUICConnectionStreamEvent) {
         const quicStream = e.detail;
         // Setting up stream handling
         quicStream.addEventListener(
@@ -317,11 +333,30 @@ class NodeConnection<M extends ClientManifest> {
       nodeConnection.dispatchEvent(e.clone());
     };
     // Setting up QUICConnection events
-    quicConnection.addEventListener(handleNodeConnectionEvents);
+    quicConnection.addEventListener(
+      EventDefault.name,
+      handleNodeConnectionEvents,
+    );
     quicConnection.addEventListener(
       quicEvents.QUICConnectionStopEvent.name,
-      () => {
-        quicConnection.removeEventListener(handleNodeConnectionEvents);
+      async (e: quicEvents.QUICConnectionErrorEvent) => {
+        quicConnection.removeEventListener(
+          EventDefault.name,
+          handleNodeConnectionEvents,
+        );
+        try {
+          // Trigger the nodeConnection destroying
+          await nodeConnection.destroy({ force: false });
+          nodeConnection.dispatchEvent(
+            new nodesEvents.EventNodeConnectionError({ detail: e }),
+          );
+        } catch (err) {
+          nodeConnection.dispatchEvent(
+            new nodesEvents.EventNodeConnectionError({
+              detail: new AggregateError([err, e.detail]),
+            }),
+          );
+        }
       },
       { once: true },
     );
