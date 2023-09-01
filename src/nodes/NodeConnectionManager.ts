@@ -23,7 +23,7 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { Evented } from '@matrixai/events';
+import { EventDefault, Evented } from '@matrixai/events';
 import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
@@ -140,6 +140,12 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
+  protected eventQUICServerConnectionHandler = (
+    e: quicEvents.QUICServerConnectionEvent,
+  ) => {
+    void this.handleConnectionReverse(e.detail);
+  };
+
   protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
     // QUICSocket events are...
     //   - QUICSocketEvent,
@@ -158,9 +164,6 @@ class NodeConnectionManager {
     //   - QUICServerStartEvent,
     //   - QUICServerStopEvent,
     //   - QUICServerErrorEvent,
-    if (e instanceof quicEvents.QUICServerConnectionEvent) {
-      void this.handleConnectionReverse(e.detail);
-    }
     this.dispatchEvent(e.clone());
   };
 
@@ -311,8 +314,18 @@ class NodeConnectionManager {
       ipv6Only,
     });
 
-    this.quicSocket.addEventListener(this.handleQUICSocketEvents);
-    this.quicServer.addEventListener(this.handleQUICServerEvents);
+    this.quicSocket.addEventListener(
+      EventDefault.name,
+      this.handleQUICSocketEvents,
+    );
+    this.quicServer.addEventListener(
+      quicEvents.QUICServerConnectionEvent.name,
+      this.eventQUICServerConnectionHandler,
+    );
+    this.quicServer.addEventListener(
+      EventDefault.name,
+      this.handleQUICServerEvents,
+    );
 
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -320,8 +333,18 @@ class NodeConnectionManager {
   public async stop() {
     this.logger.info(`Stop ${this.constructor.name}`);
 
-    this.quicSocket.removeEventListener(this.handleQUICSocketEvents);
-    this.quicServer.removeEventListener(this.handleQUICServerEvents);
+    this.quicServer.removeEventListener(
+      EventDefault.name,
+      this.handleQUICServerEvents,
+    );
+    this.quicServer.removeEventListener(
+      quicEvents.QUICServerConnectionEvent.name,
+      this.eventQUICServerConnectionHandler,
+    );
+    this.quicSocket.removeEventListener(
+      EventDefault.name,
+      this.handleQUICSocketEvents,
+    );
 
     const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndTimer] of this.connections) {
@@ -806,26 +829,39 @@ class NodeConnectionManager {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
-    // TODO: set up event handling for all events here, need to make sure that the stream event and connection event is propagated.
-    //  The connection event should only contain connection metadata and not the connection itself otherwise we circumvent the locking.
     // Setting up events
     const nodeConnectionEventsHandler = (e) => {
       // Propagate all events upwards
       this.dispatchEvent(e.clone());
     };
-    nodeConnection.addEventListener(nodeConnectionEventsHandler);
     nodeConnection.addEventListener(
-      nodesEvents.EventNodeConnectionDestroy.name,
-      () => {
+      EventDefault.name,
+      nodeConnectionEventsHandler,
+    );
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionError.name,
+      async (e: nodesEvents.EventNodeConnectionError) => {
         this.logger.debug('stream destroyed event');
         nodeConnection.removeEventListener(nodeConnectionEventsHandler);
-        // To avoid deadlock only in the case where this is called
-        // we want to check for destroying connection and read lock
-        // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
-        if (!this.connections.has(nodeIdString)) return;
-        // Already locked so already destroying
-        if (this.connectionLocks.isLocked(nodeIdString)) return;
-        void this.destroyConnection(nodeId);
+        try {
+          // To avoid deadlock only in the case where this is called
+          // we want to check for destroying connection and read lock
+          // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
+          // Already locked so already destroying
+          if (this.connectionLocks.isLocked(nodeIdString)) return;
+          await this.destroyConnection(nodeId);
+          this.dispatchEvent(
+            new nodesEvents.EventNodeConnectionManagerConnectionFailure({
+              detail: e,
+            }),
+          );
+        } catch (err) {
+          this.dispatchEvent(
+            new nodesEvents.EventNodeConnectionManagerConnectionFailure({
+              detail: new AggregateError([err, e.detail]),
+            }),
+          );
+        }
       },
       { once: true },
     );
