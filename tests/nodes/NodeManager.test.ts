@@ -28,7 +28,7 @@ describe(`${NodeManager.name} test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const port = 55556;
   const password = 'password';
   const mockedPingNode = jest.fn();
@@ -340,20 +340,21 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     server = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
-      nodePath: path.join(dataDir, 'server'),
-      networkConfig: {
-        agentHost: '127.0.0.1',
+      options: {
+        nodePath: path.join(dataDir, 'server'),
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     const serverNodeId = server.keyRing.getNodeId();
     const serverNodeAddress: NodeAddress = {
@@ -560,7 +561,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await nodeManager.start();
 

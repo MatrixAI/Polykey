@@ -14,6 +14,7 @@ import * as keysUtils from '@/keys/utils/index';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -33,13 +34,17 @@ describe('PolykeyAgent', () => {
     const nodePath = path.join(dataDir, 'polykey');
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     await expect(pkAgent.destroy(password)).rejects.toThrow(
       errors.ErrorPolykeyAgentRunning,
@@ -56,14 +61,18 @@ describe('PolykeyAgent', () => {
     const nodePath = `${dataDir}/polykey`;
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        workers: 0,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
-      workers: 0,
+      logger,
     });
     let nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain(config.paths.statusBase);
@@ -96,13 +105,17 @@ describe('PolykeyAgent', () => {
     const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     const status = new Status({
       statusPath,
@@ -131,13 +144,17 @@ describe('PolykeyAgent', () => {
     });
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     expect(await schema.readVersion()).toBe(config.stateVersion);
     await pkAgent.stop();
@@ -158,13 +175,17 @@ describe('PolykeyAgent', () => {
     await expect(
       PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
-        logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
+        options: {
+          nodePath,
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
         },
+        logger,
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
     // The 0 version will always be too old
@@ -179,13 +200,17 @@ describe('PolykeyAgent', () => {
     await expect(
       PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
-        logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
+        options: {
+          nodePath,
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
         },
+        logger,
       }),
     ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
   });
@@ -195,13 +220,17 @@ describe('PolykeyAgent', () => {
     try {
       pkAgent = await PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
-        logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
+        options: {
+          nodePath,
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
         },
+        logger,
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
@@ -224,13 +253,17 @@ describe('PolykeyAgent', () => {
     try {
       pkAgent = await PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
-        logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
+        options: {
+          nodePath,
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
         },
+        logger,
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(
@@ -253,13 +286,17 @@ describe('PolykeyAgent', () => {
     try {
       pkAgent = await PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
-        logger,
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
+        options: {
+          nodePath,
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
         },
+        logger,
       });
       const prom = promise<CertManagerChangeData>();
       pkAgent.events.on(

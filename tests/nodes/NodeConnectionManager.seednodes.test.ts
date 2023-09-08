@@ -29,7 +29,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1' as Host;
+  const localHost = '127.0.0.1';
   const testAddress = {
     host: '127.0.0.1' as Host,
     port: 55555 as Port,
@@ -69,15 +69,16 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     // Setting up remote node
     const nodePathA = path.join(dataDir, 'agentA');
     remotePolykeyAgent1 = await PolykeyAgent.createPolykeyAgent({
-      nodePath: nodePathA,
       password,
-      networkConfig: {
-        agentHost: localHost,
-      },
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath: nodePathA,
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('AgentA'),
     });
@@ -90,15 +91,16 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     const nodePathB = path.join(dataDir, 'agentB');
     remotePolykeyAgent2 = await PolykeyAgent.createPolykeyAgent({
-      nodePath: nodePathB,
       password,
-      networkConfig: {
-        agentHost: localHost,
-      },
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath: nodePathB,
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('AgentA'),
     });
@@ -201,7 +203,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -244,7 +246,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -284,7 +286,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -329,7 +331,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -372,7 +374,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -410,7 +412,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: localHost,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
