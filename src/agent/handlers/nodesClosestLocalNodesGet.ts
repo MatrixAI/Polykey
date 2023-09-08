@@ -38,9 +38,9 @@ class NodesClosestLocalNodesGetHandler extends ServerHandler<
       },
     );
     // Get all local nodes that are closest to the target node from the request
-    return yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<AgentRPCResponseResult<NodeAddressMessage>> {
+    return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
+      AgentRPCResponseResult<NodeAddressMessage>
+    > {
       const closestNodes = await nodeGraph.getClosestNodes(
         nodeId,
         undefined,

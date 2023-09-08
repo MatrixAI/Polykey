@@ -218,9 +218,8 @@ describe('gestaltsActionsByIdentity', () => {
     };
     await rpcClient.methods.gestaltsActionsSetByIdentity(setActionMessage);
     // Check for permission
-    const getSetResponse = await rpcClient.methods.gestaltsActionsGetByIdentity(
-      providerMessage,
-    );
+    const getSetResponse =
+      await rpcClient.methods.gestaltsActionsGetByIdentity(providerMessage);
     expect(getSetResponse.actionsList).toContainEqual(action);
     // Unset permission
     await rpcClient.methods.gestaltsActionsUnsetByIdentity(setActionMessage);
@@ -349,16 +348,14 @@ describe('gestaltsActionsByNode', () => {
     };
     await rpcClient.methods.gestaltsActionsSetByNode(requestMessage);
     // Check for permission
-    const getSetResponse = await rpcClient.methods.gestaltsActionsGetByNode(
-      nodeMessage,
-    );
+    const getSetResponse =
+      await rpcClient.methods.gestaltsActionsGetByNode(nodeMessage);
     expect(getSetResponse.actionsList).toContainEqual(action);
     // Unset permission
     await rpcClient.methods.gestaltsActionsUnsetByNode(requestMessage);
     // Check permission was removed
-    const getUnsetResponse = await rpcClient.methods.gestaltsActionsGetByNode(
-      nodeMessage,
-    );
+    const getUnsetResponse =
+      await rpcClient.methods.gestaltsActionsGetByNode(nodeMessage);
     expect(getUnsetResponse.actionsList).toHaveLength(0);
   });
 });
@@ -855,9 +852,8 @@ describe('gestaltsGestaltGetByIdentity', () => {
       providerId: identity.providerId,
       identityId: identity.identityId,
     };
-    const response = await rpcClient.methods.gestaltsGestaltGetByIdentity(
-      request,
-    );
+    const response =
+      await rpcClient.methods.gestaltsGestaltGetByIdentity(request);
     expect(response.gestalt).toEqual(expectedGestalt);
   });
 });

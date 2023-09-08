@@ -25,9 +25,9 @@ class VaultsScanHandler extends ServerHandler<
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
+    yield* db.withTransactionG(async function* (tran): AsyncGenerator<
+      AgentRPCResponseResult<VaultsScanMessage>
+    > {
       const listResponse = vaultManager.handleScanVaults(
         requestingNodeId,
         tran,
