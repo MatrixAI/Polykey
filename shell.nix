@@ -3,7 +3,7 @@
 with pkgs;
 mkShell {
   nativeBuildInputs = [
-    nodejs
+    nodejs_20
     shellcheck
     gitAndTools.gh
     jq
