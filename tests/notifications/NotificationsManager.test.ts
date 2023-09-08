@@ -29,6 +29,7 @@ import * as tlsTestsUtils from '../utils/tls';
 
 describe('NotificationsManager', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger(
     `${NotificationsManager.name} Test`,
     LogLevel.WARN,
@@ -127,22 +128,22 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: '127.0.0.1' as Host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
-      nodePath: path.join(dataDir, 'receiver'),
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath: path.join(dataDir, 'receiver'),
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
       host: receiver.nodeConnectionManager.host as Host,

@@ -4,6 +4,7 @@ import type { PasswordMemLimit, PasswordOpsLimit } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { CertManager } from '@/keys';
 import * as bootstrapErrors from './errors';
 import TaskManager from '../tasks/TaskManager';
 import { IdentitiesManager } from '../identities';
@@ -43,8 +44,6 @@ async function bootstrapState({
   // Required parameters
   password,
   // Optional configuration
-  // nodePath = config.defaults.nodePath,
-  // keyRingConfig = {},
   options = {},
   fresh = false,
   // Optional dependencies
@@ -53,14 +52,6 @@ async function bootstrapState({
 }: {
   password: string;
   options?: DeepPartial<BootstrapOptions>;
-  // NodePath?: string;
-  // keyRingConfig?: {
-  //   recoveryCode?: RecoveryCode;
-  //   privateKey?: PrivateKey;
-  //   privateKeyPath?: string;
-  //   passwordOpsLimit?: PasswordOpsLimit;
-  //   passwordMemLimit?: PasswordMemLimit;
-  // };
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
@@ -68,15 +59,30 @@ async function bootstrapState({
   const umask = 0o077;
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);
-  logger.info(`Setting node path to ${nodePath}`);
-  if (nodePath == null) {
+  const optionsDefaulted = utils.mergeObjects(options, {
+    nodePath: config.defaultsUser.nodePath,
+    keys: {
+      certDuration: config.defaultsUser.certDuration,
+    },
+  });
+  logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
+  if (optionsDefaulted.nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
-  await mkdirExists(fs, nodePath);
+  await mkdirExists(fs, optionsDefaulted.nodePath);
   // Setup node path and sub paths
-  const statusPath = path.join(nodePath, config.paths.statusBase);
-  const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
-  const statePath = path.join(nodePath, config.paths.stateBase);
+  const statusPath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.statusBase,
+  );
+  const statusLockPath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.statusLockBase,
+  );
+  const statePath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.stateBase,
+  );
   const dbPath = path.join(statePath, config.paths.dbBase);
   const keysPath = path.join(statePath, config.paths.keysBase);
   const vaultsPath = path.join(statePath, config.paths.vaultsBase);
@@ -90,7 +96,7 @@ async function bootstrapState({
     await status.start({ pid: process.pid });
     if (!fresh) {
       // Check the if number of directory entries is greater than 1 due to status.json and status.lock
-      if ((await fs.promises.readdir(nodePath)).length > 2) {
+      if ((await fs.promises.readdir(optionsDefaulted.nodePath)).length > 2) {
         throw new bootstrapErrors.ErrorBootstrapExistingState();
       }
     }
@@ -110,7 +116,12 @@ async function bootstrapState({
       fs,
       logger: logger.getChild(KeyRing.name),
       fresh,
-      ...keyRingConfig,
+      recoveryCode: optionsDefaulted.recoveryCode,
+      privateKey: optionsDefaulted.privateKey,
+      privateKeyPath: optionsDefaulted.privateKeyPath,
+      passwordOpsLimit: optionsDefaulted.passwordOpsLimit,
+      passwordMemLimit: optionsDefaulted.passwordMemLimit,
+      strictMemoryLock: optionsDefaulted.strictMemoryLock,
     });
     const db = await DB.createDB({
       dbPath,
@@ -134,6 +145,19 @@ async function bootstrapState({
         },
       },
       fresh,
+    });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    const certManager = await CertManager.createCertManager({
+      keyRing,
+      db,
+      taskManager,
+      fresh,
+      logger,
+      certDuration: optionsDefaulted.certDuration,
     });
     const sigchain = await Sigchain.createSigchain({
       db,
@@ -166,11 +190,7 @@ async function bootstrapState({
       keyRing,
       logger: logger.getChild(NodeGraph.name),
     });
-    const taskManager = await TaskManager.createTaskManager({
-      db,
-      logger,
-      lazy: true,
-    });
+
     const nodeManager = new NodeManager({
       db,
       keyRing,
@@ -217,6 +237,7 @@ async function bootstrapState({
     await gestaltGraph.stop();
     await acl.stop();
     await sigchain.stop();
+    await certManager.stop();
     await taskManager.stop();
     await db.stop();
     await keyRing.stop();

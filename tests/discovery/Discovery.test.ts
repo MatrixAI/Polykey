@@ -35,6 +35,7 @@ import { createTLSConfig } from '../utils/tls';
 
 describe('Discovery', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger(`${Discovery.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -171,36 +172,36 @@ describe('Discovery', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: '127.0.0.1' as Host,
+      host: localhost as Host,
     });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
-      nodePath: path.join(dataDir, 'nodeA'),
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath: path.join(dataDir, 'nodeA'),
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('nodeA'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     nodeB = await PolykeyAgent.createPolykeyAgent({
       password: password,
-      nodePath: path.join(dataDir, 'nodeB'),
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath: path.join(dataDir, 'nodeB'),
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('nodeB'),
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     nodeIdA = nodeA.keyRing.getNodeId();
     nodeIdB = nodeB.keyRing.getNodeId();

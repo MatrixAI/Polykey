@@ -52,7 +52,7 @@ describe('keysCertsChainGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const certs = ['cert1', 'cert2', 'cert3'] as Array<CertificatePEM>;
   let dataDir: string;
   let db: DB;
@@ -131,13 +131,13 @@ describe('keysCertsChainGet', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -165,7 +165,7 @@ describe('keysCertsGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -243,13 +243,13 @@ describe('keysCertsGet', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -273,7 +273,7 @@ describe('keysEncryptDecrypt', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -335,13 +335,13 @@ describe('keysEncryptDecrypt', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -372,7 +372,7 @@ describe('keysKeyPair', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -431,13 +431,13 @@ describe('keysKeyPair', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -476,7 +476,7 @@ describe('keysKeyPairRenew', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let pkAgent: PolykeyAgent;
   let webSocketClient: WebSocketClient;
@@ -492,13 +492,17 @@ describe('keysKeyPairRenew', () => {
     const nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(pkAgent.keyRing.keyPair);
   });
@@ -524,13 +528,13 @@ describe('keysKeyPairRenew', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [pkAgent.keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -592,7 +596,7 @@ describe('keysKeyPairReset', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let webSocketClient: WebSocketClient;
   let webSocketServer: WebSocketServer;
@@ -608,13 +612,17 @@ describe('keysKeyPairReset', () => {
     const nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(pkAgent.keyRing.keyPair);
   });
@@ -640,13 +648,13 @@ describe('keysKeyPairReset', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [pkAgent.keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -708,7 +716,7 @@ describe('keysPasswordChange', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -767,13 +775,13 @@ describe('keysPasswordChange', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -802,7 +810,7 @@ describe('keysPublicKey', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -861,13 +869,13 @@ describe('keysPublicKey', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -898,7 +906,7 @@ describe('keysSignVerify', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -960,13 +968,13 @@ describe('keysSignVerify', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });

@@ -34,7 +34,7 @@ import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 
 describe('VaultManager', () => {
-  const localHost = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -484,30 +484,32 @@ describe('VaultManager', () => {
 
       remoteKeynode1 = await PolykeyAgent.createPolykeyAgent({
         password,
+        options: {
+          nodePath: path.join(allDataDir, 'remoteKeynode1'),
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
+        },
         logger: logger.getChild('Remote Keynode 1'),
-        nodePath: path.join(allDataDir, 'remoteKeynode1'),
-        networkConfig: {
-          agentHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
       });
       remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
       remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
         password,
+        options: {
+          nodePath: path.join(allDataDir, 'remoteKeynode2'),
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
+        },
         logger: logger.getChild('Remote Keynode 2'),
-        nodePath: path.join(allDataDir, 'remoteKeynode2'),
-        networkConfig: {
-          agentHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
       });
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
 
@@ -572,7 +574,7 @@ describe('VaultManager', () => {
         tlsConfig,
         logger,
       });
-      await nodeConnectionManager.start({ host: localHost });
+      await nodeConnectionManager.start({ host: localhost as Host });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
         host: remoteKeynode1.nodeConnectionManager.host as Host,
