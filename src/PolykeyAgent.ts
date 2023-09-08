@@ -1,6 +1,6 @@
 import type { DeepPartial, FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { ConnectionData, TLSConfig } from './network/types';
+import type { TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
 import type { CertManagerChangeData, Key } from './keys/types';
 import type { RecoveryCode, PrivateKey } from './keys/types';
@@ -10,13 +10,11 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { QUICServer } from '@matrixai/quic';
 import RPCServer from './rpc/RPCServer';
 import WebSocketServer from './websockets/WebSocketServer';
 import * as rpcUtilsMiddleware from './rpc/utils/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
-import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
 import CertManager from './keys/CertManager';
 import Status from './status/Status';
@@ -39,6 +37,7 @@ import * as errors from './errors';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as nodesUtils from './nodes/utils';
+import * as nodesEvents from './nodes/events';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
@@ -83,6 +82,15 @@ type PolykeyAgentOptions = {
     connectionKeepAliveIntervalTime: number;
     connectionHolePunchIntervalTime: number;
   };
+};
+
+type PolykeyAgentStartOptions = {
+  clientServiceHost: string;
+  clientServicePort: number;
+  agentServiceHost: string;
+  agentServicePort: number;
+  ipv6Only: boolean;
+  workers: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -172,40 +180,44 @@ class PolykeyAgent {
     const umask = 0o077;
     logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
     process.umask(umask);
-    const optionsDefaulted = utils.mergeObjects(
-      options,
-      {
-        nodePath: config.defaultsUser.nodePath,
-        clientServiceHost: config.defaultsUser.clientServiceHost,
-        clientServicePort: config.defaultsUser.clientServicePort,
-        agentServiceHost: config.defaultsUser.agentServiceHost,
-        agentServicePort: config.defaultsUser.agentServicePort,
-        seedNodes: config.defaultsUser.seedNodes,
-        workers: config.defaultsUser.workers,
-        ipv6Only: config.defaultsUser.ipv6Only,
-        keys: {
-          certDuration: config.defaultsUser.certDuration,
-          certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
-        },
-        rpc: {
-          callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
-          parserBufferSize: config.defaultsSystem.rpcParserBufferSize,
-        },
-        client: {
-          connectTimoutTime: config.defaultsSystem.clientConnectTimeoutTime,
-          keepAliveTimeoutTime: config.defaultsSystem.clientKeepAliveTimeoutTime,
-          keepAliveIntervalTime: config.defaultsSystem.clientKeepAliveIntervalTime,
-        },
-        nodes: {
-          connectionIdleTimeoutTime: config.defaultsSystem.nodesConnectionIdleTimeoutTime,
-          connectionFindConcurrencyLimit: config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
-          connectionConnectTimeoutTime: config.defaultsSystem.nodesConnectionConnectTimeoutTime,
-          connectionKeepAliveTimeoutTime: config.defaultsSystem.nodesConnectionKeepAliveTimeoutTime,
-          connectionKeepAliveIntervalTime: config.defaultsSystem.nodesConnectionKeepAliveIntervalTime,
-          connectionHolePunchIntervalTime: config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
-        },
+    const optionsDefaulted = utils.mergeObjects(options, {
+      nodePath: config.defaultsUser.nodePath,
+      clientServiceHost: config.defaultsUser.clientServiceHost,
+      clientServicePort: config.defaultsUser.clientServicePort,
+      agentServiceHost: config.defaultsUser.agentServiceHost,
+      agentServicePort: config.defaultsUser.agentServicePort,
+      seedNodes: config.defaultsUser.seedNodes,
+      workers: config.defaultsUser.workers,
+      ipv6Only: config.defaultsUser.ipv6Only,
+      keys: {
+        certDuration: config.defaultsUser.certDuration,
+        certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
       },
-    );
+      rpc: {
+        callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
+        parserBufferSize: config.defaultsSystem.rpcParserBufferSize,
+      },
+      client: {
+        connectTimoutTime: config.defaultsSystem.clientConnectTimeoutTime,
+        keepAliveTimeoutTime: config.defaultsSystem.clientKeepAliveTimeoutTime,
+        keepAliveIntervalTime:
+          config.defaultsSystem.clientKeepAliveIntervalTime,
+      },
+      nodes: {
+        connectionIdleTimeoutTime:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+        connectionFindConcurrencyLimit:
+          config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
+        connectionConnectTimeoutTime:
+          config.defaultsSystem.nodesConnectionConnectTimeoutTime,
+        connectionKeepAliveTimeoutTime:
+          config.defaultsSystem.nodesConnectionKeepAliveTimeoutTime,
+        connectionKeepAliveIntervalTime:
+          config.defaultsSystem.nodesConnectionKeepAliveIntervalTime,
+        connectionHolePunchIntervalTime:
+          config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
+      },
+    });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
     if (optionsDefaulted.nodePath == null) {
@@ -213,9 +225,18 @@ class PolykeyAgent {
     }
     logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
     await utils.mkdirExists(fs, optionsDefaulted.nodePath);
-    const statusPath = path.join(optionsDefaulted.nodePath, config.paths.statusBase);
-    const statusLockPath = path.join(optionsDefaulted.nodePath, config.paths.statusLockBase);
-    const statePath = path.join(optionsDefaulted.nodePath, config.paths.stateBase);
+    const statusPath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.statusBase,
+    );
+    const statusLockPath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.statusLockBase,
+    );
+    const statePath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.stateBase,
+    );
     const dbPath = path.join(statePath, config.paths.dbBase);
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
@@ -362,12 +383,18 @@ class PolykeyAgent {
           nodeGraph,
           tlsConfig,
           seedNodes: optionsDefaulted.seedNodes,
-          connectionFindConcurrencyLimit: optionsDefaulted.nodes.connectionFindConcurrencyLimit,
-          connectionIdleTimeoutTime: optionsDefaulted.nodes.connectionIdleTimeoutTime,
-          connectionConnectTimeoutTime: optionsDefaulted.nodes.connectionConnectTimeoutTime,
-          connectionKeepAliveTimeoutTime: optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
-          connectionKeepAliveIntervalTime: optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
-          connectionHolePunchIntervalTime: optionsDefaulted.nodes.connectionHolePunchIntervalTime,
+          connectionFindConcurrencyLimit:
+            optionsDefaulted.nodes.connectionFindConcurrencyLimit,
+          connectionIdleTimeoutTime:
+            optionsDefaulted.nodes.connectionIdleTimeoutTime,
+          connectionConnectTimeoutTime:
+            optionsDefaulted.nodes.connectionConnectTimeoutTime,
+          connectionKeepAliveTimeoutTime:
+            optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
+          connectionKeepAliveIntervalTime:
+            optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
+          connectionHolePunchIntervalTime:
+            optionsDefaulted.nodes.connectionHolePunchIntervalTime,
           logger: logger.getChild(NodeConnectionManager.name),
         });
       nodeManager =
@@ -429,7 +456,9 @@ class PolykeyAgent {
         }));
       // If a recovery code is provided then we reset any sessions in case the
       // password changed.
-      if (optionsDefaulted.keys.recoveryCode != null) await sessionManager.resetKey();
+      if (optionsDefaulted.keys.recoveryCode != null) {
+        await sessionManager.resetKey();
+      }
       if (rpcServerClient == null) {
         pkAgentProm = utils.promise();
         rpcServerClient = await RPCServer.createRPCServer({
@@ -550,10 +579,14 @@ class PolykeyAgent {
 
     await pkAgent.start({
       password,
-      host,
-      port
-      // networkConfig,
-      workers: optionsDefaulted.workers,
+      options: {
+        clientServiceHost: optionsDefaulted.clientServiceHost,
+        clientServicePort: optionsDefaulted.clientServicePort,
+        agentServiceHost: optionsDefaulted.agentServiceHost,
+        agentServicePort: optionsDefaulted.agentServicePort,
+        workers: optionsDefaulted.workers,
+        ipv6Only: optionsDefaulted.ipv6Only,
+      },
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -585,6 +618,11 @@ class PolykeyAgent {
   public readonly webSocketServerClient: WebSocketServer;
   public readonly rpcServerAgent: RPCServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
+
+  protected handleEventNodeStream = (e: nodesEvents.EventNodeStream) => {
+    const stream = e.detail;
+    this.rpcServerAgent.handleStream(stream);
+  };
 
   constructor({
     nodePath,
@@ -670,10 +708,18 @@ class PolykeyAgent {
     fresh = false,
   }: {
     password: string;
-    options,
+    options: Partial<PolykeyAgentStartOptions>;
     workers?: number;
     fresh?: boolean;
   }) {
+    const optionsDefaulted = utils.mergeObjects(options, {
+      clientServiceHost: config.defaultsUser.clientServiceHost,
+      clientServicePort: config.defaultsUser.clientServicePort,
+      agentServiceHost: config.defaultsUser.agentServiceHost,
+      agentServicePort: config.defaultsUser.agentServicePort,
+      workers: config.defaultsUser.workers,
+      ipv6Only: config.defaultsUser.ipv6Only,
+    });
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
       // Set up error handling for event handlers
@@ -713,10 +759,6 @@ class PolykeyAgent {
           this.logger.info(`${KeyRing.name} change propagated`);
         },
       );
-      const _networkConfig = {
-        ...config.defaults.networkConfig,
-        ...utils.filterEmptyObject(networkConfig),
-      };
       await this.status.start({ pid: process.pid });
       await this.schema.start({ fresh });
       // Starting modules
@@ -763,15 +805,20 @@ class PolykeyAgent {
       // Client server
       await this.webSocketServerClient.start({
         tlsConfig,
-        host: _networkConfig.clientHost,
-        port: _networkConfig.clientPort,
+        host: optionsDefaulted.clientServiceHost,
+        port: optionsDefaulted.clientServicePort,
         connectionCallback: (streamPair) =>
           this.rpcServerClient.handleStream(streamPair),
       });
       await this.nodeManager.start();
+      this.nodeConnectionManager.addEventListener(
+        nodesEvents.EventNodeStream.name,
+        this.handleEventNodeStream,
+      );
       await this.nodeConnectionManager.start({
-        host: optionss,
-        handleStream: (stream) => this.rpcServerAgent.handleStream(stream),
+        host: optionsDefaulted.agentServiceHost,
+        port: optionsDefaulted.agentServicePort,
+        ipv6Only: optionsDefaulted.ipv6Only,
       });
       await this.nodeGraph.start({ fresh });
       await this.nodeManager.syncNodeGraph(false);
@@ -812,6 +859,10 @@ class PolykeyAgent {
       await this.discovery?.stop();
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
+      this.nodeConnectionManager.removeEventListener(
+        nodesEvents.EventNodeStream.name,
+        this.handleEventNodeStream,
+      );
       await this.nodeManager?.stop();
       await this.webSocketServerClient.stop(true);
       await this.identitiesManager?.stop();
@@ -845,6 +896,10 @@ class PolykeyAgent {
     await this.vaultManager.stop();
     await this.discovery.stop();
     await this.nodeConnectionManager.stop();
+    this.nodeConnectionManager.removeEventListener(
+      nodesEvents.EventNodeStream.name,
+      this.handleEventNodeStream,
+    );
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
     await this.webSocketServerClient.stop(true);

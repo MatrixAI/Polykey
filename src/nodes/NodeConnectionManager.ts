@@ -23,12 +23,13 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { EventDefault, Evented } from '@matrixai/events';
+import { EventDefault } from '@matrixai/events';
 import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
+import * as events from './events';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
@@ -80,9 +81,12 @@ type ConnectionAndTimer = {
  * - nodeConnectionDestroy
  */
 interface NodeConnectionManager extends StartStop {}
-interface NodeConnectionManager extends Evented {}
-@StartStop()
-@Evented()
+@StartStop({
+  eventStart: events.EventNodeConnectionManagerStart,
+  eventStarted: events.EventNodeConnectionManagerStarted,
+  eventStop: events.EventNodeConnectionManagerStop,
+  eventStopped: events.EventNodeConnectionManagerStopped,
+})
 class NodeConnectionManager {
   /**
    * Alpha constant for kademlia
@@ -146,25 +150,27 @@ class NodeConnectionManager {
     void this.handleConnectionReverse(e.detail);
   };
 
-  protected handleQUICSocketEvents = (e: quicEvents.QUICSocketEvent) => {
+  protected handleQUICSocketEvents = (e: EventDefault) => {
+    const event = e.detail;
     // QUICSocket events are...
     //   - QUICSocketEvent,
     //   - QUICSocketStartEvent,
     //   - QUICSocketStopEvent,
     //   - QUICSocketErrorEvent,
-    console.log(e);
-    this.dispatchEvent(e.clone());
+    console.log(event);
+    this.dispatchEvent(event.clone());
   };
 
-  protected handleQUICServerEvents = (e: quicEvents.QUICServerEvent) => {
-    console.log(e);
+  protected handleQUICServerEvents = (e: EventDefault) => {
+    const event = e.detail;
+    console.log(event);
     // QUICServer events are...
     //   - QUICServerEvent,
     //   - QUICServerConnectionEvent,
     //   - QUICServerStartEvent,
     //   - QUICServerStopEvent,
     //   - QUICServerErrorEvent,
-    this.dispatchEvent(e.clone());
+    this.dispatchEvent(event.clone());
   };
 
   public constructor({
@@ -683,7 +689,7 @@ class NodeConnectionManager {
     if (connectionsResults.size === 0) {
       // TODO: This needs to throw if none were established.
       //  The usual use case is a single node, this shouldn't be a aggregate error type.
-      throw Error('No connections established!');
+      throw Error('TMP No connections established!');
     }
     return connectionsResults;
   }
@@ -830,9 +836,9 @@ class NodeConnectionManager {
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
     // Setting up events
-    const nodeConnectionEventsHandler = (e) => {
+    const nodeConnectionEventsHandler = (e: EventDefault) => {
       // Propagate all events upwards
-      this.dispatchEvent(e.clone());
+      this.dispatchEvent(e.detail.clone());
     };
     nodeConnection.addEventListener(
       EventDefault.name,
@@ -842,7 +848,10 @@ class NodeConnectionManager {
       nodesEvents.EventNodeConnectionError.name,
       async (e: nodesEvents.EventNodeConnectionError) => {
         this.logger.debug('stream destroyed event');
-        nodeConnection.removeEventListener(nodeConnectionEventsHandler);
+        nodeConnection.removeEventListener(
+          EventDefault.name,
+          nodeConnectionEventsHandler,
+        );
         try {
           // To avoid deadlock only in the case where this is called
           // we want to check for destroying connection and read lock
