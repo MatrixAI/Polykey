@@ -38,6 +38,7 @@
         "message": "Use `globalThis` instead"
       }
     ],
+    "prefer-rest-params": 0,
     "require-yield": 0,
     "eqeqeq": ["error", "smart"],
     "spaced-comment": [
