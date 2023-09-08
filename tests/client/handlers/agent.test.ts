@@ -142,14 +142,16 @@ describe('agentStatus', () => {
     );
     const nodePath = path.join(dataDir, 'node');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
-      nodePath,
       password,
-      logger,
-      keyRingConfig: {
-        strictMemoryLock: false,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      options: {
+        nodePath,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(pkAgent.keyRing.keyPair);
   });
@@ -200,8 +202,8 @@ describe('agentStatus', () => {
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
       clientHost: pkAgent.webSocketServerClient.getHost(),
       clientPort: pkAgent.webSocketServerClient.getPort(),
-      agentHost: pkAgent.quicSocket.host,
-      agentPort: pkAgent.quicSocket.port,
+      agentHost: pkAgent.nodeConnectionManager.host,
+      agentPort: pkAgent.nodeConnectionManager.port,
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     });
@@ -248,13 +250,15 @@ describe('agentStop', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
   });
   afterEach(async () => {

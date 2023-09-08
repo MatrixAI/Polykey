@@ -81,7 +81,7 @@ describe('gestaltsActionsByIdentity', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -157,13 +157,13 @@ describe('gestaltsActionsByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -236,7 +236,7 @@ describe('gestaltsActionsByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -311,13 +311,13 @@ describe('gestaltsActionsByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -366,7 +366,7 @@ describe('gestaltsDiscoverByIdentity', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -454,7 +454,7 @@ describe('gestaltsDiscoverByIdentity', () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      host: '127.0.0.1' as Host,
+      host: localhost as Host,
     });
     discovery = await Discovery.createDiscovery({
       db,
@@ -500,13 +500,13 @@ describe('gestaltsDiscoverByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -542,7 +542,7 @@ describe('gestaltsDiscoverByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -629,7 +629,7 @@ describe('gestaltsDiscoverByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -674,13 +674,13 @@ describe('gestaltsDiscoverByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -717,7 +717,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
     ],
   );
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -784,13 +784,13 @@ describe('gestaltsGestaltGetByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -864,7 +864,7 @@ describe('gestaltsGestaltGetByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -931,13 +931,13 @@ describe('gestaltsGestaltGetByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1009,7 +1009,7 @@ describe('gestaltsGestaltList', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1076,13 +1076,13 @@ describe('gestaltsGestaltList', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1149,7 +1149,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     ],
   );
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1240,7 +1240,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1307,13 +1307,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1369,13 +1369,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1428,13 +1428,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1479,13 +1479,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1545,13 +1545,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1608,7 +1608,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1647,17 +1647,17 @@ describe('gestaltsGestaltTrustByNode', () => {
     const nodePath = path.join(nodeDataDir, 'polykey');
     node = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     nodeIdRemote = node.keyRing.getNodeId();
     nodeIdEncodedRemote = nodesUtils.encodeNodeId(nodeIdRemote);
@@ -1748,7 +1748,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await nodeManager.setNode(nodeIdRemote, {
       host: node.nodeConnectionManager.host as Host,
       port: node.nodeConnectionManager.port as Port,
@@ -1805,13 +1805,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1849,13 +1849,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1892,13 +1892,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });

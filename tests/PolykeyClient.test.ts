@@ -11,6 +11,7 @@ import WebSocketClient from '@/websockets/WebSocketClient';
 
 describe('PolykeyClient', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger('PolykeyClient Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -24,13 +25,17 @@ describe('PolykeyClient', () => {
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
   });
   afterEach(async () => {

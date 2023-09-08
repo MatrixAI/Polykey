@@ -267,6 +267,9 @@ class PolykeyAgent {
         keyRing ??
         (await KeyRing.createKeyRing({
           keysPath,
+          recoveryCode: optionsDefaulted.keys.recoveryCode,
+          privateKey: optionsDefaulted.keys.privateKey,
+          privateKeyPath: optionsDefaulted.keys.privateKeyPath,
           passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
           passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
           strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
@@ -701,14 +704,16 @@ class PolykeyAgent {
     this.fs = fs;
   }
 
+  // TODO: add getters for runtime service information?
+
   public async start({
     password,
-    options,
+    options = {},
     workers,
     fresh = false,
   }: {
     password: string;
-    options: Partial<PolykeyAgentStartOptions>;
+    options?: Partial<PolykeyAgentStartOptions>;
     workers?: number;
     fresh?: boolean;
   }) {
