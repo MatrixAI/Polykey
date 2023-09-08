@@ -1194,9 +1194,7 @@ class NodeManager {
       await this.db.withTransactionF(async (tran) =>
         seedNodes.map(
           async (seedNode) =>
-            (
-              await this.nodeGraph.getNode(seedNode, tran)
-            )?.address,
+            (await this.nodeGraph.getNode(seedNode, tran))?.address,
         ),
       ),
     );

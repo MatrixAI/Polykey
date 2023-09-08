@@ -11,9 +11,19 @@ class EventNodeConnectionError extends EventsNodeConnection<
 
 class EventNodeConnectionDestroy extends EventsNodeConnection<null> {}
 
+class EventNodeConnectionDestroyed extends EventsNodeConnection<null> {}
+
 class EventNodeStream extends EventsNode<QUICStream> {}
 
-abstract class EventNodeConnectionManager<T> extends EventsNode<T> {}
+abstract class EventNodeConnectionManager<T = null> extends EventsNode<T> {}
+
+class EventNodeConnectionManagerStart extends EventNodeConnectionManager {}
+
+class EventNodeConnectionManagerStarted extends EventNodeConnectionManager {}
+
+class EventNodeConnectionManagerStop extends EventNodeConnectionManager {}
+
+class EventNodeConnectionManagerStopped extends EventNodeConnectionManager {}
 
 class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {}
 
@@ -26,7 +36,13 @@ export {
   EventsNodeConnection,
   EventNodeConnectionError,
   EventNodeConnectionDestroy,
+  EventNodeConnectionDestroyed,
   EventNodeStream,
+  EventNodeConnectionManager,
+  EventNodeConnectionManagerStart,
+  EventNodeConnectionManagerStarted,
+  EventNodeConnectionManagerStop,
+  EventNodeConnectionManagerStopped,
   EventNodeConnectionManagerConnection,
   EventNodeConnectionManagerConnectionFailure,
 };
