@@ -43,18 +43,16 @@ describe('keys/utils/generate', () => {
         const recoveryCode1 = recoveryCode.generateRecoveryCode(
           length as 12 | 24 | undefined,
         );
-        const keyPair1 = await generate.generateDeterministicKeyPair(
-          recoveryCode1,
-        );
+        const keyPair1 =
+          await generate.generateDeterministicKeyPair(recoveryCode1);
         expect(keyPair1.publicKey).toHaveLength(32);
         expect(keyPair1.privateKey).toHaveLength(32);
         expect(keyPair1.publicKey).not.toEqual(keyPair1.privateKey);
         expect(keyPair1.secretKey).toStrictEqual(
           Buffer.concat([keyPair1.privateKey, keyPair1.publicKey]),
         );
-        const keyPair2 = await generate.generateDeterministicKeyPair(
-          recoveryCode1,
-        );
+        const keyPair2 =
+          await generate.generateDeterministicKeyPair(recoveryCode1);
         expect(keyPair2.publicKey).toHaveLength(32);
         expect(keyPair2.privateKey).toHaveLength(32);
         expect(keyPair2.publicKey).not.toEqual(keyPair2.privateKey);

@@ -778,9 +778,8 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    const receivedInvite = await notificationsManager.findGestaltInvite(
-      senderId,
-    );
+    const receivedInvite =
+      await notificationsManager.findGestaltInvite(senderId);
     expect(receivedInvite).toEqual(notification);
     // Reverse side-effects
     await notificationsManager.clearNotifications();
