@@ -24,7 +24,7 @@ interface PolykeyClient extends CreateDestroyStartStop {}
 )
 class PolykeyClient {
   static async createPolykeyClient({
-    nodePath = config.defaults.nodePath,
+    nodePath = config.defaultsUser.nodePath,
     session,
     rpcClientClient,
     streamFactory,
