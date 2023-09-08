@@ -157,9 +157,8 @@ class KeyRing {
       });
     }
     await this.fs.promises.mkdir(this.keysPath, { recursive: true });
-    const [keyPair, recoveryCode] = await this.setupKeyPair(
-      setupKeyPairOptions,
-    );
+    const [keyPair, recoveryCode] =
+      await this.setupKeyPair(setupKeyPairOptions);
     const dbKey = await this.setupDbKey(keyPair);
     const [passwordHash, passwordSalt] = await this.setupPasswordHash(
       options.password,
@@ -280,9 +279,8 @@ class KeyRing {
     await this.rotateLock.withF(async () => {
       this.logger.info('Changing root key pair password');
       await this.writeKeyPair(this._keyPair!, password);
-      const [passwordHash, passwordSalt] = await this.setupPasswordHash(
-        password,
-      );
+      const [passwordHash, passwordSalt] =
+        await this.setupPasswordHash(password);
       bufferUnlock(this.passwordHash!.hash);
       bufferUnlock(this.passwordHash!.salt);
       bufferLock(passwordHash, this.strictMemoryLock);
@@ -372,9 +370,8 @@ class KeyRing {
           bufferUnlock(this._recoveryCodeData);
         }
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
-        const [passwordHash, passwordSalt] = await this.setupPasswordHash(
-          password,
-        );
+        const [passwordHash, passwordSalt] =
+          await this.setupPasswordHash(password);
         bufferUnlock(this.passwordHash!.hash);
         bufferUnlock(this.passwordHash!.salt);
         bufferLock(passwordHash, this.strictMemoryLock);

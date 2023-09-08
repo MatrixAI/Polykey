@@ -17,9 +17,9 @@ class NodesClaimsGetHandler extends ServerHandler<
     _input: ClaimIdMessage,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { sigchain, db } = this.container;
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
+    yield* db.withTransactionG(async function* (tran): AsyncGenerator<
+      AgentRPCResponseResult<AgentClaimMessage>
+    > {
       for await (const [claimId, signedClaim] of sigchain.getSignedClaims(
         { /* seek: seekClaimId,*/ order: 'asc' },
         tran,
