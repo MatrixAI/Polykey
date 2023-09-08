@@ -118,11 +118,7 @@ function filterEmptyObject(o) {
   ]);
 }
 
-function filterObject<
-  T extends Record<K, V>,
-  K extends string,
-  V extends unknown,
->(
+function filterObject<T extends Record<K, V>, K extends string, V>(
   obj: T,
   f: (element: [K, V], index: number, arr: Array<[K, V]>) => boolean,
 ): Partial<T> {
