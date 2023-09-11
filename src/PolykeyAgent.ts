@@ -31,11 +31,11 @@ import Discovery from './discovery/Discovery';
 import SessionManager from './sessions/SessionManager';
 import IdentitiesManager from './identities/IdentitiesManager';
 import { providers } from './identities';
-import { EventBus, captureRejectionSymbol } from './events';
 import config from './config';
 import * as errors from './errors';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
+import * as keysEvents from './keys/events';
 import * as nodesUtils from './nodes/utils';
 import * as nodesEvents from './nodes/events';
 import * as workersUtils from './workers/utils';
@@ -99,15 +99,6 @@ interface PolykeyAgent extends CreateDestroyStartStop {}
   new errors.ErrorPolykeyAgentDestroyed(),
 )
 class PolykeyAgent {
-  /**
-   * Event symbols
-   * These represent event topics
-   */
-  public static readonly eventSymbols = {
-    [CertManager.name]: Symbol(CertManager.name),
-  } as {
-    readonly CertManager: unique symbol;
-  };
 
   /**
    * Create the Polykey Agent.
@@ -240,9 +231,6 @@ class PolykeyAgent {
     const dbPath = path.join(statePath, config.paths.dbBase);
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
-    const events = new EventBus({
-      captureRejections: true,
-    });
     let pkAgentProm: PromiseDeconstructed<PolykeyAgent> | undefined;
     try {
       status =
@@ -322,8 +310,6 @@ class PolykeyAgent {
           taskManager,
           certDuration: optionsDefaulted.keys.certDuration,
           certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
-          changeCallback: async (data) =>
-            events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
           logger: logger.getChild(CertManager.name),
           fresh,
         }));
@@ -574,7 +560,6 @@ class PolykeyAgent {
       rpcServerClient,
       webSocketServerClient,
       rpcServerAgent,
-      events,
       fs,
       logger,
     });
@@ -614,7 +599,6 @@ class PolykeyAgent {
   public readonly vaultManager: VaultManager;
   public readonly notificationsManager: NotificationsManager;
   public readonly sessionManager: SessionManager;
-  public readonly events: EventBus;
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly rpcServerClient: RPCServer;
@@ -649,7 +633,6 @@ class PolykeyAgent {
     rpcServerClient,
     webSocketServerClient,
     rpcServerAgent,
-    events,
     fs,
     logger,
   }: {
@@ -674,7 +657,6 @@ class PolykeyAgent {
     rpcServerClient: RPCServer;
     webSocketServerClient: WebSocketServer;
     rpcServerAgent: RPCServer;
-    events: EventBus;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -700,7 +682,6 @@ class PolykeyAgent {
     this.rpcServerClient = rpcServerClient;
     this.webSocketServerClient = webSocketServerClient;
     this.rpcServerAgent = rpcServerAgent;
-    this.events = events;
     this.fs = fs;
   }
 
@@ -727,43 +708,26 @@ class PolykeyAgent {
     });
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
-      // Set up error handling for event handlers
-      this.events[captureRejectionSymbol] = (err, event: symbol) => {
-        let msg = `EventBus error for ${event.toString()}`;
-        if (err instanceof errors.ErrorPolykey) {
-          msg += `: ${err.name}: ${err.description}`;
-          if (err.message !== '') {
-            msg += ` - ${err.message}`;
-          }
-        } else {
-          msg += `: ${err.name}`;
-          if (err.message !== '') {
-            msg += `: ${err.message}`;
-          }
-        }
-        this.logger.error(msg);
-        throw err;
-      };
       // Register event handlers
-      this.events.on(
-        PolykeyAgent.eventSymbols.CertManager,
-        async (data: CertManagerChangeData) => {
-          this.logger.info(`${KeyRing.name} change propagating`);
-          await this.status.updateStatusLive({
-            nodeId: data.nodeId,
-          });
-          await this.nodeManager.resetBuckets();
-          // Update the sigchain
-          await this.sigchain.onKeyRingChange();
-          const tlsConfig: TLSConfig = {
-            keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
-            certChainPem: await this.certManager.getCertPEMsChainPEM(),
-          };
-          this.webSocketServerClient.setTlsConfig(tlsConfig);
-          this.nodeConnectionManager.updateTlsConfig(tlsConfig);
-          this.logger.info(`${KeyRing.name} change propagated`);
-        },
-      );
+      // FIXME: we need to handle the EventCertManagerCertChanged event to update the status
+      const handleCertChange = async (evt: keysEvents.EventsCertManagerCertChange) => {
+        const data = evt.detail
+        this.logger.info(`${KeyRing.name} change propagating`);
+        await this.status.updateStatusLive({
+          nodeId: data.nodeId,
+        });
+        await this.nodeManager.resetBuckets();
+        // Update the sigchain
+        await this.sigchain.onKeyRingChange();
+        const tlsConfig: TLSConfig = {
+          keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
+          certChainPem: await this.certManager.getCertPEMsChainPEM(),
+        };
+        this.webSocketServerClient.setTlsConfig(tlsConfig);
+        this.nodeConnectionManager.updateTlsConfig(tlsConfig);
+        this.logger.info(`${KeyRing.name} change propagated`);
+      }
+      this.certManager.addEventListener(keysEvents.EventsCertManagerCertChange.name, handleCertChange);
       await this.status.start({ pid: process.pid });
       await this.schema.start({ fresh });
       // Starting modules
@@ -854,7 +818,7 @@ class PolykeyAgent {
       this.logger.warn(
         `Failed Starting ${this.constructor.name} with ${e.message}`,
       );
-      this.events.removeAllListeners();
+      this.certManager.removeEventListener(keysEvents.EventsCertManagerCertChange.name, handleCertChange);
       await this.status?.beginStop({ pid: process.pid });
       await this.taskManager?.stopProcessing();
       await this.taskManager?.stopTasks();
@@ -892,7 +856,7 @@ class PolykeyAgent {
    */
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    this.events.removeAllListeners();
+    this.certManager.removeEventListener(keysEvents.EventsCertManagerCertChange.name, handleCertChange);
     await this.status.beginStop({ pid: process.pid });
     await this.taskManager.stopProcessing();
     await this.taskManager.stopTasks();
