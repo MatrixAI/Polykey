@@ -21,6 +21,7 @@ import * as rpcUtils from '../rpc/utils';
 import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
+import config from '../config';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
@@ -64,7 +65,8 @@ class NodeConnection<M extends ClientManifest> {
       targetHostname,
       tlsConfig,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout = 60_000,
+      connectionKeepAliveTimeoutTime = config.defaultsSystem
+        .nodesConnectionIdleTimeoutTime,
       quicSocket,
       manifest,
       logger,
@@ -76,14 +78,17 @@ class NodeConnection<M extends ClientManifest> {
       crypto: ClientCrypto;
       tlsConfig: TLSConfig;
       connectionKeepAliveIntervalTime?: number;
-      connectionMaxIdleTimeout?: number;
+      connectionKeepAliveTimeoutTime?: number;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection<M>>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    config.defaultsSystem.nodesConnectionConnectTimeoutTime,
+  )
   static async createNodeConnection<M extends ClientManifest>(
     {
       targetNodeIds,
@@ -94,7 +99,8 @@ class NodeConnection<M extends ClientManifest> {
       tlsConfig,
       manifest,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout = 60_000,
+      connectionKeepAliveTimeoutTime = config.defaultsSystem
+        .nodesConnectionIdleTimeoutTime,
       quicSocket,
       logger = new Logger(this.name),
     }: {
@@ -106,7 +112,7 @@ class NodeConnection<M extends ClientManifest> {
       tlsConfig: TLSConfig;
       manifest: M;
       connectionKeepAliveIntervalTime?: number;
-      connectionMaxIdleTimeout?: number;
+      connectionKeepAliveTimeoutTime?: number;
       quicSocket?: QUICSocket;
       logger?: Logger;
     },
@@ -125,7 +131,7 @@ class NodeConnection<M extends ClientManifest> {
         socket: quicSocket,
         config: {
           keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-          maxIdleTimeout: connectionMaxIdleTimeout,
+          maxIdleTimeout: connectionKeepAliveTimeoutTime,
           verifyPeer: true,
           verifyAllowFail: true,
           ca: undefined,

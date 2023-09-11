@@ -35,6 +35,7 @@ import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import * as utils from '../utils';
+import config from '../config';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -178,12 +179,18 @@ class NodeConnectionManager {
     nodeGraph,
     tlsConfig,
     seedNodes = {},
-    connectionFindConcurrencyLimit = 3,
-    connectionIdleTimeoutTime = 60_000,
-    connectionConnectTimeoutTime = 15_000,
-    connectionKeepAliveTimeoutTime = 30_000,
-    connectionKeepAliveIntervalTime = 10_000,
-    connectionHolePunchIntervalTime = 1_000,
+    connectionFindConcurrencyLimit = config.defaultsSystem
+      .nodesConnectionFindConcurrencyLimit,
+    connectionIdleTimeoutTime = config.defaultsSystem
+      .nodesConnectionIdleTimeoutTime,
+    connectionConnectTimeoutTime = config.defaultsSystem
+      .clientConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime = config.defaultsSystem
+      .clientKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime = config.defaultsSystem
+      .clientKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime = config.defaultsSystem
+      .nodesConnectionHolePunchIntervalTime,
     logger,
   }: {
     keyRing: KeyRing;
@@ -728,7 +735,7 @@ class NodeConnectionManager {
           targetPort: address.port,
           tlsConfig: this.tlsConfig,
           connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
-          connectionMaxIdleTimeout: this.connectionKeepAliveTimeoutTime,
+          connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
           quicSocket: this.quicSocket,
           logger: this.logger.getChild(
             `${NodeConnection.name} [${address.host}:${address.port}]`,
