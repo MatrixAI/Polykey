@@ -1,5 +1,5 @@
+import type { CertManagerChangeData } from './types';
 import { AbstractEvent } from '@matrixai/events';
-import { CertManagerChangeData } from "./types";
 
 abstract class EventsKeys<T = null> extends AbstractEvent<T> {}
 
@@ -29,4 +29,4 @@ export {
   EventsCertManagerDestroy,
   EventsCertManagerDestroyed,
   EventsCertManagerCertChange,
-}
+};

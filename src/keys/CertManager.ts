@@ -454,14 +454,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      this.dispatchEvent(new events.EventsCertManagerCertChange({
-        detail: {
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-          recoveryCode: recoveryCodeNew!,
-        },
-      }));
+      this.dispatchEvent(
+        new events.EventsCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: recoveryCodeNew!,
+          },
+        }),
+      );
       this.logger.info('Renewed certificate chain with new key pair');
     });
     return certNew!;
@@ -518,14 +520,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      this.dispatchEvent(new events.EventsCertManagerCertChange({
-        detail: {
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-          recoveryCode: undefined,
-        },
-      }));
+      this.dispatchEvent(
+        new events.EventsCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: undefined,
+          },
+        }),
+      );
       this.logger.info('Renewed certificate chain with current key pair');
     });
     return certNew!;
@@ -589,14 +593,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      this.dispatchEvent(new events.EventsCertManagerCertChange({
-        detail: {
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew!,
-          recoveryCode: recoveryCodeNew!,
-        },
-      }));
+      this.dispatchEvent(
+        new events.EventsCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew!,
+            recoveryCode: recoveryCodeNew!,
+          },
+        }),
+      );
       this.logger.info('Resetted certificate chain with new key pair');
     });
     return certNew!;
@@ -648,14 +654,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      this.dispatchEvent(new events.EventsCertManagerCertChange({
-        detail: {
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-          recoveryCode: undefined,
-        },
-      }));
+      this.dispatchEvent(
+        new events.EventsCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: undefined,
+          },
+        }),
+      );
       this.logger.info('Resetted certificate chain with current key pair');
     });
     return certNew!;

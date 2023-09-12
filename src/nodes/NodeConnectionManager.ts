@@ -12,6 +12,7 @@ import type {
   SeedNodes,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
+import type CertManager from '../keys/CertManager';
 import type { Key, CertificatePEM } from '../keys/types';
 import type { ConnectionData, Host, Hostname, Port } from '../network/types';
 import type { TLSConfig } from '../network/types';
@@ -36,6 +37,7 @@ import * as networkUtils from '../network/utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import * as utils from '../utils';
 import config from '../config';
+import * as keysEvents from '../keys/events';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -123,6 +125,7 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected nodeGraph: NodeGraph;
+  protected certManager?: CertManager;
   protected tlsConfig: TLSConfig;
   protected seedNodes: SeedNodes;
 
@@ -174,9 +177,21 @@ class NodeConnectionManager {
     this.dispatchEvent(event.clone());
   };
 
+  protected handleEventsCertManagerCertChange = async (
+    evt: keysEvents.EventsCertManagerCertChange,
+  ) => {
+    const data = evt.detail;
+    const tlsConfig: TLSConfig = {
+      keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
+      certChainPem: await this.certManager!.getCertPEMsChainPEM(),
+    };
+    this.updateTlsConfig(tlsConfig);
+  };
+
   public constructor({
     keyRing,
     nodeGraph,
+    certManager,
     tlsConfig,
     seedNodes = {},
     connectionFindConcurrencyLimit = config.defaultsSystem
@@ -195,6 +210,7 @@ class NodeConnectionManager {
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
+    certManager?: CertManager;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
     connectionFindConcurrencyLimit?: number;
@@ -208,6 +224,7 @@ class NodeConnectionManager {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
+    this.certManager = certManager;
     this.tlsConfig = tlsConfig;
     // Filter out own node ID
     const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
@@ -339,6 +356,10 @@ class NodeConnectionManager {
       EventDefault.name,
       this.handleQUICServerEvents,
     );
+    this.certManager?.addEventListener(
+      keysEvents.EventsCertManagerCertChange.name,
+      this.handleEventsCertManagerCertChange,
+    );
 
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -346,6 +367,10 @@ class NodeConnectionManager {
   public async stop() {
     this.logger.info(`Stop ${this.constructor.name}`);
 
+    this.certManager?.removeEventListener(
+      keysEvents.EventsCertManagerCertChange.name,
+      this.handleEventsCertManagerCertChange,
+    );
     this.quicServer.removeEventListener(
       EventDefault.name,
       this.handleQUICServerEvents,
