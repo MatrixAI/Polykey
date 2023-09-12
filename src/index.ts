@@ -16,7 +16,6 @@ export * as bootstrap from './bootstrap';
 export * as claims from './claims';
 export * as client from './client';
 export * as discovery from './discovery';
-export * as events from './events';
 export * as gestalts from './gestalts';
 export * as git from './git';
 export * as http from './http';
