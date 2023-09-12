@@ -106,7 +106,7 @@
   },
   "devDependencies": {
     "@fast-check/jest": "^1.1.0",
-    "@swc/core": "^1.3.76",
+    "@swc/core": "1.3.82",
     "@swc/jest": "^0.2.29",
     "@types/cross-spawn": "^6.0.2",
     "@types/jest": "^29.5.2",
