@@ -213,9 +213,7 @@ class NodeManager {
     );
   };
 
-  protected handleEventsCertManagerCertChange = async (
-    evt: keysEvents.EventsCertManagerCertChange,
-  ) => {
+  protected handleEventsCertManagerCertChange = async () => {
     await this.resetBuckets();
   };
 
