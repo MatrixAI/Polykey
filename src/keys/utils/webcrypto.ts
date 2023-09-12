@@ -9,7 +9,7 @@ import * as utils from '../../utils';
  * See: https://github.com/PeculiarVentures/webcrypto/issues/55
  * Note that the types don't exactly match but it is compatible.
  */
-const webcrypto = new peculiarWebcrypto.Crypto() as Crypto;
+const webcrypto = new peculiarWebcrypto.Crypto();
 
 /**
  * Monkey patches the global crypto object polyfill.
