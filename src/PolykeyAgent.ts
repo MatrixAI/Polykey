@@ -322,7 +322,6 @@ class PolykeyAgent {
         (await Sigchain.createSigchain({
           db,
           keyRing,
-          certManager,
           logger: logger.getChild(Sigchain.name),
           fresh,
         }));
@@ -370,7 +369,6 @@ class PolykeyAgent {
         new NodeConnectionManager({
           keyRing,
           nodeGraph,
-          certManager,
           tlsConfig,
           seedNodes: optionsDefaulted.seedNodes,
           connectionFindConcurrencyLimit:
@@ -397,7 +395,6 @@ class PolykeyAgent {
           nodeConnectionManager,
           taskManager,
           gestaltGraph,
-          certManager,
           logger: logger.getChild(NodeManager.name),
         });
       await nodeManager.start();
@@ -621,11 +618,15 @@ class PolykeyAgent {
     await this.status.updateStatusLive({
       nodeId: data.nodeId,
     });
+    await this.nodeManager.resetBuckets();
+    // Update the sigchain
+    await this.sigchain.onKeyRingChange();
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
       certChainPem: await this.certManager.getCertPEMsChainPEM(),
     };
     this.webSocketServerClient.setTlsConfig(tlsConfig);
+    this.nodeConnectionManager.updateTlsConfig(tlsConfig);
     this.logger.info(`${KeyRing.name} change propagated`);
   };
 

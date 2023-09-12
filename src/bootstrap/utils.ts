@@ -161,7 +161,6 @@ async function bootstrapState({
     const sigchain = await Sigchain.createSigchain({
       db,
       keyRing,
-      certManager,
       logger: logger.getChild(Sigchain.name),
       fresh,
     });
