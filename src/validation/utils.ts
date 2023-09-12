@@ -236,9 +236,7 @@ function parsePort(data: any, connect: boolean = false): Port {
 function parseNetwork(data: any): SeedNodes {
   if (typeof data !== 'string' || !(data in config.network)) {
     throw new validationErrors.ErrorParse(
-      `Network must be one of ${Object.keys(config.network).join(
-        ', ',
-      )}`,
+      `Network must be one of ${Object.keys(config.network).join(', ')}`,
     );
   }
   return config.network[data];

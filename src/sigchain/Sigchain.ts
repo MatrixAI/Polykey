@@ -1,6 +1,7 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type { ClaimInput } from './types';
 import type KeyRing from '../keys/KeyRing';
+import type CertManager from '../keys/CertManager';
 import type { TokenSignature, TokenHeaderSignatureJSON } from '../tokens/types';
 import type {
   ClaimId,
@@ -18,6 +19,7 @@ import * as sigchainErrors from './errors';
 import Token from '../tokens/Token';
 import * as claimsUtils from '../claims/utils';
 import * as utils from '../utils';
+import * as keysEvents from '../keys/events';
 
 interface Sigchain extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -28,16 +30,23 @@ class Sigchain {
   public static async createSigchain({
     db,
     keyRing,
+    certManager,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
     keyRing: KeyRing;
+    certManager: CertManager;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Sigchain> {
     logger.info(`Creating ${this.name}`);
-    const sigchain = new this({ db, keyRing, logger });
+    const sigchain = new this({
+      db,
+      keyRing,
+      certManager,
+      logger,
+    });
     await sigchain.start({ fresh });
     logger.info(`Created ${this.name}`);
     return sigchain;
@@ -46,6 +55,7 @@ class Sigchain {
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected db: DB;
+  protected certManager?: CertManager;
   protected generateClaimId: () => ClaimId;
   protected generateSequenceNumber: () => number;
   protected dbPath: LevelPath = [this.constructor.name];
@@ -74,18 +84,27 @@ class Sigchain {
     'lastSequenceNumber',
   ];
 
+  protected handleEventsCertManagerCertChange = async (
+    evt: keysEvents.EventsCertManagerCertChange,
+  ) => {
+    await this.onKeyRingChange();
+  };
+
   constructor({
     db,
     keyRing,
+    certManager,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
+    certManager?: CertManager;
     logger: Logger;
   }) {
-    this.logger = logger;
     this.db = db;
     this.keyRing = keyRing;
+    this.certManager = certManager;
+    this.logger = logger;
   }
 
   public async start({
@@ -107,11 +126,19 @@ class Sigchain {
       lastSequenceNumber += 1;
       return lastSequenceNumber;
     };
+    this.certManager?.addEventListener(
+      keysEvents.EventsCertManagerCertChange.name,
+      this.handleEventsCertManagerCertChange,
+    );
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    this.certManager?.removeEventListener(
+      keysEvents.EventsCertManagerCertChange.name,
+      this.handleEventsCertManagerCertChange,
+    );
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
