@@ -2,7 +2,6 @@ import type { DB, DBTransaction } from '@matrixai/db';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
 import type KeyRing from '../keys/KeyRing';
-import type CertManager from '../keys/CertManager';
 import type Sigchain from '../sigchain/Sigchain';
 import type {
   NodeId,
@@ -22,7 +21,6 @@ import type GestaltGraph from '../gestalts/GestaltGraph';
 import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { Host, Port } from '../network/types';
 import type { SignedTokenEncoded } from '../tokens/types';
 import type { ClaimLinkNode } from '../claims/payloads/index';
@@ -31,6 +29,7 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
 } from '../agent/types';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
@@ -43,7 +42,6 @@ import * as claimsUtils from '../claims/utils';
 import * as tasksErrors from '../tasks/errors';
 import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';
-import * as keysEvents from '../keys/events';
 import { never, promise } from '../utils/utils';
 import {
   decodeClaimId,
@@ -62,7 +60,6 @@ class NodeManager {
   protected logger: Logger;
   protected sigchain: Sigchain;
   protected keyRing: KeyRing;
-  protected certManager?: CertManager;
   protected nodeConnectionManager: NodeConnectionManager;
   protected nodeGraph: NodeGraph;
   protected taskManager: TaskManager;
@@ -213,10 +210,6 @@ class NodeManager {
     );
   };
 
-  protected handleEventsCertManagerCertChange = async () => {
-    await this.resetBuckets();
-  };
-
   constructor({
     db,
     keyRing,
@@ -225,7 +218,6 @@ class NodeManager {
     nodeGraph,
     taskManager,
     gestaltGraph,
-    certManager,
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
     retrySeedConnectionsDelay = 120000, // 2 minuets
@@ -238,7 +230,6 @@ class NodeManager {
     nodeGraph: NodeGraph;
     taskManager: TaskManager;
     gestaltGraph: GestaltGraph;
-    certManager?: CertManager;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
     retrySeedConnectionsDelay?: number;
@@ -253,7 +244,6 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
-    this.certManager = certManager;
     this.refreshBucketDelay = refreshBucketDelay;
     // Clamped from 0 to 1 inclusive
     this.refreshBucketDelayJitter = Math.max(
@@ -294,20 +284,12 @@ class NodeManager {
       nodesEvents.EventNodeConnectionManagerConnection.name,
       this.handleNodeConnectionEvent,
     );
-    this.certManager?.addEventListener(
-      keysEvents.EventsCertManagerCertChange.name,
-      this.handleEventsCertManagerCertChange,
-    );
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     // Remove handling for connections
-    this.certManager?.removeEventListener(
-      keysEvents.EventsCertManagerCertChange.name,
-      this.handleEventsCertManagerCertChange,
-    );
     this.nodeConnectionManager.removeEventListener(
       nodesEvents.EventNodeConnectionManagerConnection.name,
       this.handleNodeConnectionEvent,
