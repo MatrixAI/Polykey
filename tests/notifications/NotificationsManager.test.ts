@@ -146,8 +146,8 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.nodeConnectionManager.host as Host,
-      port: receiver.nodeConnectionManager.port as Port,
+      host: receiver.agentServiceHost as Host,
+      port: receiver.agentServicePort as Port,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {

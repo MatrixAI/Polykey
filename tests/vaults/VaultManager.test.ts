@@ -515,12 +515,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.nodeConnectionManager.host as Host,
-        port: remoteKeynode2.nodeConnectionManager.port as Port,
+        host: remoteKeynode2.agentServiceHost as Host,
+        port: remoteKeynode2.agentServicePort as Port,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.nodeConnectionManager.host as Host,
-        port: remoteKeynode1.nodeConnectionManager.port as Port,
+        host: remoteKeynode1.agentServiceHost as Host,
+        port: remoteKeynode1.agentServicePort as Port,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -577,12 +577,12 @@ describe('VaultManager', () => {
       await nodeConnectionManager.start({ host: localhost as Host });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.nodeConnectionManager.host as Host,
-        port: remoteKeynode1.nodeConnectionManager.port as Port,
+        host: remoteKeynode1.agentServiceHost as Host,
+        port: remoteKeynode1.agentServicePort as Port,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.nodeConnectionManager.host as Host,
-        port: remoteKeynode2.nodeConnectionManager.port as Port,
+        host: remoteKeynode2.agentServiceHost as Host,
+        port: remoteKeynode2.agentServicePort as Port,
       });
     });
     afterEach(async () => {
@@ -1382,8 +1382,8 @@ describe('VaultManager', () => {
 
         // Letting nodeGraph know where the remote agent is
         await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.nodeConnectionManager.host as Host,
-          port: remoteKeynode1.nodeConnectionManager.port as Port,
+          host: remoteKeynode1.agentServiceHost as Host,
+          port: remoteKeynode1.agentServicePort as Port,
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

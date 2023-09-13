@@ -10,10 +10,8 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import { NodesAddHandler } from '@/client/handlers/nodesAdd';
 import RPCClient from '@/rpc/RPCClient';
-import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';
@@ -33,6 +31,7 @@ import TaskManager from '@/tasks/TaskManager';
 import Sigchain from '@/sigchain/Sigchain';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
+import ClientService from '@/client/ClientService';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testsUtils from '../../utils/utils';
 
@@ -43,12 +42,12 @@ describe('nodesAdd', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -110,7 +109,7 @@ describe('nodesAdd', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
@@ -122,7 +121,7 @@ describe('nodesAdd', () => {
     await sigchain.stop();
     await db.stop();
     await keyRing.stop();
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await keyRing.stop();
     await db.stop();
@@ -133,26 +132,24 @@ describe('nodesAdd', () => {
   });
   test('adds a node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesAdd: new NodesAddHandler({
           db,
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -181,26 +178,24 @@ describe('nodesAdd', () => {
   });
   test('cannot add invalid node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesAdd: new NodesAddHandler({
           db,
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -256,7 +251,7 @@ describe('nodesClaim', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   const dummyNotification: Notification = {
     typ: 'notification',
     data: {
@@ -270,7 +265,7 @@ describe('nodesClaim', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -352,7 +347,7 @@ describe('nodesClaim', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -370,7 +365,7 @@ describe('nodesClaim', () => {
     mockedClaimNode.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await nodeConnectionManager.stop();
     await nodeManager.stop();
@@ -388,26 +383,24 @@ describe('nodesClaim', () => {
   });
   test('claims a node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesClaim: new NodesClaimHandler({
           db,
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -427,26 +420,24 @@ describe('nodesClaim', () => {
   });
   test('cannot claim an invalid node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesClaim: new NodesClaimHandler({
           db,
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -472,12 +463,12 @@ describe('nodesFind', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -489,7 +480,7 @@ describe('nodesFind', () => {
     mockedFindNode = jest
       .spyOn(NodeConnectionManager.prototype, 'findNode')
       .mockResolvedValue({
-        host: '127.0.0.1' as Host,
+        host: localhost as Host,
         port: 11111 as Port,
       });
     dataDir = await fs.promises.mkdtemp(
@@ -534,14 +525,14 @@ describe('nodesFind', () => {
       connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
     mockedFindNode.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await sigchain.stop();
     await nodeGraph.stop();
@@ -556,25 +547,23 @@ describe('nodesFind', () => {
   });
   test('finds a node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesFind: new NodesFindHandler({
           nodeConnectionManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -594,25 +583,23 @@ describe('nodesFind', () => {
   });
   test('cannot find an invalid node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesFind: new NodesFindHandler({
           nodeConnectionManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -638,12 +625,12 @@ describe('nodesPing', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -706,14 +693,14 @@ describe('nodesPing', () => {
       gestaltGraph: {} as GestaltGraph,
       logger,
     });
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.startProcessing();
   });
   afterEach(async () => {
     mockedPingNode.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await sigchain.stop();
     await nodeGraph.stop();
@@ -728,25 +715,23 @@ describe('nodesPing', () => {
   });
   test('pings a node (offline)', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesPing: new NodesPingHandler({
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -766,25 +751,23 @@ describe('nodesPing', () => {
   });
   test('pings a node (online)', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesPing: new NodesPingHandler({
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -804,25 +787,23 @@ describe('nodesPing', () => {
   });
   test('cannot ping an invalid node', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         nodesPing: new NodesPingHandler({
           nodeManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
