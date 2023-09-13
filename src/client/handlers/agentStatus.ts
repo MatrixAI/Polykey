@@ -18,10 +18,10 @@ class AgentStatusHandler extends UnaryHandler<
     return {
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServerClient.getHost(),
-      clientPort: pkAgent.webSocketServerClient.getPort(),
-      agentHost: pkAgent.nodeConnectionManager.host,
-      agentPort: pkAgent.nodeConnectionManager.port,
+      clientHost: pkAgent.clientServiceHost,
+      clientPort: pkAgent.clientServicePort,
+      agentHost: pkAgent.agentServiceHost,
+      agentPort: pkAgent.agentServicePort,
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     };

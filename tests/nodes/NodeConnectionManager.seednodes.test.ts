@@ -86,8 +86,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteNodeIdEncoded1 = nodesUtils.encodeNodeId(remoteNodeId1);
     remoteAddress1 = {
-      host: remotePolykeyAgent1.nodeConnectionManager.host as Host,
-      port: remotePolykeyAgent1.nodeConnectionManager.port as Port,
+      host: remotePolykeyAgent1.agentServiceHost as Host,
+      port: remotePolykeyAgent1.agentServicePort as Port,
     };
 
     const nodePathB = path.join(dataDir, 'agentB');
@@ -107,8 +107,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     });
     remoteNodeId2 = remotePolykeyAgent2.keyRing.getNodeId();
     remoteAddress2 = {
-      host: remotePolykeyAgent2.nodeConnectionManager.host as Host,
-      port: remotePolykeyAgent2.nodeConnectionManager.port as Port,
+      host: remotePolykeyAgent2.agentServiceHost as Host,
+      port: remotePolykeyAgent2.agentServicePort as Port,
     };
 
     // Setting up client dependencies
