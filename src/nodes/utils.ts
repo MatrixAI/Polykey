@@ -317,14 +317,14 @@ function refreshBucketsDelayJitter(
 const codeMap = new Map<number, any>();
 let code = 1;
 
-const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
+const reasonToCode = (_type: 'read' | 'write', _reason?: any): number => {
   codeMap.set(code, _reason);
   const returnCode = code;
   code++;
   return returnCode;
 };
 
-const codeToReason = (type: 'recv' | 'send', code: number): any => {
+const codeToReason = (type: 'read' | 'write', code: number): any => {
   const asd = codeMap.get(code);
   return asd;
 };
