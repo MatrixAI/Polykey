@@ -10,7 +10,7 @@ import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { EventDefault } from '@matrixai/events';
+import { AbstractEvent, EventDefault } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
@@ -133,16 +133,15 @@ class NodeConnection<M extends ClientManifest> {
           keepAliveIntervalTime: connectionKeepAliveIntervalTime,
           maxIdleTimeout: connectionKeepAliveTimeoutTime,
           verifyPeer: true,
-          verifyAllowFail: true,
+          verifyCallback: async (certPEMs) => {
+            validatedNodeId = await networkUtils.verifyServerCertificateChain(
+              targetNodeIds,
+              certPEMs,
+            );
+          },
           ca: undefined,
           key: tlsConfig.keyPrivatePem,
           cert: tlsConfig.certChainPem,
-        },
-        verifyCallback: async (certPEMs) => {
-          validatedNodeId = await networkUtils.verifyServerCertificateChain(
-            targetNodeIds,
-            certPEMs,
-          );
         },
         crypto: {
           ops: crypto,
@@ -202,25 +201,28 @@ class NodeConnection<M extends ClientManifest> {
     // TODO: remove this later based on testing
     quicConnection.removeEventListener('connectionStream', throwFunction);
     // QUICClient events are...
-    //   - QUICClientEvent,
-    //   - QUICClientDestroyEvent,
-    //   - QUICClientErrorEvent,
+    //   - EventQUICClient,
+    //   - EventQUICClientDestroy,
+    //   - EventQUICClientError,
     // QUICConnection events are...
-    //   - QUICConnectionEvent,
-    //   - QUICConnectionStreamEvent,
-    //   - QUICConnectionStopEvent,
-    //   - QUICConnectionErrorEvent,
+    //   - EventQUICConnection,
+    //   - EventQUICConnectionStream,
+    //   - EventQUICConnectionStop,
+    //   - EventQUICConnectionError,
     // QUICStream events are...
-    //   - QUICStreamEvent,
-    //   - QUICStreamDestroyEvent,
-    const handleNodeConnectionEvents = (e: EventDefault) => {
-      const event = e.detail;
-      if (event instanceof quicEvents.QUICConnectionStreamEvent) {
+    //   - EventQUICStream,
+    //   - EventQUICStreamDestroy,
+    const handleNodeConnectionEvents = (evt: EventDefault) => {
+      if (!(evt.detail instanceof AbstractEvent)) {
+        never('TMP expected AbstractEvent');
+      }
+      const event = evt.detail;
+      if (event instanceof quicEvents.EventQUICConnectionStream) {
         const quicStream = event.detail;
         // Setting up stream handling
         quicStream.addEventListener(
-          quicEvents.QUICStreamDestroyEvent.name,
-          (e: quicEvents.QUICStreamDestroyEvent) => {
+          quicEvents.EventQUICStreamDestroy.name,
+          (e: quicEvents.EventQUICStreamDestroy) => {
             nodeConnection.dispatchEvent(e.clone());
           },
           { once: true },
@@ -232,17 +234,17 @@ class NodeConnection<M extends ClientManifest> {
         nodeConnection.dispatchEvent(event.clone());
       }
     };
-    const handleCleanUp = async (e: quicEvents.QUICConnectionErrorEvent) => {
+    const handleCleanUp = async (e: quicEvents.EventQUICConnectionError) => {
       quicClient.removeEventListener(
         EventDefault.name,
         handleNodeConnectionEvents,
       );
       quicClient.removeEventListener(
-        quicEvents.QUICClientDestroyEvent.name,
+        quicEvents.EventQUICClientDestroy.name,
         handleCleanUp,
       );
       quicClient.removeEventListener(
-        quicEvents.QUICConnectionErrorEvent.name,
+        quicEvents.EventQUICConnectionError.name,
         handleCleanUp,
       );
       nodeConnection.dispatchEvent(
@@ -257,7 +259,7 @@ class NodeConnection<M extends ClientManifest> {
       handleNodeConnectionEvents,
     );
     quicConnection.addEventListener(
-      quicEvents.QUICConnectionStopEvent.name,
+      quicEvents.EventQUICConnectionStop.name,
       () => {
         quicConnection.removeEventListener(
           EventDefault.name,
@@ -269,12 +271,12 @@ class NodeConnection<M extends ClientManifest> {
     // Setting up QUICClient events
     quicClient.addEventListener(EventDefault.name, handleNodeConnectionEvents);
     quicClient.addEventListener(
-      quicEvents.QUICClientDestroyEvent.name,
+      quicEvents.EventQUICClientDestroy.name,
       handleCleanUp,
       { once: true },
     );
     quicClient.addEventListener(
-      quicEvents.QUICConnectionErrorEvent.name,
+      quicEvents.EventQUICConnectionError.name,
       handleCleanUp,
       { once: true },
     );
@@ -322,22 +324,25 @@ class NodeConnection<M extends ClientManifest> {
       logger,
     });
     // QUICClient events are...
-    //   - QUICClientEvent,
-    //   - QUICClientDestroyEvent,
-    //   - QUICClientErrorEvent,
+    //   - EventQUICClient,
+    //   - EventQUICClientDestroy,
+    //   - EventQUICClientError,
     // QUICConnection events are...
-    //   - QUICConnectionEvent,
-    //   - QUICConnectionStreamEvent,
-    //   - QUICConnectionStopEvent,
-    //   - QUICConnectionErrorEvent,
-    const handleNodeConnectionEvents = (e: EventDefault) => {
-      const event = e.detail;
-      if (event instanceof quicEvents.QUICConnectionStreamEvent) {
+    //   - EventQUICConnection,
+    //   - EventQUICConnectionStream,
+    //   - EventQUICConnectionStop,
+    //   - EventQUICConnectionError,
+    const handleNodeConnectionEvents = (evt: EventDefault) => {
+      if (!(evt.detail instanceof AbstractEvent)) {
+        never('TMP expected AbstractEvent');
+      }
+      const event = evt.detail;
+      if (event instanceof quicEvents.EventQUICConnectionStream) {
         const quicStream = event.detail;
         // Setting up stream handling
         quicStream.addEventListener(
-          quicEvents.QUICStreamDestroyEvent.name,
-          (e: quicEvents.QUICStreamDestroyEvent) => {
+          quicEvents.EventQUICStreamDestroy.name,
+          (e: quicEvents.EventQUICStreamDestroy) => {
             nodeConnection.dispatchEvent(e.clone());
           },
           { once: true },
@@ -354,17 +359,17 @@ class NodeConnection<M extends ClientManifest> {
       EventDefault.name,
       handleNodeConnectionEvents,
     );
-    const handleCleanUp = async (e: quicEvents.QUICConnectionErrorEvent) => {
+    const handleCleanUp = async (e: quicEvents.EventQUICConnectionError) => {
       quicConnection.removeEventListener(
         EventDefault.name,
         handleNodeConnectionEvents,
       );
       quicConnection.removeEventListener(
-        quicEvents.QUICConnectionStopEvent.name,
+        quicEvents.EventQUICConnectionStop.name,
         handleCleanUp,
       );
       quicConnection.removeEventListener(
-        quicEvents.QUICConnectionErrorEvent.name,
+        quicEvents.EventQUICConnectionError.name,
         handleCleanUp,
       );
       nodeConnection.dispatchEvent(
@@ -374,12 +379,12 @@ class NodeConnection<M extends ClientManifest> {
       await nodeConnection.destroy({ force: true });
     };
     quicConnection.addEventListener(
-      quicEvents.QUICConnectionStopEvent.name,
+      quicEvents.EventQUICConnectionStop.name,
       handleCleanUp,
       { once: true },
     );
     quicConnection.addEventListener(
-      quicEvents.QUICConnectionErrorEvent.name,
+      quicEvents.EventQUICConnectionError.name,
       handleCleanUp,
       { once: true },
     );

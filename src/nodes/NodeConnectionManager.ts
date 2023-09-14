@@ -23,7 +23,7 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { EventDefault } from '@matrixai/events';
+import { AbstractEvent, EventDefault } from '@matrixai/events';
 import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
@@ -36,6 +36,7 @@ import * as networkUtils from '../network/utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import * as utils from '../utils';
 import config from '../config';
+import { never } from '../utils';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -146,31 +147,37 @@ class NodeConnectionManager {
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
   protected eventQUICServerConnectionHandler = (
-    e: quicEvents.QUICServerConnectionEvent,
+    evt: quicEvents.EventQUICServerConnection,
   ) => {
-    void this.handleConnectionReverse(e.detail);
+    void this.handleConnectionReverse(evt.detail);
   };
 
-  protected handleQUICSocketEvents = (e: EventDefault) => {
-    const event = e.detail;
+  protected handleEventQUICSocket = (evt: EventDefault) => {
+    if (!(evt.detail instanceof AbstractEvent)) {
+      never('TMP expected AbstractEvent');
+    }
+    const event = evt.detail;
     // QUICSocket events are...
-    //   - QUICSocketEvent,
-    //   - QUICSocketStartEvent,
-    //   - QUICSocketStopEvent,
-    //   - QUICSocketErrorEvent,
+    //   - EventQUICSocket,
+    //   - EventQUICSocketStart,
+    //   - EventQUICSocketStop,
+    //   - EventQUICSocketError,
     console.log(event);
     this.dispatchEvent(event.clone());
   };
 
-  protected handleQUICServerEvents = (e: EventDefault) => {
-    const event = e.detail;
+  protected handleEventQUICServer = (evt: EventDefault) => {
+    if (!(evt.detail instanceof AbstractEvent)) {
+      never('TMP expected AbstractEvent');
+    }
+    const event = evt.detail;
     console.log(event);
     // QUICServer events are...
-    //   - QUICServerEvent,
-    //   - QUICServerConnectionEvent,
-    //   - QUICServerStartEvent,
-    //   - QUICServerStopEvent,
-    //   - QUICServerErrorEvent,
+    //   - EventQUICServer,
+    //   - EventQUICServerConnection,
+    //   - EventQUICServerStart,
+    //   - EventQUICServerStop,
+    //   - EventQUICServerError,
     this.dispatchEvent(event.clone());
   };
 
@@ -329,15 +336,15 @@ class NodeConnectionManager {
 
     this.quicSocket.addEventListener(
       EventDefault.name,
-      this.handleQUICSocketEvents,
+      this.handleEventQUICSocket,
     );
     this.quicServer.addEventListener(
-      quicEvents.QUICServerConnectionEvent.name,
+      quicEvents.EventQUICServerConnection.name,
       this.eventQUICServerConnectionHandler,
     );
     this.quicServer.addEventListener(
       EventDefault.name,
-      this.handleQUICServerEvents,
+      this.handleEventQUICServer,
     );
 
     this.logger.info(`Started ${this.constructor.name}`);
@@ -348,15 +355,15 @@ class NodeConnectionManager {
 
     this.quicServer.removeEventListener(
       EventDefault.name,
-      this.handleQUICServerEvents,
+      this.handleEventQUICServer,
     );
     this.quicServer.removeEventListener(
-      quicEvents.QUICServerConnectionEvent.name,
+      quicEvents.EventQUICServerConnection.name,
       this.eventQUICServerConnectionHandler,
     );
     this.quicSocket.removeEventListener(
       EventDefault.name,
-      this.handleQUICSocketEvents,
+      this.handleEventQUICSocket,
     );
 
     const destroyProms: Array<Promise<void>> = [];
@@ -843,9 +850,10 @@ class NodeConnectionManager {
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
     // Setting up events
-    const nodeConnectionEventsHandler = (e: EventDefault) => {
+    const nodeConnectionEventsHandler = (evt: EventDefault) => {
       // Propagate all events upwards
-      this.dispatchEvent(e.detail.clone());
+      if (!(evt.detail instanceof AbstractEvent)) return;
+      this.dispatchEvent(evt.detail.clone());
     };
     nodeConnection.addEventListener(
       EventDefault.name,
@@ -853,7 +861,7 @@ class NodeConnectionManager {
     );
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionError.name,
-      async (e: nodesEvents.EventNodeConnectionError) => {
+      async (evt: nodesEvents.EventNodeConnectionError) => {
         this.logger.debug('stream destroyed event');
         nodeConnection.removeEventListener(
           EventDefault.name,
@@ -868,13 +876,13 @@ class NodeConnectionManager {
           await this.destroyConnection(nodeId);
           this.dispatchEvent(
             new nodesEvents.EventNodeConnectionManagerConnectionFailure({
-              detail: e,
+              detail: evt,
             }),
           );
         } catch (err) {
           this.dispatchEvent(
             new nodesEvents.EventNodeConnectionManagerConnectionFailure({
-              detail: new AggregateError([err, e.detail]),
+              detail: new AggregateError([err, evt.detail]),
             }),
           );
         }
