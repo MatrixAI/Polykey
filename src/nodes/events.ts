@@ -1,13 +1,11 @@
-import type { QUICStream, events as quicEvents } from '@matrixai/quic';
+import type { QUICStream } from '@matrixai/quic';
 import type { ConnectionData } from '../network/types';
 import { AbstractEvent } from '@matrixai/events';
 
 abstract class EventsNode<T> extends AbstractEvent<T> {}
 abstract class EventsNodeConnection<T> extends EventsNode<T> {}
 
-class EventNodeConnectionError extends EventsNodeConnection<
-  Error | quicEvents.QUICConnectionErrorEvent
-> {}
+class EventNodeConnectionError extends EventsNodeConnection<Error> {}
 
 class EventNodeConnectionDestroy extends EventsNodeConnection<null> {}
 
