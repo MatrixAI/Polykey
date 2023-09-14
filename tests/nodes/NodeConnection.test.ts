@@ -45,7 +45,7 @@ describe(`${NodeConnection.name}`, () => {
     return nc;
   };
 
-  const handleStream = async (event: quicEvents.QUICConnectionStreamEvent) => {
+  const handleStream = async (event: quicEvents.EventQUICConnectionStream) => {
     // Streams are handled via the RPCServer.
     logger.info('Handling stream');
     const stream = event.detail;
@@ -53,7 +53,7 @@ describe(`${NodeConnection.name}`, () => {
   };
 
   const handleConnection = async (
-    event: quicEvents.QUICServerConnectionEvent,
+    event: quicEvents.EventQUICServerConnection,
   ) => {
     // Needs to setup stream handler
     const conn = event.detail;
@@ -87,9 +87,8 @@ describe(`${NodeConnection.name}`, () => {
         key: serverTlsConfig.keyPrivatePem,
         cert: serverTlsConfig.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: networkUtils.verifyClientCertificateChain,
       },
-      verifyCallback: networkUtils.verifyClientCertificateChain,
       crypto: {
         key: keysUtils.generateKey(),
         ops: crypto,
@@ -336,7 +335,9 @@ describe(`${NodeConnection.name}`, () => {
     nodeConnection.addEventListener('destroy', () => {
       destroyProm.resolveP();
     });
-    serverSocket.connectionMap.forEach((connection) => {
+    // @ts-ignore: kidnap internal property
+    const connectionMap = serverSocket.connectionMap;
+    connectionMap.forEach((connection) => {
       void connection.stop({
         applicationError: true,
         errorCode: 0,
@@ -350,7 +351,7 @@ describe(`${NodeConnection.name}`, () => {
     quicServer.removeEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
       'serverConnection',
-      async (event: quicEvents.QUICServerConnectionEvent) => {
+      async (event: quicEvents.EventQUICServerConnection) => {
         const quicConnection = event.detail;
         const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
           const cert = keysUtils.certFromPEM(pem as CertificatePEM);
@@ -399,7 +400,7 @@ describe(`${NodeConnection.name}`, () => {
     quicServer.removeEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
       'serverConnection',
-      async (event: quicEvents.QUICServerConnectionEvent) => {
+      async (event: quicEvents.EventQUICServerConnection) => {
         const quicConnection = event.detail;
         const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
           const cert = keysUtils.certFromPEM(pem as CertificatePEM);
@@ -450,13 +451,13 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnectionReverse = await nodeConnectionReverseProm.p;
 
     // Checking stream creation
-    const forwardStream = await nodeConnection.quicConnection.streamNew();
+    const forwardStream = await nodeConnection.quicConnection.newStream();
     const writer1 = forwardStream.writable.getWriter();
     await writer1.write(Buffer.from('Hello!'));
     await reverseStreamProm.p;
 
     const reverseStream =
-      await nodeConnectionReverse.quicConnection.streamNew();
+      await nodeConnectionReverse.quicConnection.newStream();
     const writer2 = reverseStream.writable.getWriter();
     await writer2.write(Buffer.from('Hello!'));
     await forwardStreamProm.p;
