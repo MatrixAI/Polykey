@@ -84,6 +84,11 @@ class ErrorNodeConnectionSameNodeId<T> extends ErrorNodes<T> {
     'Provided NodeId is the same as this agent, attempts to connect is improper usage';
   exitCode = sysexits.USAGE;
 }
+class ErrorNodeConnectionConnectionError<T> extends ErrorNodes<T> {
+  static description =
+    'Provided NodeId is the same as this agent, attempts to connect is improper usage';
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
@@ -114,6 +119,7 @@ export {
   ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
+  ErrorNodeConnectionConnectionError,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
 };

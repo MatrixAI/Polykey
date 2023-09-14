@@ -2,7 +2,7 @@ import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ClientCrypto, QUICConnection } from '@matrixai/quic';
+import type { ClientCryptoOps, QUICConnection } from '@matrixai/quic';
 import type NodeGraph from './NodeGraph';
 import type {
   NodeAddress,
@@ -46,18 +46,6 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
-// Backoff is intended for connections
-// If you want to prevent this, you should use a cache or locks
-/**
- * Tracks the backoff period for offline nodes
- */
-// protected nodesBackoffMap: Map<
-//   string,
-//   { lastAttempt: number; delay: number }
-// > = new Map();
-// protected backoffDefault: number = 1000 * 60 * 5; // 5 min
-// protected backoffMultiplier: number = 2; // Doubles every failure
-
 /**
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections
@@ -65,7 +53,7 @@ type ConnectionAndTimer = {
  * It's an event target that emits events for new connections.
  *
  * We will need to fully encapsulate all the errors in NCM if we can.
- * Otherwise it goes all the way to PolykeyAgent.
+ * Otherwise, it goes all the way to PolykeyAgent.
  *
  * That means the QUICSocket, QUICServer and QUICClient
  * As well as the QUICConnection and QUICStream.
@@ -130,7 +118,7 @@ class NodeConnectionManager {
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
 
-  protected quicClientCrypto: ClientCrypto;
+  protected quicClientCrypto: ClientCryptoOps;
 
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -162,7 +150,6 @@ class NodeConnectionManager {
     //   - EventQUICSocketStart,
     //   - EventQUICSocketStop,
     //   - EventQUICSocketError,
-    console.log(event);
     this.dispatchEvent(event.clone());
   };
 
@@ -171,7 +158,6 @@ class NodeConnectionManager {
       never('TMP expected AbstractEvent');
     }
     const event = evt.detail;
-    console.log(event);
     // QUICServer events are...
     //   - EventQUICServer,
     //   - EventQUICServerConnection,
@@ -229,7 +215,7 @@ class NodeConnectionManager {
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     // Note that all buffers allocated for crypto operations is using
     // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
-    // is not shared. Also all node buffers satisfy the `ArrayBuffer` interface.
+    // is not shared. Also, all node buffers satisfy the `ArrayBuffer` interface.
     const quicClientCrypto = {
       async randomBytes(data: ArrayBuffer): Promise<void> {
         const randomBytes = keysUtils.getRandomBytes(data.byteLength);
@@ -272,13 +258,12 @@ class NodeConnectionManager {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: networkUtils.verifyClientCertificateChain,
       },
       crypto: quicServerCrypto,
       socket: quicSocket,
       reasonToCode: nodesUtils.reasonToCode,
       codeToReason: nodesUtils.codeToReason,
-      verifyCallback: networkUtils.verifyClientCertificateChain,
       minIdleTimeout: connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
@@ -969,16 +954,6 @@ class NodeConnectionManager {
     port: Port,
     @context ctx: ContextTimed,
   ): Promise<void> {
-    const connectionMap = this.quicSocket.connectionMap;
-    // Checking existing connections
-    for (const [, connection] of connectionMap.serverConnections) {
-      const connectionHost = connection.remoteHost;
-      const connectionPort = connection.remotePort;
-      if (host === connectionHost && port === connectionPort) {
-        // Connection exists, return early
-        return;
-      }
-    }
     // We need to send a random data packet to the target until the process times out or a connection is established
     let ended = false;
     const endedProm = utils.promise();
@@ -1072,7 +1047,6 @@ class NodeConnectionManager {
    * port).
    * @param targetNodeId ID of the node attempting to be found (i.e. attempting
    * to find its IP address and port)
-   * @param ignoreRecentOffline skips nodes that are within their backoff period
    * @param pingTimeoutTime
    * @param ctx
    * @returns whether the target node was located in the process
@@ -1198,24 +1172,6 @@ class NodeConnectionManager {
         }
       });
     }
-    // If the found nodes are less than nodeBucketLimit then
-    //  we expect that refresh buckets won't find anything new
-    // FIXME: I don't think this is strictly needed. It think it's just delays all the bucket refresh timers if we know
-    //  the network is tiny.
-    // if (Object.keys(contacted).length < this.nodeGraph.nodeBucketLimit) {
-    //   // Reset the delay on all refresh bucket tasks
-    //   for (
-    //     let bucketIndex = 0;
-    //     bucketIndex < this.nodeGraph.nodeIdBits;
-    //     bucketIndex++
-    //   ) {
-    //     await this.nodeManager?.updateRefreshBucketDelay(
-    //       bucketIndex,
-    //       undefined,
-    //       true,
-    //     );
-    //   }
-    // }
     return foundAddress;
   }
 
@@ -1539,35 +1495,6 @@ class NodeConnectionManager {
       cert: tlsConfig.certChainPem,
     });
   }
-
-  // NOT NEEDED
-  // protected hasBackoff(nodeId: NodeId): boolean {
-  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
-  //   if (backoff == null) return false;
-  //   const currentTime = performance.now() + performance.timeOrigin;
-  //   const backOffDeadline = backoff.lastAttempt + backoff.delay;
-  //   return currentTime < backOffDeadline;
-  // }
-
-  // protected increaseBackoff(nodeId: NodeId): void {
-  //   const backoff = this.nodesBackoffMap.get(nodeId.toString());
-  //   const currentTime = performance.now() + performance.timeOrigin;
-  //   if (backoff == null) {
-  //     this.nodesBackoffMap.set(nodeId.toString(), {
-  //       lastAttempt: currentTime,
-  //       delay: this.backoffDefault,
-  //     });
-  //   } else {
-  //     this.nodesBackoffMap.set(nodeId.toString(), {
-  //       lastAttempt: currentTime,
-  //       delay: backoff.delay * this.backoffMultiplier,
-  //     });
-  //   }
-  // }
-
-  // protected removeBackoff(nodeId: NodeId): void {
-  //   this.nodesBackoffMap.delete(nodeId.toString());
-  // }
 
   /**
    * This attempts the NAT hole punch procedure. It will return a
