@@ -16,11 +16,15 @@ async function main(): Promise<void> {
       continue;
     }
     const suite: () => Promise<Summary> = (await import(suitePath)).default;
-    await suite();
+    // Skip default exports that are not functions and are not called "main"
+    // They might be utility files
+    if (typeof suite === 'function' && suite.name === 'main') {
+      await suite();
+    }
   }
   // Concatenating metrics
   const metricsPath = path.join(resultsPath, 'metrics.txt');
-  await fs.promises.rm(metricsPath);
+  await fs.promises.rm(metricsPath, { force: true });
   let concatenating = false;
   for await (const metricPath of fsWalk(resultsPath)) {
     // Skip over non-metrics files
