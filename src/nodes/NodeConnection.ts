@@ -3,7 +3,7 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { Certificate, CertificatePEM } from '../keys/types';
-import type { ClientManifest } from '../rpc/types';
+import type { ClientManifest, RPCStream } from '../rpc/types';
 import type {
   QUICSocket,
   ClientCryptoOps,
@@ -16,6 +16,7 @@ import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventDefault } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
+import IdInternal from '@matrixai/id/dist/Id';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as events from './events';
@@ -138,10 +139,16 @@ class NodeConnection<M extends ClientManifest> {
           maxIdleTimeout: connectionKeepAliveTimeoutTime,
           verifyPeer: true,
           verifyCallback: async (certPEMs) => {
-            validatedNodeId = await networkUtils.verifyServerCertificateChain(
+            const result = await networkUtils.verifyServerCertificateChain(
               targetNodeIds,
               certPEMs,
             );
+            if (result.result === 'success') {
+              validatedNodeId = result.nodeId;
+              return;
+            } else {
+              return result.value;
+            }
           },
           ca: undefined,
           key: tlsConfig.keyPrivatePem,
@@ -168,7 +175,7 @@ class NodeConnection<M extends ClientManifest> {
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
-      streamFactory: () => {
+      streamFactory: async () => {
         return quicConnection.newStream();
       },
       logger: logger.getChild(RPCClient.name),
@@ -179,7 +186,9 @@ class NodeConnection<M extends ClientManifest> {
     const connection = quicClient.connection;
     // Remote certificate information should always be available here due to custom verification
     const certChain = connection.getRemoteCertsChain().map((pem) => {
-      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+      const cert = keysUtils.certFromPEM(
+        Buffer.from(pem).toString() as CertificatePEM,
+      );
       if (cert == null) never();
       return cert;
     });
@@ -192,8 +201,8 @@ class NodeConnection<M extends ClientManifest> {
       nodeId,
       host: targetHost,
       port: targetPort,
-      localHost: connection.localHost as Host,
-      localPort: connection.localPort as Port,
+      localHost: connection.localHost as unknown as Host,
+      localPort: connection.localPort as unknown as Port,
       certChain,
       hostname: targetHostname,
       quicClient,
@@ -315,7 +324,7 @@ class NodeConnection<M extends ClientManifest> {
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
-      streamFactory: () => {
+      streamFactory: async (_ctx) => {
         return quicConnection.newStream();
       },
       logger: logger.getChild(RPCClient.name),
@@ -324,10 +333,10 @@ class NodeConnection<M extends ClientManifest> {
     const nodeConnection = new this<M>({
       validatedNodeId: nodeId,
       nodeId: nodeId,
-      localHost: quicConnection.localHost as Host,
-      localPort: quicConnection.localPort as Port,
-      host: quicConnection.remoteHost as Host,
-      port: quicConnection.remotePort as Port,
+      localHost: quicConnection.localHost as unknown as Host,
+      localPort: quicConnection.localPort as unknown as Port,
+      host: quicConnection.remoteHost as unknown as Host,
+      port: quicConnection.remotePort as unknown as Port,
       certChain,
       // Hostname and client are not available on reverse connections
       hostname: undefined,
@@ -460,9 +469,9 @@ class NodeConnection<M extends ClientManifest> {
     await this.quicConnection.stop(
       force
         ? {
-            applicationError: true,
+            isApp: true,
             errorCode: 0,
-            errorMessage: 'NodeConnection is forcing destruction',
+            reason: Buffer.from('NodeConnection is forcing destruction'),
             force: true,
           }
         : {},

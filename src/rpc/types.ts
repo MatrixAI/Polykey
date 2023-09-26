@@ -195,11 +195,8 @@ type ContainerType = Record<string, any>;
  * mainly used as the return type for the `StreamFactory`. But the interface
  * can be propagated across the RPC system.
  */
-interface RPCStream<
-  R,
-  W,
-  M extends Record<string, JSONValue> = Record<string, JSONValue>,
-> extends ReadableWritablePair<R, W> {
+interface RPCStream<R, W, M extends POJO = POJO>
+  extends ReadableWritablePair<R, W> {
   cancel: (reason?: any) => void;
   meta?: M;
 }
