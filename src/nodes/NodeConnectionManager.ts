@@ -277,7 +277,7 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get host(): Host {
-    return this.quicSocket.host as Host;
+    return this.quicSocket.host as unknown as Host;
   }
 
   /**
@@ -285,7 +285,7 @@ class NodeConnectionManager {
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get port(): Port {
-    return this.quicSocket.port as Port;
+    return this.quicSocket.port as unknown as Port;
   }
 
   public async start({
@@ -780,7 +780,9 @@ class NodeConnectionManager {
     // Checking NodeId
     // No specific error here, validation is handled by the QUICServer
     const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
-      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
+      const cert = keysUtils.certFromPEM(
+        Buffer.from(pem).toString() as CertificatePEM,
+      );
       if (cert == null) utils.never();
       return cert;
     });
@@ -796,9 +798,9 @@ class NodeConnectionManager {
         if (this.connections.has(nodeIdString)) {
           // Reject and return early.
           await quicConnection.stop({
-            applicationError: true,
+            isApp: true,
             errorCode: 42, // TODO: use an actual code
-            errorMessage: 'Connection already exists, forcing close',
+            reason: Buffer.from('Connection already exists, forcing close'),
             force: true,
           });
           return;
