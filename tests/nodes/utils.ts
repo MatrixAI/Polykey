@@ -141,7 +141,34 @@ async function verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
   return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
 }
 
+/**
+ * This will create a `reasonToCode` and `codeToReason` functions that will
+ * allow errors to "jump" the network boundary. It does this by mapping the
+ * errors to an incrementing code and returning them on the other end of the
+ * connection.
+ *
+ * Note: this should ONLY be used for testing as it requires the client and
+ * server to share the same instance of `reasonToCode` and `codeToReason`.
+ */
+function createReasonConverters() {
+  const reasonMap = new Map<number, any>();
+  let code = 0;
 
+  const reasonToCode = (_type, reason) => {
+    code++;
+    reasonMap.set(code, reason);
+    return code;
+  };
+
+  const codeToReason = (_type, code) => {
+    return reasonMap.get(code) ?? new Error('Reason not found');
+  };
+
+  return {
+    reasonToCode,
+    codeToReason,
+  };
+}
 
 export {
   generateRandomNodeId,
@@ -152,4 +179,5 @@ export {
   uniqueNodeIdArb,
   sign,
   verify,
+  createReasonConverters,
 };
