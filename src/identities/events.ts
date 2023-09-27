@@ -1,21 +1,21 @@
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsIdentitiesManager<T> extends EventsPolykey<T> {}
+abstract class EventIdentitiesManager<T> extends EventPolykey<T> {}
 
-class EventIdentitiesManagerStart extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerStart extends EventIdentitiesManager<undefined> {}
 
-class EventIdentitiesManagerStarted extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerStarted extends EventIdentitiesManager<undefined> {}
 
-class EventIdentitiesManagerStop extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerStop extends EventIdentitiesManager<undefined> {}
 
-class EventIdentitiesManagerStopped extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerStopped extends EventIdentitiesManager<undefined> {}
 
-class EventIdentitiesManagerDestroy extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerDestroy extends EventIdentitiesManager<undefined> {}
 
-class EventIdentitiesManagerDestroyed extends EventsIdentitiesManager<undefined> {}
+class EventIdentitiesManagerDestroyed extends EventIdentitiesManager<undefined> {}
 
 export {
-  EventsIdentitiesManager,
+  EventIdentitiesManager,
   EventIdentitiesManagerStart,
   EventIdentitiesManagerStarted,
   EventIdentitiesManagerStop,

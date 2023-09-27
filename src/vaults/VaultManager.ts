@@ -31,11 +31,11 @@ import {
 import { IdInternal } from '@matrixai/id';
 import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
-import * as events from './events';
 import VaultInternal from './VaultInternal';
 import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
+import * as vaultsEvents from './events';
 import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
 import * as nodesUtils from '../nodes/utils';
@@ -60,12 +60,12 @@ interface VaultManager extends CreateDestroyStartStop {}
   new vaultsErrors.ErrorVaultManagerRunning(),
   new vaultsErrors.ErrorVaultManagerDestroyed(),
   {
-    eventStart: events.EventVaultManagerStart,
-    eventStarted: events.EventVaultManagerStarted,
-    eventStop: events.EventVaultManagerStop,
-    eventStopped: events.EventVaultManagerStopped,
-    eventDestroy: events.EventVaultManagerDestroy,
-    eventDestroyed: events.EventVaultManagerDestroyed,
+    eventStart: vaultsEvents.EventVaultManagerStart,
+    eventStarted: vaultsEvents.EventVaultManagerStarted,
+    eventStop: vaultsEvents.EventVaultManagerStop,
+    eventStopped: vaultsEvents.EventVaultManagerStopped,
+    eventDestroy: vaultsEvents.EventVaultManagerDestroy,
+    eventDestroyed: vaultsEvents.EventVaultManagerDestroyed,
   },
 )
 class VaultManager {

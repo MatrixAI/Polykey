@@ -23,9 +23,9 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { Lock } from '@matrixai/async-locks';
-import * as events from './events';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
+import * as keysEvents from './events';
 import { bufferLock, bufferUnlock } from './utils/memory';
 
 interface KeyRing extends CreateDestroyStartStop {}
@@ -33,12 +33,12 @@ interface KeyRing extends CreateDestroyStartStop {}
   new keysErrors.ErrorKeyRingRunning(),
   new keysErrors.ErrorKeyRingDestroyed(),
   {
-    eventStart: events.EventsKeyRingStart,
-    eventStarted: events.EventsKeyRingStarted,
-    eventStop: events.EventsKeyRingStop,
-    eventStopped: events.EventsKeyRingStopped,
-    eventDestroy: events.EventsKeyRingDestroy,
-    eventDestroyed: events.EventsKeyRingDestroyed,
+    eventStart: keysEvents.EventKeyRingStart,
+    eventStarted: keysEvents.EventKeyRingStarted,
+    eventStop: keysEvents.EventKeyRingStop,
+    eventStopped: keysEvents.EventKeyRingStopped,
+    eventDestroy: keysEvents.EventKeyRingDestroy,
+    eventDestroyed: keysEvents.EventKeyRingDestroyed,
   },
 )
 class KeyRing {

@@ -1,21 +1,21 @@
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsSigchain<T> extends EventsPolykey<T> {}
+abstract class EventSigchain<T> extends EventPolykey<T> {}
 
-class EventSigchainStart extends EventsSigchain<undefined> {}
+class EventSigchainStart extends EventSigchain<undefined> {}
 
-class EventSigchainStarted extends EventsSigchain<undefined> {}
+class EventSigchainStarted extends EventSigchain<undefined> {}
 
-class EventSigchainStop extends EventsSigchain<undefined> {}
+class EventSigchainStop extends EventSigchain<undefined> {}
 
-class EventSigchainStopped extends EventsSigchain<undefined> {}
+class EventSigchainStopped extends EventSigchain<undefined> {}
 
-class EventSigchainDestroy extends EventsSigchain<undefined> {}
+class EventSigchainDestroy extends EventSigchain<undefined> {}
 
-class EventSigchainDestroyed extends EventsSigchain<undefined> {}
+class EventSigchainDestroyed extends EventSigchain<undefined> {}
 
 export {
-  EventsSigchain,
+  EventSigchain,
   EventSigchainStart,
   EventSigchainStarted,
   EventSigchainStop,

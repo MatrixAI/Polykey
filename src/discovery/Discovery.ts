@@ -33,7 +33,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
-import * as events from './events';
+import * as discoveryEvents from './events';
 import * as tasksErrors from '../tasks/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
@@ -62,12 +62,12 @@ interface Discovery extends CreateDestroyStartStop {}
   new discoveryErrors.ErrorDiscoveryRunning(),
   new discoveryErrors.ErrorDiscoveryDestroyed(),
   {
-    eventStart: events.EventDiscoveryStart,
-    eventStarted: events.EventDiscoveryStarted,
-    eventStop: events.EventDiscoveryStop,
-    eventStopped: events.EventDiscoveryStopped,
-    eventDestroy: events.EventDiscoveryDestroy,
-    eventDestroyed: events.EventDiscoveryDestroyed,
+    eventStart: discoveryEvents.EventDiscoveryStart,
+    eventStarted: discoveryEvents.EventDiscoveryStarted,
+    eventStop: discoveryEvents.EventDiscoveryStop,
+    eventStopped: discoveryEvents.EventDiscoveryStopped,
+    eventDestroy: discoveryEvents.EventDiscoveryDestroy,
+    eventDestroyed: discoveryEvents.EventDiscoveryDestroyed,
   },
 )
 class Discovery {

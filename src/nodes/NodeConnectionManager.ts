@@ -29,7 +29,6 @@ import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import * as events from './events';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
@@ -72,10 +71,10 @@ type ConnectionAndTimer = {
  */
 interface NodeConnectionManager extends StartStop {}
 @StartStop({
-  eventStart: events.EventNodeConnectionManagerStart,
-  eventStarted: events.EventNodeConnectionManagerStarted,
-  eventStop: events.EventNodeConnectionManagerStop,
-  eventStopped: events.EventNodeConnectionManagerStopped,
+  eventStart: nodesEvents.EventNodeConnectionManagerStart,
+  eventStarted: nodesEvents.EventNodeConnectionManagerStarted,
+  eventStop: nodesEvents.EventNodeConnectionManagerStop,
+  eventStopped: nodesEvents.EventNodeConnectionManagerStopped,
 })
 class NodeConnectionManager {
   /**

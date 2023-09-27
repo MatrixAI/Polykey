@@ -23,7 +23,7 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
-import * as events from './events';
+import * as keysEvents from './events';
 import * as ids from '../ids';
 import config from '../config';
 
@@ -39,12 +39,12 @@ interface CertManager extends CreateDestroyStartStop {}
   new keysErrors.ErrorCertManagerRunning(),
   new keysErrors.ErrorCertManagerDestroyed(),
   {
-    eventStart: events.EventsCertManagerStart,
-    eventStarted: events.EventsCertManagerStarted,
-    eventStop: events.EventsCertManagerStop,
-    eventStopped: events.EventsCertManagerStopped,
-    eventDestroy: events.EventsCertManagerDestroy,
-    eventDestroyed: events.EventsCertManagerDestroyed,
+    eventStart: keysEvents.EventCertManagerStart,
+    eventStarted: keysEvents.EventCertManagerStarted,
+    eventStop: keysEvents.EventCertManagerStop,
+    eventStopped: keysEvents.EventCertManagerStopped,
+    eventDestroy: keysEvents.EventCertManagerDestroy,
+    eventDestroyed: keysEvents.EventCertManagerDestroyed,
   },
 )
 class CertManager {
@@ -455,7 +455,7 @@ class CertManager {
         await this.setupRenewCurrentCertTask(now);
       }
       this.dispatchEvent(
-        new events.EventsCertManagerCertChange({
+        new keysEvents.EventCertManagerCertChange({
           detail: {
             nodeId: this.keyRing.getNodeId(),
             keyPair: this.keyRing.keyPair,
@@ -521,7 +521,7 @@ class CertManager {
         await this.setupRenewCurrentCertTask(now);
       }
       this.dispatchEvent(
-        new events.EventsCertManagerCertChange({
+        new keysEvents.EventCertManagerCertChange({
           detail: {
             nodeId: this.keyRing.getNodeId(),
             keyPair: this.keyRing.keyPair,
@@ -594,7 +594,7 @@ class CertManager {
         await this.setupRenewCurrentCertTask(now);
       }
       this.dispatchEvent(
-        new events.EventsCertManagerCertChange({
+        new keysEvents.EventCertManagerCertChange({
           detail: {
             nodeId: this.keyRing.getNodeId(),
             keyPair: this.keyRing.keyPair,
@@ -655,7 +655,7 @@ class CertManager {
         await this.setupRenewCurrentCertTask(now);
       }
       this.dispatchEvent(
-        new events.EventsCertManagerCertChange({
+        new keysEvents.EventCertManagerCertChange({
           detail: {
             nodeId: this.keyRing.getNodeId(),
             keyPair: this.keyRing.keyPair,

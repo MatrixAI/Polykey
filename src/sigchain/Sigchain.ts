@@ -15,7 +15,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as sigchainErrors from './errors';
-import * as events from './events';
+import * as sigchainEvents from './events';
 import Token from '../tokens/Token';
 import * as claimsUtils from '../claims/utils';
 import * as utils from '../utils';
@@ -25,12 +25,12 @@ interface Sigchain extends CreateDestroyStartStop {}
   new sigchainErrors.ErrorSigchainRunning(),
   new sigchainErrors.ErrorSigchainDestroyed(),
   {
-    eventStart: events.EventSigchainStart,
-    eventStarted: events.EventSigchainStarted,
-    eventStop: events.EventSigchainStop,
-    eventStopped: events.EventSigchainStopped,
-    eventDestroy: events.EventSigchainDestroy,
-    eventDestroyed: events.EventSigchainDestroyed,
+    eventStart: sigchainEvents.EventSigchainStart,
+    eventStarted: sigchainEvents.EventSigchainStarted,
+    eventStop: sigchainEvents.EventSigchainStop,
+    eventStopped: sigchainEvents.EventSigchainStopped,
+    eventDestroy: sigchainEvents.EventSigchainDestroy,
+    eventDestroyed: sigchainEvents.EventSigchainDestroyed,
   },
 )
 class Sigchain {

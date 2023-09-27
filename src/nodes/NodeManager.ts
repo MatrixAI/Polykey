@@ -38,7 +38,6 @@ import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
-import * as events from './events';
 import * as claimsUtils from '../claims/utils';
 import * as tasksErrors from '../tasks/errors';
 import * as claimsErrors from '../claims/errors';
@@ -56,10 +55,10 @@ const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
 interface NodeManager extends StartStop {}
 @StartStop({
-  eventStart: events.EventNodeManagerStart,
-  eventStarted: events.EventNodeManagerStarted,
-  eventStop: events.EventNodeManagerStop,
-  eventStopped: events.EventNodeManagerStopped,
+  eventStart: nodesEvents.EventNodeManagerStart,
+  eventStarted: nodesEvents.EventNodeManagerStarted,
+  eventStop: nodesEvents.EventNodeManagerStop,
+  eventStopped: nodesEvents.EventNodeManagerStopped,
 })
 class NodeManager {
   protected db: DB;

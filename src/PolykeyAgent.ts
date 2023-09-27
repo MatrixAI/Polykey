@@ -561,8 +561,8 @@ class PolykeyAgent {
     this.rpcServerAgent.handleStream(stream);
   };
 
-  protected handleEventsCertManagerCertChange = async (
-    evt: keysEvents.EventsCertManagerCertChange,
+  protected handleEventCertManagerCertChange = async (
+    evt: keysEvents.EventCertManagerCertChange,
   ) => {
     const data = evt.detail;
     this.logger.info(`${KeyRing.name} change propagating`);
@@ -680,8 +680,8 @@ class PolykeyAgent {
       this.logger.info(`Starting ${this.constructor.name}`);
       // Register event handlers
       this.certManager.addEventListener(
-        keysEvents.EventsCertManagerCertChange.name,
-        this.handleEventsCertManagerCertChange,
+        keysEvents.EventCertManagerCertChange.name,
+        this.handleEventCertManagerCertChange,
       );
       await this.status.start({ pid: process.pid });
       await this.schema.start({ fresh });
@@ -774,8 +774,8 @@ class PolykeyAgent {
         `Failed Starting ${this.constructor.name} with ${e.message}`,
       );
       this.certManager.removeEventListener(
-        keysEvents.EventsCertManagerCertChange.name,
-        this.handleEventsCertManagerCertChange,
+        keysEvents.EventCertManagerCertChange.name,
+        this.handleEventCertManagerCertChange,
       );
       await this.status?.beginStop({ pid: process.pid });
       await this.taskManager?.stopProcessing();
@@ -815,8 +815,8 @@ class PolykeyAgent {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.certManager.removeEventListener(
-      keysEvents.EventsCertManagerCertChange.name,
-      this.handleEventsCertManagerCertChange,
+      keysEvents.EventCertManagerCertChange.name,
+      this.handleEventCertManagerCertChange,
     );
     await this.status.beginStop({ pid: process.pid });
     await this.taskManager.stopProcessing();

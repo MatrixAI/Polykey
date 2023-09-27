@@ -7,11 +7,11 @@ import RPCClient from './rpc/RPCClient';
 import * as rpcUtilsMiddleware from './rpc/utils/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { Session } from './sessions';
-import * as errors from './errors';
 import * as utils from './utils';
+import * as errors from './errors';
+import * as events from './events';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
-import * as events from './events';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs

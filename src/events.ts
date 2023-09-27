@@ -1,42 +1,42 @@
-import EventsPolykey from './EventsPolykey';
+import EventPolykey from './EventPolykey';
 
-abstract class EventsPolykeyAgent<T> extends EventsPolykey<T> {}
+abstract class EventPolykeyAgent<T> extends EventPolykey<T> {}
 
-class EventPolykeyAgentStart extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentStart extends EventPolykeyAgent<undefined> {}
 
-class EventPolykeyAgentStarted extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentStarted extends EventPolykeyAgent<undefined> {}
 
-class EventPolykeyAgentStop extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentStop extends EventPolykeyAgent<undefined> {}
 
-class EventPolykeyAgentStopped extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentStopped extends EventPolykeyAgent<undefined> {}
 
-class EventPolykeyAgentDestroy extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentDestroy extends EventPolykeyAgent<undefined> {}
 
-class EventPolykeyAgentDestroyed extends EventsPolykeyAgent<undefined> {}
+class EventPolykeyAgentDestroyed extends EventPolykeyAgent<undefined> {}
 
-abstract class EventsPolykeyClient<T> extends EventsPolykey<T> {}
+abstract class EventPolykeyClient<T> extends EventPolykey<T> {}
 
-class EventPolykeyClientStart extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientStart extends EventPolykeyClient<undefined> {}
 
-class EventPolykeyClientStarted extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientStarted extends EventPolykeyClient<undefined> {}
 
-class EventPolykeyClientStop extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientStop extends EventPolykeyClient<undefined> {}
 
-class EventPolykeyClientStopped extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientStopped extends EventPolykeyClient<undefined> {}
 
-class EventPolykeyClientDestroy extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientDestroy extends EventPolykeyClient<undefined> {}
 
-class EventPolykeyClientDestroyed extends EventsPolykeyClient<undefined> {}
+class EventPolykeyClientDestroyed extends EventPolykeyClient<undefined> {}
 
 export {
-  EventsPolykeyAgent,
+  EventPolykeyAgent,
   EventPolykeyAgentStart,
   EventPolykeyAgentStarted,
   EventPolykeyAgentStop,
   EventPolykeyAgentStopped,
   EventPolykeyAgentDestroy,
   EventPolykeyAgentDestroyed,
-  EventsPolykeyClient,
+  EventPolykeyClient,
   EventPolykeyClientStart,
   EventPolykeyClientStarted,
   EventPolykeyClientStop,

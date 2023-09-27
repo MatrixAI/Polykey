@@ -1,21 +1,21 @@
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsACL<T> extends EventsPolykey<T> {}
+abstract class EventACL<T = undefined> extends EventPolykey<T> {}
 
-class EventACLStart extends EventsACL<undefined> {}
+class EventACLStart extends EventACL {}
 
-class EventACLStarted extends EventsACL<undefined> {}
+class EventACLStarted extends EventACL {}
 
-class EventACLStop extends EventsACL<undefined> {}
+class EventACLStop extends EventACL {}
 
-class EventACLStopped extends EventsACL<undefined> {}
+class EventACLStopped extends EventACL {}
 
-class EventACLDestroy extends EventsACL<undefined> {}
+class EventACLDestroy extends EventACL {}
 
-class EventACLDestroyed extends EventsACL<undefined> {}
+class EventACLDestroyed extends EventACL {}
 
 export {
-  EventsACL,
+  EventACL,
   EventACLStart,
   EventACLStarted,
   EventACLStop,
