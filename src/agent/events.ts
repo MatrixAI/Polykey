@@ -1,4 +1,4 @@
-import EventPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
 abstract class EventAgent<T> extends EventPolykey<T> {}
 
