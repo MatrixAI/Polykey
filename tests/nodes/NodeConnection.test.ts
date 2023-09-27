@@ -420,8 +420,8 @@ describe(`${NodeConnection.name}`, () => {
           },
         ).then(extractNodeConnection);
         nodeConnection.addEventListener(
-          nodesEvents.EventNodeStream.name,
-          (e: nodesEvents.EventNodeStream) => {
+          nodesEvents.EventNodeConnectionStream.name,
+          (e: nodesEvents.EventNodeConnectionStream) => {
             reverseStreamProm.resolveP(e.detail);
           },
           { once: true },
@@ -442,8 +442,8 @@ describe(`${NodeConnection.name}`, () => {
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
     nodeConnection.addEventListener(
-      nodesEvents.EventNodeStream.name,
-      (e: nodesEvents.EventNodeStream) => {
+      nodesEvents.EventNodeConnectionStream.name,
+      (e: nodesEvents.EventNodeConnectionStream) => {
         forwardStreamProm.resolveP(e.detail);
       },
       { once: true },

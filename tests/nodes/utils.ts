@@ -141,6 +141,8 @@ async function verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
   return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
 }
 
+
+
 export {
   generateRandomNodeId,
   generateNodeIdForBucket,

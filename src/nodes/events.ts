@@ -12,7 +12,7 @@ class EventNodeConnectionDestroy extends EventNodeConnection<undefined> {}
 
 class EventNodeConnectionDestroyed extends EventNodeConnection<undefined> {}
 
-class EventNodeStream extends EventNode<QUICStream> {}
+class EventNodeConnectionStream extends EventNode<QUICStream> {}
 
 abstract class EventNodeConnectionManager<
   T = undefined,
@@ -62,7 +62,7 @@ export {
   EventNodeConnectionError,
   EventNodeConnectionDestroy,
   EventNodeConnectionDestroyed,
-  EventNodeStream,
+  EventNodeConnectionStream,
   EventNodeConnectionManager,
   EventNodeConnectionManagerStart,
   EventNodeConnectionManagerStarted,
