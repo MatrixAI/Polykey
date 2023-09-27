@@ -63,7 +63,7 @@
   },
   "dependencies": {
     "@matrixai/async-cancellable": "^1.1.1",
-    "@matrixai/async-init": "^1.9.1",
+    "@matrixai/async-init": "^1.10.0",
     "@matrixai/async-locks": "^4.0.0",
     "@matrixai/contexts": "^1.1.0",
     "@matrixai/db": "^5.3.0",
@@ -74,7 +74,7 @@
     "@matrixai/timer": "^1.1.1",
     "@matrixai/workers": "^1.3.7",
     "@matrixai/quic":  "^0.1.2",
-    "@matrixai/events": "^3.0.2",
+    "@matrixai/events": "^3.2.0",
     "@peculiar/asn1-pkcs8": "^2.3.0",
     "@peculiar/asn1-schema": "^2.3.0",
     "@peculiar/asn1-x509": "^2.3.0",
