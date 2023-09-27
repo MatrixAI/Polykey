@@ -126,51 +126,11 @@ class PolykeyAgent {
     options = {},
     fresh = false,
     // Optional dependencies
-    status,
-    schema,
-    keyRing,
-    db,
-    certManager,
-    identitiesManager,
-    sigchain,
-    acl,
-    gestaltGraph,
-    taskManager,
-    nodeGraph,
-    nodeConnectionManager,
-    nodeManager,
-    discovery,
-    vaultManager,
-    notificationsManager,
-    sessionManager,
-    rpcServerClient,
-    webSocketServerClient,
-    rpcServerAgent,
     fs = require('fs'),
     logger = new Logger(this.name),
   }: {
     password: string;
     options?: DeepPartial<PolykeyAgentOptions>;
-    status?: Status;
-    schema?: Schema;
-    keyRing?: KeyRing;
-    db?: DB;
-    certManager?: CertManager;
-    identitiesManager?: IdentitiesManager;
-    sigchain?: Sigchain;
-    acl?: ACL;
-    gestaltGraph?: GestaltGraph;
-    taskManager?: TaskManager;
-    nodeGraph?: NodeGraph;
-    nodeConnectionManager?: NodeConnectionManager;
-    nodeManager?: NodeManager;
-    discovery?: Discovery;
-    vaultManager?: VaultManager;
-    notificationsManager?: NotificationsManager;
-    sessionManager?: SessionManager;
-    rpcServerClient?: RPCServer;
-    webSocketServerClient?: WebSocketServer;
-    rpcServerAgent?: RPCServer;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -240,187 +200,179 @@ class PolykeyAgent {
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
     let pkAgentProm: PromiseDeconstructed<PolykeyAgent> | undefined;
+
+    let status: Status | undefined;
+    let schema: Schema | undefined;
+    let keyRing: KeyRing | undefined;
+    let db: DB | undefined;
+    let taskManager: TaskManager | undefined;
+    let certManager: CertManager | undefined;
+    let sigchain: Sigchain | undefined;
+    let acl: ACL | undefined;
+    let gestaltGraph: GestaltGraph | undefined;
+    let identitiesManager: IdentitiesManager | undefined;
+    let nodeGraph: NodeGraph | undefined;
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    let discovery: Discovery | undefined;
+    let notificationsManager: NotificationsManager | undefined;
+    let vaultManager: VaultManager | undefined;
+    let sessionManager: SessionManager | undefined;
+    let rpcServerClient: RPCServer | undefined;
+    let webSocketServerClient: WebSocketServer | undefined;
+    let rpcServerAgent: RPCServer | undefined;
     try {
-      status =
-        status ??
-        new Status({
-          statusPath,
-          statusLockPath,
-          fs: fs,
-          logger: logger.getChild(Status.name),
-        });
+      status = new Status({
+        statusPath,
+        statusLockPath,
+        fs: fs,
+        logger: logger.getChild(Status.name),
+      });
       // Start locking the status
       await status.start({ pid: process.pid });
-      schema =
-        schema ??
-        (await Schema.createSchema({
-          statePath,
-          fs,
-          logger: logger.getChild(Schema.name),
-          fresh,
-        }));
-      keyRing =
-        keyRing ??
-        (await KeyRing.createKeyRing({
-          keysPath,
-          recoveryCode: optionsDefaulted.keys.recoveryCode,
-          privateKey: optionsDefaulted.keys.privateKey,
-          privateKeyPath: optionsDefaulted.keys.privateKeyPath,
-          passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
-          passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
-          strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
-          fs,
-          fresh,
-          password,
-          logger: logger.getChild(KeyRing.name),
-        }));
+      schema = await Schema.createSchema({
+        statePath,
+        fs,
+        logger: logger.getChild(Schema.name),
+        fresh,
+      });
+      keyRing = await KeyRing.createKeyRing({
+        keysPath,
+        recoveryCode: optionsDefaulted.keys.recoveryCode,
+        privateKey: optionsDefaulted.keys.privateKey,
+        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
+        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
+        fs,
+        fresh,
+        password,
+        logger: logger.getChild(KeyRing.name),
+      });
       // Remove your own node ID if provided as a seed node
       const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
-      db =
-        db ??
-        (await DB.createDB({
-          dbPath,
-          crypto: {
-            key: keyRing.dbKey,
-            ops: {
-              encrypt: async (key, plainText) => {
-                return keysUtils.encryptWithKey(
-                  utils.bufferWrap(key) as Key,
-                  utils.bufferWrap(plainText),
-                );
-              },
-              decrypt: async (key, cipherText) => {
-                return keysUtils.decryptWithKey(
-                  utils.bufferWrap(key) as Key,
-                  utils.bufferWrap(cipherText),
-                );
-              },
+      db = await DB.createDB({
+        dbPath,
+        crypto: {
+          key: keyRing.dbKey,
+          ops: {
+            encrypt: async (key, plainText) => {
+              return keysUtils.encryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(plainText),
+              );
+            },
+            decrypt: async (key, cipherText) => {
+              return keysUtils.decryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(cipherText),
+              );
             },
           },
-          fs,
-          logger: logger.getChild(DB.name),
-          fresh,
-        }));
-      taskManager =
-        taskManager ??
-        (await TaskManager.createTaskManager({
-          db,
-          fresh,
-          lazy: true,
-          logger,
-        }));
-      certManager =
-        certManager ??
-        (await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          certDuration: optionsDefaulted.keys.certDuration,
-          certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
-          logger: logger.getChild(CertManager.name),
-          fresh,
-        }));
+        },
+        fs,
+        logger: logger.getChild(DB.name),
+        fresh,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        fresh,
+        lazy: true,
+        logger,
+      });
+      certManager = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        certDuration: optionsDefaulted.keys.certDuration,
+        certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
+        logger: logger.getChild(CertManager.name),
+        fresh,
+      });
       // TLS configuration for networking
       const tlsConfig: TLSConfig = {
         keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
         certChainPem: await certManager.getCertPEMsChainPEM(),
       };
-      sigchain =
-        sigchain ??
-        (await Sigchain.createSigchain({
-          db,
-          keyRing,
-          logger: logger.getChild(Sigchain.name),
-          fresh,
-        }));
-      acl =
-        acl ??
-        (await ACL.createACL({
-          db,
-          logger: logger.getChild(ACL.name),
-          fresh,
-        }));
-      gestaltGraph =
-        gestaltGraph ??
-        (await GestaltGraph.createGestaltGraph({
-          db,
-          acl,
-          logger: logger.getChild(GestaltGraph.name),
-          fresh,
-        }));
-      identitiesManager =
-        identitiesManager ??
-        (await IdentitiesManager.createIdentitiesManager({
-          keyRing,
-          db,
-          sigchain,
-          gestaltGraph,
-          logger: logger.getChild(IdentitiesManager.name),
-          fresh,
-        }));
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+        fresh,
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+        fresh,
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+        fresh,
+      });
+      identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        keyRing,
+        db,
+        sigchain,
+        gestaltGraph,
+        logger: logger.getChild(IdentitiesManager.name),
+        fresh,
+      });
       // Registering providers
       const githubProvider = new providers.GithubProvider({
         clientId: config.providers['github.com'].clientId,
         logger: logger.getChild(providers.GithubProvider.name),
       });
       identitiesManager.registerProvider(githubProvider);
-      nodeGraph =
-        nodeGraph ??
-        (await NodeGraph.createNodeGraph({
-          db,
-          fresh,
-          keyRing,
-          logger: logger.getChild(NodeGraph.name),
-        }));
-      nodeConnectionManager =
-        nodeConnectionManager ??
-        new NodeConnectionManager({
-          keyRing,
-          nodeGraph,
-          tlsConfig,
-          seedNodes: optionsDefaulted.seedNodes,
-          connectionFindConcurrencyLimit:
-            optionsDefaulted.nodes.connectionFindConcurrencyLimit,
-          connectionIdleTimeoutTime:
-            optionsDefaulted.nodes.connectionIdleTimeoutTime,
-          connectionConnectTimeoutTime:
-            optionsDefaulted.nodes.connectionConnectTimeoutTime,
-          connectionKeepAliveTimeoutTime:
-            optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
-          connectionKeepAliveIntervalTime:
-            optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
-          connectionHolePunchIntervalTime:
-            optionsDefaulted.nodes.connectionHolePunchIntervalTime,
-          logger: logger.getChild(NodeConnectionManager.name),
-        });
-      nodeManager =
-        nodeManager ??
-        new NodeManager({
-          db,
-          sigchain,
-          keyRing,
-          nodeGraph,
-          nodeConnectionManager,
-          taskManager,
-          gestaltGraph,
-          logger: logger.getChild(NodeManager.name),
-        });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        fresh,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        nodeGraph,
+        tlsConfig,
+        seedNodes: optionsDefaulted.seedNodes,
+        connectionFindConcurrencyLimit:
+          optionsDefaulted.nodes.connectionFindConcurrencyLimit,
+        connectionIdleTimeoutTime:
+          optionsDefaulted.nodes.connectionIdleTimeoutTime,
+        connectionConnectTimeoutTime:
+          optionsDefaulted.nodes.connectionConnectTimeoutTime,
+        connectionKeepAliveTimeoutTime:
+          optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
+        connectionKeepAliveIntervalTime:
+          optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
+        connectionHolePunchIntervalTime:
+          optionsDefaulted.nodes.connectionHolePunchIntervalTime,
+        logger: logger.getChild(NodeConnectionManager.name),
+      });
+      nodeManager = new NodeManager({
+        db,
+        sigchain,
+        keyRing,
+        nodeGraph,
+        nodeConnectionManager,
+        taskManager,
+        gestaltGraph,
+        logger: logger.getChild(NodeManager.name),
+      });
       await nodeManager.start();
-      discovery =
-        discovery ??
-        (await Discovery.createDiscovery({
-          db,
-          keyRing,
-          gestaltGraph,
-          identitiesManager,
-          nodeManager,
-          taskManager,
-          logger: logger.getChild(Discovery.name),
-        }));
+      discovery = await Discovery.createDiscovery({
+        db,
+        keyRing,
+        gestaltGraph,
+        identitiesManager,
+        nodeManager,
+        taskManager,
+        logger: logger.getChild(Discovery.name),
+      });
       notificationsManager =
-        notificationsManager ??
-        (await NotificationsManager.createNotificationsManager({
+        await NotificationsManager.createNotificationsManager({
           acl,
           db,
           nodeConnectionManager,
@@ -428,103 +380,93 @@ class PolykeyAgent {
           keyRing,
           logger: logger.getChild(NotificationsManager.name),
           fresh,
-        }));
-      vaultManager =
-        vaultManager ??
-        (await VaultManager.createVaultManager({
-          vaultsPath,
-          keyRing,
-          nodeConnectionManager,
-          notificationsManager,
-          gestaltGraph,
-          acl,
-          db,
-          fs,
-          logger: logger.getChild(VaultManager.name),
-          fresh,
-        }));
-      sessionManager =
-        sessionManager ??
-        (await SessionManager.createSessionManager({
-          db,
-          keyRing,
-          logger: logger.getChild(SessionManager.name),
-          fresh,
-        }));
+        });
+      vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing,
+        nodeConnectionManager,
+        notificationsManager,
+        gestaltGraph,
+        acl,
+        db,
+        fs,
+        logger: logger.getChild(VaultManager.name),
+        fresh,
+      });
+      sessionManager = await SessionManager.createSessionManager({
+        db,
+        keyRing,
+        logger: logger.getChild(SessionManager.name),
+        fresh,
+      });
       // If a recovery code is provided then we reset any sessions in case the
       // password changed.
       if (optionsDefaulted.keys.recoveryCode != null) {
         await sessionManager.resetKey();
       }
-      if (rpcServerClient == null) {
-        pkAgentProm = utils.promise();
-        rpcServerClient = await RPCServer.createRPCServer({
-          manifest: clientServerManifest({
-            acl: acl,
-            certManager: certManager,
-            db: db,
-            discovery: discovery,
-            fs: fs,
-            gestaltGraph: gestaltGraph,
-            identitiesManager: identitiesManager,
-            keyRing: keyRing,
-            logger: logger,
-            nodeConnectionManager: nodeConnectionManager,
-            nodeGraph: nodeGraph,
-            nodeManager: nodeManager,
-            notificationsManager: notificationsManager,
-            pkAgentProm: pkAgentProm.p,
-            sessionManager: sessionManager,
-            vaultManager: vaultManager,
-          }),
-          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-            clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
-            optionsDefaulted.rpc.parserBufferSize,
-          ),
-          sensitive: false,
-          handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-          handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
-          logger: logger.getChild(RPCServer.name + 'Client'),
-        });
-      }
-      webSocketServerClient =
-        webSocketServerClient ??
-        (await WebSocketServer.createWebSocketServer({
-          connectionCallback: (rpcStream) =>
-            rpcServerClient!.handleStream(rpcStream),
-          host: optionsDefaulted.clientServiceHost,
-          port: optionsDefaulted.clientServicePort,
-          tlsConfig,
-          // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
-          maxIdleTimeout: optionsDefaulted.client.keepAliveTimeoutTime,
-          pingIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
-          pingTimeoutTimeTime: optionsDefaulted.client.keepAliveTimeoutTime,
-          logger: logger.getChild('WebSocketServer'),
-        }));
-      if (rpcServerAgent == null) {
-        rpcServerAgent = await RPCServer.createRPCServer({
-          manifest: agentServerManifest({
-            acl: acl,
-            db: db,
-            keyRing: keyRing,
-            logger: logger,
-            nodeConnectionManager: nodeConnectionManager,
-            nodeGraph: nodeGraph,
-            nodeManager: nodeManager,
-            notificationsManager: notificationsManager,
-            sigchain: sigchain,
-            vaultManager: vaultManager,
-          }),
-          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-            undefined,
-            optionsDefaulted.rpc.parserBufferSize,
-          ),
-          sensitive: true,
-          handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-          handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
-          logger: logger.getChild(RPCServer.name + 'Agent'),
-        });
-      }
+      pkAgentProm = utils.promise();
+      rpcServerClient = await RPCServer.createRPCServer({
+        manifest: clientServerManifest({
+          acl: acl,
+          certManager: certManager,
+          db: db,
+          discovery: discovery,
+          fs: fs,
+          gestaltGraph: gestaltGraph,
+          identitiesManager: identitiesManager,
+          keyRing: keyRing,
+          logger: logger,
+          nodeConnectionManager: nodeConnectionManager,
+          nodeGraph: nodeGraph,
+          nodeManager: nodeManager,
+          notificationsManager: notificationsManager,
+          pkAgentProm: pkAgentProm.p,
+          sessionManager: sessionManager,
+          vaultManager: vaultManager,
+        }),
+        middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+          clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
+          optionsDefaulted.rpc.parserBufferSize,
+        ),
+        sensitive: false,
+        handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
+        logger: logger.getChild(RPCServer.name + 'Client'),
+      });
+      webSocketServerClient = await WebSocketServer.createWebSocketServer({
+        connectionCallback: (rpcStream) =>
+          rpcServerClient!.handleStream(rpcStream),
+        host: optionsDefaulted.clientServiceHost,
+        port: optionsDefaulted.clientServicePort,
+        tlsConfig,
+        // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
+        maxIdleTimeout: optionsDefaulted.client.keepAliveTimeoutTime,
+        pingIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
+        pingTimeoutTimeTime: optionsDefaulted.client.keepAliveTimeoutTime,
+        logger: logger.getChild('WebSocketServer'),
+      });
+      rpcServerAgent = await RPCServer.createRPCServer({
+        manifest: agentServerManifest({
+          acl: acl,
+          db: db,
+          keyRing: keyRing,
+          logger: logger,
+          nodeConnectionManager: nodeConnectionManager,
+          nodeGraph: nodeGraph,
+          nodeManager: nodeManager,
+          notificationsManager: notificationsManager,
+          sigchain: sigchain,
+          vaultManager: vaultManager,
+        }),
+        middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+          undefined,
+          optionsDefaulted.rpc.parserBufferSize,
+        ),
+        sensitive: true,
+        handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
+        logger: logger.getChild(RPCServer.name + 'Agent'),
+      });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
       await rpcServerAgent?.destroy(true);

@@ -34,8 +34,6 @@ interface PolykeyClient extends CreateDestroyStartStop {}
 class PolykeyClient {
   static async createPolykeyClient({
     nodePath = config.defaultsUser.nodePath,
-    session,
-    rpcClientClient,
     streamFactory,
     streamKeepAliveTimeoutTime,
     parserBufferByteLimit,
@@ -44,8 +42,6 @@ class PolykeyClient {
     fresh = false,
   }: {
     nodePath?: string;
-    session?: Session;
-    rpcClientClient?: RPCClient<typeof clientManifest>;
     streamFactory: StreamFactory;
     streamKeepAliveTimeoutTime?: number;
     parserBufferByteLimit?: number;
@@ -59,28 +55,24 @@ class PolykeyClient {
     }
     await utils.mkdirExists(fs, nodePath);
     const sessionTokenPath = path.join(nodePath, config.paths.tokenBase);
-    session =
-      session ??
-      (await Session.createSession({
-        sessionTokenPath,
-        logger: logger.getChild(Session.name),
-        fresh,
-      }));
-    const rpcClientClient_ =
-      rpcClientClient ??
-      (await RPCClient.createRPCClient({
-        manifest: clientManifest,
-        streamFactory,
-        middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
-          clientUtilsMiddleware.middlewareClient(session),
-          parserBufferByteLimit,
-        ),
-        streamKeepAliveTimeoutTime,
-        logger: logger.getChild(RPCClient.name),
-      }));
+    const session = await Session.createSession({
+      sessionTokenPath,
+      logger: logger.getChild(Session.name),
+      fresh,
+    });
+    const rpcClientClient = await RPCClient.createRPCClient({
+      manifest: clientManifest,
+      streamFactory,
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
+        clientUtilsMiddleware.middlewareClient(session),
+        parserBufferByteLimit,
+      ),
+      streamKeepAliveTimeoutTime,
+      logger: logger.getChild(RPCClient.name),
+    });
     const pkClient = new this({
       nodePath,
-      rpcClientClient: rpcClientClient_,
+      rpcClientClient: rpcClientClient,
       session,
       fs,
       logger,
