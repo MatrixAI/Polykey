@@ -25,7 +25,7 @@ import {
 import { IdInternal } from '@matrixai/id';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import * as events from './events';
+import * as gestaltsEvents from './events';
 import * as aclUtils from '../acl/utils';
 import { never } from '../utils';
 
@@ -34,12 +34,12 @@ interface GestaltGraph extends CreateDestroyStartStop {}
   new gestaltsErrors.ErrorGestaltsGraphRunning(),
   new gestaltsErrors.ErrorGestaltsGraphDestroyed(),
   {
-    eventStart: events.EventGestaltsStart,
-    eventStarted: events.EventGestaltsStarted,
-    eventStop: events.EventGestaltsStop,
-    eventStopped: events.EventGestaltsStopped,
-    eventDestroy: events.EventGestaltsDestroy,
-    eventDestroyed: events.EventGestaltsDestroyed,
+    eventStart: gestaltsEvents.EventGestaltsStart,
+    eventStarted: gestaltsEvents.EventGestaltsStarted,
+    eventStop: gestaltsEvents.EventGestaltsStop,
+    eventStopped: gestaltsEvents.EventGestaltsStopped,
+    eventDestroy: gestaltsEvents.EventGestaltsDestroy,
+    eventDestroyed: gestaltsEvents.EventGestaltsDestroyed,
   },
 )
 class GestaltGraph {

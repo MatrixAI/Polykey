@@ -27,10 +27,10 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF, withG } from '@matrixai/resources';
 import { RWLockWriter } from '@matrixai/async-locks';
-import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
+import * as vaultsErrors from './errors';
+import * as vaultsEvents from './events';
 import { tagLast } from './types';
-import * as events from './events';
 import * as validationUtils from '../validation/utils';
 import * as utils from '../utils';
 import * as nodesUtils from '../nodes/utils';
@@ -46,12 +46,12 @@ interface VaultInternal extends CreateDestroyStartStop {}
   new vaultsErrors.ErrorVaultRunning(),
   new vaultsErrors.ErrorVaultDestroyed(),
   {
-    eventStart: events.EventVaultInternalStart,
-    eventStarted: events.EventVaultInternalStarted,
-    eventStop: events.EventVaultInternalStop,
-    eventStopped: events.EventVaultInternalStopped,
-    eventDestroy: events.EventVaultInternalDestroy,
-    eventDestroyed: events.EventVaultInternalDestroyed,
+    eventStart: vaultsEvents.EventVaultInternalStart,
+    eventStarted: vaultsEvents.EventVaultInternalStarted,
+    eventStop: vaultsEvents.EventVaultInternalStop,
+    eventStopped: vaultsEvents.EventVaultInternalStopped,
+    eventDestroy: vaultsEvents.EventVaultInternalDestroy,
+    eventDestroyed: vaultsEvents.EventVaultInternalDestroyed,
   },
 )
 class VaultInternal {

@@ -1,53 +1,53 @@
 import type { CertManagerChangeData } from './types';
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsKeys<T = undefined> extends EventsPolykey<T> {}
+abstract class EventKeys<T = undefined> extends EventPolykey<T> {}
 
-abstract class EventsCertManager<T = undefined> extends EventsKeys<T> {}
+abstract class EventCertManager<T = undefined> extends EventKeys<T> {}
 
-class EventsCertManagerStart extends EventsCertManager {}
+class EventCertManagerStart extends EventCertManager {}
 
-class EventsCertManagerStarted extends EventsCertManager {}
+class EventCertManagerStarted extends EventCertManager {}
 
-class EventsCertManagerStop extends EventsCertManager {}
+class EventCertManagerStop extends EventCertManager {}
 
-class EventsCertManagerStopped extends EventsCertManager {}
+class EventCertManagerStopped extends EventCertManager {}
 
-class EventsCertManagerDestroy extends EventsCertManager {}
+class EventCertManagerDestroy extends EventCertManager {}
 
-class EventsCertManagerDestroyed extends EventsCertManager {}
+class EventCertManagerDestroyed extends EventCertManager {}
 
-class EventsCertManagerCertChange extends EventsCertManager<CertManagerChangeData> {}
+class EventCertManagerCertChange extends EventCertManager<CertManagerChangeData> {}
 
-abstract class EventsKeyRing<T = undefined> extends EventsKeys<T> {}
+abstract class EventKeyRing<T = undefined> extends EventKeys<T> {}
 
-class EventsKeyRingStart extends EventsKeyRing {}
+class EventKeyRingStart extends EventKeyRing {}
 
-class EventsKeyRingStarted extends EventsKeyRing {}
+class EventKeyRingStarted extends EventKeyRing {}
 
-class EventsKeyRingStop extends EventsKeyRing {}
+class EventKeyRingStop extends EventKeyRing {}
 
-class EventsKeyRingStopped extends EventsKeyRing {}
+class EventKeyRingStopped extends EventKeyRing {}
 
-class EventsKeyRingDestroy extends EventsKeyRing {}
+class EventKeyRingDestroy extends EventKeyRing {}
 
-class EventsKeyRingDestroyed extends EventsKeyRing {}
+class EventKeyRingDestroyed extends EventKeyRing {}
 
 export {
-  EventsKeys,
-  EventsCertManager,
-  EventsCertManagerStart,
-  EventsCertManagerStarted,
-  EventsCertManagerStop,
-  EventsCertManagerStopped,
-  EventsCertManagerDestroy,
-  EventsCertManagerDestroyed,
-  EventsCertManagerCertChange,
-  EventsKeyRing,
-  EventsKeyRingStart,
-  EventsKeyRingStarted,
-  EventsKeyRingStop,
-  EventsKeyRingStopped,
-  EventsKeyRingDestroy,
-  EventsKeyRingDestroyed,
+  EventKeys,
+  EventCertManager,
+  EventCertManagerStart,
+  EventCertManagerStarted,
+  EventCertManagerStop,
+  EventCertManagerStopped,
+  EventCertManagerDestroy,
+  EventCertManagerDestroyed,
+  EventCertManagerCertChange,
+  EventKeyRing,
+  EventKeyRingStart,
+  EventKeyRingStarted,
+  EventKeyRingStop,
+  EventKeyRingStopped,
+  EventKeyRingDestroy,
+  EventKeyRingDestroyed,
 };

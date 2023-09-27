@@ -1,24 +1,24 @@
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsTasks<T> extends EventsPolykey<T> {}
+abstract class EventTasks<T> extends EventPolykey<T> {}
 
-abstract class EventsTaskManager<T> extends EventsTasks<T> {}
+abstract class EventTaskManager<T> extends EventTasks<T> {}
 
-class EventTaskManagerStart extends EventsTaskManager<undefined> {}
+class EventTaskManagerStart extends EventTaskManager<undefined> {}
 
-class EventTaskManagerStarted extends EventsTaskManager<undefined> {}
+class EventTaskManagerStarted extends EventTaskManager<undefined> {}
 
-class EventTaskManagerStop extends EventsTaskManager<undefined> {}
+class EventTaskManagerStop extends EventTaskManager<undefined> {}
 
-class EventTaskManagerStopped extends EventsTaskManager<undefined> {}
+class EventTaskManagerStopped extends EventTaskManager<undefined> {}
 
-class EventTaskManagerDestroy extends EventsTaskManager<undefined> {}
+class EventTaskManagerDestroy extends EventTaskManager<undefined> {}
 
-class EventTaskManagerDestroyed extends EventsTaskManager<undefined> {}
+class EventTaskManagerDestroyed extends EventTaskManager<undefined> {}
 
 export {
-  EventsTasks,
-  EventsTaskManager,
+  EventTasks,
+  EventTaskManager,
   EventTaskManagerStart,
   EventTaskManagerStarted,
   EventTaskManagerStop,
