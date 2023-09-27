@@ -245,7 +245,7 @@ class NodeConnection<M extends ClientManifest> {
           { once: true },
         );
         nodeConnection.dispatchEvent(
-          new nodesEvents.EventNodeStream({ detail: quicStream }),
+          new nodesEvents.EventNodeConnectionStream({ detail: quicStream }),
         );
       } else {
         nodeConnection.dispatchEvent(event.clone());
@@ -368,7 +368,7 @@ class NodeConnection<M extends ClientManifest> {
           { once: true },
         );
         nodeConnection.dispatchEvent(
-          new nodesEvents.EventNodeStream({ detail: quicStream }),
+          new nodesEvents.EventNodeConnectionStream({ detail: quicStream }),
         );
       } else {
         nodeConnection.dispatchEvent(event.clone());

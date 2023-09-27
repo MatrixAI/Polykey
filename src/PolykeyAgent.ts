@@ -469,7 +469,7 @@ class PolykeyAgent {
       });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await rpcServerAgent?.destroy(true);
+      await rpcServerAgent?.destroy({ force:  true });
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
       await sessionManager?.stop();
@@ -556,7 +556,7 @@ class PolykeyAgent {
   public readonly rpcServerAgent: RPCServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
-  protected handleEventNodeStream = (e: nodesEvents.EventNodeStream) => {
+  protected handleEventNodeStream = (e: nodesEvents.EventNodeConnectionStream) => {
     const stream = e.detail;
     this.rpcServerAgent.handleStream(stream);
   };
@@ -736,7 +736,7 @@ class PolykeyAgent {
       });
       await this.nodeManager.start();
       this.nodeConnectionManager.addEventListener(
-        nodesEvents.EventNodeStream.name,
+        nodesEvents.EventNodeConnectionStream.name,
         this.handleEventNodeStream,
       );
       await this.nodeConnectionManager.start({
@@ -787,7 +787,7 @@ class PolykeyAgent {
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       this.nodeConnectionManager.removeEventListener(
-        nodesEvents.EventNodeStream.name,
+        nodesEvents.EventNodeConnectionStream.name,
         this.handleEventNodeStream,
       );
       await this.nodeManager?.stop();
@@ -827,7 +827,7 @@ class PolykeyAgent {
     await this.discovery.stop();
     await this.nodeConnectionManager.stop();
     this.nodeConnectionManager.removeEventListener(
-      nodesEvents.EventNodeStream.name,
+      nodesEvents.EventNodeConnectionStream.name,
       this.handleEventNodeStream,
     );
     await this.nodeGraph.stop();
