@@ -26,6 +26,7 @@ import { Timer } from '@matrixai/timer';
 import TaskEvent from './TaskEvent';
 import * as tasksErrors from './errors';
 import * as tasksUtils from './utils';
+import * as events from './events';
 import * as utils from '../utils';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
@@ -35,6 +36,14 @@ interface TaskManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new tasksErrors.ErrorTaskManagerRunning(),
   new tasksErrors.ErrorTaskManagerDestroyed(),
+  {
+    eventStart: events.EventTaskManagerStart,
+    eventStarted: events.EventTaskManagerStarted,
+    eventStop: events.EventTaskManagerStop,
+    eventStopped: events.EventTaskManagerStopped,
+    eventDestroy: events.EventTaskManagerDestroy,
+    eventDestroyed: events.EventTaskManagerDestroyed,
+  },
 )
 class TaskManager {
   public static async createTaskManager({

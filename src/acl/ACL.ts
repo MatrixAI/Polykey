@@ -17,11 +17,20 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
+import * as events from './events';
 
 interface ACL extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new aclErrors.ErrorACLRunning(),
   new aclErrors.ErrorACLDestroyed(),
+  {
+    eventStart: events.EventACLStart,
+    eventStarted: events.EventACLStarted,
+    eventStop: events.EventACLStop,
+    eventStopped: events.EventACLStopped,
+    eventDestroy: events.EventACLDestroy,
+    eventDestroyed: events.EventACLDestroyed,
+  },
 )
 class ACL {
   static async createACL({

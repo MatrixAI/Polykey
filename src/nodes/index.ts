@@ -5,3 +5,4 @@ export { default as NodeConnection } from './NodeConnection';
 export * as errors from './errors';
 export * as types from './types';
 export * as utils from './utils';
+export * as events from './events';

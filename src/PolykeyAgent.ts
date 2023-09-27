@@ -33,6 +33,7 @@ import IdentitiesManager from './identities/IdentitiesManager';
 import { providers } from './identities';
 import config from './config';
 import * as errors from './errors';
+import * as events from './events';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as keysEvents from './keys/events';
@@ -97,6 +98,14 @@ interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyAgentRunning(),
   new errors.ErrorPolykeyAgentDestroyed(),
+  {
+    eventStart: events.EventPolykeyAgentStart,
+    eventStarted: events.EventPolykeyAgentStarted,
+    eventStop: events.EventPolykeyAgentStop,
+    eventStopped: events.EventPolykeyAgentStopped,
+    eventDestroy: events.EventPolykeyAgentDestroy,
+    eventDestroyed: events.EventPolykeyAgentDestroyed,
+  },
 )
 class PolykeyAgent {
   /**
