@@ -18,7 +18,6 @@ import { AbstractEvent, EventDefault } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import * as events from './events';
 import RPCClient from '../rpc/RPCClient';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
@@ -33,8 +32,8 @@ import config from '../config';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
 @CreateDestroy({
-  eventDestroy: events.EventNodeConnectionDestroy,
-  eventDestroyed: events.EventNodeConnectionDestroyed,
+  eventDestroy: nodesEvents.EventNodeConnectionDestroy,
+  eventDestroyed: nodesEvents.EventNodeConnectionDestroyed,
 })
 class NodeConnection<M extends ClientManifest> {
   /**

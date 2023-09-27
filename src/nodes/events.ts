@@ -1,22 +1,22 @@
 import type { QUICStream } from '@matrixai/quic';
 import type { ConnectionData } from '../network/types';
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsNode<T> extends EventsPolykey<T> {}
+abstract class EventNode<T> extends EventPolykey<T> {}
 
-abstract class EventsNodeConnection<T> extends EventsNode<T> {}
+abstract class EventNodeConnection<T> extends EventNode<T> {}
 
-class EventNodeConnectionError extends EventsNodeConnection<Error> {}
+class EventNodeConnectionError extends EventNodeConnection<Error> {}
 
-class EventNodeConnectionDestroy extends EventsNodeConnection<undefined> {}
+class EventNodeConnectionDestroy extends EventNodeConnection<undefined> {}
 
-class EventNodeConnectionDestroyed extends EventsNodeConnection<undefined> {}
+class EventNodeConnectionDestroyed extends EventNodeConnection<undefined> {}
 
-class EventNodeStream extends EventsNode<QUICStream> {}
+class EventNodeStream extends EventNode<QUICStream> {}
 
 abstract class EventNodeConnectionManager<
   T = undefined,
-> extends EventsNode<T> {}
+> extends EventNode<T> {}
 
 class EventNodeConnectionManagerStart extends EventNodeConnectionManager {}
 
@@ -32,33 +32,33 @@ class EventNodeConnectionManagerConnectionFailure extends EventNodeConnectionMan
   Error | EventNodeConnectionError
 > {}
 
-abstract class EventsNodeGraph<T> extends EventsPolykey<T> {}
+abstract class EventNodeGraph<T> extends EventPolykey<T> {}
 
-class EventNodeGraphStart extends EventsNodeGraph<undefined> {}
+class EventNodeGraphStart extends EventNodeGraph<undefined> {}
 
-class EventNodeGraphStarted extends EventsNodeGraph<undefined> {}
+class EventNodeGraphStarted extends EventNodeGraph<undefined> {}
 
-class EventNodeGraphStop extends EventsNodeGraph<undefined> {}
+class EventNodeGraphStop extends EventNodeGraph<undefined> {}
 
-class EventNodeGraphStopped extends EventsNodeGraph<undefined> {}
+class EventNodeGraphStopped extends EventNodeGraph<undefined> {}
 
-class EventNodeGraphDestroy extends EventsNodeGraph<undefined> {}
+class EventNodeGraphDestroy extends EventNodeGraph<undefined> {}
 
-class EventNodeGraphDestroyed extends EventsNodeGraph<undefined> {}
+class EventNodeGraphDestroyed extends EventNodeGraph<undefined> {}
 
-abstract class EventsNodeManager<T> extends EventsPolykey<T> {}
+abstract class EventNodeManager<T> extends EventPolykey<T> {}
 
-class EventNodeManagerStart extends EventsNodeManager<undefined> {}
+class EventNodeManagerStart extends EventNodeManager<undefined> {}
 
-class EventNodeManagerStarted extends EventsNodeManager<undefined> {}
+class EventNodeManagerStarted extends EventNodeManager<undefined> {}
 
-class EventNodeManagerStop extends EventsNodeManager<undefined> {}
+class EventNodeManagerStop extends EventNodeManager<undefined> {}
 
-class EventNodeManagerStopped extends EventsNodeManager<undefined> {}
+class EventNodeManagerStopped extends EventNodeManager<undefined> {}
 
 export {
-  EventsNode,
-  EventsNodeConnection,
+  EventNode,
+  EventNodeConnection,
   EventNodeConnectionError,
   EventNodeConnectionDestroy,
   EventNodeConnectionDestroyed,
@@ -70,14 +70,14 @@ export {
   EventNodeConnectionManagerStopped,
   EventNodeConnectionManagerConnection,
   EventNodeConnectionManagerConnectionFailure,
-  EventsNodeGraph,
+  EventNodeGraph,
   EventNodeGraphStart,
   EventNodeGraphStarted,
   EventNodeGraphStop,
   EventNodeGraphStopped,
   EventNodeGraphDestroy,
   EventNodeGraphDestroyed,
-  EventsNodeManager,
+  EventNodeManager,
   EventNodeManagerStart,
   EventNodeManagerStarted,
   EventNodeManagerStop,

@@ -14,7 +14,7 @@ import {
 import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import * as events from './events';
+import * as notificationsEvents from './events';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
 
@@ -28,12 +28,12 @@ interface NotificationsManager extends CreateDestroyStartStop {}
   new notificationsErrors.ErrorNotificationsRunning(),
   new notificationsErrors.ErrorNotificationsDestroyed(),
   {
-    eventStart: events.EventNotificationsManagerStart,
-    eventStarted: events.EventNotificationsManagerStarted,
-    eventStop: events.EventNotificationsManagerStop,
-    eventStopped: events.EventNotificationsManagerStopped,
-    eventDestroy: events.EventNotificationsManagerDestroy,
-    eventDestroyed: events.EventNotificationsManagerDestroyed,
+    eventStart: notificationsEvents.EventNotificationsManagerStart,
+    eventStarted: notificationsEvents.EventNotificationsManagerStarted,
+    eventStop: notificationsEvents.EventNotificationsManagerStop,
+    eventStopped: notificationsEvents.EventNotificationsManagerStopped,
+    eventDestroy: notificationsEvents.EventNotificationsManagerDestroy,
+    eventDestroyed: notificationsEvents.EventNotificationsManagerDestroyed,
   },
 )
 class NotificationsManager {

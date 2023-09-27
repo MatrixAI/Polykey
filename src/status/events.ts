@@ -1,17 +1,17 @@
-import EventsPolykey from '../EventsPolykey';
+import EventPolykey from '../EventPolykey';
 
-abstract class EventsStatus<T> extends EventsPolykey<T> {}
+abstract class EventStatus<T> extends EventPolykey<T> {}
 
-class EventStatusStart extends EventsStatus<undefined> {}
+class EventStatusStart extends EventStatus<undefined> {}
 
-class EventStatusStarted extends EventsStatus<undefined> {}
+class EventStatusStarted extends EventStatus<undefined> {}
 
-class EventStatusStop extends EventsStatus<undefined> {}
+class EventStatusStop extends EventStatus<undefined> {}
 
-class EventStatusStopped extends EventsStatus<undefined> {}
+class EventStatusStopped extends EventStatus<undefined> {}
 
 export {
-  EventsStatus,
+  EventStatus,
   EventStatusStart,
   EventStatusStarted,
   EventStatusStop,
