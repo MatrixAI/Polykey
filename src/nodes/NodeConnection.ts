@@ -16,7 +16,6 @@ import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventDefault } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
-import IdInternal from '@matrixai/id/dist/Id';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as events from './events';
