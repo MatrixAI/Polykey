@@ -1,4 +1,5 @@
-import { ErrorPolykey, sysexits } from '../errors';
+import ErrorPolykey from '../ErrorPolykey';
+import sysexits from '../utils/sysexits';
 
 class ErrorSessions<T> extends ErrorPolykey<T> {}
 

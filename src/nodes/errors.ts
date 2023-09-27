@@ -1,4 +1,5 @@
-import { ErrorPolykey, sysexits } from '../errors';
+import ErrorPolykey from '../ErrorPolykey';
+import sysexits from '../utils/sysexits';
 
 // TODO: Some errors may need to be removed here, TBD in stage 2 agent migration
 

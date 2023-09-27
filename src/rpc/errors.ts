@@ -2,7 +2,8 @@ import type { Class } from '@matrixai/errors';
 import type { ClientMetadata } from './types';
 import type { JSONValue } from '../types';
 import * as nodesUtils from '../nodes/utils';
-import { ErrorPolykey, sysexits } from '../errors';
+import ErrorPolykey from '../ErrorPolykey';
+import sysexits from '../utils/sysexits';
 
 class ErrorRPC<T> extends ErrorPolykey<T> {}
 
