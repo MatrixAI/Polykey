@@ -5,6 +5,7 @@ import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { RWLockWriter } from '@matrixai/async-locks';
 import * as schemaErrors from './errors';
+import * as events from './events';
 import * as utils from '../utils';
 import config from '../config';
 
@@ -12,6 +13,12 @@ interface Schema extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new schemaErrors.ErrorSchemaRunning(),
   new schemaErrors.ErrorSchemaDestroyed(),
+  {
+    eventStart: events.EventSchemaStart,
+    eventStarted: events.EventSchemaStarted,
+    eventStop: events.EventSchemaStop,
+    eventStopped: events.EventSchemaStopped,
+  },
 )
 class Schema {
   public static async createSchema({

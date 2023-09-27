@@ -11,6 +11,7 @@ import * as errors from './errors';
 import * as utils from './utils';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
+import * as events from './events';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -21,6 +22,14 @@ interface PolykeyClient extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
+  {
+    eventStart: events.EventPolykeyClientStart,
+    eventStarted: events.EventPolykeyClientStarted,
+    eventStop: events.EventPolykeyClientStop,
+    eventStopped: events.EventPolykeyClientStopped,
+    eventDestroy: events.EventPolykeyClientDestroy,
+    eventDestroyed: events.EventPolykeyClientDestroyed,
+  },
 )
 class PolykeyClient {
   static async createPolykeyClient({

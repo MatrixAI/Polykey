@@ -38,6 +38,7 @@ import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
+import * as events from './events';
 import * as claimsUtils from '../claims/utils';
 import * as tasksErrors from '../tasks/errors';
 import * as claimsErrors from '../claims/errors';
@@ -54,7 +55,12 @@ const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
 interface NodeManager extends StartStop {}
-@StartStop()
+@StartStop({
+  eventStart: events.EventNodeManagerStart,
+  eventStarted: events.EventNodeManagerStarted,
+  eventStop: events.EventNodeManagerStop,
+  eventStopped: events.EventNodeManagerStopped,
+})
 class NodeManager {
   protected db: DB;
   protected logger: Logger;

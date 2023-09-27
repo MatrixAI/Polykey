@@ -10,6 +10,7 @@ import {
 import { withF } from '@matrixai/resources';
 import * as sessionsUtils from './utils';
 import * as sessionsErrors from './errors';
+import * as events from './events';
 import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
 
@@ -17,6 +18,14 @@ interface SessionManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new sessionsErrors.ErrorSessionManagerRunning(),
   new sessionsErrors.ErrorSessionManagerDestroyed(),
+  {
+    eventStart: events.EventSessionManagerStart,
+    eventStarted: events.EventSessionManagerStarted,
+    eventStop: events.EventSessionManagerStop,
+    eventStopped: events.EventSessionManagerStopped,
+    eventDestroy: events.EventSessionManagerDestroy,
+    eventDestroyed: events.EventSessionManagerDestroyed,
+  },
 )
 class SessionManager {
   static async createSessionManager({

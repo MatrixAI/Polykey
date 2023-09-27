@@ -4,12 +4,21 @@ import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lock from 'fd-lock';
 import * as sessionErrors from './errors';
+import * as events from './events';
 import * as utils from '../utils';
 
 interface Session extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new sessionErrors.ErrorSessionRunning(),
   new sessionErrors.ErrorSessionDestroyed(),
+  {
+    eventStart: events.EventSessionStart,
+    eventStarted: events.EventSessionStarted,
+    eventStop: events.EventSessionStop,
+    eventStopped: events.EventSessionStopped,
+    eventDestroy: events.EventSessionDestroy,
+    eventDestroyed: events.EventSessionDestroyed,
+  },
 )
 class Session {
   static async createSession({
