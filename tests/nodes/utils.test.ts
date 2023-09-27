@@ -8,6 +8,7 @@ import lexi from 'lexicographic-integer';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import * as nodesUtils from '@/nodes/utils';
+import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
@@ -201,3 +202,38 @@ describe('nodes/utils', () => {
     }
   });
 });
+
+// TODO: temp prototyping of the code and reason converters
+test('asd', async () => {
+  const reasonSymbol = Symbol('reason');
+  class ReasonClass extends Error {}
+  const object = new ReasonClass();
+  type Reason<T extends Error = Error> = T;
+  // Should only include things that are errors.
+  const codesAndReasons: Array<[any, number]> = [
+    [ReasonClass, 1],
+    [nodesErrors.ErrorNodeConnectionDestroyed, 2],
+  ];
+  const reasonsAndCodes: Array<[number, any]> = codesAndReasons.map(([a, b]) => [b, a]);
+  const reasonToCodeMap = new Map<any, number>(codesAndReasons);
+  const codeToReasonMap = new Map<number, any>(reasonsAndCodes);
+
+  function reasonToCode(reason: any) {
+    return reasonToCodeMap.get(reason) ?? reasonToCodeMap.get(reason.constructor)
+  };
+
+  function codeToReason(code: number) {
+    const reason = codeToReasonMap.get(code);
+    if (reason == null) return Error('default reason');
+    return new reason;
+  }
+
+  // console.log(reasonToCode(reasonSymbol));
+  // console.log(reasonToCode(ReasonClass));
+  // console.log(reasonToCode(object));
+  // console.log(reasonToCode('whatever'));
+
+  console.log(codeToReason(0));
+  console.log(codeToReason(1));
+  console.log(codeToReason(2));
+})
