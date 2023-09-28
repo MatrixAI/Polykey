@@ -8,6 +8,7 @@ import type {
   KeyPair,
   RecoveryCode,
   CertificatePEMChain,
+  CertManagerOptions,
 } from './types';
 import type KeyRing from './KeyRing';
 import type TaskManager from '../tasks/TaskManager';
@@ -27,7 +28,6 @@ import * as keysEvents from './events';
 import * as ids from '../ids';
 import * as utils from '../utils/utils';
 import config from '../config';
-import {CertManagerOptions} from "@/PolykeyAgent";
 
 /**
  * This signal reason indicates we want to stop the renewal
