@@ -1,10 +1,8 @@
 import type { DeepPartial, FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
-import type { SeedNodes } from './nodes/types';
-import type { Key } from './keys/types';
-import type { RecoveryCode, PrivateKey } from './keys/types';
-import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
+import type { SeedNodes, NodesOptions } from './nodes/types';
+import type { Key, KeysOptions } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -43,36 +41,6 @@ import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import { serverManifest as agentServerManifest } from './agent/handlers';
-
-
-type KeysOptions = KeyRingOptions & CertManagerOptions
-
-type KeyRingOptions = {
-  passwordOpsLimit?: PasswordOpsLimit;
-  passwordMemLimit?: PasswordMemLimit;
-  strictMemoryLock: boolean;
-} & (
-  {} | {
-  recoveryCode: RecoveryCode;
-} | {
-  privateKey: PrivateKey;
-} | {
-  privateKeyPath: string;
-});
-
-type CertManagerOptions = {
-  certDuration: number;
-  certRenewLeadTime: number;
-};
-
-type NodesOptions = {
-  connectionIdleTimeoutTime: number;
-  connectionFindConcurrencyLimit: number;
-  connectionConnectTimeoutTime: number;
-  connectionKeepAliveTimeoutTime: number;
-  connectionKeepAliveIntervalTime: number;
-  connectionHolePunchIntervalTime: number;
-};
 
 /**
  * Optional configuration for `PolykeyAgent`.
@@ -900,9 +868,5 @@ class PolykeyAgent {
 export default PolykeyAgent;
 
 export type {
-  KeysOptions,
-  KeyRingOptions,
-  CertManagerOptions,
-  NodesOptions,
   PolykeyAgentOptions,
 };

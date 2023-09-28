@@ -12,6 +12,7 @@ import type {
   RecoveryCodeLocked,
   PasswordOpsLimit,
   PasswordMemLimit,
+  KeyRingOptions,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
@@ -27,9 +28,7 @@ import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as keysEvents from './events';
 import { bufferLock, bufferUnlock } from './utils/memory';
-import {KeysOptions} from "../PolykeyAgent";
 import * as utils from '../utils/utils';
-import config from "@/config";
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -56,7 +55,7 @@ class KeyRing {
   }: {
     keysPath: string;
     password: string;
-    options: Partial<KeysOptions>
+    options: Partial<KeyRingOptions>
     workerManager?: PolykeyWorkerManagerInterface;
     fs?: FileSystem;
     logger?: Logger;
@@ -66,7 +65,7 @@ class KeyRing {
     logger.info(`Setting keys path to ${keysPath}`);
     const optionsDefaulted = utils.mergeObjects(options, {
       strictMemoryLock: true,
-    }) as KeysOptions;
+    }) as KeyRingOptions;
     const keyRing = new this({
       keysPath,
       workerManager,
@@ -108,7 +107,7 @@ class KeyRing {
   }: {
     keysPath: string;
     workerManager?: PolykeyWorkerManagerInterface;
-    options: KeysOptions;
+    options: KeyRingOptions;
     fs: FileSystem;
     logger: Logger;
   }) {
