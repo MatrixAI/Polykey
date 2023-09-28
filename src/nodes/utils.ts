@@ -7,6 +7,7 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
 import { bytes2BigInt } from '../utils';
+import * as rpcErrors from '../rpc/errors';
 
 const sepBuffer = dbUtils.sep;
 
@@ -313,20 +314,51 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
-// TODO: remove this, quick hack to allow errors to jump the network
-const codeMap = new Map<number, any>();
-let code = 1;
 
-const reasonToCode = (_type: 'read' | 'write', _reason?: any): number => {
-  codeMap.set(code, _reason);
-  const returnCode = code;
-  code++;
-  return returnCode;
+/**
+ * Converts transport level error reasons to codes for the quic system.
+ *
+ * Any unknown reasons default to code 0.
+ *
+ */
+const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
+  // We're only going to handle RPC errors for now, these include
+  // ErrorRPCHandlerFailed
+  // ErrorRPCMessageLength
+  // ErrorRPCMissingResponse
+  // ErrorRPCOutputStreamError
+  // ErrorPolykeyRemote
+  // ErrorRPCStreamEnded
+  // ErrorRPCTimedOut
+  if (reason instanceof rpcErrors.ErrorRPCHandlerFailed) return 1;
+  if (reason instanceof rpcErrors.ErrorRPCMessageLength) return 2;
+  if (reason instanceof rpcErrors.ErrorRPCMissingResponse) return 3;
+  if (reason instanceof rpcErrors.ErrorRPCOutputStreamError) return 4;
+  if (reason instanceof rpcErrors.ErrorPolykeyRemote) return 5;
+  if (reason instanceof rpcErrors.ErrorRPCStreamEnded) return 6;
+  if (reason instanceof rpcErrors.ErrorRPCTimedOut) return 7;
+  return 0;
 };
 
-const codeToReason = (type: 'read' | 'write', code: number): any => {
-  const asd = codeMap.get(code);
-  return asd;
+/**
+ * Converts any codes from the quic system back to reasons
+ * @param _type
+ * @param code
+ */
+const codeToReason = (_type: 'read' | 'write', code: number): any => {
+  switch (code) {
+    // rpc errors
+    case 1: return new rpcErrors.ErrorRPCHandlerFailed();
+    case 2: return new rpcErrors.ErrorRPCMessageLength();
+    case 3: return new rpcErrors.ErrorRPCMissingResponse();
+    case 4: return new rpcErrors.ErrorRPCOutputStreamError();
+    case 5: return new rpcErrors.ErrorPolykeyRemote();
+    case 6: return new rpcErrors.ErrorRPCStreamEnded();
+    case 7: return new rpcErrors.ErrorRPCTimedOut();
+    // base cases
+    case 0: return new nodesErrors.ErrorNodeConnectionTransportGenericError();
+    default: return new nodesErrors.ErrorNodeConnectionTransportUnknownError();
+  }
 };
 
 export {

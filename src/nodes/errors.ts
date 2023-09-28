@@ -91,6 +91,18 @@ class ErrorNodeConnectionConnectionError<T> extends ErrorNodes<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeConnectionTransportUnknownError<T> extends ErrorNodes<T> {
+  static description =
+    'Transport received an unknown error';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionTransportGenericError<T> extends ErrorNodes<T> {
+  static description =
+    'Transport received a generic error';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
     'Failed to ping the node when attempting to authenticate';
@@ -121,6 +133,8 @@ export {
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
   ErrorNodeConnectionConnectionError,
+  ErrorNodeConnectionTransportUnknownError,
+  ErrorNodeConnectionTransportGenericError,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
 };
