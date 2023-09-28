@@ -27,6 +27,9 @@ import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as keysEvents from './events';
 import { bufferLock, bufferUnlock } from './utils/memory';
+import {KeysOptions} from "../PolykeyAgent";
+import * as utils from '../utils/utils';
+import config from "@/config";
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -44,47 +47,34 @@ interface KeyRing extends CreateDestroyStartStop {}
 class KeyRing {
   public static async createKeyRing({
     keysPath,
+    password,
+    options = {},
     workerManager,
-    passwordOpsLimit,
-    passwordMemLimit,
-    strictMemoryLock = true,
     fs = require('fs'),
     logger = new Logger(this.name),
-    ...startOptions
+    fresh,
   }: {
     keysPath: string;
     password: string;
+    options: Partial<KeysOptions>
     workerManager?: PolykeyWorkerManagerInterface;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-    strictMemoryLock?: boolean;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
-    | {}
-    | {
-        recoveryCode: RecoveryCode;
-      }
-    | {
-        privateKey: PrivateKey;
-      }
-    | {
-        privateKeyPath: string;
-      }
-  )): Promise<KeyRing> {
+  }): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
+    const optionsDefaulted = utils.mergeObjects(options, {
+      strictMemoryLock: true,
+    }) as KeysOptions;
     const keyRing = new this({
       keysPath,
       workerManager,
-      passwordOpsLimit,
-      passwordMemLimit,
-      strictMemoryLock,
+      options: optionsDefaulted,
       fs,
       logger,
     });
-    await keyRing.start(startOptions);
+    await keyRing.start({password, fresh});
     logger.info(`Created ${this.name}`);
     return keyRing;
   }
@@ -112,17 +102,13 @@ class KeyRing {
   public constructor({
     keysPath,
     workerManager,
-    passwordOpsLimit,
-    passwordMemLimit,
-    strictMemoryLock,
+    options,
     fs,
     logger,
   }: {
     keysPath: string;
     workerManager?: PolykeyWorkerManagerInterface;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-    strictMemoryLock: boolean;
+    options: KeysOptions;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -130,9 +116,9 @@ class KeyRing {
     this.keysPath = keysPath;
     this.workerManager = workerManager;
     this.fs = fs;
-    this.passwordOpsLimit = passwordOpsLimit;
-    this.passwordMemLimit = passwordMemLimit;
-    this.strictMemoryLock = strictMemoryLock;
+    this.passwordOpsLimit = options.passwordOpsLimit;
+    this.passwordMemLimit = options.passwordMemLimit;
+    this.strictMemoryLock = options.strictMemoryLock;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');

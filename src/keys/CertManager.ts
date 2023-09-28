@@ -25,7 +25,9 @@ import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as keysEvents from './events';
 import * as ids from '../ids';
+import * as utils from '../utils/utils';
 import config from '../config';
+import {CertManagerOptions} from "@/PolykeyAgent";
 
 /**
  * This signal reason indicates we want to stop the renewal
@@ -66,8 +68,7 @@ class CertManager {
     db,
     keyRing,
     taskManager,
-    certDuration = config.defaultsUser.certDuration,
-    certRenewLeadTime = config.defaultsUser.certRenewLeadTime,
+    options = {},
     workerManager,
     logger = new Logger(this.name),
     subjectAttrsExtra,
@@ -78,8 +79,7 @@ class CertManager {
     db: DB;
     keyRing: KeyRing;
     taskManager: TaskManager;
-    certDuration?: number;
-    certRenewLeadTime?: number;
+    options: Partial<CertManagerOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
     logger?: Logger;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
@@ -89,12 +89,15 @@ class CertManager {
     fresh?: boolean;
   }): Promise<CertManager> {
     logger.info(`Creating ${this.name}`);
+    const optionsDefaulted = utils.mergeObjects(options, {
+      certDuration: config.defaultsUser.certDuration,
+      certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
+    }) as CertManagerOptions;
     const certManager = new this({
       db,
       keyRing,
       taskManager,
-      certDuration,
-      certRenewLeadTime,
+      options: optionsDefaulted,
       workerManager,
       logger,
     });
@@ -150,16 +153,14 @@ class CertManager {
     db,
     keyRing,
     taskManager,
-    certDuration,
-    certRenewLeadTime,
+    options,
     workerManager,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     taskManager: TaskManager;
-    certDuration: number;
-    certRenewLeadTime: number;
+    options: CertManagerOptions;
     workerManager?: PolykeyWorkerManagerInterface;
     logger: Logger;
   }) {
@@ -167,8 +168,8 @@ class CertManager {
     this.db = db;
     this.keyRing = keyRing;
     this.taskManager = taskManager;
-    this.certDuration = certDuration;
-    this.certRenewLeadTime = certRenewLeadTime;
+    this.certDuration = options.certDuration;
+    this.certRenewLeadTime = options.certRenewLeadTime;
     this.workerManager = workerManager;
   }
 
