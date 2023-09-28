@@ -44,6 +44,36 @@ import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import { serverManifest as agentServerManifest } from './agent/handlers';
 
+
+type KeysOptions = KeyRingOptions & CertManagerOptions
+
+type KeyRingOptions = {
+  passwordOpsLimit?: PasswordOpsLimit;
+  passwordMemLimit?: PasswordMemLimit;
+  strictMemoryLock: boolean;
+} & (
+  {} | {
+  recoveryCode: RecoveryCode;
+} | {
+  privateKey: PrivateKey;
+} | {
+  privateKeyPath: string;
+});
+
+type CertManagerOptions = {
+  certDuration: number;
+  certRenewLeadTime: number;
+};
+
+type NodesOptions = {
+  connectionIdleTimeoutTime: number;
+  connectionFindConcurrencyLimit: number;
+  connectionConnectTimeoutTime: number;
+  connectionKeepAliveTimeoutTime: number;
+  connectionKeepAliveIntervalTime: number;
+  connectionHolePunchIntervalTime: number;
+};
+
 /**
  * Optional configuration for `PolykeyAgent`.
  */
@@ -56,16 +86,7 @@ type PolykeyAgentOptions = {
   seedNodes: SeedNodes;
   workers: number;
   ipv6Only: boolean;
-  keys: {
-    recoveryCode: RecoveryCode;
-    privateKey: PrivateKey;
-    privateKeyPath: string;
-    passwordOpsLimit: PasswordOpsLimit;
-    passwordMemLimit: PasswordMemLimit;
-    strictMemoryLock: boolean;
-    certDuration: number;
-    certRenewLeadTime: number;
-  };
+  keys: KeysOptions;
   rpc: {
     callTimeoutTime: number;
     parserBufferSize: number;
@@ -75,14 +96,7 @@ type PolykeyAgentOptions = {
     keepAliveTimeoutTime: number;
     keepAliveIntervalTime: number;
   };
-  nodes: {
-    connectionIdleTimeoutTime: number;
-    connectionFindConcurrencyLimit: number;
-    connectionConnectTimeoutTime: number;
-    connectionKeepAliveTimeoutTime: number;
-    connectionKeepAliveIntervalTime: number;
-    connectionHolePunchIntervalTime: number;
-  };
+  nodes: NodesOptions;
 };
 
 type PolykeyAgentStartOptions = {
@@ -238,12 +252,7 @@ class PolykeyAgent {
       });
       keyRing = await KeyRing.createKeyRing({
         keysPath,
-        recoveryCode: optionsDefaulted.keys.recoveryCode,
-        privateKey: optionsDefaulted.keys.privateKey,
-        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
-        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
-        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
-        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
+        options: optionsDefaulted.keys,
         fs,
         fresh,
         password,
@@ -285,8 +294,7 @@ class PolykeyAgent {
         db,
         keyRing,
         taskManager,
-        certDuration: optionsDefaulted.keys.certDuration,
-        certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
+        options: optionsDefaulted.keys,
         logger: logger.getChild(CertManager.name),
         fresh,
       });
@@ -337,18 +345,7 @@ class PolykeyAgent {
         nodeGraph,
         tlsConfig,
         seedNodes: optionsDefaulted.seedNodes,
-        connectionFindConcurrencyLimit:
-          optionsDefaulted.nodes.connectionFindConcurrencyLimit,
-        connectionIdleTimeoutTime:
-          optionsDefaulted.nodes.connectionIdleTimeoutTime,
-        connectionConnectTimeoutTime:
-          optionsDefaulted.nodes.connectionConnectTimeoutTime,
-        connectionKeepAliveTimeoutTime:
-          optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
-        connectionKeepAliveIntervalTime:
-          optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
-        connectionHolePunchIntervalTime:
-          optionsDefaulted.nodes.connectionHolePunchIntervalTime,
+        options: optionsDefaulted.nodes,
         logger: logger.getChild(NodeConnectionManager.name),
       });
       nodeManager = new NodeManager({
@@ -902,4 +899,10 @@ class PolykeyAgent {
 
 export default PolykeyAgent;
 
-export type { PolykeyAgentOptions };
+export type {
+  KeysOptions,
+  KeyRingOptions,
+  CertManagerOptions,
+  NodesOptions,
+  PolykeyAgentOptions,
+};

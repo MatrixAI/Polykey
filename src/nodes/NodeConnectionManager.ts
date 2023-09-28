@@ -36,6 +36,7 @@ import { clientManifest as agentClientManifest } from '../agent/handlers/clientM
 import * as utils from '../utils';
 import config from '../config';
 import { never } from '../utils';
+import {NodesOptions} from "@/PolykeyAgent";
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -171,32 +172,30 @@ class NodeConnectionManager {
     nodeGraph,
     tlsConfig,
     seedNodes = {},
-    connectionFindConcurrencyLimit = config.defaultsSystem
-      .nodesConnectionFindConcurrencyLimit,
-    connectionIdleTimeoutTime = config.defaultsSystem
-      .nodesConnectionIdleTimeoutTime,
-    connectionConnectTimeoutTime = config.defaultsSystem
-      .clientConnectTimeoutTime,
-    connectionKeepAliveTimeoutTime = config.defaultsSystem
-      .clientKeepAliveTimeoutTime,
-    connectionKeepAliveIntervalTime = config.defaultsSystem
-      .clientKeepAliveIntervalTime,
-    connectionHolePunchIntervalTime = config.defaultsSystem
-      .nodesConnectionHolePunchIntervalTime,
+    options = {},
     logger,
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
-    connectionFindConcurrencyLimit?: number;
-    connectionIdleTimeoutTime?: number;
-    connectionConnectTimeoutTime?: number;
-    connectionKeepAliveTimeoutTime?: number;
-    connectionKeepAliveIntervalTime?: number;
-    connectionHolePunchIntervalTime?: number;
+    options: Partial<NodesOptions>;
     logger?: Logger;
   }) {
+    const optionsDefaulted = utils.mergeObjects(options, {
+      connectionFindConcurrencyLimit: config.defaultsSystem
+        .nodesConnectionFindConcurrencyLimit,
+      connectionIdleTimeoutTime: config.defaultsSystem
+        .nodesConnectionIdleTimeoutTime,
+      connectionConnectTimeoutTime: config.defaultsSystem
+        .clientConnectTimeoutTime,
+      connectionKeepAliveTimeoutTime: config.defaultsSystem
+        .clientKeepAliveTimeoutTime,
+      connectionKeepAliveIntervalTime: config.defaultsSystem
+        .clientKeepAliveIntervalTime,
+      connectionHolePunchIntervalTime: config.defaultsSystem
+        .nodesConnectionHolePunchIntervalTime,
+    })
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
@@ -206,12 +205,12 @@ class NodeConnectionManager {
     this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
       return k !== nodeIdEncodedOwn;
     }) as SeedNodes;
-    this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
-    this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
-    this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
-    this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
-    this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
-    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
+    this.connectionFindConcurrencyLimit = optionsDefaulted.connectionFindConcurrencyLimit;
+    this.connectionIdleTimeoutTime = optionsDefaulted.connectionIdleTimeoutTime;
+    this.connectionConnectTimeoutTime = optionsDefaulted.connectionConnectTimeoutTime;
+    this.connectionKeepAliveTimeoutTime = optionsDefaulted.connectionKeepAliveTimeoutTime;
+    this.connectionKeepAliveIntervalTime = optionsDefaulted.connectionKeepAliveIntervalTime;
+    this.connectionHolePunchIntervalTime = optionsDefaulted.connectionHolePunchIntervalTime;
     // Note that all buffers allocated for crypto operations is using
     // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
     // is not shared. Also, all node buffers satisfy the `ArrayBuffer` interface.
@@ -252,8 +251,8 @@ class NodeConnectionManager {
     // procedures.
     const quicServer = new QUICServer({
       config: {
-        maxIdleTimeout: connectionKeepAliveTimeoutTime,
-        keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+        maxIdleTimeout: optionsDefaulted.connectionKeepAliveTimeoutTime,
+        keepAliveIntervalTime: optionsDefaulted.connectionKeepAliveIntervalTime,
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
@@ -263,7 +262,7 @@ class NodeConnectionManager {
       socket: quicSocket,
       reasonToCode: nodesUtils.reasonToCode,
       codeToReason: nodesUtils.codeToReason,
-      minIdleTimeout: connectionConnectTimeoutTime,
+      minIdleTimeout: optionsDefaulted.connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
     this.quicClientCrypto = quicClientCrypto;
