@@ -10,6 +10,7 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
+  NodesOptions,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
@@ -36,7 +37,6 @@ import { clientManifest as agentClientManifest } from '../agent/handlers/clientM
 import * as utils from '../utils';
 import config from '../config';
 import { never } from '../utils';
-import {NodesOptions} from "@/PolykeyAgent";
 
 type AgentClientManifest = typeof agentClientManifest;
 

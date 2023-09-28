@@ -26,6 +26,15 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
+type NodesOptions = {
+  connectionIdleTimeoutTime: number;
+  connectionFindConcurrencyLimit: number;
+  connectionConnectTimeoutTime: number;
+  connectionKeepAliveTimeoutTime: number;
+  connectionKeepAliveIntervalTime: number;
+  connectionHolePunchIntervalTime: number;
+};
+
 export type {
   NodeId,
   NodeIdString,
@@ -37,4 +46,5 @@ export type {
   NodeBucket,
   NodeData,
   NodeGraphSpace,
+  NodesOptions,
 };
