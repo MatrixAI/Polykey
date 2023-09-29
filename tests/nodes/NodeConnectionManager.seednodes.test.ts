@@ -116,9 +116,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -154,7 +156,8 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   });
 
   afterEach(async () => {
-    await taskManager.stop();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
@@ -165,7 +168,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await gestaltGraph.destroy();
     await acl.stop();
     await acl.destroy();
-    await taskManager.destroy();
+    await taskManager.stop();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
@@ -224,7 +227,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -267,8 +272,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 1000,
-      connectionKeepAliveIntervalTime: 500,
+      options: {
+        connectionKeepAliveTimeoutTime: 1000,
+        connectionKeepAliveIntervalTime: 500,
+      },
       tlsConfig,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -313,7 +320,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -356,7 +365,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
@@ -394,7 +405,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: {
         [remoteNodeIdEncoded1]: remoteAddress1,
