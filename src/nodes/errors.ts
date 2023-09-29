@@ -87,8 +87,14 @@ class ErrorNodeConnectionSameNodeId<T> extends ErrorNodes<T> {
 }
 class ErrorNodeConnectionConnectionError<T> extends ErrorNodes<T> {
   static description =
-    'Provided NodeId is the same as this agent, attempts to connect is improper usage';
-  exitCode = sysexits.USAGE;
+    'There was a failure with the underlying QUICConnection';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorNodeConnectionClientError<T> extends ErrorNodes<T> {
+  static description =
+    'There was a failure with the underlying QUICCLient';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 class ErrorNodeConnectionTransportUnknownError<T> extends ErrorNodes<T> {
@@ -133,6 +139,7 @@ export {
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
   ErrorNodeConnectionConnectionError,
+  ErrorNodeConnectionClientError,
   ErrorNodeConnectionTransportUnknownError,
   ErrorNodeConnectionTransportGenericError,
   ErrorNodePingFailed,
