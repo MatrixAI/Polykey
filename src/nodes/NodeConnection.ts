@@ -62,12 +62,11 @@ class NodeConnection<M extends ClientManifest> {
 
   /**
    * Dispatches a `EventNodeConnectionClose` in response to any `NodeConnection`
-   * error event. Will tigger destruction of the `NodeConnection` via the
+   * error event. Will trigger destruction of the `NodeConnection` via the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
   protected handleEventNodeConnectionError = (evt: nodesEvents.EventNodeConnectionError): void => {
     this.logger.warn(`NodeConnection error caused by ${evt.detail.message}`);
-    // This will potentially handle any events and trigger a close event.
     this.dispatchEvent(new nodesEvents.EventNodeConnectionClose())
   }
 
@@ -99,27 +98,12 @@ class NodeConnection<M extends ClientManifest> {
   }
 
   /**
-   * redispatches `QUICConnection` error events as `NodeConnection` error events.
+   * redispatches `QUICConnection` or  `QUICClient` error events as `NodeConnection` error events.
    * This should trigger the destruction of the `NodeConnection` through the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventQUICConnectionError = (evt: quicEvents.EventQUICConnectionError): void => {
-    const err = new nodesErrors.ErrorNodeConnectionConnectionError(
-      undefined,
-      { cause: evt.detail },
-    );
-    this.dispatchEvent(
-      new nodesEvents.EventNodeConnectionError({ detail: err }),
-    );
-  }
-
-  /**
-   * redispatches `QUICClient` error events as `NodeConnection` error events.
-   * This should trigger the destruction of the `NodeConnection` through the
-   * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
-   */
-  protected handleEventQUICClientError = (evt: quicEvents.EventQUICClientError): void => {
-    const err = new nodesErrors.ErrorNodeConnectionClientError(
+  protected handleEventQUICError = (evt: quicEvents.EventQUICConnectionError): void => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
       undefined,
       { cause: evt.detail },
     );
@@ -309,7 +293,7 @@ class NodeConnection<M extends ClientManifest> {
     );
     quicClient.addEventListener(
       quicEvents.EventQUICClientError.name,
-      nodeConnection.handleEventQUICClientError,
+      nodeConnection.handleEventQUICError,
     );
     quicClient.addEventListener(
       EventAll.name,
@@ -374,7 +358,7 @@ class NodeConnection<M extends ClientManifest> {
     );
     quicConnection.addEventListener(
       quicEvents.EventQUICConnectionError.name,
-      nodeConnection.handleEventQUICConnectionError,
+      nodeConnection.handleEventQUICError,
     );
     quicConnection.addEventListener(
       EventAll.name,
@@ -463,11 +447,11 @@ class NodeConnection<M extends ClientManifest> {
     );
     quicClientOrConnection.addEventListener(
       quicEvents.EventQUICConnectionError.name,
-      this.handleEventQUICConnectionError,
+      this.handleEventQUICError,
     );
     quicClientOrConnection.addEventListener(
       quicEvents.EventQUICClientError.name,
-      this.handleEventQUICClientError,
+      this.handleEventQUICError,
     );
     quicClientOrConnection.addEventListener(
       EventAll.name,

@@ -5,108 +5,105 @@ import sysexits from '../utils/sysexits';
 
 class ErrorNodes<T> extends ErrorPolykey<T> {}
 
-class ErrorNodeAborted<T> extends ErrorNodes<T> {
-  static description = 'Operation was aborted';
-  exitCode = sysexits.USAGE;
-}
+class ErrorNodeManager<T> extends ErrorNodes<T> {}
 
-class ErrorNodeManagerNotRunning<T> extends ErrorNodes<T> {
+class ErrorNodeManagerNotRunning<T> extends ErrorNodeManager<T> {
   static description = 'NodeManager is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorQueueNotRunning<T> extends ErrorNodes<T> {
-  static description = 'queue is not running';
-  exitCode = sysexits.USAGE;
-}
+class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
-class ErrorNodeGraphRunning<T> extends ErrorNodes<T> {
+class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
   static description = 'NodeGraph is running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeGraphNotRunning<T> extends ErrorNodes<T> {
+class ErrorNodeGraphNotRunning<T> extends ErrorNodeGraph<T> {
   static description = 'NodeGraph is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeGraphDestroyed<T> extends ErrorNodes<T> {
+class ErrorNodeGraphDestroyed<T> extends ErrorNodeGraph<T> {
   static description = 'NodeGraph is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeGraphNodeIdNotFound<T> extends ErrorNodes<T> {
+class ErrorNodeGraphNodeIdNotFound<T> extends ErrorNodeGraph<T> {
   static description = 'Could not find NodeId';
   exitCode = sysexits.NOUSER;
 }
 
-class ErrorNodeGraphOversizedBucket<T> extends ErrorNodes<T> {
+class ErrorNodeGraphOversizedBucket<T> extends ErrorNodeGraph<T> {
   static description: 'Bucket invalidly contains more nodes than capacity';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeGraphSameNodeId<T> extends ErrorNodes<T> {
+class ErrorNodeGraphSameNodeId<T> extends ErrorNodeGraph<T> {
   static description: 'NodeId must be different for valid bucket calculation';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeGraphBucketIndex<T> extends ErrorNodes<T> {
+class ErrorNodeGraphBucketIndex<T> extends ErrorNodeGraph<T> {
   static description: 'Bucket index is out of range';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionDestroyed<T> extends ErrorNodes<T> {
+class ErrorNodeConnection<T> extends ErrorNodes<T> {}
+
+class ErrorNodeConnectionDestroyed<T> extends ErrorNodeConnection<T> {
   static description = 'NodeConnection is destroyed';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionTimeout<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionTimeout<T> extends ErrorNodeConnection<T> {
   static description: 'A node connection could not be established (timed out)';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionMultiConnectionFailed<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionMultiConnectionFailed<T> extends ErrorNodeConnection<T> {
   static description: 'Could not establish connection when multiple resolved hosts were involved';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionManagerNotRunning<T> extends ErrorNodes<T> {
-  static description = 'NodeConnectionManager is not running';
-  exitCode = sysexits.USAGE;
-}
-
-class ErrorNodeConnectionHostWildcard<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionHostWildcard<T> extends ErrorNodeConnection<T> {
   static description = 'An IP wildcard was provided for the target host';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionSameNodeId<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionSameNodeId<T> extends ErrorNodeConnection<T> {
   static description =
     'Provided NodeId is the same as this agent, attempts to connect is improper usage';
   exitCode = sysexits.USAGE;
 }
-class ErrorNodeConnectionConnectionError<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionInternalError<T> extends ErrorNodeConnection<T> {
   static description =
-    'There was a failure with the underlying QUICConnection';
+    'There was an internal failure with the NodeConnection';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionClientError<T> extends ErrorNodes<T> {
-  static description =
-    'There was a failure with the underlying QUICCLient';
-  exitCode = sysexits.UNAVAILABLE;
-}
-
-class ErrorNodeConnectionTransportUnknownError<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionTransportUnknownError<T> extends ErrorNodeConnection<T> {
   static description =
     'Transport received an unknown error';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionTransportGenericError<T> extends ErrorNodes<T> {
+class ErrorNodeConnectionTransportGenericError<T> extends ErrorNodeConnection<T> {
   static description =
     'Transport received a generic error';
   exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionManager<T> extends ErrorNodes<T> {}
+
+class ErrorNodeConnectionManagerNotRunning<T> extends ErrorNodeConnectionManager<T> {
+  static description = 'NodeConnectionManager is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionManagerInternalError<T> extends ErrorNodeConnectionManager<T> {
+  static description = 'There was an internal failure with NodeConnectionManager';
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
@@ -122,9 +119,9 @@ class ErrorNodePermissionDenied<T> extends ErrorNodes<T> {
 
 export {
   ErrorNodes,
-  ErrorNodeAborted,
+  ErrorNodeManager,
   ErrorNodeManagerNotRunning,
-  ErrorQueueNotRunning,
+  ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
   ErrorNodeGraphDestroyed,
@@ -132,16 +129,18 @@ export {
   ErrorNodeGraphOversizedBucket,
   ErrorNodeGraphSameNodeId,
   ErrorNodeGraphBucketIndex,
+  ErrorNodeConnection,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
   ErrorNodeConnectionMultiConnectionFailed,
-  ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
-  ErrorNodeConnectionConnectionError,
-  ErrorNodeConnectionClientError,
+  ErrorNodeConnectionInternalError,
   ErrorNodeConnectionTransportUnknownError,
   ErrorNodeConnectionTransportGenericError,
+  ErrorNodeConnectionManager,
+  ErrorNodeConnectionManagerNotRunning,
+  ErrorNodeConnectionManagerInternalError,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
 };
