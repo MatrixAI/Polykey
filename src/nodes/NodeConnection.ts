@@ -76,7 +76,7 @@ class NodeConnection<M extends ClientManifest> {
    * Dispatched by the `EventNodeConnectionError` event as the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventNodeConnectionClosed = async (_evt: nodesEvents.EventNodeConnectionClose): Promise<void> => {
+  protected handleEventNodeConnectionClose = async (_evt: nodesEvents.EventNodeConnectionClose): Promise<void> => {
     this.logger.warn(`close event triggering NodeConnection.destroy`)
     // This will trigger the destruction of this NodeConnection.
     if (this[status] !== 'destroying') {
@@ -106,6 +106,24 @@ class NodeConnection<M extends ClientManifest> {
     const err = new nodesErrors.ErrorNodeConnectionInternalError(
       undefined,
       { cause: evt.detail },
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionError({ detail: err }),
+    );
+  }
+
+  protected handleEventQUICClientDestroyed = (_evt: quicEvents.EventQUICClientDestroyed) => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      'QUICClient destroyed unexpectedly',
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionError({ detail: err }),
+    );
+  }
+
+  protected handleEventQUICConnectionStopped = (_evt: quicEvents.EventQUICConnectionStopped) => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      'QUICClient stopped unexpectedly',
     );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
@@ -285,7 +303,7 @@ class NodeConnection<M extends ClientManifest> {
       );
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionClose.name,
-      nodeConnection.handleEventNodeConnectionClosed,
+      nodeConnection.handleEventNodeConnectionClose,
     );
     quicClient.addEventListener(
       quicEvents.EventQUICConnectionStream.name,
@@ -294,6 +312,10 @@ class NodeConnection<M extends ClientManifest> {
     quicClient.addEventListener(
       quicEvents.EventQUICClientError.name,
       nodeConnection.handleEventQUICError,
+    );
+    quicClient.addEventListener(
+      quicEvents.EventQUICClientDestroyed.name,
+      nodeConnection.handleEventQUICClientDestroyed,
     );
     quicClient.addEventListener(
       EventAll.name,
@@ -350,7 +372,7 @@ class NodeConnection<M extends ClientManifest> {
     );
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionClose.name,
-      nodeConnection.handleEventNodeConnectionClosed,
+      nodeConnection.handleEventNodeConnectionClose,
     );
     quicConnection.addEventListener(
       quicEvents.EventQUICConnectionStream.name,
@@ -359,6 +381,10 @@ class NodeConnection<M extends ClientManifest> {
     quicConnection.addEventListener(
       quicEvents.EventQUICConnectionError.name,
       nodeConnection.handleEventQUICError,
+    );
+    quicConnection.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
+      nodeConnection.handleEventQUICConnectionStopped,
     );
     quicConnection.addEventListener(
       EventAll.name,
@@ -436,7 +462,7 @@ class NodeConnection<M extends ClientManifest> {
     );
     this.addEventListener(
       nodesEvents.EventNodeConnectionClose.name,
-      this.handleEventNodeConnectionClosed,
+      this.handleEventNodeConnectionClose,
     );
     // If the client exists then it was all registered to that,
     // otherwise the connection
@@ -448,6 +474,14 @@ class NodeConnection<M extends ClientManifest> {
     quicClientOrConnection.addEventListener(
       quicEvents.EventQUICConnectionError.name,
       this.handleEventQUICError,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICClientDestroyed.name,
+      this.handleEventQUICClientDestroyed,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
+      this.handleEventQUICConnectionStopped,
     );
     quicClientOrConnection.addEventListener(
       quicEvents.EventQUICClientError.name,
