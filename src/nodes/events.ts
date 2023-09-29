@@ -28,6 +28,11 @@ class EventNodeConnectionManagerStop extends EventNodeConnectionManager {}
 
 class EventNodeConnectionManagerStopped extends EventNodeConnectionManager {}
 
+class EventNodeConnectionManagerError extends EventNodeConnectionManager<Error> {}
+
+class EventNodeConnectionManagerClose extends EventNodeConnectionManager {}
+
+
 class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {}
 
 class EventNodeConnectionManagerConnectionFailure extends EventNodeConnectionManager<
@@ -71,6 +76,8 @@ export {
   EventNodeConnectionManagerStarted,
   EventNodeConnectionManagerStop,
   EventNodeConnectionManagerStopped,
+  EventNodeConnectionManagerError,
+  EventNodeConnectionManagerClose,
   EventNodeConnectionManagerConnection,
   EventNodeConnectionManagerConnectionFailure,
   EventNodeGraph,

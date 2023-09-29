@@ -24,7 +24,7 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { AbstractEvent, EventDefault } from '@matrixai/events';
+import { AbstractEvent, EventAll } from "@matrixai/events";
 import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
@@ -36,7 +36,7 @@ import * as networkUtils from '../network/utils';
 import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
 import * as utils from '../utils';
 import config from '../config';
-import { never } from '../utils';
+import { running, status } from "@matrixai/async-init";
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -59,7 +59,7 @@ type ConnectionAndTimer = {
  * As well as the QUICConnection and QUICStream.
  * The NCM basically encapsulates it.
  *
- * The NCM and NC both must encapsulate all of the QUIC transport.
+ * The NCM and NC both must encapsulate all the QUIC transport.
  *
  * Events:
  *
@@ -134,37 +134,87 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
-  protected eventQUICServerConnectionHandler = (
-    evt: quicEvents.EventQUICServerConnection,
-  ) => {
-    void this.handleConnectionReverse(evt.detail);
+  /**
+   * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
+   * error event. Will trigger stop of the `NodeConnectionManager` via the
+   * `EventNodeConnectionManagerError` -> `EventNodeConnectionManagerClose` event path.
+   */
+  protected handleEventNodeConnectionManagerError = (evt: nodesEvents.EventNodeConnectionManagerError) => {
+    this.logger.warn(`NodeConnectionManager error caused by ${evt.detail.message}`);
+    this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
+  }
+
+  /**
+   * Triggers the destruction of the `NodeConnectionManager`. Since this is only in
+   * response to an underlying problem or close it will force destroy.
+   * Dispatched by the `EventNodeConnectionManagerError` event as the
+   * `EventNodeConnectionManagerError` -> `EventNodeConnectionManagerClose` event path.
+   */
+  protected handleEventNodeConnectionManagerClose = async (_evt: nodesEvents.EventNodeConnectionManagerClose) => {
+    this.logger.warn(`close event triggering NodeConnectionManager.stop`)
+    if (this[running] && this[status] !== 'stopping') {
+      await this.stop();
+    }
+  }
+
+  /**
+   * redispatches `QUICSOcket` or `QUICServer` error events as `NodeConnectionManager` error events.
+   * This should trigger the destruction of the `NodeConnection` through the
+   * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
+   */
+  protected handleEventQUICError = (evt: quicEvents.EventQUICSocketError) => {
+    const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
+      undefined,
+      { cause: evt.detail },
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
+    );
+  }
+
+  /**
+   * Handle unexpected stoppage of the QUICSocket. Not expected to happen
+   * without error but we have it just in case.
+   */
+  protected handleEventQUICSocketStopped = (_evt: quicEvents.EventQUICSocketStopped) => {
+    const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
+      'QUICSocket stopped unexpectedly',
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
+    );
+  }
+
+  /**
+   * Handle unexpected stoppage of the QUICServer. Not expected to happen
+   * without error but we have it just in case.
+   */
+  protected handleEventQUICServerStopped = (_evt: quicEvents.EventQUICServerStopped) => {
+    const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
+      'QUICServer stopped unexpectedly',
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
+    );
+  }
+
+  /**
+   * Handles `EventQUICServerConnection` events. These are reverser or server
+   * peer initated connections that needs to be handled and added to the
+   * connectio map.
+   */
+  protected handleEventQUICServerConnection = async (evt: quicEvents.EventQUICServerConnection) => {
+    await this.handleConnectionReverse(evt.detail);
   };
 
-  protected handleEventQUICSocket = (evt: EventDefault) => {
-    if (!(evt.detail instanceof AbstractEvent)) {
-      never('TMP expected AbstractEvent');
-    }
+  /**
+   * Handles all events and redispatches them upwards
+   */
+  protected handleEventAll = (evt: EventAll) => {
     const event = evt.detail;
-    // QUICSocket events are...
-    //   - EventQUICSocket,
-    //   - EventQUICSocketStart,
-    //   - EventQUICSocketStop,
-    //   - EventQUICSocketError,
-    this.dispatchEvent(event.clone());
-  };
-
-  protected handleEventQUICServer = (evt: EventDefault) => {
-    if (!(evt.detail instanceof AbstractEvent)) {
-      never('TMP expected AbstractEvent');
+    if (event instanceof AbstractEvent) {
+      this.dispatchEvent(event.clone());
     }
-    const event = evt.detail;
-    // QUICServer events are...
-    //   - EventQUICServer,
-    //   - EventQUICServerConnection,
-    //   - EventQUICServerStart,
-    //   - EventQUICServerStop,
-    //   - EventQUICServerError,
-    this.dispatchEvent(event.clone());
   };
 
   public constructor({
@@ -309,6 +359,19 @@ class NodeConnectionManager {
       reuseAddr,
       ipv6Only,
     });
+    this.quicSocket.addEventListener(
+      quicEvents.EventQUICSocketError.name,
+      this.handleEventQUICError,
+    );
+    this.quicSocket.addEventListener(
+      quicEvents.EventQUICSocketStopped.name,
+      this.handleEventQUICSocketStopped,
+    );
+    this.quicSocket.addEventListener(
+      EventAll.name,
+      this.handleEventAll,
+    );
+
     // QUICServer will simply re-use the shared `QUICSocket`
     await this.quicServer.start({
       host,
@@ -316,18 +379,21 @@ class NodeConnectionManager {
       reuseAddr,
       ipv6Only,
     });
-
-    this.quicSocket.addEventListener(
-      EventDefault.name,
-      this.handleEventQUICSocket,
+    this.quicServer.addEventListener(
+      quicEvents.EventQUICServerError.name,
+      this.handleEventQUICError,
+    );
+    this.quicServer.addEventListener(
+      quicEvents.EventQUICServerStopped.name,
+      this.handleEventQUICServerStopped,
     );
     this.quicServer.addEventListener(
       quicEvents.EventQUICServerConnection.name,
-      this.eventQUICServerConnectionHandler,
+      this.handleEventQUICServerConnection,
     );
-    this.quicServer.addEventListener(
-      EventDefault.name,
-      this.handleEventQUICServer,
+    this.quicSocket.addEventListener(
+      EventAll.name,
+      this.handleEventAll,
     );
 
     this.logger.info(`Started ${this.constructor.name}`);
@@ -336,17 +402,41 @@ class NodeConnectionManager {
   public async stop() {
     this.logger.info(`Stop ${this.constructor.name}`);
 
+    this.removeEventListener(
+      nodesEvents.EventNodeConnectionManagerError.name,
+      this.handleEventNodeConnectionManagerError,
+    );
+    this.removeEventListener(
+      nodesEvents.EventNodeConnectionManagerClose.name,
+      this.handleEventNodeConnectionManagerClose,
+    );
+    this.quicSocket.removeEventListener(
+      quicEvents.EventQUICSocketError.name,
+      this.handleEventQUICError,
+    );
+    this.quicSocket.removeEventListener(
+      quicEvents.EventQUICSocketStopped.name,
+      this.handleEventQUICSocketStopped,
+    );
+    this.quicSocket.removeEventListener(
+      EventAll.name,
+      this.handleEventAll,
+    );
     this.quicServer.removeEventListener(
-      EventDefault.name,
-      this.handleEventQUICServer,
+      quicEvents.EventQUICServerError.name,
+      this.handleEventQUICError,
+    );
+    this.quicServer.removeEventListener(
+      quicEvents.EventQUICServerStopped.name,
+      this.handleEventQUICServerStopped,
     );
     this.quicServer.removeEventListener(
       quicEvents.EventQUICServerConnection.name,
-      this.eventQUICServerConnectionHandler,
+      this.handleEventQUICServerConnection,
     );
     this.quicSocket.removeEventListener(
-      EventDefault.name,
-      this.handleEventQUICSocket,
+      EventAll.name,
+      this.handleEventAll,
     );
 
     const destroyProms: Array<Promise<void>> = [];
@@ -360,6 +450,7 @@ class NodeConnectionManager {
     }
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
+    await this.quicSocket.stop({ force: true });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -517,7 +608,7 @@ class NodeConnectionManager {
       if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
     // Then we just get the connection, it should already exist.
-    return await this.getConnectionWithAddress(targetNodeId, address, ctx);
+    return this.getConnectionWithAddress(targetNodeId, address, ctx);
   }
 
   protected async getExistingConnection(
@@ -835,42 +926,23 @@ class NodeConnectionManager {
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
     // Setting up events
-    const nodeConnectionEventsHandler = (evt: EventDefault) => {
-      // Propagate all events upwards
-      if (!(evt.detail instanceof AbstractEvent)) return;
-      this.dispatchEvent(evt.detail.clone());
-    };
     nodeConnection.addEventListener(
-      EventDefault.name,
-      nodeConnectionEventsHandler,
+      EventAll.name,
+      this.handleEventAll,
     );
     nodeConnection.addEventListener(
-      nodesEvents.EventNodeConnectionError.name,
-      async (evt: nodesEvents.EventNodeConnectionError) => {
-        this.logger.debug('stream destroyed event');
+      nodesEvents.EventNodeConnectionDestroyed.name,
+      async () => {
+        // To avoid deadlock only in the case where this is called
+        // we want to check for destroying connection and read lock
+        // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
+        // Already locked so already destroying
+        if (this.connectionLocks.isLocked(nodeIdString)) return;
+        await this.destroyConnection(nodeId);
         nodeConnection.removeEventListener(
-          EventDefault.name,
-          nodeConnectionEventsHandler,
+          EventAll.name,
+          this.handleEventAll,
         );
-        try {
-          // To avoid deadlock only in the case where this is called
-          // we want to check for destroying connection and read lock
-          // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
-          // Already locked so already destroying
-          if (this.connectionLocks.isLocked(nodeIdString)) return;
-          await this.destroyConnection(nodeId);
-          this.dispatchEvent(
-            new nodesEvents.EventNodeConnectionManagerConnectionFailure({
-              detail: evt,
-            }),
-          );
-        } catch (err) {
-          this.dispatchEvent(
-            new nodesEvents.EventNodeConnectionManagerConnectionFailure({
-              detail: new AggregateError([err, evt.detail]),
-            }),
-          );
-        }
       },
       { once: true },
     );
