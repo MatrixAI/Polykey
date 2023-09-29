@@ -80,10 +80,36 @@ function trackTimers() {
   return timerMap;
 }
 
+/**
+ * Utility for creating a promise that resolves or rejects based on events from a target.
+ */
+function promFromEvent<
+  EResolve extends Event = Event,
+  EReject extends Event = Event,
+  T extends EventTarget = EventTarget
+>(target: T, resolveEvent: new () => EResolve, rejectEvent?: new () => EReject) {
+  const handleResolveEvent = (evt: EResolve) => prom.resolveP(evt);
+  const handleRejectEvent = (evt: EReject) => prom.rejectP(evt);
+  const prom = promise<EResolve>();
+  target.addEventListener(resolveEvent.name, handleResolveEvent);
+  if (rejectEvent != null) target.addEventListener(rejectEvent.name, handleRejectEvent);
+  // Prevent unhandled rejection errors
+  void prom.p.then(
+    () => {},
+    () => {},
+  ).finally(() => {
+    // clean up
+    target.removeEventListener(resolveEvent.name, handleResolveEvent);
+    if (rejectEvent != null) target.removeEventListener(rejectEvent.name, handleRejectEvent);
+  })
+  return prom;
+}
+
 export {
   generateRandomNodeId,
   expectRemoteError,
   testIf,
   describeIf,
   trackTimers,
+  promFromEvent,
 };
