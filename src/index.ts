@@ -1,8 +1,10 @@
 export { default as PolykeyAgent } from './PolykeyAgent';
 export { default as PolykeyClient } from './PolykeyClient';
+export { default as EventPolykey } from './EventPolykey';
 export { default as ErrorPolykey } from './ErrorPolykey';
 export { default as config } from './config';
 export * as utils from './utils';
+export * as events from './events';
 export * as errors from './errors';
 export * from './types';
 
