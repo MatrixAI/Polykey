@@ -10,6 +10,9 @@ import * as agentUtils from '../utils';
 import * as vaultsUtils from '../../../vaults/utils';
 import { ServerHandler } from '../../../rpc/handlers';
 
+/**
+ * Scan vaults.
+ */
 class VaultsScan extends ServerHandler<
   {
     vaultManager: VaultManager;

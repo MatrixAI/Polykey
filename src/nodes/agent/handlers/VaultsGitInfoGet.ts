@@ -15,6 +15,9 @@ import * as agentUtils from '../utils';
 import * as utils from '../../../utils';
 import { RawHandler } from '../../../rpc/handlers';
 
+/**
+ * Gets the git info of a vault.
+ */
 class VaultsGitInfoGet extends RawHandler<{
   db: DB;
   vaultManager: VaultManager;

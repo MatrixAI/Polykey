@@ -15,6 +15,9 @@ import * as vaultsErrors from '../../../vaults/errors';
 import * as utils from '../../../utils';
 import { RawHandler } from '../../../rpc/handlers';
 
+/**
+ * Gets the git pack of a vault.
+ */
 class VaultsGitPackGet extends RawHandler<{
   vaultManager: VaultManager;
   acl: ACL;
