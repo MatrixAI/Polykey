@@ -71,13 +71,13 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.quicSocket.host,
-    port: remoteNode.quicSocket.port,
+    host: remoteNode.nodeConnectionManager.host,
+    port: remoteNode.nodeConnectionManager.port,
   } as NodeAddress);
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.quicSocket.host,
-    port: localNode.quicSocket.port,
+    host: localNode.nodeConnectionManager.host,
+    port: localNode.nodeConnectionManager.port,
   } as NodeAddress);
 }
 
