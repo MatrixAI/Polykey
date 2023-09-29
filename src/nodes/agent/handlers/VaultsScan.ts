@@ -1,13 +1,16 @@
 import type { DB } from '@matrixai/db';
-import type { VaultsScanMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  VaultsScanMessage
+} from '../types';
+import type VaultManager from '../../../vaults/VaultManager';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
-import { ServerHandler } from '../../rpc/handlers';
-import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsUtils from '../../../vaults/utils';
+import { ServerHandler } from '../../../rpc/handlers';
 
-class VaultsScanHandler extends ServerHandler<
+class VaultsScan extends ServerHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -15,7 +18,7 @@ class VaultsScanHandler extends ServerHandler<
   AgentRPCRequestParams,
   AgentRPCResponseResult<VaultsScanMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: AgentRPCRequestParams,
     _cancel,
     meta,
@@ -47,4 +50,4 @@ class VaultsScanHandler extends ServerHandler<
   }
 }
 
-export { VaultsScanHandler };
+export default VaultsScan;

@@ -1,11 +1,18 @@
 import type { DB } from '@matrixai/db';
-import type { ClaimIdMessage, AgentClaimMessage } from './types';
-import type Sigchain from '../../sigchain/Sigchain';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import * as claimsUtils from '../../claims/utils';
-import { ServerHandler } from '../../rpc/handlers';
+import type Sigchain from '../../../sigchain/Sigchain';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  ClaimIdMessage,
+  AgentClaimMessage
+} from '../types';
+import * as claimsUtils from '../../../claims/utils';
+import { ServerHandler } from '../../../rpc/handlers';
 
-class NodesClaimsGetHandler extends ServerHandler<
+/**
+ * Gets the sigchain claims of a node
+ */
+class NodesClaimsGet extends ServerHandler<
   {
     sigchain: Sigchain;
     db: DB;
@@ -13,7 +20,7 @@ class NodesClaimsGetHandler extends ServerHandler<
   AgentRPCRequestParams<ClaimIdMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 > {
-  public async *handle(
+  public handle = async function*(
     _input: ClaimIdMessage,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { sigchain, db } = this.container;
@@ -35,4 +42,4 @@ class NodesClaimsGetHandler extends ServerHandler<
   }
 }
 
-export { NodesClaimsGetHandler };
+export default NodesClaimsGet;

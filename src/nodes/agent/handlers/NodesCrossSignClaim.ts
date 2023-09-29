@@ -1,13 +1,19 @@
-import type { AgentClaimMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type ACL from '../../acl/ACL';
-import type NodeManager from '../../nodes/NodeManager';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  AgentClaimMessage
+} from '../types';
+import type NodeManager from '../../NodeManager';
+import type ACL from '../../../acl/ACL';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
-import * as nodesErrors from '../../nodes/errors';
-import { DuplexHandler } from '../../rpc/handlers';
+import * as nodesErrors from '../../errors';
+import { DuplexHandler } from '../../../rpc/handlers';
 
-class NodesCrossSignClaimHandler extends DuplexHandler<
+/**
+ * Claims a node
+ */
+class NodesCrossSignClaim extends DuplexHandler<
   {
     acl: ACL;
     nodeManager: NodeManager;
@@ -15,7 +21,7 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
   AgentRPCRequestParams<AgentClaimMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 > {
-  public async *handle(
+  public handle = async function*(
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
     _cancel,
     meta,
@@ -35,4 +41,4 @@ class NodesCrossSignClaimHandler extends DuplexHandler<
   }
 }
 
-export { NodesCrossSignClaimHandler };
+export default NodesCrossSignClaim;

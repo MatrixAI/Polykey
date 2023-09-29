@@ -1,15 +1,21 @@
 import type { DB } from '@matrixai/db';
-import type { NodeAddressMessage, NodeIdMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type { NodeGraph } from '../../nodes';
-import type { NodeId } from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
-import * as validationUtils from '../../validation/utils';
-import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '../../rpc/handlers';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  NodeAddressMessage,
+  NodeIdMessage,
+} from '../types';
+import type NodeGraph from '../../NodeGraph';
+import type { NodeId } from '../../../ids';
+import * as validation from '../../../validation';
+import * as nodesUtils from '../../utils';
+import * as utils from '../../../utils';
+import { ServerHandler } from '../../../rpc/handlers';
 
-class NodesClosestLocalNodesGetHandler extends ServerHandler<
+/**
+ * Gets the closest local nodes to a target node
+ */
+class NodesClosestLocalNodesGet extends ServerHandler<
   {
     nodeGraph: NodeGraph;
     db: DB;
@@ -17,7 +23,7 @@ class NodesClosestLocalNodesGetHandler extends ServerHandler<
   AgentRPCRequestParams<NodeIdMessage>,
   AgentRPCResponseResult<NodeAddressMessage>
 > {
-  public async *handle(
+  public handle = async function*(
     input: AgentRPCRequestParams<NodeIdMessage>,
   ): AsyncGenerator<AgentRPCResponseResult<NodeAddressMessage>> {
     const { nodeGraph, db } = this.container;
@@ -26,10 +32,10 @@ class NodesClosestLocalNodesGetHandler extends ServerHandler<
       nodeId,
     }: {
       nodeId: NodeId;
-    } = validateSync(
+    } = validation.validateSync(
       (keyPath, value) => {
-        return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+        return utils.matchSync(keyPath)(
+          [['nodeId'], () => validation.utils.parseNodeId(value)],
           () => value,
         );
       },
@@ -57,4 +63,4 @@ class NodesClosestLocalNodesGetHandler extends ServerHandler<
   }
 }
 
-export { NodesClosestLocalNodesGetHandler };
+export default NodesClosestLocalNodesGet;
