@@ -4,13 +4,15 @@ import EventPolykey from '../EventPolykey';
 
 abstract class EventNode<T> extends EventPolykey<T> {}
 
-abstract class EventNodeConnection<T> extends EventNode<T> {}
+abstract class EventNodeConnection<T = undefined> extends EventNode<T> {}
 
 class EventNodeConnectionError extends EventNodeConnection<Error> {}
 
-class EventNodeConnectionDestroy extends EventNodeConnection<undefined> {}
+class EventNodeConnectionClose extends EventNodeConnection {}
 
-class EventNodeConnectionDestroyed extends EventNodeConnection<undefined> {}
+class EventNodeConnectionDestroy extends EventNodeConnection {}
+
+class EventNodeConnectionDestroyed extends EventNodeConnection {}
 
 class EventNodeConnectionStream extends EventNode<QUICStream> {}
 
@@ -46,20 +48,21 @@ class EventNodeGraphDestroy extends EventNodeGraph<undefined> {}
 
 class EventNodeGraphDestroyed extends EventNodeGraph<undefined> {}
 
-abstract class EventNodeManager<T> extends EventPolykey<T> {}
+abstract class EventNodeManager<T = undefined> extends EventPolykey<T> {}
 
-class EventNodeManagerStart extends EventNodeManager<undefined> {}
+class EventNodeManagerStart extends EventNodeManager {}
 
-class EventNodeManagerStarted extends EventNodeManager<undefined> {}
+class EventNodeManagerStarted extends EventNodeManager {}
 
-class EventNodeManagerStop extends EventNodeManager<undefined> {}
+class EventNodeManagerStop extends EventNodeManager {}
 
-class EventNodeManagerStopped extends EventNodeManager<undefined> {}
+class EventNodeManagerStopped extends EventNodeManager {}
 
 export {
   EventNode,
   EventNodeConnection,
   EventNodeConnectionError,
+  EventNodeConnectionClose,
   EventNodeConnectionDestroy,
   EventNodeConnectionDestroyed,
   EventNodeConnectionStream,

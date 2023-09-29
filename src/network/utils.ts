@@ -10,8 +10,8 @@ import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import { CryptoError } from '@matrixai/quic/dist/native';
 import * as networkErrors from './errors';
-import { never } from '../utils';
 import * as keysUtils from '../keys/utils';
+import { utils as quicUtils } from '@matrixai/quic'
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
@@ -229,7 +229,7 @@ async function verifyServerCertificateChain(
       value: CryptoError;
     }
 > {
-  const certPEMChain = certs.map((v) => Buffer.from(v).toString());
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
     return {
       result: 'fail',
@@ -332,7 +332,7 @@ async function verifyServerCertificateChain(
 async function verifyClientCertificateChain(
   certs: Array<Uint8Array>,
 ): Promise<CryptoError | undefined> {
-  const certPEMChain = certs.map((v) => Buffer.from(v).toString());
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
     return CryptoError.CertificateRequired;
   }

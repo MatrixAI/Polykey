@@ -6,8 +6,10 @@ import lexi from 'lexicographic-integer';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
-import { bytes2BigInt } from '../utils';
+import { bytes2BigInt, never } from "../utils";
 import * as rpcErrors from '../rpc/errors';
+import { CertificatePEM } from "@/keys/types";
+import { utils as quicUtils } from '@matrixai/quic';
 
 const sepBuffer = dbUtils.sep;
 
@@ -361,6 +363,19 @@ const codeToReason = (_type: 'read' | 'write', code: number): any => {
   }
 };
 
+function parseRemoteCertsChain(remoteCertChain: Array<Uint8Array>) {
+  const certChain = remoteCertChain.map((der) => {
+    const cert = keysUtils.certFromPEM(
+      quicUtils.derToPEM(der) as CertificatePEM,
+    );
+    if (cert == null) never();
+    return cert;
+  });
+  const nodeId = keysUtils.certNodeId(certChain[0]);
+  if (nodeId == null) never();
+  return { nodeId, certChain };
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -385,4 +400,5 @@ export {
   refreshBucketsDelayJitter,
   reasonToCode,
   codeToReason,
+  parseRemoteCertsChain,
 };
