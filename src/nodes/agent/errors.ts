@@ -1,5 +1,5 @@
-import ErrorPolykey from '../ErrorPolykey';
-import sysexits from '../utils/sysexits';
+import ErrorPolykey from '../../ErrorPolykey';
+import sysexits from '../../utils/sysexits';
 
 class ErrorAgent<T> extends ErrorPolykey<T> {}
 

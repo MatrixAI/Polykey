@@ -13,7 +13,6 @@ export * from './types';
 // kitchen sink here
 
 export * as acl from './acl';
-export * as agent from './agent';
 export * as bootstrap from './bootstrap';
 export * as claims from './claims';
 export * as client from './client';

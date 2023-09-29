@@ -1,47 +1,46 @@
 import type { DB } from '@matrixai/db';
-import type { VaultManager } from '../../vaults';
-import type { ACL } from '../../acl';
 import type Logger from '@matrixai/logger';
-import type { JSONRPCRequest } from '../../rpc/types';
 import type { ContextTimed } from '@matrixai/contexts';
-import type { JSONValue } from '../../types';
+import type ACL from '../../../acl/ACL';
+import type VaultManager from '../../../vaults/VaultManager';
+import type { JSONRPCRequest } from '../../../rpc/types';
+import type { JSONValue } from '../../../types';
 import { ReadableStream } from 'stream/web';
 import * as agentErrors from '../errors';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import { RawHandler } from '../../rpc/handlers';
-import { never } from '../../utils';
-import * as validationUtils from '../../validation/utils';
-import * as nodesUtils from '../../nodes/utils';
+import * as validation from '../../../validation';
+import * as vaultsUtils from '../../../vaults/utils';
+import * as vaultsErrors from '../../../vaults/errors';
+import * as nodesUtils from '../../../nodes/utils';
 import * as agentUtils from '../utils';
-import * as utils from '../../utils';
+import * as utils from '../../../utils';
+import { RawHandler } from '../../../rpc/handlers';
 
-class VaultsGitInfoGetHandler extends RawHandler<{
+class VaultsGitInfoGet extends RawHandler<{
   db: DB;
   vaultManager: VaultManager;
   acl: ACL;
   logger: Logger;
 }> {
-  public async handle(
+  public handle = async (
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     _cancel,
     meta: Record<string, JSONValue> | undefined,
     _ctx: ContextTimed, // TODO: use
-  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> {
+  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> => {
     const { db, vaultManager, acl } = this.container;
     const [headerMessage, inputStream] = input;
     await inputStream.cancel();
     const params = headerMessage.params;
-    if (params == null || !utils.isObject(params)) never();
+    if (params == null || !utils.isObject(params)) utils.never();
     if (
       !('vaultNameOrId' in params) ||
       typeof params.vaultNameOrId != 'string'
     ) {
-      never();
+      utils.never();
     }
-    if (!('action' in params) || typeof params.action != 'string') never();
+    if (!('action' in params) || typeof params.action != 'string') utils.never();
     const vaultNameOrId = params.vaultNameOrId;
-    const actionType = validationUtils.parseVaultAction(params.action);
+    const actionType = validation.utils.parseVaultAction(params.action);
     const data = await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         vaultNameOrId,
@@ -111,4 +110,4 @@ class VaultsGitInfoGetHandler extends RawHandler<{
   }
 }
 
-export { VaultsGitInfoGetHandler };
+export default VaultsGitInfoGet;

@@ -1,4 +1,4 @@
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
+import type { AgentRPCRequestParams, AgentRPCResponseResult } from './types';
 import type {
   AgentClaimMessage,
   ClaimIdMessage,
@@ -55,7 +55,7 @@ const vaultsScan = new ServerCaller<
  *
  * No type used here, it will override type inference.
  */
-const clientManifest = {
+const manifestClient = {
   nodesClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
@@ -67,7 +67,7 @@ const clientManifest = {
 };
 
 export {
-  clientManifest,
+  manifestClient,
   nodesClaimsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,

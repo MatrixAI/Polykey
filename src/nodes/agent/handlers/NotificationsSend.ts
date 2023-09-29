@@ -1,13 +1,19 @@
 import type { DB } from '@matrixai/db';
-import type { SignedNotificationEncoded } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type KeyRing from '../../keys/KeyRing';
-import type NotificationsManager from '../../notifications/NotificationsManager';
-import type { SignedNotification } from '../../notifications/types';
-import { UnaryHandler } from '../../rpc/handlers';
-import * as notificationsUtils from '../../notifications/utils';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  SignedNotificationEncoded,
+} from '../types';
+import type KeyRing from '../../../keys/KeyRing';
+import type NotificationsManager from '../../../notifications/NotificationsManager';
+import type { SignedNotification } from '../../../notifications/types';
+import * as notificationsUtils from '../../../notifications/utils';
+import { UnaryHandler } from '../../../rpc/handlers';
 
-class NotificationsSendHandler extends UnaryHandler<
+/**
+ * Sends a notification to a node
+ */
+class NotificationsSend extends UnaryHandler<
   {
     db: DB;
     keyRing: KeyRing;
@@ -16,9 +22,9 @@ class NotificationsSendHandler extends UnaryHandler<
   AgentRPCRequestParams<SignedNotificationEncoded>,
   AgentRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: AgentRPCRequestParams<SignedNotificationEncoded>,
-  ): Promise<AgentRPCResponseResult> {
+  ): Promise<AgentRPCResponseResult> => {
     const { db, keyRing, notificationsManager } = this.container;
     const notification = await notificationsUtils.verifyAndDecodeNotif(
       input.signedNotificationEncoded as SignedNotification,
@@ -31,4 +37,4 @@ class NotificationsSendHandler extends UnaryHandler<
   }
 }
 
-export { NotificationsSendHandler };
+export default NotificationsSend;
