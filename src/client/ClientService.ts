@@ -9,7 +9,7 @@ import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as errors from './errors';
 import * as events from './events';
-import WebSocketServer from '../websockets/WebSocketServer';
+import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
 import RPCServer from '../rpc/RPCServer';
 import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
 import config from '../config';
@@ -75,15 +75,14 @@ class ClientService {
       logger: logger.getChild(RPCServer.name),
     });
 
-    const webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (rpcStream) => rpcServer.handleStream(rpcStream),
-      host,
-      port,
-      tlsConfig,
+    const webSocketServer = new WebSocketServer({
+      config: {
+        key:tlsConfig.keyPrivatePem,
+        cert: tlsConfig.certChainPem,
+        keepAliveIntervalTime,
+        keepAliveTimeoutTime
+      },
       // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
-      maxIdleTimeout: keepAliveTimeoutTime,
-      pingIntervalTime: keepAliveIntervalTime,
-      pingTimeoutTimeTime: keepAliveTimeoutTime,
       logger: logger.getChild(WebSocketServer.name),
     });
 
@@ -93,7 +92,6 @@ class ClientService {
       logger,
     });
     await clientService.start({
-      tlsConfig,
       options: {
         host,
         port,
@@ -122,32 +120,35 @@ class ClientService {
   }
 
   get host() {
-    return this.webSocketServer.getHost();
+    return this.webSocketServer.host;
   }
 
   get port() {
-    return this.webSocketServer.getPort();
+    return this.webSocketServer.port;
   }
 
   public async start({
-    tlsConfig,
     options: {
       host = config.defaultsUser.clientServiceHost,
       port = config.defaultsUser.clientServicePort,
     },
   }: {
-    tlsConfig: TLSConfig;
     options: {
       host?: string;
       port?: number;
     };
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
+    this.webSocketServer.addEventListener(wsEvents.EventWebSocketServerConnection.name, (evt: wsEvents.EventWebSocketServerConnection) => {
+      const conn = evt.detail;
+      conn.addEventListener(wsEvents.EventWebSocketConnectionStream.name, (evt: wsEvents.EventWebSocketConnectionStream) => {
+        const stream = evt.detail;
+        this.rpcServer.handleStream(stream);
+      })
+    })
     await this.webSocketServer.start({
-      tlsConfig,
       host,
       port,
-      connectionCallback: (rpcStream) => this.rpcServer.handleStream(rpcStream),
     });
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -156,7 +157,7 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.webSocketServer.stop(force);
+    await this.webSocketServer.stop({ force });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -164,12 +165,15 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.rpcServer.destroy(force);
+    await this.rpcServer.destroy({ force });
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   public setTlsConfig(tlsConfig: TLSConfig): void {
-    this.webSocketServer.setTlsConfig(tlsConfig);
+    this.webSocketServer.updateConfig({
+      key: tlsConfig.keyPrivatePem,
+      cert: tlsConfig.certChainPem
+    });
   }
 }
 
