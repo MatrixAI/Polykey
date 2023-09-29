@@ -26,45 +26,54 @@ type AgentRPCResponseResult<T extends Record<string, JSONValue> = ObjectEmpty> =
     }>;
   } & Omit<T, 'metadata'>;
 
-export type ClaimIdMessage = {
+type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
 };
 
-export type AgentClaimMessage = Partial<ClaimIdMessage> & {
+type AgentClaimMessage = Partial<ClaimIdMessage> & {
   signedTokenEncoded: SignedTokenEncoded;
 };
 
-export type NodeIdMessage = {
+type NodeIdMessage = {
   nodeIdEncoded: NodeIdEncoded;
 };
 
-export type AddressMessage = {
+type AddressMessage = {
   host: string;
   port: number;
 };
 
-export type NodeAddressMessage = NodeIdMessage & AddressMessage;
+type NodeAddressMessage = NodeIdMessage & AddressMessage;
 
-export type HolePunchRelayMessage = {
+type HolePunchRelayMessage = {
   srcIdEncoded: NodeIdEncoded;
   dstIdEncoded: NodeIdEncoded;
   address?: AddressMessage;
 };
 
-export type SignedNotificationEncoded = {
+type SignedNotificationEncoded = {
   signedNotificationEncoded: SignedNotification;
 };
 
-export type VaultInfo = {
+type VaultInfo = {
   vaultIdEncoded: VaultIdEncoded;
   vaultName: VaultName;
 };
 
-export type VaultsScanMessage = VaultInfo & {
+type VaultsScanMessage = VaultInfo & {
   vaultPermissions: Array<VaultAction>;
 };
 
 export type {
   AgentRPCRequestParams,
-  AgentRPCResponseResult
+  AgentRPCResponseResult,
+  ClaimIdMessage,
+  AgentClaimMessage,
+  NodeIdMessage,
+  AddressMessage,
+  NodeAddressMessage,
+  HolePunchRelayMessage,
+  SignedNotificationEncoded,
+  VaultInfo,
+  VaultsScanMessage,
 };
