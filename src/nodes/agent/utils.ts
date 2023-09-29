@@ -1,5 +1,5 @@
-import type { NodeId } from '../ids/types';
-import * as keysUtils from '../keys/utils';
+import type { NodeId } from '../../ids/types';
+import * as keysUtils from '../../keys/utils';
 
 /**
  * Used to extract the NodeId from the connection metadata.
