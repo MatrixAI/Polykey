@@ -85,9 +85,11 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -121,6 +123,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   });
 
   afterEach(async () => {
+    await taskManager.stopProcessing();
     await taskManager.stopTasks();
     await nodeManager?.stop();
     await nodeConnectionManager?.stop();
@@ -148,7 +151,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 500,
+      options: {
+        connectionIdleTimeoutTime: 500,
+      },
     });
     nodeManager = new NodeManager({
       db,
@@ -200,7 +205,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 1000,
+      options: {
+        connectionIdleTimeoutTime: 1000,
+      },
     });
     nodeManager = new NodeManager({
       db,
@@ -267,7 +274,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 1000,
+      options: {
+        connectionIdleTimeoutTime: 1000,
+      },
     });
     nodeManager = new NodeManager({
       db,
@@ -318,8 +327,10 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 5000,
-      connectionConnectTimeoutTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
     nodeManager = new NodeManager({
       db,
@@ -355,8 +366,10 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 5000,
-      connectionConnectTimeoutTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
     nodeManager = new NodeManager({
       db,
@@ -398,8 +411,10 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      connectionIdleTimeoutTime: 5000,
-      connectionConnectTimeoutTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
     nodeManager = new NodeManager({
       db,

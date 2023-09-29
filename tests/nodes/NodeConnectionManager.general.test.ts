@@ -121,9 +121,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      }
     });
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -162,9 +164,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
   afterEach(async () => {
     logger.info('AFTER EACH');
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await nodeManager?.stop();
     await nodeConnectionManager?.stop();
-    await taskManager.stopTasks();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -225,8 +228,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: undefined,
     });
@@ -276,8 +281,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: undefined,
     });
@@ -320,8 +327,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: undefined,
     });
@@ -399,8 +408,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: undefined,
     });
@@ -478,8 +489,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
       seedNodes: undefined,
     });

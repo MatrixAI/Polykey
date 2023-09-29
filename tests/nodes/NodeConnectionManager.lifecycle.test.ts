@@ -102,9 +102,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      }
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -135,13 +137,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger,
     });
     serverAddress = {
-      host: quicServer.host as Host,
-      port: quicServer.port as Port,
+      host: quicServer.host as unknown as Host,
+      port: quicServer.port as unknown as Port,
     };
   });
 
   afterEach(async () => {
-    await taskManager.stop();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
@@ -152,13 +155,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await gestaltGraph.destroy();
     await acl.stop();
     await acl.destroy();
+    await taskManager.stop();
     await taskManager.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
 
-    await rpcServer.destroy(true);
+    await rpcServer.destroy({ force: true });
     await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
     await serverSocket.stop({ force: true });
   });
@@ -169,7 +173,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      seedNodes: undefined,
+      seedNodes: undefined
     });
     nodeManager = new NodeManager({
       db,
@@ -565,7 +569,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
       localHost as Host,
-      quicServer.port as Port,
+      quicServer.port as unknown as Port,
     );
     expect(result).toBeTrue();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
@@ -599,6 +603,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       serverNodeId,
       localHost as Host,
       12345 as Port,
+      {timer: 100},
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
@@ -632,7 +637,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
       localHost as Host,
-      quicServer.port as Port,
+      quicServer.port as unknown as Port,
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();

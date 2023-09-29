@@ -229,7 +229,7 @@ class NodeConnectionManager {
     nodeGraph: NodeGraph;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
-    options: Partial<NodesOptions>;
+    options?: Partial<NodesOptions>;
     logger?: Logger;
   }) {
     const optionsDefaulted = utils.mergeObjects(options, {
