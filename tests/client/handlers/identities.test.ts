@@ -20,7 +20,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { IdentitiesAuthenticateHandler } from '@/client/handlers/identitiesAuthenticate';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as validationErrors from '@/validation/errors';

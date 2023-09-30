@@ -3,15 +3,15 @@ import type {
   JSONRPCResponse,
   MiddlewareFactory,
   ServerManifest,
-} from '../rpc/types';
+} from '@matrixai/rpc/dist/types';
 import type { TLSConfig } from '../network/types';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as errors from './errors';
 import * as events from './events';
 import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
-import RPCServer from '../rpc/RPCServer';
-import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import config from '../config';
 
 interface ClientService extends CreateDestroyStartStop {}

@@ -26,7 +26,6 @@ export * as keys from './keys';
 export * as network from './network';
 export * as nodes from './nodes';
 export * as notifications from './notifications';
-export * as rpc from './rpc';
 export * as schema from './schema';
 export * as sessions from './sessions';
 export * as sigchain from './sigchain';

@@ -7,7 +7,7 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
 import { bytes2BigInt, never } from "../utils";
-import * as rpcErrors from '../rpc/errors';
+import * as rpcErrors from '@matrixai/rpc/dist/errors';
 import { CertificatePEM } from "@/keys/types";
 import { utils as quicUtils } from '@matrixai/quic';
 
@@ -336,7 +336,7 @@ const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
   if (reason instanceof rpcErrors.ErrorRPCMessageLength) return 2;
   if (reason instanceof rpcErrors.ErrorRPCMissingResponse) return 3;
   if (reason instanceof rpcErrors.ErrorRPCOutputStreamError) return 4;
-  if (reason instanceof rpcErrors.ErrorPolykeyRemote) return 5;
+  if (reason instanceof rpcErrors.ErrorRPCRemote) return 5;
   if (reason instanceof rpcErrors.ErrorRPCStreamEnded) return 6;
   if (reason instanceof rpcErrors.ErrorRPCTimedOut) return 7;
   return 0;
@@ -353,8 +353,9 @@ const codeToReason = (_type: 'read' | 'write', code: number): any => {
     case 1: return new rpcErrors.ErrorRPCHandlerFailed();
     case 2: return new rpcErrors.ErrorRPCMessageLength();
     case 3: return new rpcErrors.ErrorRPCMissingResponse();
-    case 4: return new rpcErrors.ErrorRPCOutputStreamError();
-    case 5: return new rpcErrors.ErrorPolykeyRemote();
+    // FIXME: StreamError requires constructor paramaters, not sure if this is needed
+    case 4: return new rpcErrors.ErrorRPCOutputStreamError("TODO", {});
+    case 5: return new rpcErrors.ErrorRPCRemote();
     case 6: return new rpcErrors.ErrorRPCStreamEnded();
     case 7: return new rpcErrors.ErrorRPCTimedOut();
     // base cases

@@ -8,7 +8,7 @@ import type ACL from '../../../acl/ACL';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
 import * as nodesErrors from '../../errors';
-import { DuplexHandler } from '../../../rpc/handlers';
+import { DuplexHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Claims a node

@@ -11,7 +11,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
-import * as rpcErrors from '@/rpc/errors';
+import * as rpcErrors from '@matrixai/rpc/dist/errors';
 
 describe('nodes/utils', () => {
   const logger = new Logger(`nodes/utils test`, LogLevel.WARN, [

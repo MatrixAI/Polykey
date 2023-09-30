@@ -10,7 +10,7 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { KeysCertsChainGetHandler } from '@/client/handlers/keysCertsChainGet';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import CertManager from '@/keys/CertManager';

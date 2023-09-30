@@ -2,7 +2,7 @@ import type { DataMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import { never } from '../../utils/index';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class KeysDecryptHandler extends UnaryHandler<
   {

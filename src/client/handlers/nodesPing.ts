@@ -5,7 +5,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesPingHandler extends UnaryHandler<
   {

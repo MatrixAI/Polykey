@@ -11,7 +11,7 @@ import * as validationUtils from '../../validation/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsPermissionUnsetHandler extends UnaryHandler<
   {

@@ -1,14 +1,14 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
-import type { RPCStream } from '@/rpc/types';
+import type { RPCStream } from '@matrixai/rpc/dist/types';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
 import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesEvents from '@/nodes/events';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import NodeConnection from '@/nodes/NodeConnection';
 import { promise } from '@/utils';
 import * as networkUtils from '@/network/utils';
@@ -80,11 +80,10 @@ describe(`${NodeConnection.name}`, () => {
       logger: logger.getChild(`${QUICServer.name}`),
     });
     rpcServer = await RPCServer.createRPCServer({
-      handlerTimeoutGraceTime: 1000,
+      idGen: async () => null,
       handlerTimeoutTime: 5000,
       logger: logger.getChild(`${RPCServer.name}`),
       manifest: {},
-      sensitive: false,
     });
     // Setting up handling
     logger.info('Setting up connection handling for server');
@@ -109,7 +108,7 @@ describe(`${NodeConnection.name}`, () => {
   afterEach(async () => {
     await Promise.all(nodeConnections.map((nc) => nc.destroy({ force: true })));
     await clientSocket.stop({ force: true });
-    await rpcServer.destroy({ force: true });
+    await rpcServer.destroy(true);
     await quicServer.stop({ force: true }); // Ignore errors due to socket already stopped
     await serverSocket.stop({ force: true });
   });

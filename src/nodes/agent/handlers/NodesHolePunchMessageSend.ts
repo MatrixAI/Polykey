@@ -15,7 +15,7 @@ import * as agentErrors from '../errors';
 import * as nodesUtils from '../../utils';
 import * as validation from '../../../validation';
 import * as utils from '../../../utils';
-import { UnaryHandler } from '../../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Sends a hole punch message to a node

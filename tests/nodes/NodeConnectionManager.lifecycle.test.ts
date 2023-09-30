@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';

@@ -19,9 +19,9 @@ import { AbstractEvent, EventAll } from "@matrixai/events";
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import RPCClient from '../rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import * as networkUtils from '../network/utils';
-import * as rpcUtils from '../rpc/utils';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 import config from '../config';
@@ -256,8 +256,9 @@ class NodeConnection<M extends ClientManifest> {
       throwFunction,
     );
     const rpcClient = await RPCClient.createRPCClient<M>({
+      idGen: async () => null,
       manifest,
-      middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async () => {
         return quicConnection.newStream();
       },
@@ -341,8 +342,9 @@ class NodeConnection<M extends ClientManifest> {
     logger.info(`Creating ${this.name}`);
     // Creating RPCClient
     const rpcClient = await RPCClient.createRPCClient<M>({
+      idGen: async () => null,
       manifest,
-      middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async (_ctx) => {
         return quicConnection.newStream();
       },

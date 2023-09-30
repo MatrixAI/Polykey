@@ -24,7 +24,7 @@ import TaskManager from '@/tasks/TaskManager';
 import { GestaltsActionsGetByIdentityHandler } from '@/client/handlers/gestaltsActionsGetByIdentity';
 import { GestaltsActionsSetByIdentityHandler } from '@/client/handlers/gestaltsActionsSetByIdentity';
 import { GestaltsActionsUnsetByIdentityHandler } from '@/client/handlers/gestaltsActionsUnsetByIdentity';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';

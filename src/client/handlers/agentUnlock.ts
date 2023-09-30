@@ -1,6 +1,6 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { ContainerType } from '../../rpc/types';
-import { UnaryHandler } from '../../rpc/handlers';
+import type { ContainerType } from '@matrixai/rpc/dist/types';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class AgentUnlockHandler extends UnaryHandler<
   ContainerType,

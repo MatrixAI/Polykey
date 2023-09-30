@@ -13,7 +13,7 @@ import * as vaultsErrors from '../../../vaults/errors';
 import * as nodesUtils from '../../utils';
 import * as agentUtils from '../utils';
 import * as utils from '../../../utils';
-import { RawHandler } from '../../../rpc/handlers';
+import { RawHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Gets the git info of a vault.

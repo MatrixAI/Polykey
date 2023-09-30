@@ -9,7 +9,7 @@ import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodeErrors from '../../nodes/errors';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesAddHandler extends UnaryHandler<
   {

@@ -9,7 +9,7 @@ import { IdInternal } from '@matrixai/id';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsPermissionGetHandler extends ServerHandler<
   {

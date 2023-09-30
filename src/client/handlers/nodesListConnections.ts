@@ -2,7 +2,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeConnectionMessage } from '../handlers/types';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesListConnectionsHandler extends ServerHandler<
   {

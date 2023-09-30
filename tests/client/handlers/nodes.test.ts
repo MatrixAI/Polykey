@@ -11,7 +11,7 @@ import { DB } from '@matrixai/db';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { NodesAddHandler } from '@/client/handlers/nodesAdd';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import * as nodesUtils from '@/nodes/utils';
 import NodeManager from '@/nodes/NodeManager';

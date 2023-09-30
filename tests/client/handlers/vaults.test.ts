@@ -20,7 +20,7 @@ import GestaltGraph from '@/gestalts/GestaltGraph';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import {
   vaultsCreate,
   VaultsCreateHandler,

@@ -63,4 +63,3 @@ export * from './notifications/events';
 export * from './schema/events';
 export * from './status/events';
 export * from './tasks/events';
-export * from './rpc/events';

@@ -1,7 +1,7 @@
 import type { NodeId } from '@/ids/types';
 import { IdInternal } from '@matrixai/id';
+import * as rpcErrors from '@matrixai/rpc/dist/errors';
 import * as keysUtils from '@/keys/utils';
-import * as rpcErrors from '@/rpc/errors';
 import { promise } from '@/utils';
 
 function generateRandomNodeId(): NodeId {
