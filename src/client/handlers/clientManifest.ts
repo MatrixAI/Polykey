@@ -53,7 +53,7 @@ import type {
   VaultsVersionMessage,
 } from './types';
 import type { GestaltAction } from '../../gestalts/types';
-import { ServerCaller, UnaryCaller } from '../../rpc/callers';
+import { ServerCaller, UnaryCaller } from '@matrixai/rpc/dist/callers';
 
 const agentLockAll = new UnaryCaller<
   ClientRPCRequestParams,

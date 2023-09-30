@@ -6,7 +6,7 @@ import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsCloneHandler extends UnaryHandler<
   {

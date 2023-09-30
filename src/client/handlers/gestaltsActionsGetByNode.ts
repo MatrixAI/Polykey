@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
 import type { NodeId } from '../../ids/index';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';

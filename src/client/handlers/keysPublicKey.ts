@@ -2,7 +2,7 @@ import type { PasswordMessage, PublicKeyMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import * as keysUtils from '../../keys/utils/index';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class KeysPublicKeyHandler extends UnaryHandler<
   {

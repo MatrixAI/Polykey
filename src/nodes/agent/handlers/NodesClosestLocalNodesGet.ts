@@ -10,7 +10,7 @@ import type { NodeId } from '../../../ids';
 import * as validation from '../../../validation';
 import * as nodesUtils from '../../utils';
 import * as utils from '../../../utils';
-import { ServerHandler } from '../../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Gets the closest local nodes to a target node

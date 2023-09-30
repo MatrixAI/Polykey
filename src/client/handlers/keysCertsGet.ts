@@ -1,7 +1,7 @@
 import type { CertMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type CertManager from '../../keys/CertManager';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class KeysCertsGetHandler extends UnaryHandler<
   {

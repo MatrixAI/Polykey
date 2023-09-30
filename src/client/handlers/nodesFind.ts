@@ -6,7 +6,7 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesFindHandler extends UnaryHandler<
   {

@@ -9,7 +9,7 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { AgentLockAllHandler } from '@/client/handlers/agentLockAll';
-import RPCClient from '@/rpc/RPCClient';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import {
@@ -26,7 +26,7 @@ import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import Status from '@/status/Status';
 import CertManager from '@/keys/CertManager';
-import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import * as clientUtilsAuthMiddleware from '@/client/utils/authenticationMiddleware';
 import * as clientUtils from '@/client/utils';
 import ClientService from '@/client/ClientService';

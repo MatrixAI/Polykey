@@ -5,7 +5,7 @@ import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsSecretsRenameHandler extends UnaryHandler<
   {

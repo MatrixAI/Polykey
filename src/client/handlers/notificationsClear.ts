@@ -1,7 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class NotificationsClearHandler extends UnaryHandler<
   {

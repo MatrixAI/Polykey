@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids/index';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type ACL from '../../acl/ACL';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';

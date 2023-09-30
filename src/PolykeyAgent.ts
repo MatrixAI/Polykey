@@ -11,8 +11,8 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import RPCServer from './rpc/RPCServer';
-import * as rpcUtilsMiddleware from './rpc/utils/middleware';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import KeyRing from './keys/KeyRing';

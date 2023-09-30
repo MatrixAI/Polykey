@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';
@@ -14,7 +15,6 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import { promise, sleep } from '@/utils';
 import * as nodesErrors from '@/nodes/errors';
 import NodeConnection from '@/nodes/NodeConnection';
-import RPCServer from '@/rpc/RPCServer';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
@@ -77,11 +77,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     })
     rpcServer = await RPCServer.createRPCServer({
-      handlerTimeoutGraceTime: 1000,
+      idGen: async () => null,
       handlerTimeoutTime: 5000,
       logger: logger.getChild(`${RPCServer.name}`),
       manifest: {}, // TODO: test server manifest
-      sensitive: false,
     });
 
     // Setting up client dependencies
@@ -121,7 +120,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await rpcServer.destroy({ force: true });
+    await rpcServer.destroy(true);
     await nodeConnectionManagerPeer.stop();
   });
 

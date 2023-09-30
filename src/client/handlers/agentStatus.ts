@@ -3,7 +3,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class AgentStatusHandler extends UnaryHandler<
   {

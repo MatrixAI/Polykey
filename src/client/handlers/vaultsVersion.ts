@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsVersionHandler extends UnaryHandler<
   {
