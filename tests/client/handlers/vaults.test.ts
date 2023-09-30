@@ -13,6 +13,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import VaultManager from '@/vaults/VaultManager';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
@@ -20,7 +21,6 @@ import GestaltGraph from '@/gestalts/GestaltGraph';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import {
   vaultsCreate,
   VaultsCreateHandler,

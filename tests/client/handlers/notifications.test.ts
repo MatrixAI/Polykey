@@ -9,10 +9,10 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { NotificationsClearHandler } from '@/client/handlers/notificationsClear';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import {
   notificationsClear,
