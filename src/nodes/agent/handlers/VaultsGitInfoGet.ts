@@ -10,7 +10,7 @@ import * as agentErrors from '../errors';
 import * as validation from '../../../validation';
 import * as vaultsUtils from '../../../vaults/utils';
 import * as vaultsErrors from '../../../vaults/errors';
-import * as nodesUtils from '../../../nodes/utils';
+import * as nodesUtils from '../../utils';
 import * as agentUtils from '../utils';
 import * as utils from '../../../utils';
 import { RawHandler } from '../../../rpc/handlers';

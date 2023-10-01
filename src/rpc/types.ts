@@ -309,6 +309,12 @@ type ClientManifest = Record<string, Caller>;
 
 type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';
 
+type HandlerTypes<T> = T extends Handler<infer Container, infer Input, infer Output> ? {
+  container: Container;
+  input: Input;
+  output: Output;
+} : never;
+
 type MapCallers<T extends ClientManifest> = {
   [K in keyof T]: ConvertCaller<T[K]>;
 };
@@ -342,6 +348,7 @@ export type {
   ServerManifest,
   ClientManifest,
   HandlerType,
+  HandlerTypes,
   MapCallers,
   ClientMetadata,
 };

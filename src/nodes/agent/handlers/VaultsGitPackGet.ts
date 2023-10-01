@@ -9,7 +9,7 @@ import { ReadableStream } from 'stream/web';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
 import * as validation from '../../../validation';
-import * as nodesUtils from '../../../nodes/utils';
+import * as nodesUtils from '../../utils';
 import * as vaultsUtils from '../../../vaults/utils';
 import * as vaultsErrors from '../../../vaults/errors';
 import * as utils from '../../../utils';
