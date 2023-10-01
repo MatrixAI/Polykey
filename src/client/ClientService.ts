@@ -63,7 +63,7 @@ class ClientService {
     logger.info(`Creating ${this.name}`);
 
     const rpcServer = await RPCServer.createRPCServer({
-      handlerTimeoutGraceTime: 2000, // TODO: this will be removed.
+      idGen: async () => null,
       handlerTimeoutTime: rpcCallTimeoutTime,
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
@@ -71,7 +71,6 @@ class ClientService {
         middlewareFactory,
         rpcParserBufferSize,
       ),
-      sensitive: false,
       logger: logger.getChild(RPCServer.name),
     });
 
@@ -165,7 +164,7 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.rpcServer.destroy({ force });
+    await this.rpcServer.destroy(force);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
