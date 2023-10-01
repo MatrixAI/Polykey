@@ -79,7 +79,7 @@
     "@matrixai/rpc": "^0.1.8",
     "@matrixai/timer": "^1.1.1",
     "@matrixai/workers": "^1.3.7",
-    "@matrixai/ws": "^1.1.0",
+    "@matrixai/ws": "^1.1.3",
     "@peculiar/asn1-pkcs8": "^2.3.0",
     "@peculiar/asn1-schema": "^2.3.0",
     "@peculiar/asn1-x509": "^2.3.0",
