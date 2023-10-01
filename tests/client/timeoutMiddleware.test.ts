@@ -19,8 +19,8 @@ import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
-import { WebSocketClient, WebSocketStream } from '@matrixai/ws';
-import { promise, sleep } from '@/utils';
+import { WebSocketClient } from '@matrixai/ws';
+import { promise } from '@/utils';
 import ClientService from '@/client/ClientService';
 import * as testsUtils from '../utils';
 
@@ -119,7 +119,7 @@ describe('timeoutMiddleware', () => {
       },
       host: localhost,
       port: clientService.port,
-      logger,
+      logger
     });
     const rpcClient = await RPCClient.createRPCClient({
       idGen: async () => null,
@@ -129,10 +129,7 @@ describe('timeoutMiddleware', () => {
           ClientRPCResponseResult
         >(),
       },
-      streamFactory: async () => {
-        const stream = await clientClient.connection.newStream();
-        return stream;
-      },
+      streamFactory: () => clientClient.connection.newStream(),
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
@@ -185,7 +182,7 @@ describe('timeoutMiddleware', () => {
     });
     clientClient = await WebSocketClient.createWebSocketClient({
       config: {
-        verifyPeer: false
+        verifyPeer: false,
       },
       host: localhost,
       port: clientService.port,
@@ -199,10 +196,7 @@ describe('timeoutMiddleware', () => {
           ClientRPCResponseResult
         >(),
       },
-      streamFactory: async () => {
-        const stream = await clientClient.connection.newStream();
-        return stream;
-      },
+      streamFactory: async () => clientClient.connection.newStream(),
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
