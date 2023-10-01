@@ -16,7 +16,7 @@ import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
 import type { ConnectionData, Host, Hostname, Port } from '../network/types';
 import type { TLSConfig } from '../network/types';
-import type { HolePunchRelayMessage } from '../agent/handlers/types';
+import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
@@ -33,15 +33,15 @@ import * as nodesEvents from './events';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
-import { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
+import manifestClientAgent from './agent/callers';
 import * as utils from '../utils';
 import config from '../config';
 import { running, status } from "@matrixai/async-init";
 
-type AgentClientManifest = typeof agentClientManifest;
+type ManifestClientAgent = typeof manifestClientAgent;
 
 type ConnectionAndTimer = {
-  connection: NodeConnection<AgentClientManifest>;
+  connection: NodeConnection<ManifestClientAgent>;
   timer: Timer | null;
   usageCount: number;
 };
@@ -467,7 +467,7 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     ctx?: Partial<ContextTimed>,
-  ): Promise<ResourceAcquire<NodeConnection<AgentClientManifest>>> {
+  ): Promise<ResourceAcquire<NodeConnection<ManifestClientAgent>>> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
@@ -524,7 +524,7 @@ class NodeConnectionManager {
    */
   public withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
+    f: (conn: NodeConnection<ManifestClientAgent>) => Promise<T>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -535,7 +535,7 @@ class NodeConnectionManager {
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
+    f: (conn: NodeConnection<ManifestClientAgent>) => Promise<T>,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
@@ -559,7 +559,7 @@ class NodeConnectionManager {
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
     g: (
-      conn: NodeConnection<AgentClientManifest>,
+      conn: NodeConnection<ManifestClientAgent>,
     ) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
@@ -807,10 +807,10 @@ class NodeConnectionManager {
     );
     const iceProm = this.initiateHolePunch(nodeIds, ctx);
     const connection =
-      await NodeConnection.createNodeConnection<AgentClientManifest>(
+      await NodeConnection.createNodeConnection<ManifestClientAgent>(
         {
           targetNodeIds: nodeIds,
-          manifest: agentClientManifest,
+          manifest: manifestClientAgent,
           crypto: this.quicClientCrypto,
           targetHost: address.host,
           targetPort: address.port,
@@ -895,11 +895,11 @@ class NodeConnectionManager {
           return;
         }
         const nodeConnection =
-          await NodeConnection.createNodeConnectionReverse<AgentClientManifest>(
+          await NodeConnection.createNodeConnectionReverse<ManifestClientAgent>(
             {
               nodeId,
               certChain,
-              manifest: agentClientManifest,
+              manifest: manifestClientAgent,
               quicConnection: quicConnection,
               logger: this.logger.getChild(
                 `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
@@ -920,7 +920,7 @@ class NodeConnectionManager {
    */
   protected addConnection(
     nodeId: NodeId,
-    nodeConnection: NodeConnection<AgentClientManifest>,
+    nodeConnection: NodeConnection<ManifestClientAgent>,
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
