@@ -24,11 +24,11 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port } from '../network/types';
 import type { SignedTokenEncoded } from '../tokens/types';
 import type { ClaimLinkNode } from '../claims/payloads/index';
-import type { AgentClaimMessage } from '../agent/handlers/types';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-} from '../agent/types';
+  AgentClaimMessage
+} from './agent/types';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
