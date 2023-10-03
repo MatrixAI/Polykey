@@ -40,7 +40,7 @@ import * as nodesEvents from './nodes/events';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
-import { serverManifest as agentServerManifest } from './agent/handlers';
+import agentServerManifest from './nodes/agent/handlers';
 
 /**
  * Optional configuration for `PolykeyAgent`.
