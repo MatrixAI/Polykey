@@ -25,7 +25,7 @@ import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventAll } from "@matrixai/events";
-import { QUICSocket, QUICServer, events as quicEvents } from '@matrixai/quic';
+import { QUICSocket, QUICServer, events as quicEvents, utils as quicUtils } from '@matrixai/quic';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -274,10 +274,15 @@ class NodeConnectionManager {
       key: keysUtils.generateKey(),
       ops: {
         async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
-          return keysUtils.macWithKey(
+          const sig = keysUtils.macWithKey(
             utils.bufferWrap(key) as Key,
             utils.bufferWrap(data),
           );
+          // convert the MAC to an ArrayBuffer
+          const arrayBuffer = new ArrayBuffer(sig.byteLength);
+          const buffer = Buffer.from(arrayBuffer)
+          sig.copy(buffer);
+          return arrayBuffer;
         },
         async verify(
           key: ArrayBuffer,
@@ -868,9 +873,9 @@ class NodeConnectionManager {
   protected async handleConnectionReverse(quicConnection: QUICConnection) {
     // Checking NodeId
     // No specific error here, validation is handled by the QUICServer
-    const certChain = quicConnection.getRemoteCertsChain().map((pem) => {
+    const certChain = quicConnection.getRemoteCertsChain().map((der) => {
       const cert = keysUtils.certFromPEM(
-        Buffer.from(pem).toString() as CertificatePEM,
+        quicUtils.derToPEM(der) as CertificatePEM,
       );
       if (cert == null) utils.never();
       return cert;

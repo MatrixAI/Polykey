@@ -5,11 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
-import { QUICServer, QUICSocket } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import Sigchain from '@/sigchain/Sigchain';
@@ -22,7 +20,6 @@ import * as nodesErrors from '@/nodes/errors';
 import NodeConnection from '../../src/nodes/NodeConnection';
 import RPCServer from '../../src/rpc/RPCServer';
 import * as tlsUtils from '../utils/tls';
-import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -32,7 +29,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   ]);
   const localHost = '127.0.0.1' as Host;
   const password = 'password';
-  const crypto = tlsTestUtils.createCrypto();
 
   let dataDir: string;
 
@@ -41,8 +37,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let serverNodeId: NodeId;
   let clientNodeId: NodeId;
   let serverNodeIdEncoded: NodeIdEncoded;
-  let serverSocket: QUICSocket;
-  let quicServer: QUICServer;
+  let keyRingPeer: KeyRing;
+  let nodeConnectionManagerPeer: NodeConnectionManager;
   let rpcServer: RPCServer;
   let serverAddress: NodeAddress;
 
@@ -53,7 +49,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
-  let nodeManager: NodeManager;
 
   let nodeConnectionManager: NodeConnectionManager;
 
@@ -61,6 +56,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    const keysPathPeer = path.join(dataDir, 'keysPeer');
     const serverKeyPair = keysUtils.generateKeyPair();
     const clientKeyPair = keysUtils.generateKeyPair();
     serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
@@ -68,24 +64,26 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
     serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
     clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
-    serverSocket = new QUICSocket({
-      logger: logger.getChild('serverSocket'),
+    keyRingPeer = await KeyRing.createKeyRing({
+      password,
+      keysPath: keysPathPeer,
+      logger,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      }
+    })
+    nodeConnectionManagerPeer = new NodeConnectionManager({
+      keyRing: keyRingPeer,
+      logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
+      nodeGraph: {} as NodeGraph,
+      tlsConfig: serverTlsConfig,
+      seedNodes: undefined
     });
-    await serverSocket.start({
+    await nodeConnectionManagerPeer.start({
       host: localHost,
-    });
-    quicServer = new QUICServer({
-      config: {
-        key: serverTlsConfig.keyPrivatePem,
-        cert: serverTlsConfig.certChainPem,
-      },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
-      socket: serverSocket,
-      logger: logger.getChild(`${QUICServer.name}`),
-    });
+    })
     rpcServer = await RPCServer.createRPCServer({
       handlerTimeoutGraceTime: 1000,
       handlerTimeoutTime: 5000,
@@ -93,8 +91,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       manifest: {}, // TODO: test server manifest
       sensitive: false,
     });
-
-    await quicServer.start();
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -137,15 +133,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger,
     });
     serverAddress = {
-      host: quicServer.host as unknown as Host,
-      port: quicServer.port as unknown as Port,
+      host: nodeConnectionManagerPeer.host,
+      port: nodeConnectionManagerPeer.port,
     };
   });
 
   afterEach(async () => {
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
@@ -163,11 +158,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.destroy();
 
     await rpcServer.destroy({ force: true });
-    await quicServer.stop({ force: true }).catch(() => {}); // Ignore errors due to socket already stopped
-    await serverSocket.stop({ force: true });
+    await nodeConnectionManagerPeer.stop();
   });
 
-  test('should create connection', async () => {
+  test('NodeConnectionManager readiness', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -175,44 +169,44 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
 
     await nodeConnectionManager.stop();
   });
-
-  test('acquireConnection should create connection', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+  test('NodeConnectionManager consecutive start stops', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
+      seedNodes: undefined
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+
+    await nodeConnectionManager.stop();
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+    await nodeConnectionManager.stop();
+  });
+
+  // FIXME: holding process open for a time. connectionKeepAliveIntervalTime holds the process open, failing to clean up?
+  test('acquireConnection should create connection', async () => {
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      nodeGraph,
+      options: {
+        connectionConnectTimeoutTime: 1000,
+      },
+      logger: logger.getChild(`${NodeConnectionManager.name}Local`),
+      tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -233,17 +227,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -264,17 +247,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -289,8 +261,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     expect(nodesUtils.encodeNodeId(connectionsList[0].nodeId)).toEqual(
       serverNodeIdEncoded,
     );
-    expect(connectionsList[0].address.host).toEqual(quicServer.host);
-    expect(connectionsList[0].address.port).toEqual(quicServer.port);
+    expect(connectionsList[0].address.host).toEqual(nodeConnectionManagerPeer.host);
+    expect(connectionsList[0].address.port).toEqual(nodeConnectionManagerPeer.port);
 
     await nodeConnectionManager.stop();
   });
@@ -303,17 +275,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -342,17 +303,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -389,17 +339,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -426,17 +365,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -471,17 +399,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -515,17 +432,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -551,17 +457,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -569,7 +464,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
       localHost as Host,
-      quicServer.port as unknown as Port,
+      nodeConnectionManagerPeer.port,
     );
     expect(result).toBeTrue();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
@@ -584,17 +479,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -610,7 +494,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  // TODO: this needs the custom node verification logic to work.
   test('should fail to ping node if NodeId does not match', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
@@ -619,17 +502,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost,
     });
@@ -637,7 +509,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
       localHost as Host,
-      quicServer.port as unknown as Port,
+      nodeConnectionManagerPeer.port,
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();
