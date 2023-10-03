@@ -22,9 +22,10 @@ import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
+import * as utils from "@/utils";
 
 describe(`${NodeConnectionManager.name} seednodes test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -178,51 +179,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await remotePolykeyAgent2.stop();
   });
 
-  test('starting should add seed nodes to the node graph', async () => {
-    const nodeId1 = testNodesUtils.generateRandomNodeId();
-    const nodeId2 = testNodesUtils.generateRandomNodeId();
-    const nodeId3 = testNodesUtils.generateRandomNodeId();
-    const dummySeedNodes: SeedNodes = {
-      [nodesUtils.encodeNodeId(nodeId1)]: testAddress,
-      [nodesUtils.encodeNodeId(nodeId2)]: testAddress,
-      [nodesUtils.encodeNodeId(nodeId3)]: testAddress,
-    };
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      logger: logger.getChild(NodeConnectionManager.name),
-      nodeGraph,
-      tlsConfig,
-      seedNodes: dummySeedNodes,
-    });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-    await nodeConnectionManager.start({
-      host: localHost as Host,
-    });
-    await taskManager.startProcessing();
-
-    const seedNodes = nodeConnectionManager.getSeedNodes();
-    expect(seedNodes).toContainEqual(nodeId1);
-    expect(seedNodes).toContainEqual(nodeId2);
-    expect(seedNodes).toContainEqual(nodeId3);
-    expect(await nodeGraph.getNode(seedNodes[0])).toBeDefined();
-    expect(await nodeGraph.getNode(seedNodes[1])).toBeDefined();
-    expect(await nodeGraph.getNode(seedNodes[2])).toBeDefined();
-    const dummyNodeId = testNodesUtils.generateRandomNodeId();
-    expect(await nodeGraph.getNode(dummyNodeId)).toBeUndefined();
-
-    await nodeConnectionManager.stop();
-  });
   test('should synchronise nodeGraph', async () => {
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -231,9 +191,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         connectionKeepAliveIntervalTime: 1000,
       },
       tlsConfig,
-      seedNodes: {
-        [remoteNodeIdEncoded1]: remoteAddress1,
-      },
+      seedNodes,
     });
     nodeManager = new NodeManager({
       db,
@@ -246,6 +204,19 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
+    // add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
 
     const dummyNodeId = testNodesUtils.generateRandomNodeId();
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
@@ -263,6 +234,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeConnectionManager.stop();
   });
   test('should call refreshBucket when syncing nodeGraph', async () => {
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
     const mockedRefreshBucket = jest.spyOn(
       NodeManager.prototype,
       'refreshBucket',
@@ -277,9 +251,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         connectionKeepAliveIntervalTime: 500,
       },
       tlsConfig,
-      seedNodes: {
-        [remoteNodeIdEncoded1]: remoteAddress1,
-      },
+      seedNodes,
     });
     nodeManager = new NodeManager({
       db,
@@ -292,6 +264,19 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
+    // add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -316,6 +301,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
 
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -324,9 +312,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         connectionKeepAliveIntervalTime: 1000,
       },
       tlsConfig,
-      seedNodes: {
-        [remoteNodeIdEncoded1]: remoteAddress1,
-      },
+      seedNodes,
     });
     nodeManager = new NodeManager({
       db,
@@ -339,6 +325,19 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
+    // add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -361,6 +360,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
 
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -369,9 +371,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         connectionKeepAliveIntervalTime: 1000,
       },
       tlsConfig,
-      seedNodes: {
-        [remoteNodeIdEncoded1]: remoteAddress1,
-      },
+      seedNodes,
     });
     nodeManager = new NodeManager({
       db,
@@ -384,6 +384,19 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
+    // add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -401,6 +414,9 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeConnectionManager.stop();
   });
   test('refreshBucket delays should be reset after finding less than 20 nodes', async () => {
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -409,9 +425,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
         connectionKeepAliveIntervalTime: 1000,
       },
       tlsConfig,
-      seedNodes: {
-        [remoteNodeIdEncoded1]: remoteAddress1,
-      },
+      seedNodes,
     });
     nodeManager = new NodeManager({
       db,
@@ -424,6 +438,19 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
+    // add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
