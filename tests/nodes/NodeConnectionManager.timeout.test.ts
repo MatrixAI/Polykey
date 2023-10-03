@@ -25,7 +25,7 @@ import * as tlsTestUtils from '../utils/tls';
 describe(`${NodeConnectionManager.name} timeout test`, () => {
   const logger = new Logger(
     `${NodeConnection.name} timeout test`,
-    LogLevel.WARN,
+    LogLevel.INFO,
     [
       new StreamHandler(
         formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -48,7 +48,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
-  let nodeManager: NodeManager;
   let nodeConnectionManager: NodeConnectionManager;
   let tlsConfig: TLSConfig;
 
@@ -75,8 +74,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteAddress1 = {
-      host: remotePolykeyAgent1.nodeConnectionManager.host as Host,
-      port: remotePolykeyAgent1.nodeConnectionManager.port as Port,
+      host: remotePolykeyAgent1.nodeConnectionManager.host,
+      port: remotePolykeyAgent1.nodeConnectionManager.port,
     };
 
     // Setting up client dependencies
@@ -123,9 +122,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   });
 
   afterEach(async () => {
+    console.timeEnd();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
@@ -144,7 +143,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await remotePolykeyAgent1.stop();
   });
 
-  test('starting should add seed nodes to the node graph', async () => {
+  test('connection should timeout after connectionIdleTimeoutTime', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -152,31 +151,22 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       tlsConfig,
       seedNodes: undefined,
       options: {
-        connectionIdleTimeoutTime: 500,
+        connectionConnectTimeoutTime: 1000,
+        connectionIdleTimeoutTime: 100,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
     await taskManager.startProcessing();
 
+    console.log(remoteNodeId1, remoteAddress1);
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
-
     // @ts-ignore: kidnap connections
     const connections = nodeConnectionManager.connections;
     // @ts-ignore: kidnap connections
     const connectionLocks = nodeConnectionManager.connectionLocks;
+    console.time();
     await nodeConnectionManager.withConnF(remoteNodeId1, async () => {});
     const connAndLock = connections.get(
       remoteNodeId1.toString() as NodeIdString,
@@ -188,7 +178,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     expect(connAndLock?.connection).toBeDefined();
 
     // Wait for timeout
-    await sleep(1000);
+    await sleep(300);
 
     const finalConnAndLock = connections.get(
       remoteNodeId1.toString() as NodeIdString,
