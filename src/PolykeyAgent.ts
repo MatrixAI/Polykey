@@ -41,6 +41,7 @@ import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
+import {NodeAddress} from "./nodes/types";
 
 /**
  * Optional configuration for `PolykeyAgent`.
@@ -226,9 +227,6 @@ class PolykeyAgent {
         password,
         logger: logger.getChild(KeyRing.name),
       });
-      // Remove your own node ID if provided as a seed node
-      const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
-      delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
       db = await DB.createDB({
         dbPath,
         crypto: {
@@ -308,6 +306,9 @@ class PolykeyAgent {
         keyRing,
         logger: logger.getChild(NodeGraph.name),
       });
+      // Remove your own node ID if provided as a seed node
+      const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
+      delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         nodeGraph,
@@ -327,6 +328,19 @@ class PolykeyAgent {
         logger: logger.getChild(NodeManager.name),
       });
       await nodeManager.start();
+      // add seed nodes to the nodeGraph
+      const setNodeProms = new Array<Promise<void>>();
+      for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
+        const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+        if (nodeId == null) utils.never();
+        const setNodeProm = nodeManager.setNode(
+          nodeId,
+          optionsDefaulted.seedNodes[nodeIdEncoded],
+          true,
+        );
+        setNodeProms.push(setNodeProm);
+      }
+      await Promise.all(setNodeProms);
       discovery = await Discovery.createDiscovery({
         db,
         keyRing,
