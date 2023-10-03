@@ -68,7 +68,6 @@ export * from './git/errors';
 export * from './discovery/errors';
 export * from './gestalts/errors';
 export * from './identities/errors';
-export * from './agent/errors';
 export * from './client/errors';
 export * from './network/errors';
 export * from './nodes/errors';

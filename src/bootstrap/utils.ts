@@ -112,15 +112,17 @@ async function bootstrapState({
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        recoveryCode: optionsDefaulted.recoveryCode,
+        privateKey: optionsDefaulted.privateKey,
+        privateKeyPath: optionsDefaulted.privateKeyPath,
+        passwordOpsLimit: optionsDefaulted.passwordOpsLimit,
+        passwordMemLimit: optionsDefaulted.passwordMemLimit,
+        strictMemoryLock: optionsDefaulted.strictMemoryLock,
+      },
       fs,
       logger: logger.getChild(KeyRing.name),
       fresh,
-      recoveryCode: optionsDefaulted.recoveryCode,
-      privateKey: optionsDefaulted.privateKey,
-      privateKeyPath: optionsDefaulted.privateKeyPath,
-      passwordOpsLimit: optionsDefaulted.passwordOpsLimit,
-      passwordMemLimit: optionsDefaulted.passwordMemLimit,
-      strictMemoryLock: optionsDefaulted.strictMemoryLock,
     });
     const db = await DB.createDB({
       dbPath,
@@ -154,9 +156,11 @@ async function bootstrapState({
       keyRing,
       db,
       taskManager,
+      options: {
+        certDuration: optionsDefaulted.certDuration,
+      },
       fresh,
       logger,
-      certDuration: optionsDefaulted.certDuration,
     });
     const sigchain = await Sigchain.createSigchain({
       db,
