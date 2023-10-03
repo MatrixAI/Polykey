@@ -279,10 +279,7 @@ class NodeConnectionManager {
             utils.bufferWrap(data),
           );
           // convert the MAC to an ArrayBuffer
-          const arrayBuffer = new ArrayBuffer(sig.byteLength);
-          const buffer = Buffer.from(arrayBuffer)
-          sig.copy(buffer);
-          return arrayBuffer;
+          return sig.slice().buffer;
         },
         async verify(
           key: ArrayBuffer,

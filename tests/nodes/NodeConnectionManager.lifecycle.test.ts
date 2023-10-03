@@ -8,17 +8,13 @@ import { DB } from '@matrixai/db';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import Sigchain from '@/sigchain/Sigchain';
-import TaskManager from '@/tasks/TaskManager';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import { promise, sleep } from '@/utils';
 import * as nodesErrors from '@/nodes/errors';
-import NodeConnection from '../../src/nodes/NodeConnection';
-import RPCServer from '../../src/rpc/RPCServer';
+import NodeConnection from '@/nodes/NodeConnection';
+import RPCServer from '@/rpc/RPCServer';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
@@ -44,11 +40,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   let keyRing: KeyRing;
   let db: DB;
-  let acl: ACL;
-  let gestaltGraph: GestaltGraph;
   let nodeGraph: NodeGraph;
-  let sigchain: Sigchain;
-  let taskManager: TaskManager;
 
   let nodeConnectionManager: NodeConnectionManager;
 
@@ -109,27 +101,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       dbPath,
       logger,
     });
-    acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
-      logger,
-    });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyRing,
-      logger,
-    });
-    taskManager = await TaskManager.createTaskManager({
-      db,
       logger,
     });
     serverAddress = {
@@ -139,19 +113,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
 
   afterEach(async () => {
-    await taskManager.stopProcessing();
-    await taskManager.stopTasks();
     await nodeConnectionManager?.stop();
-    await sigchain.stop();
-    await sigchain.destroy();
     await nodeGraph.stop();
     await nodeGraph.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    await acl.stop();
-    await acl.destroy();
-    await taskManager.stop();
-    await taskManager.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
@@ -210,7 +174,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
 
     const acquire = await nodeConnectionManager.acquireConnection(serverNodeId);
     const [release] = await acquire();
@@ -230,7 +193,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
 
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
@@ -250,7 +212,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
 
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
@@ -278,7 +239,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
 
@@ -306,7 +266,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
     const randomNodeId = keysUtils.publicKeyToNodeId(
@@ -342,7 +301,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       // Do nothing
     });
@@ -368,7 +326,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     const waitProm = promise<void>();
     const tryConnection = () => {
       return nodeConnectionManager.withConnF(serverNodeId, async () => {
@@ -402,7 +359,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       // Do nothing
     });
@@ -435,7 +391,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     await nodeConnectionManager.withConnF(serverNodeId, async () => {
       // Do nothing
     });
@@ -460,7 +415,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
       localHost as Host,
@@ -482,7 +436,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       serverNodeId,
       localHost as Host,
@@ -505,7 +458,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await taskManager.startProcessing();
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
       localHost as Host,
