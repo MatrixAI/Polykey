@@ -11,12 +11,7 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
 import * as keysUtils from '@/keys/utils';
 import KeyRing from '@/keys/KeyRing';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeGraph from '@/nodes/NodeGraph';
-import Sigchain from '@/sigchain/Sigchain';
-import TaskManager from '@/tasks/TaskManager';
-import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sleep } from '@/utils';
 import { generateRandomNodeId } from './utils';
@@ -25,7 +20,7 @@ import * as tlsTestUtils from '../utils/tls';
 describe(`${NodeConnectionManager.name} timeout test`, () => {
   const logger = new Logger(
     `${NodeConnection.name} timeout test`,
-    LogLevel.INFO,
+    LogLevel.WARN,
     [
       new StreamHandler(
         formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -43,11 +38,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
 
   let keyRing: KeyRing;
   let db: DB;
-  let acl: ACL;
-  let gestaltGraph: GestaltGraph;
   let nodeGraph: NodeGraph;
-  let sigchain: Sigchain;
-  let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let tlsConfig: TLSConfig;
 
@@ -95,50 +86,22 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       dbPath,
       logger,
     });
-    acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
-      logger,
-    });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyRing,
-      logger,
-    });
-    taskManager = await TaskManager.createTaskManager({
-      db,
       logger,
     });
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
-    console.timeEnd();
-    await taskManager.stopProcessing();
-    await taskManager.stopTasks();
     await nodeConnectionManager?.stop();
-    await sigchain.stop();
-    await sigchain.destroy();
     await nodeGraph.stop();
     await nodeGraph.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    await acl.stop();
-    await acl.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
   });
@@ -158,15 +121,12 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
-    console.log(remoteNodeId1, remoteAddress1);
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
     // @ts-ignore: kidnap connections
     const connections = nodeConnectionManager.connections;
     // @ts-ignore: kidnap connections
     const connectionLocks = nodeConnectionManager.connectionLocks;
-    console.time();
     await nodeConnectionManager.withConnF(remoteNodeId1, async () => {});
     const connAndLock = connections.get(
       remoteNodeId1.toString() as NodeIdString,
@@ -199,21 +159,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connectionIdleTimeoutTime: 1000,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
 
@@ -268,21 +216,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connectionIdleTimeoutTime: 1000,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
 
@@ -322,24 +258,12 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connectionConnectTimeoutTime: 200,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
@@ -361,24 +285,12 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connectionConnectTimeoutTime: 200,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
@@ -406,24 +318,12 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
         connectionConnectTimeoutTime: 200,
       },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
