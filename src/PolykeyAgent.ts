@@ -407,9 +407,7 @@ class PolykeyAgent {
           clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
           optionsDefaulted.rpc.parserBufferSize,
         ),
-        sensitive: false,
         handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
         logger: logger.getChild(RPCServer.name + 'Client'),
       });
       clientService = await ClientService.createClientService({
