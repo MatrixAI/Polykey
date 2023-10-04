@@ -409,9 +409,7 @@ class PolykeyAgent {
           clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
           optionsDefaulted.rpc.parserBufferSize,
         ),
-        sensitive: false,
         handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
         logger: logger.getChild(RPCServer.name + 'Client'),
       });
       rpcServerAgent = await RPCServer.createRPCServer({
@@ -431,9 +429,7 @@ class PolykeyAgent {
           undefined,
           optionsDefaulted.rpc.parserBufferSize,
         ),
-        sensitive: true,
         handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
         logger: logger.getChild(RPCServer.name + 'Agent'),
       });
       clientService = await ClientService.createClientService({
@@ -473,7 +469,7 @@ class PolykeyAgent {
       });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await rpcServerAgent?.destroy({ force:  true });
+      await rpcServerAgent?.destroy(true);
       await rpcServerClient?.destroy();
       await clientService?.stop({ force: true });
       await sessionManager?.stop();
