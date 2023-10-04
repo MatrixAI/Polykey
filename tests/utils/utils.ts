@@ -13,7 +13,7 @@ const expectRemoteError = async <T>(
   promise: Promise<T>,
   error,
 ): Promise<T | undefined> => {
-  await expect(promise).rejects.toThrow(rpcErrors.ErrorPolykeyRemote);
+  await expect(promise).rejects.toThrow(rpcErrors.ErrorRPCRemote);
   try {
     return await promise;
   } catch (e) {
