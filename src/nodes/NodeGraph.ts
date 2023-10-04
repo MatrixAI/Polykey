@@ -17,6 +17,7 @@ import {
 import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as nodesEvents from './events';
 import { getUnixtime, never } from '../utils';
 
 /**
@@ -27,6 +28,14 @@ interface NodeGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new nodesErrors.ErrorNodeGraphRunning(),
   new nodesErrors.ErrorNodeGraphDestroyed(),
+  {
+    eventStart: nodesEvents.EventNodeGraphStart,
+    eventStarted: nodesEvents.EventNodeGraphStarted,
+    eventStop: nodesEvents.EventNodeGraphStop,
+    eventStopped: nodesEvents.EventNodeGraphStopped,
+    eventDestroy: nodesEvents.EventNodeGraphDestroy,
+    eventDestroyed: nodesEvents.EventNodeGraphDestroyed,
+  },
 )
 class NodeGraph {
   public static async createNodeGraph({

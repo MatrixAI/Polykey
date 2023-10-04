@@ -1,5 +1,4 @@
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { Host as QUICHost } from '@matrixai/quic';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type { AgentClaimMessage } from '@/agent/handlers/types';
 import type { NodeId } from '@/ids';
@@ -35,7 +34,7 @@ describe('nodesCrossSignClaim', () => {
   ]);
   const password = 'password';
   const crypto = tlsTestsUtils.createCrypto();
-  const localHost = '127.0.0.1' as QUICHost;
+  const localHost = '127.0.0.1';
 
   let dataDir: string;
 

@@ -1,15 +1,16 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
-import type { Host, Hostname, Port, Address } from './types';
-import type { Certificate } from '../keys/types';
+import type { Address, Host, Hostname, Port } from './types';
+import type { Certificate, CertificatePEM } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { NodeAddress } from '../nodes/types';
-import type { CertificatePEM } from '../keys/types';
+import type { X509Certificate } from '@peculiar/x509';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
+import { CryptoError } from '@matrixai/quic/dist/native';
+import { utils as quicUtils } from '@matrixai/quic';
 import * as networkErrors from './errors';
-import { never } from '../utils';
 import * as keysUtils from '../keys/utils';
 
 /**
@@ -217,21 +218,38 @@ function resolvesZeroIP(ip: Host): Host {
  */
 async function verifyServerCertificateChain(
   nodeIds: Array<NodeId>,
-  certPEMChain: Array<string>,
-): Promise<NodeId> {
+  certs: Array<Uint8Array>,
+): Promise<
+  | {
+      result: 'success';
+      nodeId: NodeId;
+    }
+  | {
+      result: 'fail';
+      value: CryptoError;
+    }
+> {
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
-    throw new networkErrors.ErrorCertChainEmpty(
-      'No certificates available to verify',
-    );
+    return {
+      result: 'fail',
+      value: CryptoError.CertificateRequired,
+    };
   }
   if (nodeIds.length === 0) {
     throw new networkErrors.ErrorConnectionNodesEmpty();
   }
-  const certChain = certPEMChain.map((v) => {
-    const cert = keysUtils.certFromPEM(v as CertificatePEM);
-    if (cert == null) never();
-    return cert;
-  });
+  const certChain: Array<Readonly<X509Certificate>> = [];
+  for (const certPEM of certPEMChain) {
+    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
+    if (cert == null) {
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
+    }
+    certChain.push(cert);
+  }
   const now = new Date();
   let certClaim: Certificate | null = null;
   let certClaimIndex: number | null = null;
@@ -239,55 +257,30 @@ async function verifyServerCertificateChain(
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
     if (now < cert.notBefore || now > cert.notAfter) {
-      throw new networkErrors.ErrorCertChainDateInvalid(
-        'Chain certificate date is invalid',
-        {
-          data: {
-            cert,
-            certIndex,
-            notBefore: cert.notBefore,
-            notAfter: cert.notAfter,
-            now,
-          },
-        },
-      );
+      return {
+        result: 'fail',
+        value: CryptoError.CertificateExpired,
+      };
     }
     const certNodeId = keysUtils.certNodeId(cert);
     if (certNodeId == null) {
-      throw new networkErrors.ErrorCertChainNameInvalid(
-        'Chain certificate common name attribute is missing',
-        {
-          data: {
-            cert,
-            certIndex,
-          },
-        },
-      );
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
     }
     const certPublicKey = keysUtils.certPublicKey(cert);
     if (certPublicKey == null) {
-      throw new networkErrors.ErrorCertChainKeyInvalid(
-        'Chain certificate public key is missing',
-        {
-          data: {
-            cert,
-            certIndex,
-          },
-        },
-      );
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
     }
     if (!(await keysUtils.certNodeSigned(cert))) {
-      throw new networkErrors.ErrorCertChainSignatureInvalid(
-        'Chain certificate does not have a valid node-signature',
-        {
-          data: {
-            cert,
-            certIndex,
-            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
-            commonName: certNodeId,
-          },
-        },
-      );
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
     }
     for (const nodeId of nodeIds) {
       if (certNodeId.equals(nodeId)) {
@@ -301,12 +294,10 @@ async function verifyServerCertificateChain(
     if (verifiedNodeId != null) break;
   }
   if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
-    throw new networkErrors.ErrorCertChainUnclaimed(
-      'Node IDs is not claimed by any certificate',
-      {
-        data: { nodeIds },
-      },
-    );
+    return {
+      result: 'fail',
+      value: CryptoError.BadCertificate,
+    };
   }
   if (certClaimIndex > 0) {
     let certParent: Certificate;
@@ -321,20 +312,17 @@ async function verifyServerCertificateChain(
           keysUtils.certPublicKey(certChild)!,
         ))
       ) {
-        throw new networkErrors.ErrorCertChainBroken(
-          'Chain certificate is not signed by parent certificate',
-          {
-            data: {
-              cert: certChild,
-              certIndex: certIndex - 1,
-              certParent,
-            },
-          },
-        );
+        return {
+          result: 'fail',
+          value: CryptoError.BadCertificate,
+        };
       }
     }
   }
-  return verifiedNodeId;
+  return {
+    result: 'success',
+    nodeId: verifiedNodeId,
+  };
 }
 
 /**
@@ -342,72 +330,35 @@ async function verifyServerCertificateChain(
  * The server does have a target NodeId. This means we verify the entire chain.
  */
 async function verifyClientCertificateChain(
-  certPEMChain: Array<string>,
-): Promise<void> {
+  certs: Array<Uint8Array>,
+): Promise<CryptoError | undefined> {
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
-    throw new networkErrors.ErrorCertChainEmpty(
-      'No certificates available to verify',
-    );
+    return CryptoError.CertificateRequired;
   }
-  const certChain = certPEMChain.map((v) => {
-    const cert = keysUtils.certFromPEM(v as CertificatePEM);
-    if (cert == null) never();
-    return cert;
-  });
+  const certChain: Array<Readonly<X509Certificate>> = [];
+  for (const certPEM of certPEMChain) {
+    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
+    if (cert == null) return CryptoError.BadCertificate;
+    certChain.push(cert);
+  }
   const now = new Date();
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
     const certNext = certChain[certIndex + 1];
     if (now < cert.notBefore || now > cert.notAfter) {
-      throw new networkErrors.ErrorCertChainDateInvalid(
-        'Chain certificate date is invalid',
-        {
-          data: {
-            cert,
-            certIndex,
-            notBefore: cert.notBefore,
-            notAfter: cert.notAfter,
-            now,
-          },
-        },
-      );
+      return CryptoError.CertificateExpired;
     }
     const certNodeId = keysUtils.certNodeId(cert);
     if (certNodeId == null) {
-      throw new networkErrors.ErrorCertChainNameInvalid(
-        'Chain certificate common name attribute is missing',
-        {
-          data: {
-            cert,
-            certIndex,
-          },
-        },
-      );
+      return CryptoError.BadCertificate;
     }
     const certPublicKey = keysUtils.certPublicKey(cert);
     if (certPublicKey == null) {
-      throw new networkErrors.ErrorCertChainKeyInvalid(
-        'Chain certificate public key is missing',
-        {
-          data: {
-            cert,
-            certIndex,
-          },
-        },
-      );
+      return CryptoError.BadCertificate;
     }
     if (!(await keysUtils.certNodeSigned(cert))) {
-      throw new networkErrors.ErrorCertChainSignatureInvalid(
-        'Chain certificate does not have a valid node-signature',
-        {
-          data: {
-            cert,
-            certIndex,
-            nodeId: keysUtils.publicKeyToNodeId(certPublicKey),
-            commonName: certNodeId,
-          },
-        },
-      );
+      return CryptoError.BadCertificate;
     }
     if (certNext != null) {
       if (
@@ -417,19 +368,12 @@ async function verifyClientCertificateChain(
           keysUtils.certPublicKey(cert)!,
         ))
       ) {
-        throw new networkErrors.ErrorCertChainSignatureInvalid(
-          'Chain certificate is not signed by parent certificate',
-          {
-            data: {
-              cert,
-              certIndex,
-              certParent: certNext,
-            },
-          },
-        );
+        return CryptoError.BadCertificate;
       }
     }
   }
+  // Undefined means success
+  return undefined;
 }
 
 /**

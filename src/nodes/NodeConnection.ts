@@ -2,37 +2,40 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
-import type { Certificate, CertificatePEM } from '../keys/types';
-import type { ClientManifest, RPCStream } from '../rpc/types';
+import type { Certificate } from '../keys/types';
+import type { ClientManifest } from '../rpc/types';
 import type {
   QUICSocket,
-  ClientCrypto,
+  ClientCryptoOps,
   QUICConnection,
-  events as quicEvents,
 } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
+import { status } from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { QUICClient } from '@matrixai/quic';
+import { AbstractEvent, EventAll } from '@matrixai/events';
+import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import RPCClient from '../rpc/RPCClient';
 import * as networkUtils from '../network/utils';
 import * as rpcUtils from '../rpc/utils';
-import * as keysUtils from '../keys/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
-import * as utils from '../utils';
+import config from '../config';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
-@CreateDestroy()
-class NodeConnection<M extends ClientManifest> extends EventTarget {
+@CreateDestroy({
+  eventDestroy: nodesEvents.EventNodeConnectionDestroy,
+  eventDestroyed: nodesEvents.EventNodeConnectionDestroyed,
+})
+class NodeConnection<M extends ClientManifest> {
   /**
    * Hostname is defined if the target's host was resolved from this hostname
    * Undefined if a Host was directly provided
@@ -57,39 +60,136 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
   public readonly quicConnection: QUICConnection;
   public readonly rpcClient: RPCClient<M>;
 
+  /**
+   * Dispatches a `EventNodeConnectionClose` in response to any `NodeConnection`
+   * error event. Will trigger destruction of the `NodeConnection` via the
+   * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
+   */
+  protected handleEventNodeConnectionError = (
+    evt: nodesEvents.EventNodeConnectionError,
+  ): void => {
+    this.logger.warn(`NodeConnection error caused by ${evt.detail.message}`);
+    this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
+  };
+
+  /**
+   * Triggers the destruction of the `NodeConnection`. Since this is only in
+   * response to an underlying problem or close it will force destroy.
+   * Dispatched by the `EventNodeConnectionError` event as the
+   * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
+   */
+  protected handleEventNodeConnectionClose = async (
+    _evt: nodesEvents.EventNodeConnectionClose,
+  ): Promise<void> => {
+    this.logger.warn(`close event triggering NodeConnection.destroy`);
+    // This will trigger the destruction of this NodeConnection.
+    if (this[status] !== 'destroying') {
+      await this.destroy({ force: true });
+    }
+  };
+
+  /**
+   * Redispatches a `QUICStream` from a `EventQUICConnectionStream` event with
+   * a `EventNodeConnectionStream` event. Should bubble upwards through the
+   * `NodeConnectionManager`.
+   */
+  protected handleEventQUICConnectionStream = (
+    evt: quicEvents.EventQUICConnectionStream,
+  ): void => {
+    // Re-dispatches the stream under a `EventNodeConnectionStream` event
+    const quicStream = evt.detail;
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionStream({ detail: quicStream }),
+    );
+  };
+
+  /**
+   * Redispatches `QUICConnection` or  `QUICClient` error events as `NodeConnection` error events.
+   * This should trigger the destruction of the `NodeConnection` through the
+   * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
+   */
+  protected handleEventQUICError = (
+    evt: quicEvents.EventQUICConnectionError,
+  ): void => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(undefined, {
+      cause: evt.detail,
+    });
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionError({ detail: err }),
+    );
+  };
+
+  protected handleEventQUICClientDestroyed = (
+    _evt: quicEvents.EventQUICClientDestroyed,
+  ) => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      'QUICClient destroyed unexpectedly',
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionError({ detail: err }),
+    );
+  };
+
+  protected handleEventQUICConnectionStopped = (
+    _evt: quicEvents.EventQUICConnectionStopped,
+  ) => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      'QUICClient stopped unexpectedly',
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionError({ detail: err }),
+    );
+  };
+
+  /**
+   * Propagates all events from the `QUICClient` or `QUICConnection` upwards.
+   * If the `QUICClient` exists then it is just registered to that, otherwise just
+   * the `QUICConnection`.
+   * Will only re-dispatch the event if it's an `AbstractEvent`.
+   */
+  protected handleEventAll = (evt: EventAll): void => {
+    // This just propagates events upwards
+    const event = evt.detail;
+    if (event instanceof AbstractEvent) {
+      // Clone and dispatch upwards
+      this.dispatchEvent(event.clone());
+    }
+  };
+
   static createNodeConnection<M extends ClientManifest>(
     {
-      handleStream,
       targetNodeIds,
       targetHost,
       targetPort,
       targetHostname,
       tlsConfig,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout = 60_000,
+      connectionKeepAliveTimeoutTime = config.defaultsSystem
+        .nodesConnectionIdleTimeoutTime,
       quicSocket,
       manifest,
       logger,
     }: {
-      handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
       targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      crypto: ClientCrypto;
+      crypto: ClientCryptoOps;
       tlsConfig: TLSConfig;
       connectionKeepAliveIntervalTime?: number;
-      connectionMaxIdleTimeout?: number;
+      connectionKeepAliveTimeoutTime?: number;
       quicSocket?: QUICSocket;
       manifest: M;
       logger?: Logger;
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection<M>>;
-  @timedCancellable(true, 20000)
+  @timedCancellable(
+    true,
+    config.defaultsSystem.nodesConnectionConnectTimeoutTime,
+  )
   static async createNodeConnection<M extends ClientManifest>(
     {
-      handleStream,
       targetNodeIds,
       targetHost,
       targetPort,
@@ -98,21 +198,21 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       tlsConfig,
       manifest,
       connectionKeepAliveIntervalTime,
-      connectionMaxIdleTimeout = 60_000,
+      connectionKeepAliveTimeoutTime = config.defaultsSystem
+        .nodesConnectionIdleTimeoutTime,
       quicSocket,
       logger = new Logger(this.name),
     }: {
-      handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
       targetNodeIds: Array<NodeId>;
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      crypto: ClientCrypto;
+      crypto: ClientCryptoOps;
       tlsConfig: TLSConfig;
       manifest: M;
       connectionKeepAliveIntervalTime?: number;
-      connectionMaxIdleTimeout?: number;
-      quicSocket?: QUICSocket;
+      connectionKeepAliveTimeoutTime?: number;
+      quicSocket: QUICSocket;
       logger?: Logger;
     },
     @context ctx: ContextTimed,
@@ -130,52 +230,47 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         socket: quicSocket,
         config: {
           keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-          maxIdleTimeout: connectionMaxIdleTimeout,
+          maxIdleTimeout: connectionKeepAliveTimeoutTime,
           verifyPeer: true,
-          verifyAllowFail: true,
+          verifyCallback: async (certPEMs) => {
+            const result = await networkUtils.verifyServerCertificateChain(
+              targetNodeIds,
+              certPEMs,
+            );
+            if (result.result === 'success') {
+              validatedNodeId = result.nodeId;
+              return;
+            } else {
+              return result.value;
+            }
+          },
           ca: undefined,
           key: tlsConfig.keyPrivatePem,
           cert: tlsConfig.certChainPem,
         },
-        verifyCallback: async (certPEMs) => {
-          validatedNodeId = await networkUtils.verifyServerCertificateChain(
-            targetNodeIds,
-            certPEMs,
-          );
-        },
         crypto: {
           ops: crypto,
         },
-        reasonToCode: utils.reasonToCode,
-        codeToReason: utils.codeToReason,
+        reasonToCode: nodesUtils.reasonToCode,
+        codeToReason: nodesUtils.codeToReason,
         logger: logger.getChild(QUICClient.name),
       },
       ctx,
     );
     const quicConnection = quicClient.connection;
-    // Setting up stream handling
-    const handleConnectionStream = (
-      streamEvent: quicEvents.QUICConnectionStreamEvent,
-    ) => {
-      const stream = streamEvent.detail;
-      handleStream(stream);
-    };
-    quicConnection.addEventListener('connectionStream', handleConnectionStream);
+    // FIXME: right now I'm not sure it's possible for streams to be emitted while setting up here.
+    //  If we get any while setting up they need to be re-emitted after set up. Otherwise cleaned up.
+    const throwFunction = () =>
+      never('We should never get connections before setting up handling');
     quicConnection.addEventListener(
-      'connectionStop',
-      () => {
-        quicConnection.removeEventListener(
-          'connectionStream',
-          handleConnectionStream,
-        );
-      },
-      { once: true },
+      quicEvents.EventQUICConnectionStream.name,
+      throwFunction,
     );
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
-      streamFactory: () => {
-        return quicConnection.streamNew();
+      streamFactory: async () => {
+        return quicConnection.newStream();
       },
       logger: logger.getChild(RPCClient.name),
     });
@@ -184,22 +279,18 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     //  This may de different from the NodeId we validated it as if it renewed at some point.
     const connection = quicClient.connection;
     // Remote certificate information should always be available here due to custom verification
-    const certChain = connection.getRemoteCertsChain().map((pem) => {
-      const cert = keysUtils.certFromPEM(pem as CertificatePEM);
-      if (cert == null) never();
-      return cert;
-    });
-    if (certChain == null) never();
-    const nodeId = keysUtils.certNodeId(certChain[0]);
-    if (nodeId == null) never();
+    const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
+      connection.getRemoteCertsChain(),
+    );
+
     const newLogger = logger.getParent() ?? new Logger(this.name);
     const nodeConnection = new this<M>({
       validatedNodeId,
       nodeId,
       host: targetHost,
       port: targetPort,
-      localHost: connection.localHost as Host,
-      localPort: connection.localPort as Port,
+      localHost: connection.localHost as unknown as Host,
+      localPort: connection.localPort as unknown as Port,
       certChain,
       hostname: targetHostname,
       quicClient,
@@ -211,27 +302,46 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
         }:${quicConnection.remotePort}]`,
       ),
     });
-    quicClient.addEventListener(
-      'clientDestroy',
-      async () => {
-        // Trigger the nodeConnection destroying
-        await nodeConnection.destroy({ force: false });
-      },
-      { once: true },
+    // TODO: remove this later based on testing
+    quicConnection.removeEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      throwFunction,
     );
+    // All events are handled via the `QUICClient`, any underlying `QUICStream`
+    // or `QUICConnection` events are expected to be emitted through the
+    // `QUICClient`
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionError.name,
+      nodeConnection.handleEventNodeConnectionError,
+    );
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionClose.name,
+      nodeConnection.handleEventNodeConnectionClose,
+    );
+    quicClient.addEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      nodeConnection.handleEventQUICConnectionStream,
+    );
+    quicClient.addEventListener(
+      quicEvents.EventQUICClientError.name,
+      nodeConnection.handleEventQUICError,
+    );
+    quicClient.addEventListener(
+      quicEvents.EventQUICClientDestroyed.name,
+      nodeConnection.handleEventQUICClientDestroyed,
+    );
+    quicClient.addEventListener(EventAll.name, nodeConnection.handleEventAll);
     logger.info(`Created ${this.name}`);
     return nodeConnection;
   }
 
   static async createNodeConnectionReverse<M extends ClientManifest>({
-    handleStream,
     certChain,
     nodeId,
     quicConnection,
     manifest,
     logger = new Logger(this.name),
   }: {
-    handleStream: (stream: RPCStream<Uint8Array, Uint8Array>) => void;
     certChain: Array<Certificate>;
     nodeId: NodeId;
     quicConnection: QUICConnection;
@@ -243,37 +353,19 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     const rpcClient = await RPCClient.createRPCClient<M>({
       manifest,
       middlewareFactory: rpcUtils.defaultClientMiddlewareWrapper(),
-      streamFactory: () => {
-        return quicConnection.streamNew();
+      streamFactory: async (_ctx) => {
+        return quicConnection.newStream();
       },
       logger: logger.getChild(RPCClient.name),
     });
-    // Setting up stream handling
-    const handleConnectionStream = (
-      streamEvent: quicEvents.QUICConnectionStreamEvent,
-    ) => {
-      const stream = streamEvent.detail;
-      handleStream(stream);
-    };
-    quicConnection.addEventListener('connectionStream', handleConnectionStream);
-    quicConnection.addEventListener(
-      'connectionStop',
-      () => {
-        quicConnection.removeEventListener(
-          'connectionStream',
-          handleConnectionStream,
-        );
-      },
-      { once: true },
-    );
     // Creating NodeConnection
     const nodeConnection = new this<M>({
       validatedNodeId: nodeId,
       nodeId: nodeId,
-      localHost: quicConnection.localHost as Host,
-      localPort: quicConnection.localPort as Port,
-      host: quicConnection.remoteHost as Host,
-      port: quicConnection.remotePort as Port,
+      localHost: quicConnection.localHost as unknown as Host,
+      localPort: quicConnection.localPort as unknown as Port,
+      host: quicConnection.remoteHost as unknown as Host,
+      port: quicConnection.remotePort as unknown as Port,
       certChain,
       // Hostname and client are not available on reverse connections
       hostname: undefined,
@@ -282,13 +374,31 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
       rpcClient,
       logger,
     });
+    // All events are handled via the `QUICConnection`, any underlying
+    // `QUICStream` events are expected to be emitted through the `QUICConnection`.
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionError.name,
+      nodeConnection.handleEventNodeConnectionError,
+    );
+    nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionClose.name,
+      nodeConnection.handleEventNodeConnectionClose,
+    );
     quicConnection.addEventListener(
-      'connectionStop',
-      async () => {
-        // Trigger the nodeConnection destroying
-        await nodeConnection.destroy({ force: false });
-      },
-      { once: true },
+      quicEvents.EventQUICConnectionStream.name,
+      nodeConnection.handleEventQUICConnectionStream,
+    );
+    quicConnection.addEventListener(
+      quicEvents.EventQUICConnectionError.name,
+      nodeConnection.handleEventQUICError,
+    );
+    quicConnection.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
+      nodeConnection.handleEventQUICConnectionStopped,
+    );
+    quicConnection.addEventListener(
+      EventAll.name,
+      nodeConnection.handleEventAll,
     );
     logger.info(`Created ${this.name}`);
     return nodeConnection;
@@ -321,7 +431,6 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     rpcClient: RPCClient<M>;
     logger: Logger;
   }) {
-    super();
     this.validatedNodeId = validatedNodeId;
     this.nodeId = nodeId;
     this.host = host;
@@ -347,16 +456,49 @@ class NodeConnection<M extends ClientManifest> extends EventTarget {
     await this.quicConnection.stop(
       force
         ? {
-            applicationError: true,
-            errorCode: 0,
-            errorMessage: 'NodeConnection is forcing destruction',
+            isApp: true,
+            errorCode: 1,
+            reason: Buffer.from('NodeConnection is forcing destruction'),
             force: true,
           }
         : {},
     );
     await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
-    this.dispatchEvent(new nodesEvents.NodeConnectionDestroyEvent());
+    // Removing all event listeners
+    this.addEventListener(
+      nodesEvents.EventNodeConnectionError.name,
+      this.handleEventNodeConnectionError,
+    );
+    this.addEventListener(
+      nodesEvents.EventNodeConnectionClose.name,
+      this.handleEventNodeConnectionClose,
+    );
+    // If the client exists then it was all registered to that,
+    // otherwise the connection
+    const quicClientOrConnection = this.quicClient ?? this.quicConnection;
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      this.handleEventQUICConnectionStream,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICConnectionError.name,
+      this.handleEventQUICError,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICClientDestroyed.name,
+      this.handleEventQUICClientDestroyed,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
+      this.handleEventQUICConnectionStopped,
+    );
+    quicClientOrConnection.addEventListener(
+      quicEvents.EventQUICClientError.name,
+      this.handleEventQUICError,
+    );
+    quicClientOrConnection.addEventListener(EventAll.name, this.handleEventAll);
+    this.dispatchEvent(new nodesEvents.EventNodeConnectionDestroy());
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 

@@ -9,14 +9,20 @@ import type { FileSystem, FileHandle } from '../types';
 import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import * as statusErrors from './errors';
 import * as statusUtils from './utils';
+import * as statusErrors from './errors';
+import * as statusEvents from './events';
 import { sleep, poll } from '../utils';
 import * as errors from '../errors';
 import { utils as nodesUtils } from '../nodes';
 
 interface Status extends StartStop {}
-@StartStop()
+@StartStop({
+  eventStart: statusEvents.EventStatusStart,
+  eventStarted: statusEvents.EventStatusStarted,
+  eventStop: statusEvents.EventStatusStop,
+  eventStopped: statusEvents.EventStatusStopped,
+})
 class Status {
   public readonly statusPath: string;
   public readonly statusLockPath: string;

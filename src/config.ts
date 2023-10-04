@@ -73,10 +73,9 @@ const config = {
     },
   },
   /**
-   * Default configuration
+   * File/directory paths
    */
-  defaults: {
-    nodePath: getDefaultNodePath(),
+  paths: {
     statusBase: 'status.json',
     statusLockBase: 'status.lock',
     stateBase: 'state',
@@ -86,73 +85,213 @@ const config = {
     vaultsBase: 'vaults',
     efsBase: 'efs',
     tokenBase: 'token',
-    certManagerConfig: {
-      certDuration: 31536000,
-    },
-    networkConfig: {
-      /**
-       * Agent host defaults to `::` dual stack.
-       * This is because the agent service is supposed to be public.
-       */
-      agentHost: '::',
-      agentPort: 0,
-      /**
-       * Client host defaults to `localhost`.
-       * This will depend on the OS configuration.
-       * Usually it will be IPv4 `127.0.0.1` or IPv6 `::1`.
-       * This is because the client service is private most of the time.
-       */
-      clientHost: 'localhost',
-      clientPort: 0,
-      /**
-       * If using dual stack `::`, then this forces only IPv6 bindings.
-       */
-      ipv6Only: false,
-
-      /**
-       * Agent service transport keep alive interval time.
-       * This the maxmum time between keep alive messages.
-       * This only has effect if `agentMaxIdleTimeout` is greater than 0.
-       * See the transport layer for further details.
-       */
-      agentKeepAliveIntervalTime: 10_000, // 10 seconds
-
-      /**
-       * Agent service transport max idle timeout.
-       * This is the maximum time that a connection can be idle.
-       * This also controls how long the transport layer will dial
-       * for a client connection.
-       * See the transport layer for further details.
-       */
-      agentMaxIdleTimeout: 60_000, // 1 minute
-
-      clientMaxIdleTimeout: 120, // 2 minutes
-      clientPingIntervalTime: 1_000, // 1 second
-      clientPingTimeoutTimeTime: 10_000, // 10 seconds
-
-      /**
-       * Controls the stream parser buffer limit.
-       * This is the maximum number of bytes that the stream parser
-       * will buffer before rejecting the RPC call.
-       */
-      clientParserBufferByteLimit: 1_000_000, // About 1MB
-      clientHandlerTimeoutTime: 60_000, // 1 minute
-      clientHandlerTimeoutGraceTime: 2_000, // 2 seconds
-    },
-    nodeConnectionManagerConfig: {
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 60000,
-      initialClosestNodes: 3,
-      pingTimeoutTime: 2000,
-      connectionHolePunchTimeoutTime: 4000,
-      connectionHolePunchIntervalTime: 250,
-    },
-    // This is not used by the `PolykeyAgent` which defaults to `{}`
-    network: {
-      mainnet: mainnet,
-      testnet: testnet,
-    },
+  },
+  /**
+   * This is not used by the `PolykeyAgent` which defaults to `{}`
+   * In the future this will be replaced by `mainnet.polykey.com` and `testnet.polykey.com`.
+   * Along with the domain we will have the root public key too.
+   *
+   * Information that is pre-configured during distribution:
+   *
+   * - Domain
+   * - Root public key
+   *
+   * Information that is discovered over DNS (Authenticated DNS is optional):
+   *
+   * - IP address
+   * - Port
+   *
+   * As long as the root public key is provided, it is sufficient to defeat poisoning
+   * the network. The root public key should also be changed often to reduce the impact
+   * of compromises. Finally the root public key can also be signed by a third party CA
+   * providing an extra level of confidence. However this is not required.
+   */
+  network: {
+    mainnet: mainnet,
+    testnet: testnet,
+  },
+  /**
+   * Default system configuration.
+   * These are not meant to be changed by the user.
+   * These constants are tuned for optimal operation by the developers.
+   */
+  defaultsSystem: {
+    /**
+     * Timeout for each RPC stream.
+     *
+     * The semantics of this timeout changes depending on the context of how it
+     * is used.
+     *
+     * It is reset upon sending or receiving any data on the stream. This is a
+     * one-shot timer on unary calls. This repeats for every chunk of data on
+     * streaming calls.
+     *
+     * This is the default for both client calls and server handlers. Both the
+     * client callers and server handlers can optionally override this default.
+     *
+     * When the server handler receives a desired timeout from the client call,
+     * the server handler will always choose the minimum of the timeouts between
+     * the client call and server handler.
+     *
+     * With respect to client calls, this timeout bounds the time that the client
+     * will wait for responses from the server, as well as the time to wait for
+     * additional to be sent to the server.
+     *
+     * With respect to server handlers, this timeout bounds the time that the
+     * server waits to send data back to the client, as well as the time to wait
+     * for additional client data.
+     *
+     * Therefore it is expected that specific clients calls and server handlers
+     * will override this timeout to cater to their specific circumstances.
+     */
+    rpcCallTimeoutTime: 15_000, // 15 seconds
+    /**
+     * Buffer size of the JSON RPC parser.
+     *
+     * This limits the largest parseable JSON message. Any JSON RPC message
+     * greater than this byte size will be rejecte by closing the RPC stream
+     * with an error.
+     *
+     * This has no effect on raw streams as raw streams do not use any parser.
+     */
+    rpcParserBufferSize: 64 * 1024, // 64 KiB
+    /**
+     * Timeout for the transport connecting to the client service.
+     *
+     * This bounds the amount of time that the client transport will wait to
+     * establish a connection to the client service of a Polykey Agent.
+     */
+    clientConnectTimeoutTime: 15_000, // 15 seconds
+    /**
+     * Timeout for the keep alive of the transport connection to the client
+     * service.
+     *
+     * It is reset upon sending or receiving any data on the client service
+     * transport connection.
+     *
+     * This is the default for both sides (client and server) of the connection.
+     *
+     * This should always be greater than the connect timeout.
+     */
+    clientKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+    /**
+     * Interval for the keep alive of the transport connection to the client
+     * service.
+     *
+     * This is the minimum interval time because transport optimisations may
+     * increase the effective interval time when a keep alive message is not
+     * necessary, possibly due to other data being sent or received on the
+     * connection.
+     */
+    clientKeepAliveIntervalTime: 10_000, // 10 seconds
+    /**
+     * Concurrency pool limit when finding other nodes.
+     *
+     * This is the parallel constant in the kademlia algorithm. It controls
+     * how many parallel connections when attempting to find a node across
+     * the network.
+     */
+    nodesConnectionFindConcurrencyLimit: 3,
+    /**
+     * Timeout for idle node connections.
+     *
+     * A node connection is idle, if nothing is using the connection. A
+     * connection is being used when its resource counter is above 0.
+     *
+     * The resource counter of node connections is incremented above 0
+     * when a reference to the node connection is maintained, usually with
+     * the bracketing pattern.
+     *
+     * This has nothing to do with the data being sent or received on the
+     * connection. It's intended as a way of garbage collecting unused
+     * connections.
+     *
+     * This should always be greater than the keep alive timeout.
+     */
+    nodesConnectionIdleTimeoutTime: 60_000, // 60 seconds
+    /**
+     * Timeout for establishing a node connection.
+     *
+     * This applies to both normal "forward" connections and "reverse"
+     * connections started by hole punching. Reverse connections
+     * is started by signalling requests that result in hole punching.
+     *
+     * This is the default for both client and server sides of the connection.
+     *
+     * Due to transport layer implementation peculiarities, this should never
+     * be greater than the keep alive timeout.
+     */
+    nodesConnectionConnectTimeoutTime: 15_000, // 15 seconds
+    /**
+     * Timeout for the keep alive of the node connection.
+     *
+     * It is reset upon sending or receiving any data on the connection.
+     *
+     * This is the default for both sides (client and server) of the connection.
+     *
+     * This should always be greater than the connect timeout.
+     */
+    nodesConnectionKeepAliveTimeoutTime: 30_000, // 30 seconds (3x of interval time)
+    /**
+     * Interval for the keep alive of the node connection.
+     *
+     * This is the minimum interval time because transport optimisations may
+     * increase the effective interval time when a keep alive message is not
+     * necessary, possibly due to other data being sent or received on the
+     * connection.
+     */
+    nodesConnectionKeepAliveIntervalTime: 10_000, // 10 seconds
+    /**
+     * Interval for hole punching reverse node connections.
+     */
+    nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
+  },
+  /**
+   * Default user configuration.
+   * These are meant to be changed by the user.
+   * However the defaults here provide the average user experience.
+   */
+  defaultsUser: {
+    nodePath: getDefaultNodePath(),
+    certDuration: 31536000,
+    certRenewLeadTime: 86400,
+    /**
+     * Client host defaults to `localhost`.
+     * This will depend on the OS configuration.
+     * Usually it will be IPv4 `127.0.0.1` or IPv6 `::1`.
+     * This is because the client service is private most of the time.
+     */
+    clientServiceHost: 'localhost',
+    clientServicePort: 0,
+    /**
+     * Agent host defaults to `::` dual stack.
+     * This is because the agent service is supposed to be public.
+     */
+    agentServiceHost: '::',
+    agentServicePort: 0,
+    /**
+     * Seed nodes.
+     *
+     * This is defaulted to `{}` at the object-level.
+     *
+     * However Polykey-CLI will use use the `network` to fill this.
+     */
+    seedNodes: {},
+    /**
+     * Number of workers to spin up by default.
+     *
+     * Using `undefined` means all cores. Using `0` means no workers at all.
+     */
+    workers: undefined,
+    /**
+     * If using dual stack `::`, then this forces only IPv6 bindings.
+     */
+    ipv6Only: false,
   },
 };
 
+type Config = typeof config;
+
 export default config;
+
+export type { Config };

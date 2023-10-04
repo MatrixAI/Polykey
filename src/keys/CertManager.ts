@@ -4,11 +4,11 @@ import type {
   PrivateKey,
   Certificate,
   CertificateASN1,
-  CertManagerChangeData,
   CertificatePEM,
   KeyPair,
   RecoveryCode,
   CertificatePEMChain,
+  CertManagerOptions,
 } from './types';
 import type KeyRing from './KeyRing';
 import type TaskManager from '../tasks/TaskManager';
@@ -24,7 +24,10 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
+import * as keysEvents from './events';
 import * as ids from '../ids';
+import * as utils from '../utils/utils';
+import config from '../config';
 
 /**
  * This signal reason indicates we want to stop the renewal
@@ -37,6 +40,14 @@ interface CertManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new keysErrors.ErrorCertManagerRunning(),
   new keysErrors.ErrorCertManagerDestroyed(),
+  {
+    eventStart: keysEvents.EventCertManagerStart,
+    eventStarted: keysEvents.EventCertManagerStarted,
+    eventStop: keysEvents.EventCertManagerStop,
+    eventStopped: keysEvents.EventCertManagerStopped,
+    eventDestroy: keysEvents.EventCertManagerDestroy,
+    eventDestroyed: keysEvents.EventCertManagerDestroyed,
+  },
 )
 class CertManager {
   /**
@@ -57,9 +68,7 @@ class CertManager {
     db,
     keyRing,
     taskManager,
-    certDuration = 31536000,
-    certRenewLeadTime = 86400,
-    changeCallback,
+    options = {},
     workerManager,
     logger = new Logger(this.name),
     subjectAttrsExtra,
@@ -70,9 +79,7 @@ class CertManager {
     db: DB;
     keyRing: KeyRing;
     taskManager: TaskManager;
-    certDuration?: number;
-    certRenewLeadTime?: number;
-    changeCallback?: (data: CertManagerChangeData) => any;
+    options: Partial<CertManagerOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
     logger?: Logger;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
@@ -82,13 +89,15 @@ class CertManager {
     fresh?: boolean;
   }): Promise<CertManager> {
     logger.info(`Creating ${this.name}`);
+    const optionsDefaulted = utils.mergeObjects(options, {
+      certDuration: config.defaultsUser.certDuration,
+      certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
+    }) as CertManagerOptions;
     const certManager = new this({
       db,
       keyRing,
       taskManager,
-      certDuration,
-      certRenewLeadTime,
-      changeCallback,
+      options: optionsDefaulted,
       workerManager,
       logger,
     });
@@ -112,7 +121,6 @@ class CertManager {
   protected db: DB;
   protected keyRing: KeyRing;
   protected taskManager: TaskManager;
-  protected changeCallback?: (data: CertManagerChangeData) => any;
   protected workerManager?: PolykeyWorkerManagerInterface;
   protected generateCertId: () => CertId;
   protected dbPath: LevelPath = [this.constructor.name];
@@ -145,18 +153,14 @@ class CertManager {
     db,
     keyRing,
     taskManager,
-    certDuration,
-    certRenewLeadTime,
-    changeCallback,
+    options,
     workerManager,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     taskManager: TaskManager;
-    certDuration: number;
-    certRenewLeadTime: number;
-    changeCallback?: (data: CertManagerChangeData) => any;
+    options: CertManagerOptions;
     workerManager?: PolykeyWorkerManagerInterface;
     logger: Logger;
   }) {
@@ -164,9 +168,8 @@ class CertManager {
     this.db = db;
     this.keyRing = keyRing;
     this.taskManager = taskManager;
-    this.certDuration = certDuration;
-    this.certRenewLeadTime = certRenewLeadTime;
-    this.changeCallback = changeCallback;
+    this.certDuration = options.certDuration;
+    this.certRenewLeadTime = options.certRenewLeadTime;
     this.workerManager = workerManager;
   }
 
@@ -452,14 +455,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      if (this.changeCallback != null) {
-        await this.changeCallback({
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-          recoveryCode: recoveryCodeNew!,
-        });
-      }
+      this.dispatchEvent(
+        new keysEvents.EventCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: recoveryCodeNew!,
+          },
+        }),
+      );
       this.logger.info('Renewed certificate chain with new key pair');
     });
     return certNew!;
@@ -516,14 +521,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      if (this.changeCallback != null) {
-        await this.changeCallback({
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-          recoveryCode: undefined,
-        });
-      }
+      this.dispatchEvent(
+        new keysEvents.EventCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: undefined,
+          },
+        }),
+      );
       this.logger.info('Renewed certificate chain with current key pair');
     });
     return certNew!;
@@ -587,14 +594,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      if (this.changeCallback != null) {
-        await this.changeCallback({
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew!,
-          recoveryCode: recoveryCodeNew!,
-        });
-      }
+      this.dispatchEvent(
+        new keysEvents.EventCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew!,
+            recoveryCode: recoveryCodeNew!,
+          },
+        }),
+      );
       this.logger.info('Resetted certificate chain with new key pair');
     });
     return certNew!;
@@ -646,13 +655,16 @@ class CertManager {
       if (this.tasksRunning) {
         await this.setupRenewCurrentCertTask(now);
       }
-      if (this.changeCallback != null) {
-        await this.changeCallback({
-          nodeId: this.keyRing.getNodeId(),
-          keyPair: this.keyRing.keyPair,
-          cert: certNew,
-        });
-      }
+      this.dispatchEvent(
+        new keysEvents.EventCertManagerCertChange({
+          detail: {
+            nodeId: this.keyRing.getNodeId(),
+            keyPair: this.keyRing.keyPair,
+            cert: certNew,
+            recoveryCode: undefined,
+          },
+        }),
+      );
       this.logger.info('Resetted certificate chain with current key pair');
     });
     return certNew!;

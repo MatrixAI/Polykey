@@ -1,5 +1,4 @@
 import type * as quicEvents from '@matrixai/quic/dist/events';
-import type { Host as QUICHost } from '@matrixai/quic';
 import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
 import fs from 'fs';
 import path from 'path';
@@ -28,7 +27,7 @@ describe('nodesHolePunchMessage', () => {
   ]);
   const password = 'password';
   const crypto = tlsTestsUtils.createCrypto();
-  const localHost = '127.0.0.1' as QUICHost;
+  const localHost = '127.0.0.1';
 
   let dataDir: string;
 

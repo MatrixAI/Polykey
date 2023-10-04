@@ -20,9 +20,9 @@ class GestaltsGestaltListHandler extends ServerHandler<
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
     const { db, gestaltGraph } = this.container;
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
+    yield* db.withTransactionG(async function* (tran): AsyncGenerator<
+      ClientRPCResponseResult<GestaltMessage>
+    > {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       for await (const gestalt of gestaltGraph.getGestalts(tran)) {
         const gestaltMessage: GestaltMessage = {

@@ -7,7 +7,6 @@ import type {
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host, Port } from '@/network/types';
-import type NodeManager from '@/nodes/NodeManager';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -17,7 +16,6 @@ import { DB } from '@matrixai/db';
 import { destroyed, running } from '@matrixai/async-init';
 import git from 'isomorphic-git';
 import { RWLockWriter } from '@matrixai/async-locks';
-import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -36,7 +34,7 @@ import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 
 describe('VaultManager', () => {
-  const localHost = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -474,7 +472,6 @@ describe('VaultManager', () => {
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager;
-    let quicSocket: QUICSocket;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let taskManager: TaskManager;
@@ -487,41 +484,43 @@ describe('VaultManager', () => {
 
       remoteKeynode1 = await PolykeyAgent.createPolykeyAgent({
         password,
+        options: {
+          nodePath: path.join(allDataDir, 'remoteKeynode1'),
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
+        },
         logger: logger.getChild('Remote Keynode 1'),
-        nodePath: path.join(allDataDir, 'remoteKeynode1'),
-        networkConfig: {
-          agentHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
       });
       remoteKeynode1Id = remoteKeynode1.keyRing.getNodeId();
       remoteKeynode2 = await PolykeyAgent.createPolykeyAgent({
         password,
+        options: {
+          nodePath: path.join(allDataDir, 'remoteKeynode2'),
+          agentServiceHost: localhost,
+          clientServiceHost: localhost,
+          keys: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+            strictMemoryLock: false,
+          },
+        },
         logger: logger.getChild('Remote Keynode 2'),
-        nodePath: path.join(allDataDir, 'remoteKeynode2'),
-        networkConfig: {
-          agentHost: localHost,
-        },
-        keyRingConfig: {
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-        },
       });
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicSocket.host as Host,
-        port: remoteKeynode2.quicSocket.port as Port,
+        host: remoteKeynode2.nodeConnectionManager.host as Host,
+        port: remoteKeynode2.nodeConnectionManager.port as Port,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicSocket.host as Host,
-        port: remoteKeynode1.quicSocket.port as Port,
+        host: remoteKeynode1.nodeConnectionManager.host as Host,
+        port: remoteKeynode1.nodeConnectionManager.port as Port,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -568,34 +567,22 @@ describe('VaultManager', () => {
         lazy: true,
         logger,
       });
-      const crypto = tlsTestsUtils.createCrypto();
-      quicSocket = new QUICSocket({
-        logger,
-      });
-      await quicSocket.start({
-        host: '127.0.0.1',
-      });
       const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         nodeGraph,
         tlsConfig,
-        crypto,
-        quicSocket,
         logger,
       });
-      await nodeConnectionManager.start({
-        nodeManager: { setNode: jest.fn() } as unknown as NodeManager,
-        handleStream: () => {},
-      });
+      await nodeConnectionManager.start({ host: localhost as Host });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.quicSocket.host as Host,
-        port: remoteKeynode1.quicSocket.port as Port,
+        host: remoteKeynode1.nodeConnectionManager.host as Host,
+        port: remoteKeynode1.nodeConnectionManager.port as Port,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.quicSocket.host as Host,
-        port: remoteKeynode2.quicSocket.port as Port,
+        host: remoteKeynode2.nodeConnectionManager.host as Host,
+        port: remoteKeynode2.nodeConnectionManager.port as Port,
       });
     });
     afterEach(async () => {
@@ -603,7 +590,6 @@ describe('VaultManager', () => {
       await taskManager.stopTasks();
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
       await nodeConnectionManager.stop();
-      await quicSocket.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
       await keyRing.stop();
@@ -1396,8 +1382,8 @@ describe('VaultManager', () => {
 
         // Letting nodeGraph know where the remote agent is
         await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.quicSocket.host as Host,
-          port: remoteKeynode1.quicSocket.port as Port,
+          host: remoteKeynode1.nodeConnectionManager.host as Host,
+          port: remoteKeynode1.nodeConnectionManager.port as Port,
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

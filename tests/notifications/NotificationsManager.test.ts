@@ -4,14 +4,12 @@ import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { Host as QUICHost } from '@matrixai/quic/dist/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import { QUICSocket } from '@matrixai/quic';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
@@ -31,6 +29,7 @@ import * as tlsTestsUtils from '../utils/tls';
 
 describe('NotificationsManager', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger(
     `${NotificationsManager.name} Test`,
     LogLevel.WARN,
@@ -53,7 +52,6 @@ describe('NotificationsManager', () => {
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let keyRing: KeyRing;
   let sigchain: Sigchain;
 
@@ -112,20 +110,11 @@ describe('NotificationsManager', () => {
       logger,
       lazy: true,
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1' as QUICHost,
-    });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       nodeGraph,
       keyRing,
       tlsConfig,
-      crypto,
-      quicSocket,
       logger,
     });
     nodeManager = new NodeManager({
@@ -139,26 +128,26 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
-      nodePath: path.join(dataDir, 'receiver'),
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath: path.join(dataDir, 'receiver'),
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.quicSocket.host as Host,
-      port: receiver.quicSocket.port as Port,
+      host: receiver.nodeConnectionManager.host as Host,
+      port: receiver.nodeConnectionManager.port as Port,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
@@ -166,7 +155,6 @@ describe('NotificationsManager', () => {
     await taskManager.stopTasks();
     await receiver.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await nodeGraph.stop();
     await sigchain.stop();
@@ -791,9 +779,8 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    const receivedInvite = await notificationsManager.findGestaltInvite(
-      senderId,
-    );
+    const receivedInvite =
+      await notificationsManager.findGestaltInvite(senderId);
     expect(receivedInvite).toEqual(notification);
     // Reverse side-effects
     await notificationsManager.clearNotifications();

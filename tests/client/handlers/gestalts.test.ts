@@ -18,7 +18,6 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { QUICSocket } from '@matrixai/quic';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import RPCServer from '@/rpc/RPCServer';
@@ -82,7 +81,7 @@ describe('gestaltsActionsByIdentity', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -158,13 +157,13 @@ describe('gestaltsActionsByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -219,9 +218,8 @@ describe('gestaltsActionsByIdentity', () => {
     };
     await rpcClient.methods.gestaltsActionsSetByIdentity(setActionMessage);
     // Check for permission
-    const getSetResponse = await rpcClient.methods.gestaltsActionsGetByIdentity(
-      providerMessage,
-    );
+    const getSetResponse =
+      await rpcClient.methods.gestaltsActionsGetByIdentity(providerMessage);
     expect(getSetResponse.actionsList).toContainEqual(action);
     // Unset permission
     await rpcClient.methods.gestaltsActionsUnsetByIdentity(setActionMessage);
@@ -238,7 +236,7 @@ describe('gestaltsActionsByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -313,13 +311,13 @@ describe('gestaltsActionsByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -350,16 +348,14 @@ describe('gestaltsActionsByNode', () => {
     };
     await rpcClient.methods.gestaltsActionsSetByNode(requestMessage);
     // Check for permission
-    const getSetResponse = await rpcClient.methods.gestaltsActionsGetByNode(
-      nodeMessage,
-    );
+    const getSetResponse =
+      await rpcClient.methods.gestaltsActionsGetByNode(nodeMessage);
     expect(getSetResponse.actionsList).toContainEqual(action);
     // Unset permission
     await rpcClient.methods.gestaltsActionsUnsetByNode(requestMessage);
     // Check permission was removed
-    const getUnsetResponse = await rpcClient.methods.gestaltsActionsGetByNode(
-      nodeMessage,
-    );
+    const getUnsetResponse =
+      await rpcClient.methods.gestaltsActionsGetByNode(nodeMessage);
     expect(getUnsetResponse.actionsList).toHaveLength(0);
   });
 });
@@ -370,7 +366,7 @@ describe('gestaltsDiscoverByIdentity', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -384,7 +380,6 @@ describe('gestaltsDiscoverByIdentity', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
 
@@ -438,22 +433,13 @@ describe('gestaltsDiscoverByIdentity', () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1',
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -467,7 +453,9 @@ describe('gestaltsDiscoverByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+    });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -485,7 +473,6 @@ describe('gestaltsDiscoverByIdentity', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await identitiesManager.stop();
@@ -513,13 +500,13 @@ describe('gestaltsDiscoverByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -555,7 +542,7 @@ describe('gestaltsDiscoverByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -569,7 +556,6 @@ describe('gestaltsDiscoverByNode', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
 
@@ -623,22 +609,13 @@ describe('gestaltsDiscoverByNode', () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1',
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -652,7 +629,7 @@ describe('gestaltsDiscoverByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localhost as Host });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -670,7 +647,6 @@ describe('gestaltsDiscoverByNode', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await identitiesManager.stop();
@@ -698,13 +674,13 @@ describe('gestaltsDiscoverByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -741,7 +717,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
     ],
   );
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -808,13 +784,13 @@ describe('gestaltsGestaltGetByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -876,9 +852,8 @@ describe('gestaltsGestaltGetByIdentity', () => {
       providerId: identity.providerId,
       identityId: identity.identityId,
     };
-    const response = await rpcClient.methods.gestaltsGestaltGetByIdentity(
-      request,
-    );
+    const response =
+      await rpcClient.methods.gestaltsGestaltGetByIdentity(request);
     expect(response.gestalt).toEqual(expectedGestalt);
   });
 });
@@ -889,7 +864,7 @@ describe('gestaltsGestaltGetByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -956,13 +931,13 @@ describe('gestaltsGestaltGetByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1034,7 +1009,7 @@ describe('gestaltsGestaltList', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1101,13 +1076,13 @@ describe('gestaltsGestaltList', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1174,7 +1149,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     ],
   );
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1188,7 +1163,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
   let testProvider: TestProvider;
@@ -1246,22 +1220,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1',
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1275,7 +1240,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localhost as Host });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1312,7 +1277,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await identitiesManager.stop();
@@ -1343,13 +1307,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1405,13 +1369,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1464,13 +1428,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1515,13 +1479,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1581,13 +1545,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1644,7 +1608,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -1658,7 +1622,6 @@ describe('gestaltsGestaltTrustByNode', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let quicSocket: QUICSocket;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
   let testProvider: TestProvider;
@@ -1684,17 +1647,17 @@ describe('gestaltsGestaltTrustByNode', () => {
     const nodePath = path.join(nodeDataDir, 'polykey');
     node = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      networkConfig: {
-        agentHost: '127.0.0.1',
-        clientHost: '127.0.0.1',
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     nodeIdRemote = node.keyRing.getNodeId();
     nodeIdEncodedRemote = nodesUtils.encodeNodeId(nodeIdRemote);
@@ -1765,22 +1728,13 @@ describe('gestaltsGestaltTrustByNode', () => {
       keyRing,
       logger: logger.getChild('NodeGraph'),
     });
-    const crypto = tlsTestsUtils.createCrypto();
-    quicSocket = new QUICSocket({
-      logger,
-    });
-    await quicSocket.start({
-      host: '127.0.0.1',
-    });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
-      crypto,
-      quicSocket,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1794,10 +1748,10 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await nodeManager.setNode(nodeIdRemote, {
-      host: node.quicSocket.host as Host,
-      port: node.quicSocket.port as Port,
+      host: node.nodeConnectionManager.host as Host,
+      port: node.nodeConnectionManager.port as Port,
     });
     discovery = await Discovery.createDiscovery({
       db,
@@ -1816,7 +1770,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     await discovery.stop();
     await nodeGraph.stop();
     await nodeConnectionManager.stop();
-    await quicSocket.stop();
     await nodeManager.stop();
     await sigchain.stop();
     await identitiesManager.stop();
@@ -1852,13 +1805,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1896,13 +1849,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });
@@ -1939,13 +1892,13 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
     webSocketServer = await WebSocketServer.createWebSocketServer({
       connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+      host: localhost,
       tlsConfig,
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
       port: webSocketServer.getPort(),
     });

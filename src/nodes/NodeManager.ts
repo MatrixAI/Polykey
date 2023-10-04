@@ -24,11 +24,11 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port } from '../network/types';
 import type { SignedTokenEncoded } from '../tokens/types';
 import type { ClaimLinkNode } from '../claims/payloads/index';
-import type { AgentClaimMessage } from '../agent/handlers/types';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-} from '../agent/types';
+  AgentClaimMessage,
+} from './agent/types';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
@@ -37,6 +37,7 @@ import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
+import * as nodesEvents from './events';
 import * as claimsUtils from '../claims/utils';
 import * as tasksErrors from '../tasks/errors';
 import * as claimsErrors from '../claims/errors';
@@ -53,7 +54,12 @@ const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
 interface NodeManager extends StartStop {}
-@StartStop()
+@StartStop({
+  eventStart: nodesEvents.EventNodeManagerStart,
+  eventStarted: nodesEvents.EventNodeManagerStarted,
+  eventStop: nodesEvents.EventNodeManagerStop,
+  eventStopped: nodesEvents.EventNodeManagerStopped,
+})
 class NodeManager {
   protected db: DB;
   protected logger: Logger;
@@ -68,6 +74,11 @@ class NodeManager {
   protected retrySeedConnectionsDelay: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
+  /**
+   * Time used to establish `NodeConnection`
+   */
+  public readonly connectionConnectTimeoutTime: number;
+
   public readonly basePath = this.constructor.name;
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -76,7 +87,7 @@ class NodeManager {
   ) => {
     await this.refreshBucket(
       bucketIndex,
-      this.nodeConnectionManager.pingTimeoutTime,
+      this.connectionConnectTimeoutTime,
       ctx,
     );
     // When completed reschedule the task
@@ -102,7 +113,7 @@ class NodeManager {
   ) => {
     await this.garbageCollectBucket(
       bucketIndex,
-      this.nodeConnectionManager.pingTimeoutTime,
+      this.connectionConnectTimeoutTime,
       ctx,
     );
     // Checking for any new pending tasks
@@ -190,6 +201,20 @@ class NodeManager {
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
     `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
+  protected handleNodeConnectionEvent = async (
+    e: nodesEvents.EventNodeConnectionManagerConnection,
+  ) => {
+    await this.setNode(
+      e.detail.remoteNodeId,
+      {
+        host: e.detail.remoteHost,
+        port: e.detail.remotePort,
+      },
+      false,
+      false,
+    );
+  };
+
   constructor({
     db,
     keyRing,
@@ -259,11 +284,21 @@ class NodeManager {
       lazy: true,
       path: [this.basePath, this.checkSeedConnectionsHandlerId],
     });
+    // Add handling for connections
+    this.nodeConnectionManager.addEventListener(
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleNodeConnectionEvent,
+    );
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    // Remove handling for connections
+    this.nodeConnectionManager.removeEventListener(
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleNodeConnectionEvent,
+    );
     this.logger.info('Cancelling ephemeral tasks');
     if (this.taskManager.isProcessing()) {
       throw new tasksErrors.ErrorTaskManagerProcessing();
@@ -300,8 +335,7 @@ class NodeManager {
   ): PromiseCancellable<boolean>;
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) =>
-      nodeManager.nodeConnectionManager.pingTimeoutTime,
+    (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,
@@ -314,8 +348,7 @@ class NodeManager {
       address ??
       (await this.nodeConnectionManager.findNode(
         nodeId,
-        false,
-        this.nodeConnectionManager.pingTimeoutTime,
+        this.connectionConnectTimeoutTime,
         ctx,
       ));
     if (targetAddress == null) {
@@ -652,7 +685,7 @@ class NodeManager {
    * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param pingTimeoutTime - Timeout for each ping opearation during garbage collection.
+   * @param pingTimeoutTime - Timeout for each ping operation during garbage collection.
    * @param ctx
    * @param tran
    */
@@ -672,7 +705,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     block: boolean = false,
     force: boolean = false,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -760,7 +793,7 @@ class NodeManager {
         nodeId,
         nodeAddress,
         block,
-        pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
+        pingTimeoutTime,
         ctx,
         tran,
       );
@@ -776,7 +809,7 @@ class NodeManager {
   @timedCancellable(true)
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -823,8 +856,7 @@ class NodeManager {
           // Ping and remove or update node in bucket
           const pingCtx = {
             signal: ctx.signal,
-            timer:
-              pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
+            timer: pingTimeoutTime,
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
           if (nodeAddress == null) never();
@@ -878,7 +910,7 @@ class NodeManager {
     nodeId: NodeId,
     nodeAddress: NodeAddress,
     block: boolean = false,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
     ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -892,12 +924,7 @@ class NodeManager {
     // If set to blocking we just run the GC operation here
     //  without setting up a new task
     if (block) {
-      await this.garbageCollectBucket(
-        bucketIndex,
-        pingTimeoutTime ?? this.nodeConnectionManager.pingTimeoutTime,
-        ctx,
-        tran,
-      );
+      await this.garbageCollectBucket(bucketIndex, pingTimeoutTime, ctx, tran);
       return;
     }
     await this.setupGCTask(bucketIndex);
@@ -960,7 +987,7 @@ class NodeManager {
   /**
    * Kademlia refresh bucket operation.
    * It picks a random node within a bucket and does a search for that node.
-   * Connections during the search will will share node information with other
+   * Connections during the search will share node information with other
    * nodes.
    * @param bucketIndex
    * @param pingTimeoutTime
@@ -986,7 +1013,6 @@ class NodeManager {
     // We then need to start a findNode procedure
     await this.nodeConnectionManager.findNode(
       bucketRandomNodeId,
-      true,
       pingTimeoutTime,
       ctx,
     );
@@ -1173,9 +1199,7 @@ class NodeManager {
       await this.db.withTransactionF(async (tran) =>
         seedNodes.map(
           async (seedNode) =>
-            (
-              await this.nodeGraph.getNode(seedNode, tran)
-            )?.address,
+            (await this.nodeGraph.getNode(seedNode, tran))?.address,
         ),
       ),
     );

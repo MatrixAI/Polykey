@@ -195,11 +195,8 @@ type ContainerType = Record<string, any>;
  * mainly used as the return type for the `StreamFactory`. But the interface
  * can be propagated across the RPC system.
  */
-interface RPCStream<
-  R,
-  W,
-  M extends Record<string, JSONValue> = Record<string, JSONValue>,
-> extends ReadableWritablePair<R, W> {
+interface RPCStream<R, W, M extends POJO = POJO>
+  extends ReadableWritablePair<R, W> {
   cancel: (reason?: any) => void;
   meta?: M;
 }
@@ -312,6 +309,18 @@ type ClientManifest = Record<string, Caller>;
 
 type HandlerType = 'DUPLEX' | 'SERVER' | 'CLIENT' | 'UNARY' | 'RAW';
 
+type HandlerTypes<T> = T extends Handler<
+  infer Container,
+  infer Input,
+  infer Output
+>
+  ? {
+      container: Container;
+      input: Input;
+      output: Output;
+    }
+  : never;
+
 type MapCallers<T extends ClientManifest> = {
   [K in keyof T]: ConvertCaller<T[K]>;
 };
@@ -345,6 +354,7 @@ export type {
   ServerManifest,
   ClientManifest,
   HandlerType,
+  HandlerTypes,
   MapCallers,
   ClientMetadata,
 };

@@ -12,6 +12,7 @@ import type {
   RecoveryCodeLocked,
   PasswordOpsLimit,
   PasswordMemLimit,
+  KeyRingOptions,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
@@ -25,57 +26,54 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
+import * as keysEvents from './events';
 import { bufferLock, bufferUnlock } from './utils/memory';
+import * as utils from '../utils/utils';
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new keysErrors.ErrorKeyRingRunning(),
   new keysErrors.ErrorKeyRingDestroyed(),
+  {
+    eventStart: keysEvents.EventKeyRingStart,
+    eventStarted: keysEvents.EventKeyRingStarted,
+    eventStop: keysEvents.EventKeyRingStop,
+    eventStopped: keysEvents.EventKeyRingStopped,
+    eventDestroy: keysEvents.EventKeyRingDestroy,
+    eventDestroyed: keysEvents.EventKeyRingDestroyed,
+  },
 )
 class KeyRing {
   public static async createKeyRing({
     keysPath,
+    password,
+    options = {},
     workerManager,
-    passwordOpsLimit,
-    passwordMemLimit,
-    strictMemoryLock = true,
     fs = require('fs'),
     logger = new Logger(this.name),
-    ...startOptions
+    fresh,
   }: {
     keysPath: string;
     password: string;
+    options: Partial<KeyRingOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-    strictMemoryLock?: boolean;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
-    | {}
-    | {
-        recoveryCode: RecoveryCode;
-      }
-    | {
-        privateKey: PrivateKey;
-      }
-    | {
-        privateKeyPath: string;
-      }
-  )): Promise<KeyRing> {
+  }): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
+    const optionsDefaulted = utils.mergeObjects(options, {
+      strictMemoryLock: true,
+    }) as KeyRingOptions;
     const keyRing = new this({
       keysPath,
       workerManager,
-      passwordOpsLimit,
-      passwordMemLimit,
-      strictMemoryLock,
+      options: optionsDefaulted,
       fs,
       logger,
     });
-    await keyRing.start(startOptions);
+    await keyRing.start({ password, fresh });
     logger.info(`Created ${this.name}`);
     return keyRing;
   }
@@ -103,17 +101,13 @@ class KeyRing {
   public constructor({
     keysPath,
     workerManager,
-    passwordOpsLimit,
-    passwordMemLimit,
-    strictMemoryLock,
+    options,
     fs,
     logger,
   }: {
     keysPath: string;
     workerManager?: PolykeyWorkerManagerInterface;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-    strictMemoryLock: boolean;
+    options: KeyRingOptions;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -121,9 +115,9 @@ class KeyRing {
     this.keysPath = keysPath;
     this.workerManager = workerManager;
     this.fs = fs;
-    this.passwordOpsLimit = passwordOpsLimit;
-    this.passwordMemLimit = passwordMemLimit;
-    this.strictMemoryLock = strictMemoryLock;
+    this.passwordOpsLimit = options.passwordOpsLimit;
+    this.passwordMemLimit = options.passwordMemLimit;
+    this.strictMemoryLock = options.strictMemoryLock;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
@@ -157,9 +151,8 @@ class KeyRing {
       });
     }
     await this.fs.promises.mkdir(this.keysPath, { recursive: true });
-    const [keyPair, recoveryCode] = await this.setupKeyPair(
-      setupKeyPairOptions,
-    );
+    const [keyPair, recoveryCode] =
+      await this.setupKeyPair(setupKeyPairOptions);
     const dbKey = await this.setupDbKey(keyPair);
     const [passwordHash, passwordSalt] = await this.setupPasswordHash(
       options.password,
@@ -280,9 +273,8 @@ class KeyRing {
     await this.rotateLock.withF(async () => {
       this.logger.info('Changing root key pair password');
       await this.writeKeyPair(this._keyPair!, password);
-      const [passwordHash, passwordSalt] = await this.setupPasswordHash(
-        password,
-      );
+      const [passwordHash, passwordSalt] =
+        await this.setupPasswordHash(password);
       bufferUnlock(this.passwordHash!.hash);
       bufferUnlock(this.passwordHash!.salt);
       bufferLock(passwordHash, this.strictMemoryLock);
@@ -372,9 +364,8 @@ class KeyRing {
           bufferUnlock(this._recoveryCodeData);
         }
         this._recoveryCodeData = recoveryCodeData as RecoveryCodeLocked;
-        const [passwordHash, passwordSalt] = await this.setupPasswordHash(
-          password,
-        );
+        const [passwordHash, passwordSalt] =
+          await this.setupPasswordHash(password);
         bufferUnlock(this.passwordHash!.hash);
         bufferUnlock(this.passwordHash!.salt);
         bufferLock(passwordHash, this.strictMemoryLock);

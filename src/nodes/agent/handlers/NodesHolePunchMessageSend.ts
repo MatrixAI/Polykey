@@ -1,21 +1,26 @@
 import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
-import type { HolePunchRelayMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
-import type NodeManager from '../../nodes/NodeManager';
-import type KeyRing from '../../keys/KeyRing';
-import type { Host, Port } from '../../network/types';
-import type { NodeId } from '../../ids';
-import * as agentErrors from '../errors';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  HolePunchRelayMessage,
+} from '../types';
+import type NodeConnectionManager from '../../NodeConnectionManager';
+import type NodeManager from '../../NodeManager';
+import type KeyRing from '../../../keys/KeyRing';
+import type { Host, Port } from '../../../network/types';
+import type { NodeId } from '../../../ids';
 import * as agentUtils from '../utils';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
-import * as validationUtils from '../../validation/utils';
-import * as nodesUtils from '../../nodes/utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import * as agentErrors from '../errors';
+import * as nodesUtils from '../../utils';
+import * as validation from '../../../validation';
+import * as utils from '../../../utils';
+import { UnaryHandler } from '../../../rpc/handlers';
 
-class NodesHolePunchMessageSendHandler extends UnaryHandler<
+/**
+ * Sends a hole punch message to a node
+ */
+class NodesHolePunchMessageSend extends UnaryHandler<
   {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
@@ -26,11 +31,11 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
   AgentRPCRequestParams<HolePunchRelayMessage>,
   AgentRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: AgentRPCRequestParams<HolePunchRelayMessage>,
     _cancel,
     meta,
-  ): Promise<AgentRPCResponseResult> {
+  ): Promise<AgentRPCResponseResult> => {
     const { db, nodeConnectionManager, keyRing, nodeManager, logger } =
       this.container;
     const {
@@ -39,13 +44,13 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
     }: {
       targetId: NodeId;
       sourceId: NodeId;
-    } = validateSync(
+    } = validation.validateSync(
       (keyPath, value) => {
-        return matchSync(keyPath)(
+        return utils.matchSync(keyPath)(
           [
             ['targetId'],
             ['sourceId'],
-            () => validationUtils.parseNodeId(value),
+            () => validation.utils.parseNodeId(value),
           ],
           () => value,
         );
@@ -105,7 +110,7 @@ class NodesHolePunchMessageSendHandler extends UnaryHandler<
       }
     });
     return {};
-  }
+  };
 }
 
-export { NodesHolePunchMessageSendHandler };
+export default NodesHolePunchMessageSend;

@@ -1,4 +1,5 @@
 import type {
+  POJO,
   FileSystem,
   Timer,
   PromiseDeconstructed,
@@ -43,8 +44,8 @@ function getDefaultNodePath(): string | undefined {
   return p;
 }
 
-function never(): never {
-  throw new utilsErrors.ErrorUtilsUndefinedBehaviour();
+function never(message?: string): never {
+  throw new utilsErrors.ErrorUtilsUndefinedBehaviour(message);
 }
 
 async function mkdirExists(fs: FileSystem, path, ...args) {
@@ -111,11 +112,35 @@ function isEmptyObject(o) {
  * Filters out all undefined properties recursively
  */
 function filterEmptyObject(o) {
-  return Object.fromEntries(
-    Object.entries(o)
-      .filter(([_, v]) => v !== undefined)
-      .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]),
-  );
+  return filterObject(o, ([_, v]) => v !== undefined).map(([k, v]) => [
+    k,
+    v === Object(v) ? filterEmptyObject(v) : v,
+  ]);
+}
+
+function filterObject<T extends Record<K, V>, K extends string, V>(
+  obj: T,
+  f: (element: [K, V], index: number, arr: Array<[K, V]>) => boolean,
+): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(f)) as Partial<T>;
+}
+
+/**
+ * Merges an input object to a default object.
+ */
+function mergeObjects(object1: POJO, object2: POJO): POJO {
+  const keys = new Set([...Object.keys(object2), ...Object.keys(object1)]);
+  const mergedObject = {};
+  for (const key of keys) {
+    if (isObject(object1[key]) && isObject(object2[key])) {
+      mergedObject[key] = mergeObjects(object1[key], object2[key]);
+    } else if (object1[key] !== undefined) {
+      mergedObject[key] = object1[key];
+    } else {
+      mergedObject[key] = object2[key];
+    }
+  }
+  return mergedObject;
 }
 
 function getUnixtime(date: Date = new Date()) {
@@ -429,22 +454,6 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
-// TODO: remove this, quick hack to allow errors to jump the network
-const codeMap = new Map<number, any>();
-let code = 1;
-
-const reasonToCode = (_type: 'recv' | 'send', _reason?: any): number => {
-  codeMap.set(code, _reason);
-  const returnCode = code;
-  code++;
-  return returnCode;
-};
-
-const codeToReason = (type: 'recv' | 'send', code: number): any => {
-  const asd = codeMap.get(code);
-  return asd;
-};
-
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -458,6 +467,8 @@ export {
   isObject,
   isEmptyObject,
   filterEmptyObject,
+  filterObject,
+  mergeObjects,
   getUnixtime,
   poll,
   promisify,
@@ -480,6 +491,4 @@ export {
   lexiUnpackBuffer,
   bufferWrap,
   isBufferSource,
-  reasonToCode,
-  codeToReason,
 };

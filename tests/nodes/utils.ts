@@ -71,13 +71,13 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.quicSocket.host,
-    port: remoteNode.quicSocket.port,
+    host: remoteNode.nodeConnectionManager.host,
+    port: remoteNode.nodeConnectionManager.port,
   } as NodeAddress);
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.quicSocket.host,
-    port: localNode.quicSocket.port,
+    host: localNode.nodeConnectionManager.host,
+    port: localNode.nodeConnectionManager.port,
   } as NodeAddress);
 }
 
@@ -141,6 +141,35 @@ async function verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
   return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
 }
 
+/**
+ * This will create a `reasonToCode` and `codeToReason` functions that will
+ * allow errors to "jump" the network boundary. It does this by mapping the
+ * errors to an incrementing code and returning them on the other end of the
+ * connection.
+ *
+ * Note: this should ONLY be used for testing as it requires the client and
+ * server to share the same instance of `reasonToCode` and `codeToReason`.
+ */
+function createReasonConverters() {
+  const reasonMap = new Map<number, any>();
+  let code = 0;
+
+  const reasonToCode = (_type, reason) => {
+    code++;
+    reasonMap.set(code, reason);
+    return code;
+  };
+
+  const codeToReason = (_type, code) => {
+    return reasonMap.get(code) ?? new Error('Reason not found');
+  };
+
+  return {
+    reasonToCode,
+    codeToReason,
+  };
+}
+
 export {
   generateRandomNodeId,
   generateNodeIdForBucket,
@@ -150,4 +179,5 @@ export {
   uniqueNodeIdArb,
   sign,
   verify,
+  createReasonConverters,
 };

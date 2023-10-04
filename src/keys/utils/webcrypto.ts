@@ -1,17 +1,18 @@
 import type { PublicKey, PrivateKey, KeyPair } from '../types';
 import sodium from 'sodium-native';
-import { Crypto } from '@peculiar/webcrypto';
+import * as peculiarWebcrypto from '@peculiar/webcrypto';
 import * as utils from '../../utils';
 
 /**
  * WebCrypto polyfill from @peculiar/webcrypto
  * This behaves differently with respect to Ed25519 keys
  * See: https://github.com/PeculiarVentures/webcrypto/issues/55
+ * Note that the types don't exactly match but it is compatible.
  */
-const webcrypto = new Crypto();
+const webcrypto = new peculiarWebcrypto.Crypto();
 
 /**
- * Monkey patches the global crypto object polyfill
+ * Monkey patches the global crypto object polyfill.
  */
 globalThis.crypto = webcrypto;
 

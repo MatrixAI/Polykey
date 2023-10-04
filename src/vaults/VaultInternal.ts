@@ -16,7 +16,7 @@ import type KeyRing from '../keys/KeyRing';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type RPCClient from '../rpc/RPCClient';
-import type { clientManifest as agentClientManifest } from '../agent/handlers/clientManifest';
+import type agentClientManifest from '../nodes/agent/callers';
 import type { POJO } from '../types';
 import path from 'path';
 import git from 'isomorphic-git';
@@ -27,8 +27,9 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { withF, withG } from '@matrixai/resources';
 import { RWLockWriter } from '@matrixai/async-locks';
-import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
+import * as vaultsErrors from './errors';
+import * as vaultsEvents from './events';
 import { tagLast } from './types';
 import * as validationUtils from '../validation/utils';
 import * as utils from '../utils';
@@ -44,6 +45,14 @@ interface VaultInternal extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultRunning(),
   new vaultsErrors.ErrorVaultDestroyed(),
+  {
+    eventStart: vaultsEvents.EventVaultInternalStart,
+    eventStarted: vaultsEvents.EventVaultInternalStarted,
+    eventStop: vaultsEvents.EventVaultInternalStop,
+    eventStopped: vaultsEvents.EventVaultInternalStopped,
+    eventDestroy: vaultsEvents.EventVaultInternalDestroy,
+    eventDestroyed: vaultsEvents.EventVaultInternalDestroyed,
+  },
 )
 class VaultInternal {
   public static async createVaultInternal({

@@ -1,48 +1,48 @@
-import type { FileSystem } from '../types';
-import type { RecoveryCode, Key, PrivateKey } from '../keys/types';
-import type { PasswordMemLimit, PasswordOpsLimit } from '../keys/types';
+import type { DeepPartial, FileSystem } from '../types';
+import type { RecoveryCode, Key, KeysOptions } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import * as bootstrapErrors from './errors';
 import TaskManager from '../tasks/TaskManager';
-import { IdentitiesManager } from '../identities';
-import { SessionManager } from '../sessions';
-import { Status } from '../status';
-import { Schema } from '../schema';
-import { Sigchain } from '../sigchain';
-import { ACL } from '../acl';
-import { GestaltGraph } from '../gestalts';
-import { KeyRing } from '../keys';
-import { NodeGraph, NodeManager } from '../nodes';
-import { VaultManager } from '../vaults';
-import { NotificationsManager } from '../notifications';
-import { mkdirExists } from '../utils';
+import IdentitiesManager from '../identities/IdentitiesManager';
+import SessionManager from '../sessions/SessionManager';
+import Status from '../status/Status';
+import Schema from '../schema/Schema';
+import Sigchain from '../sigchain/Sigchain';
+import ACL from '../acl/ACL';
+import GestaltGraph from '../gestalts/GestaltGraph';
+import KeyRing from '../keys/KeyRing';
+import CertManager from '../keys/CertManager';
+import * as keysUtils from '../keys/utils';
+import NodeGraph from '../nodes/NodeGraph';
+import NodeManager from '../nodes/NodeManager';
+import VaultManager from '../vaults/VaultManager';
+import NotificationsManager from '../notifications/NotificationsManager';
 import config from '../config';
 import * as utils from '../utils';
-import * as keysUtils from '../keys/utils';
 import * as errors from '../errors';
+
+type BootstrapOptions = {
+  nodePath: string;
+  keys: KeysOptions;
+};
 
 /**
  * Bootstraps the Node Path
  */
 async function bootstrapState({
+  // Required parameters
   password,
-  nodePath = config.defaults.nodePath,
-  keyRingConfig = {},
+  // Optional configuration
+  options = {},
   fresh = false,
+  // Optional dependencies
   fs = require('fs'),
   logger = new Logger(bootstrapState.name),
 }: {
   password: string;
-  nodePath?: string;
-  keyRingConfig?: {
-    recoveryCode?: RecoveryCode;
-    privateKey?: PrivateKey;
-    privateKeyPath?: string;
-    passwordOpsLimit?: PasswordOpsLimit;
-    passwordMemLimit?: PasswordMemLimit;
-  };
+  options?: DeepPartial<BootstrapOptions>;
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
@@ -50,18 +50,33 @@ async function bootstrapState({
   const umask = 0o077;
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);
-  logger.info(`Setting node path to ${nodePath}`);
-  if (nodePath == null) {
+  const optionsDefaulted = utils.mergeObjects(options, {
+    nodePath: config.defaultsUser.nodePath,
+    keys: {
+      certDuration: config.defaultsUser.certDuration,
+    },
+  });
+  logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
+  if (optionsDefaulted.nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
-  await mkdirExists(fs, nodePath);
+  await utils.mkdirExists(fs, optionsDefaulted.nodePath);
   // Setup node path and sub paths
-  const statusPath = path.join(nodePath, config.defaults.statusBase);
-  const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-  const statePath = path.join(nodePath, config.defaults.stateBase);
-  const dbPath = path.join(statePath, config.defaults.dbBase);
-  const keysPath = path.join(statePath, config.defaults.keysBase);
-  const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
+  const statusPath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.statusBase,
+  );
+  const statusLockPath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.statusLockBase,
+  );
+  const statePath = path.join(
+    optionsDefaulted.nodePath,
+    config.paths.stateBase,
+  );
+  const dbPath = path.join(statePath, config.paths.dbBase);
+  const keysPath = path.join(statePath, config.paths.keysBase);
+  const vaultsPath = path.join(statePath, config.paths.vaultsBase);
   const status = new Status({
     statusPath,
     statusLockPath,
@@ -72,7 +87,7 @@ async function bootstrapState({
     await status.start({ pid: process.pid });
     if (!fresh) {
       // Check the if number of directory entries is greater than 1 due to status.json and status.lock
-      if ((await fs.promises.readdir(nodePath)).length > 2) {
+      if ((await fs.promises.readdir(optionsDefaulted.nodePath)).length > 2) {
         throw new bootstrapErrors.ErrorBootstrapExistingState();
       }
     }
@@ -89,10 +104,10 @@ async function bootstrapState({
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: optionsDefaulted.keys,
       fs,
       logger: logger.getChild(KeyRing.name),
       fresh,
-      ...keyRingConfig,
     });
     const db = await DB.createDB({
       dbPath,
@@ -116,6 +131,19 @@ async function bootstrapState({
         },
       },
       fresh,
+    });
+    const taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    const certManager = await CertManager.createCertManager({
+      keyRing,
+      db,
+      taskManager,
+      options: optionsDefaulted.keys,
+      fresh,
+      logger,
     });
     const sigchain = await Sigchain.createSigchain({
       db,
@@ -148,11 +176,7 @@ async function bootstrapState({
       keyRing,
       logger: logger.getChild(NodeGraph.name),
     });
-    const taskManager = await TaskManager.createTaskManager({
-      db,
-      logger,
-      lazy: true,
-    });
+
     const nodeManager = new NodeManager({
       db,
       keyRing,
@@ -199,6 +223,7 @@ async function bootstrapState({
     await gestaltGraph.stop();
     await acl.stop();
     await sigchain.stop();
+    await certManager.stop();
     await taskManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -210,3 +235,5 @@ async function bootstrapState({
 }
 
 export { bootstrapState };
+
+export type { BootstrapOptions };

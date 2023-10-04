@@ -384,9 +384,8 @@ describe('GestaltGraph', () => {
       });
       try {
         // Setting
-        const [type, providerIdentityId] = await gestaltGraph.setIdentity(
-          gestaltIdentityInfo,
-        );
+        const [type, providerIdentityId] =
+          await gestaltGraph.setIdentity(gestaltIdentityInfo);
         expect(type).toBe('identity');
         expect(providerIdentityId[0]).toBe(gestaltIdentityInfo.providerId);
         expect(providerIdentityId[1]).toBe(gestaltIdentityInfo.identityId);
@@ -416,9 +415,8 @@ describe('GestaltGraph', () => {
       });
       try {
         // Setting
-        const [type, providerIdentityId] = await gestaltGraph.setIdentity(
-          gestaltIdentityInfo,
-        );
+        const [type, providerIdentityId] =
+          await gestaltGraph.setIdentity(gestaltIdentityInfo);
         expect(type).toBe('identity');
         expect(providerIdentityId[0]).toBe(gestaltIdentityInfo.providerId);
         expect(providerIdentityId[1]).toBe(gestaltIdentityInfo.identityId);
@@ -682,9 +680,8 @@ describe('GestaltGraph', () => {
         'identity',
         providerIdentitiyId,
       ]);
-      const gestalt = await gestaltGraph.getGestaltByIdentity(
-        providerIdentitiyId,
-      );
+      const gestalt =
+        await gestaltGraph.getGestaltByIdentity(providerIdentitiyId);
       const gestaltIdentityId = encodeGestaltIdentityId([
         'identity',
         providerIdentitiyId,

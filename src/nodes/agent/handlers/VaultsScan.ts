@@ -1,13 +1,19 @@
 import type { DB } from '@matrixai/db';
-import type { VaultsScanMessage } from './types';
-import type { AgentRPCRequestParams, AgentRPCResponseResult } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  VaultsScanMessage,
+} from '../types';
+import type VaultManager from '../../../vaults/VaultManager';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
-import { ServerHandler } from '../../rpc/handlers';
-import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsUtils from '../../../vaults/utils';
+import { ServerHandler } from '../../../rpc/handlers';
 
-class VaultsScanHandler extends ServerHandler<
+/**
+ * Scan vaults.
+ */
+class VaultsScan extends ServerHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -15,7 +21,7 @@ class VaultsScanHandler extends ServerHandler<
   AgentRPCRequestParams,
   AgentRPCResponseResult<VaultsScanMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: AgentRPCRequestParams,
     _cancel,
     meta,
@@ -25,9 +31,9 @@ class VaultsScanHandler extends ServerHandler<
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
-    yield* db.withTransactionG(async function* (
-      tran,
-    ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
+    yield* db.withTransactionG(async function* (tran): AsyncGenerator<
+      AgentRPCResponseResult<VaultsScanMessage>
+    > {
       const listResponse = vaultManager.handleScanVaults(
         requestingNodeId,
         tran,
@@ -44,7 +50,7 @@ class VaultsScanHandler extends ServerHandler<
         };
       }
     });
-  }
+  };
 }
 
-export { VaultsScanHandler };
+export default VaultsScan;

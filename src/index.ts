@@ -1,8 +1,10 @@
 export { default as PolykeyAgent } from './PolykeyAgent';
 export { default as PolykeyClient } from './PolykeyClient';
+export { default as EventPolykey } from './EventPolykey';
 export { default as ErrorPolykey } from './ErrorPolykey';
 export { default as config } from './config';
 export * as utils from './utils';
+export * as events from './events';
 export * as errors from './errors';
 export * from './types';
 
@@ -11,12 +13,10 @@ export * from './types';
 // kitchen sink here
 
 export * as acl from './acl';
-export * as agent from './agent';
 export * as bootstrap from './bootstrap';
 export * as claims from './claims';
 export * as client from './client';
 export * as discovery from './discovery';
-export * as events from './events';
 export * as gestalts from './gestalts';
 export * as git from './git';
 export * as http from './http';

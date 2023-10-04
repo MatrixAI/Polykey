@@ -5,7 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICSocket } from '@matrixai/quic';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
@@ -32,7 +31,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   ]);
   const localHost = '127.0.0.1';
   const password = 'password';
-  const crypto = tlsTestUtils.createCrypto();
 
   let tlsConfig: TLSConfig;
 
@@ -80,7 +78,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let serverAddress: NodeAddress;
   let serverNodeId: NodeId;
   let serverNodeIdEncoded: NodeIdEncoded;
-  let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -93,7 +90,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
   let nodeConnectionManager: NodeConnectionManager;
   // Default stream handler, just drop the stream
-  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -103,27 +99,21 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     // Setting up remote node
     const nodePath = path.join(dataDir, 'agentA');
     remotePolykeyAgent = await PolykeyAgent.createPolykeyAgent({
-      nodePath,
       password,
-      networkConfig: {
-        agentHost: localHost,
-      },
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('AgentA'),
     });
     serverNodeId = remotePolykeyAgent.keyRing.getNodeId();
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
-
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -131,9 +121,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -165,15 +157,17 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger,
     });
     serverAddress = {
-      host: remotePolykeyAgent.quicSocket.host as Host,
-      port: remotePolykeyAgent.quicSocket.port as Port,
+      host: remotePolykeyAgent.nodeConnectionManager.host as Host,
+      port: remotePolykeyAgent.nodeConnectionManager.port as Port,
     };
   });
 
   afterEach(async () => {
     logger.info('AFTER EACH');
-    await nodeConnectionManager?.stop();
+    await taskManager.stopProcessing();
     await taskManager.stopTasks();
+    await nodeManager?.stop();
+    await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
     await nodeGraph.stop();
@@ -186,7 +180,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop({ force: true });
     await taskManager.stop();
 
     await remotePolykeyAgent.stop();
@@ -198,8 +191,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -214,8 +205,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -238,11 +228,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -257,8 +247,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -292,11 +281,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -311,8 +300,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -339,11 +327,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -358,8 +346,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -421,11 +408,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -440,8 +427,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -503,11 +489,11 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
+      options: {
+        connectionKeepAliveTimeoutTime: 10000,
+        connectionKeepAliveIntervalTime: 1000,
+      },
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
     });
     nodeManager = new NodeManager({
@@ -522,8 +508,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
     await taskManager.startProcessing();
 
@@ -559,73 +544,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     );
 
     expect(mockedHolePunchReverse).toHaveBeenCalled();
-
-    await nodeConnectionManager.stop();
-  });
-  test('getClosestGlobalNodes should skip recent offline nodes', async () => {
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      logger: logger.getChild(NodeConnectionManager.name),
-      nodeGraph,
-      connectionMaxIdleTimeout: 10000,
-      connectionKeepAliveIntervalTime: 1000,
-      tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
-      seedNodes: undefined,
-    });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-    await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
-    });
-    await taskManager.startProcessing();
-
-    const randomNodeId1 = testNodesUtils.generateRandomNodeId();
-    const randomNodeId2 = testNodesUtils.generateRandomNodeId();
-    const randomNodeId3 = testNodesUtils.generateRandomNodeId();
-
-    // Add fake data to `NodeGraph`
-    await nodeGraph.setNode(randomNodeId1, serverAddress);
-    await nodeGraph.setNode(randomNodeId2, serverAddress);
-
-    // Making pings fail
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation(
-      () => new PromiseCancellable((resolve) => resolve(false)),
-    );
-    await nodeConnectionManager.getClosestGlobalNodes(randomNodeId3, false);
-    expect(mockedPingNode).toHaveBeenCalled();
-
-    // Nodes 1 and 2 should exist in backoff map
-    // @ts-ignore: kidnap protected property
-    const backoffMap = nodeConnectionManager.nodesBackoffMap;
-    expect(backoffMap.has(randomNodeId1.toString())).toBeTrue();
-    expect(backoffMap.has(randomNodeId2.toString())).toBeTrue();
-    expect(backoffMap.has(randomNodeId3.toString())).toBeFalse();
-
-    // Next find node should skip offline nodes
-    mockedPingNode.mockClear();
-    await nodeConnectionManager.getClosestGlobalNodes(randomNodeId3, true);
-    expect(mockedPingNode).not.toHaveBeenCalled();
-
-    // We can try connecting anyway
-    mockedPingNode.mockClear();
-    await nodeConnectionManager.getClosestGlobalNodes(randomNodeId3, false);
-    expect(mockedPingNode).toHaveBeenCalled();
 
     await nodeConnectionManager.stop();
   });

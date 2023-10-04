@@ -10,6 +10,7 @@ import { DB } from '@matrixai/db';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
+import * as rpcErrors from '@/rpc/errors';
 import * as testNodesUtils from './utils';
 
 describe('nodes/utils', () => {
@@ -199,5 +200,21 @@ describe('nodes/utils', () => {
       );
       expect(nodesUtils.bucketIndex(baseNodeId, randomDistance)).toEqual(i);
     }
+  });
+  test('code and reason converters', async () => {
+    function check(reason: any): any {
+      const _reason = new reason();
+      const code = nodesUtils.reasonToCode('read', _reason);
+      const convertedReason = nodesUtils.codeToReason('read', code);
+      expect(convertedReason).toBeInstanceOf(reason);
+    }
+
+    check(rpcErrors.ErrorRPCHandlerFailed);
+    check(rpcErrors.ErrorRPCMessageLength);
+    check(rpcErrors.ErrorRPCMissingResponse);
+    check(rpcErrors.ErrorRPCOutputStreamError);
+    check(rpcErrors.ErrorPolykeyRemote);
+    check(rpcErrors.ErrorRPCStreamEnded);
+    check(rpcErrors.ErrorRPCTimedOut);
   });
 });

@@ -7,8 +7,9 @@ import RPCClient from './rpc/RPCClient';
 import * as rpcUtilsMiddleware from './rpc/utils/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { Session } from './sessions';
-import * as errors from './errors';
 import * as utils from './utils';
+import * as errors from './errors';
+import * as events from './events';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
 
@@ -21,12 +22,18 @@ interface PolykeyClient extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
+  {
+    eventStart: events.EventPolykeyClientStart,
+    eventStarted: events.EventPolykeyClientStarted,
+    eventStop: events.EventPolykeyClientStop,
+    eventStopped: events.EventPolykeyClientStopped,
+    eventDestroy: events.EventPolykeyClientDestroy,
+    eventDestroyed: events.EventPolykeyClientDestroyed,
+  },
 )
 class PolykeyClient {
   static async createPolykeyClient({
-    nodePath = config.defaults.nodePath,
-    session,
-    rpcClientClient,
+    nodePath = config.defaultsUser.nodePath,
     streamFactory,
     streamKeepAliveTimeoutTime,
     parserBufferByteLimit,
@@ -35,8 +42,6 @@ class PolykeyClient {
     fresh = false,
   }: {
     nodePath?: string;
-    session?: Session;
-    rpcClientClient?: RPCClient<typeof clientManifest>;
     streamFactory: StreamFactory;
     streamKeepAliveTimeoutTime?: number;
     parserBufferByteLimit?: number;
@@ -49,29 +54,25 @@ class PolykeyClient {
       throw new errors.ErrorUtilsNodePath();
     }
     await utils.mkdirExists(fs, nodePath);
-    const sessionTokenPath = path.join(nodePath, config.defaults.tokenBase);
-    session =
-      session ??
-      (await Session.createSession({
-        sessionTokenPath,
-        logger: logger.getChild(Session.name),
-        fresh,
-      }));
-    const rpcClientClient_ =
-      rpcClientClient ??
-      (await RPCClient.createRPCClient({
-        manifest: clientManifest,
-        streamFactory,
-        middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
-          clientUtilsMiddleware.middlewareClient(session),
-          parserBufferByteLimit,
-        ),
-        streamKeepAliveTimeoutTime,
-        logger: logger.getChild(RPCClient.name),
-      }));
+    const sessionTokenPath = path.join(nodePath, config.paths.tokenBase);
+    const session = await Session.createSession({
+      sessionTokenPath,
+      logger: logger.getChild(Session.name),
+      fresh,
+    });
+    const rpcClientClient = await RPCClient.createRPCClient({
+      manifest: clientManifest,
+      streamFactory,
+      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
+        clientUtilsMiddleware.middlewareClient(session),
+        parserBufferByteLimit,
+      ),
+      streamKeepAliveTimeoutTime,
+      logger: logger.getChild(RPCClient.name),
+    });
     const pkClient = new this({
       nodePath,
-      rpcClientClient: rpcClientClient_,
+      rpcClientClient: rpcClientClient,
       session,
       fs,
       logger,

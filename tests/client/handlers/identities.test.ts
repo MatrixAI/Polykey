@@ -2752,16 +2752,14 @@ describe('identitiesTokenPutDeleteGet', () => {
       token: testToken.providerToken,
     });
     // Get token
-    const getPutResponse = await rpcClient.methods.identitiesTokenGet(
-      providerMessage,
-    );
+    const getPutResponse =
+      await rpcClient.methods.identitiesTokenGet(providerMessage);
     expect(getPutResponse.token).toStrictEqual(testToken.providerToken);
     // Delete token
     await rpcClient.methods.identitiesTokenDelete(providerMessage);
     // Check token was deleted
-    const getDeleteResponse = await rpcClient.methods.identitiesTokenGet(
-      providerMessage,
-    );
+    const getDeleteResponse =
+      await rpcClient.methods.identitiesTokenGet(providerMessage);
     expect(getDeleteResponse.token).toBeUndefined();
   });
 });

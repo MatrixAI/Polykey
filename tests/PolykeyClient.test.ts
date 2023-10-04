@@ -11,6 +11,7 @@ import WebSocketClient from '@/websockets/WebSocketClient';
 
 describe('PolykeyClient', () => {
   const password = 'password';
+  const localhost = '127.0.0.1';
   const logger = new Logger('PolykeyClient Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -24,13 +25,17 @@ describe('PolykeyClient', () => {
     nodePath = path.join(dataDir, 'polykey');
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath,
-      logger,
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath,
+        agentServiceHost: localhost,
+        clientServiceHost: localhost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
+      logger,
     });
   });
   afterEach(async () => {
@@ -42,7 +47,7 @@ describe('PolykeyClient', () => {
   });
   test('preserving and destroying session state', async () => {
     const session = await Session.createSession({
-      sessionTokenPath: path.join(nodePath, config.defaults.tokenBase),
+      sessionTokenPath: path.join(nodePath, config.paths.tokenBase),
       fs,
       logger,
     });
@@ -60,7 +65,6 @@ describe('PolykeyClient', () => {
       fs,
       logger,
       fresh: true,
-      rpcClientClient: { destroy: () => {} } as any,
     });
     expect(await session.readToken()).toBeUndefined();
     await session.writeToken('abc' as SessionToken);

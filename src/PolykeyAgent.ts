@@ -1,24 +1,18 @@
-import type { FileSystem, PromiseDeconstructed } from './types';
+import type { DeepPartial, FileSystem, PromiseDeconstructed } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { ConnectionData, TLSConfig } from './network/types';
-import type { SeedNodes } from './nodes/types';
-import type { CertManagerChangeData, Key } from './keys/types';
-import type { RecoveryCode, PrivateKey } from './keys/types';
-import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
+import type { TLSConfig } from './network/types';
+import type { SeedNodes, NodesOptions } from './nodes/types';
+import type { Key, KeysOptions } from './keys/types';
 import path from 'path';
 import process from 'process';
-import { webcrypto } from 'crypto';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { QUICServer, QUICSocket } from '@matrixai/quic';
 import RPCServer from './rpc/RPCServer';
 import WebSocketServer from './websockets/WebSocketServer';
 import * as rpcUtilsMiddleware from './rpc/utils/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
-import * as networkUtils from './network/utils';
 import KeyRing from './keys/KeyRing';
 import CertManager from './keys/CertManager';
 import Status from './status/Status';
@@ -35,137 +29,89 @@ import Discovery from './discovery/Discovery';
 import SessionManager from './sessions/SessionManager';
 import IdentitiesManager from './identities/IdentitiesManager';
 import { providers } from './identities';
-import { EventBus, captureRejectionSymbol } from './events';
 import config from './config';
 import * as errors from './errors';
+import * as events from './events';
 import * as utils from './utils';
 import * as keysUtils from './keys/utils';
+import * as keysEvents from './keys/events';
 import * as nodesUtils from './nodes/utils';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
-import { serverManifest as agentServerManifest } from './agent/handlers';
+import agentServerManifest from './nodes/agent/handlers';
 
-type NetworkConfig = {
-  // Agent QUICSocket config
-  agentHost?: string;
-  agentPort?: number;
-  ipv6Only?: boolean;
-  agentKeepAliveIntervalTime?: number;
-  agentMaxIdleTimeout?: number;
-  // RPCServer for client service
-  clientHost?: string;
-  clientPort?: number;
-  // Websocket server config
-  maxIdleTimeout?: number;
-  pingIntervalTime?: number;
-  pingTimeoutTimeTime?: number;
-  // RPC config
-  clientParserBufferByteLimit?: number;
-  handlerTimeoutTime?: number;
-  handlerTimeoutGraceTime?: number;
+/**
+ * Optional configuration for `PolykeyAgent`.
+ */
+type PolykeyAgentOptions = {
+  nodePath: string;
+  clientServiceHost: string;
+  clientServicePort: number;
+  agentServiceHost: string;
+  agentServicePort: number;
+  seedNodes: SeedNodes;
+  workers: number;
+  ipv6Only: boolean;
+  keys: KeysOptions;
+  rpc: {
+    callTimeoutTime: number;
+    parserBufferSize: number;
+  };
+  client: {
+    connectTimeoutTime: number;
+    keepAliveTimeoutTime: number;
+    keepAliveIntervalTime: number;
+  };
+  nodes: NodesOptions;
+};
+
+type PolykeyAgentStartOptions = {
+  clientServiceHost: string;
+  clientServicePort: number;
+  agentServiceHost: string;
+  agentServicePort: number;
+  ipv6Only: boolean;
+  workers: number;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new errors.ErrorPolykeyAgentRunning(),
   new errors.ErrorPolykeyAgentDestroyed(),
+  {
+    eventStart: events.EventPolykeyAgentStart,
+    eventStarted: events.EventPolykeyAgentStarted,
+    eventStop: events.EventPolykeyAgentStop,
+    eventStopped: events.EventPolykeyAgentStopped,
+    eventDestroy: events.EventPolykeyAgentDestroy,
+    eventDestroyed: events.EventPolykeyAgentDestroyed,
+  },
 )
 class PolykeyAgent {
   /**
-   * Event symbols
-   * These represent event topics
+   * Create the Polykey Agent.
+   *
+   * All optional configuration is deep-merged with defaults.
+   *
+   * If any of the optional dependencies is injected, their lifecycle will not
+   * be managed by `PolykeyAgent`. Furthermore if you inject an optional
+   * dependency, make sure you are injecting all upstream transitive
+   * dependencies at the same time. For example if you inject `acl`, you must
+   * also inject `db`.
    */
-  public static readonly eventSymbols = {
-    [CertManager.name]: Symbol(CertManager.name),
-    [QUICServer.name]: Symbol(QUICServer.name),
-  } as {
-    readonly CertManager: unique symbol;
-    readonly QUICServer: unique symbol;
-  };
-
   public static async createPolykeyAgent({
     // Required parameters
     password,
-    // Optional configuration
-    nodePath = config.defaults.nodePath,
-    keyRingConfig = {},
-    certManagerConfig = {},
-    networkConfig = {},
-    nodeConnectionManagerConfig = {},
-    seedNodes = {},
-    workers,
+    // Options
+    options = {},
+    fresh = false,
     // Optional dependencies
-    status,
-    schema,
-    keyRing,
-    db,
-    certManager,
-    identitiesManager,
-    sigchain,
-    acl,
-    gestaltGraph,
-    taskManager,
-    nodeGraph,
-    nodeConnectionManager,
-    nodeManager,
-    discovery,
-    vaultManager,
-    notificationsManager,
-    sessionManager,
-    rpcServerClient,
-    webSocketServerClient,
-    rpcServerAgent,
-    quicSocket,
     fs = require('fs'),
     logger = new Logger(this.name),
-    fresh = false,
   }: {
     password: string;
-    nodePath?: string;
-    keyRingConfig?: {
-      recoveryCode?: RecoveryCode;
-      privateKey?: PrivateKey;
-      privateKeyPath?: string;
-      passwordOpsLimit?: PasswordOpsLimit;
-      passwordMemLimit?: PasswordMemLimit;
-      strictMemoryLock?: boolean;
-    };
-    certManagerConfig?: {
-      certDuration?: number;
-    };
-    nodeConnectionManagerConfig?: {
-      connectionConnectTime?: number;
-      connectionTimeoutTime?: number;
-      initialClosestNodes?: number;
-      pingTimeoutTime?: number;
-      connectionHolePunchTimeoutTime?: number;
-      connectionHolePunchIntervalTime?: number;
-    };
-    networkConfig?: NetworkConfig;
-    seedNodes?: SeedNodes;
-    workers?: number;
-    status?: Status;
-    schema?: Schema;
-    keyRing?: KeyRing;
-    db?: DB;
-    certManager?: CertManager;
-    identitiesManager?: IdentitiesManager;
-    sigchain?: Sigchain;
-    acl?: ACL;
-    gestaltGraph?: GestaltGraph;
-    taskManager?: TaskManager;
-    nodeGraph?: NodeGraph;
-    nodeConnectionManager?: NodeConnectionManager;
-    nodeManager?: NodeManager;
-    discovery?: Discovery;
-    vaultManager?: VaultManager;
-    notificationsManager?: NotificationsManager;
-    sessionManager?: SessionManager;
-    rpcServerClient?: RPCServer;
-    webSocketServerClient?: WebSocketServer;
-    rpcServerAgent?: RPCServer;
-    quicSocket?: QUICSocket;
+    options?: DeepPartial<PolykeyAgentOptions>;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -174,252 +120,236 @@ class PolykeyAgent {
     const umask = 0o077;
     logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
     process.umask(umask);
-    if (nodePath == null) {
+    const optionsDefaulted = utils.mergeObjects(options, {
+      nodePath: config.defaultsUser.nodePath,
+      clientServiceHost: config.defaultsUser.clientServiceHost,
+      clientServicePort: config.defaultsUser.clientServicePort,
+      agentServiceHost: config.defaultsUser.agentServiceHost,
+      agentServicePort: config.defaultsUser.agentServicePort,
+      seedNodes: config.defaultsUser.seedNodes,
+      workers: config.defaultsUser.workers,
+      ipv6Only: config.defaultsUser.ipv6Only,
+      keys: {
+        certDuration: config.defaultsUser.certDuration,
+        certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
+      },
+      rpc: {
+        callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
+        parserBufferSize: config.defaultsSystem.rpcParserBufferSize,
+      },
+      client: {
+        connectTimoutTime: config.defaultsSystem.clientConnectTimeoutTime,
+        keepAliveTimeoutTime: config.defaultsSystem.clientKeepAliveTimeoutTime,
+        keepAliveIntervalTime:
+          config.defaultsSystem.clientKeepAliveIntervalTime,
+      },
+      nodes: {
+        connectionIdleTimeoutTime:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+        connectionFindConcurrencyLimit:
+          config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
+        connectionConnectTimeoutTime:
+          config.defaultsSystem.nodesConnectionConnectTimeoutTime,
+        connectionKeepAliveTimeoutTime:
+          config.defaultsSystem.nodesConnectionKeepAliveTimeoutTime,
+        connectionKeepAliveIntervalTime:
+          config.defaultsSystem.nodesConnectionKeepAliveIntervalTime,
+        connectionHolePunchIntervalTime:
+          config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
+      },
+    });
+    // This can only happen if the caller didn't specify the node path and the
+    // automatic detection failed
+    if (optionsDefaulted.nodePath == null) {
       throw new errors.ErrorUtilsNodePath();
     }
-    logger.info(`Setting node path to ${nodePath}`);
-    const certManagerConfig_ = {
-      ...config.defaults.certManagerConfig,
-      ...utils.filterEmptyObject(certManagerConfig),
-    };
-    const nodeConnectionManagerConfig_ = {
-      ...config.defaults.nodeConnectionManagerConfig,
-      ...utils.filterEmptyObject(nodeConnectionManagerConfig),
-    };
-    const networkConfig_ = {
-      ...config.defaults.networkConfig,
-      ...utils.filterEmptyObject(networkConfig),
-    };
-
-    await utils.mkdirExists(fs, nodePath);
-    const statusPath = path.join(nodePath, config.defaults.statusBase);
-    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
-    const statePath = path.join(nodePath, config.defaults.stateBase);
-    const dbPath = path.join(statePath, config.defaults.dbBase);
-    const keysPath = path.join(statePath, config.defaults.keysBase);
-    const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
-    const events = new EventBus({
-      captureRejections: true,
-    });
+    logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
+    await utils.mkdirExists(fs, optionsDefaulted.nodePath);
+    const statusPath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.statusBase,
+    );
+    const statusLockPath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.statusLockBase,
+    );
+    const statePath = path.join(
+      optionsDefaulted.nodePath,
+      config.paths.stateBase,
+    );
+    const dbPath = path.join(statePath, config.paths.dbBase);
+    const keysPath = path.join(statePath, config.paths.keysBase);
+    const vaultsPath = path.join(statePath, config.paths.vaultsBase);
     let pkAgentProm: PromiseDeconstructed<PolykeyAgent> | undefined;
+
+    let status: Status | undefined;
+    let schema: Schema | undefined;
+    let keyRing: KeyRing | undefined;
+    let db: DB | undefined;
+    let taskManager: TaskManager | undefined;
+    let certManager: CertManager | undefined;
+    let sigchain: Sigchain | undefined;
+    let acl: ACL | undefined;
+    let gestaltGraph: GestaltGraph | undefined;
+    let identitiesManager: IdentitiesManager | undefined;
+    let nodeGraph: NodeGraph | undefined;
+    let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    let discovery: Discovery | undefined;
+    let notificationsManager: NotificationsManager | undefined;
+    let vaultManager: VaultManager | undefined;
+    let sessionManager: SessionManager | undefined;
+    let rpcServerClient: RPCServer | undefined;
+    let webSocketServerClient: WebSocketServer | undefined;
+    let rpcServerAgent: RPCServer | undefined;
     try {
-      status =
-        status ??
-        new Status({
-          statusPath,
-          statusLockPath,
-          fs: fs,
-          logger: logger.getChild(Status.name),
-        });
+      status = new Status({
+        statusPath,
+        statusLockPath,
+        fs: fs,
+        logger: logger.getChild(Status.name),
+      });
       // Start locking the status
       await status.start({ pid: process.pid });
-      schema =
-        schema ??
-        (await Schema.createSchema({
-          statePath,
-          fs,
-          logger: logger.getChild(Schema.name),
-          fresh,
-        }));
-      keyRing =
-        keyRing ??
-        (await KeyRing.createKeyRing({
-          fresh,
-          fs,
-          keysPath,
-          password,
-          ...keyRingConfig,
-          logger: logger.getChild(KeyRing.name),
-        }));
-      // Remove your own node ID if provided as a seed node
-      const nodeIdOwn = keyRing.getNodeId();
-      const nodeIdEncodedOwn = Object.keys(seedNodes).find((nodeIdEncoded) => {
-        return nodeIdOwn.equals(nodesUtils.decodeNodeId(nodeIdEncoded)!);
+      schema = await Schema.createSchema({
+        statePath,
+        fs,
+        logger: logger.getChild(Schema.name),
+        fresh,
       });
-      if (nodeIdEncodedOwn != null) {
-        delete seedNodes[nodeIdEncodedOwn];
-      }
-      db =
-        db ??
-        (await DB.createDB({
-          dbPath,
-          crypto: {
-            key: keyRing.dbKey,
-            ops: {
-              encrypt: async (key, plainText) => {
-                return keysUtils.encryptWithKey(
-                  utils.bufferWrap(key) as Key,
-                  utils.bufferWrap(plainText),
-                );
-              },
-              decrypt: async (key, cipherText) => {
-                return keysUtils.decryptWithKey(
-                  utils.bufferWrap(key) as Key,
-                  utils.bufferWrap(cipherText),
-                );
-              },
+      keyRing = await KeyRing.createKeyRing({
+        keysPath,
+        options: optionsDefaulted.keys,
+        fs,
+        fresh,
+        password,
+        logger: logger.getChild(KeyRing.name),
+      });
+      db = await DB.createDB({
+        dbPath,
+        crypto: {
+          key: keyRing.dbKey,
+          ops: {
+            encrypt: async (key, plainText) => {
+              return keysUtils.encryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(plainText),
+              );
+            },
+            decrypt: async (key, cipherText) => {
+              return keysUtils.decryptWithKey(
+                utils.bufferWrap(key) as Key,
+                utils.bufferWrap(cipherText),
+              );
             },
           },
-          fs,
-          logger: logger.getChild(DB.name),
-          fresh,
-        }));
-      taskManager =
-        taskManager ??
-        (await TaskManager.createTaskManager({
-          db,
-          fresh,
-          lazy: true,
-          logger,
-        }));
-      certManager =
-        certManager ??
-        (await CertManager.createCertManager({
-          keyRing,
-          db,
-          taskManager,
-          changeCallback: async (data) =>
-            events.emitAsync(PolykeyAgent.eventSymbols.CertManager, data),
-          logger: logger.getChild(CertManager.name),
-          fresh,
-          ...certManagerConfig_,
-        }));
-      sigchain =
-        sigchain ??
-        (await Sigchain.createSigchain({
-          keyRing,
-          db,
-          logger: logger.getChild(Sigchain.name),
-          fresh,
-        }));
-      acl =
-        acl ??
-        (await ACL.createACL({
-          db,
-          logger: logger.getChild(ACL.name),
-          fresh,
-        }));
-      gestaltGraph =
-        gestaltGraph ??
-        (await GestaltGraph.createGestaltGraph({
-          db,
-          acl,
-          logger: logger.getChild(GestaltGraph.name),
-          fresh,
-        }));
-      identitiesManager =
-        identitiesManager ??
-        (await IdentitiesManager.createIdentitiesManager({
-          keyRing,
-          db,
-          sigchain,
-          gestaltGraph,
-          logger: logger.getChild(IdentitiesManager.name),
-          fresh,
-        }));
+        },
+        fs,
+        logger: logger.getChild(DB.name),
+        fresh,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        fresh,
+        lazy: true,
+        logger,
+      });
+      certManager = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        options: optionsDefaulted.keys,
+        logger: logger.getChild(CertManager.name),
+        fresh,
+      });
+      // TLS configuration for networking
+      const tlsConfig: TLSConfig = {
+        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
+        certChainPem: await certManager.getCertPEMsChainPEM(),
+      };
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+        fresh,
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+        fresh,
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+        fresh,
+      });
+      identitiesManager = await IdentitiesManager.createIdentitiesManager({
+        keyRing,
+        db,
+        sigchain,
+        gestaltGraph,
+        logger: logger.getChild(IdentitiesManager.name),
+        fresh,
+      });
       // Registering providers
       const githubProvider = new providers.GithubProvider({
         clientId: config.providers['github.com'].clientId,
         logger: logger.getChild(providers.GithubProvider.name),
       });
       identitiesManager.registerProvider(githubProvider);
-      nodeGraph =
-        nodeGraph ??
-        (await NodeGraph.createNodeGraph({
-          db,
-          fresh,
-          keyRing,
-          logger: logger.getChild(NodeGraph.name),
-        }));
-      const resolveHostname = (host) => {
-        return networkUtils.resolveHostname(host)[0] ?? '';
-      };
-      quicSocket =
-        quicSocket ??
-        new QUICSocket({
-          logger: logger.getChild(QUICSocket.name),
-          resolveHostname,
-        });
-      const crypto: ServerCrypto & ClientCrypto = {
-        randomBytes: async (data: ArrayBuffer) => {
-          const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-          const dataBuf = Buffer.from(data);
-          dataBuf.write(randomBytes.toString('binary'), 'binary');
-        },
-        async sign(key: ArrayBuffer, data: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.sign('HMAC', cryptoKey, data);
-        },
-        async verify(key: ArrayBuffer, data: ArrayBuffer, sig: ArrayBuffer) {
-          const cryptoKey = await webcrypto.subtle.importKey(
-            'raw',
-            key,
-            {
-              name: 'HMAC',
-              hash: 'SHA-256',
-            },
-            true,
-            ['sign', 'verify'],
-          );
-          return webcrypto.subtle.verify('HMAC', cryptoKey, sig, data);
-        },
-      };
-      const tlsConfig: TLSConfig = {
-        keyPrivatePem: keysUtils.privateKeyToPEM(keyRing.keyPair.privateKey),
-        certChainPem: await certManager.getCertPEMsChainPEM(),
-      };
-      nodeConnectionManager =
-        nodeConnectionManager ??
-        new NodeConnectionManager({
-          handleStream: () => {},
-          keyRing,
-          nodeGraph,
-          seedNodes,
-          quicSocket,
-          ...nodeConnectionManagerConfig_,
-          connectionKeepAliveIntervalTime:
-            networkConfig_.agentKeepAliveIntervalTime,
-          connectionMaxIdleTimeout: networkConfig_.agentMaxIdleTimeout,
-          tlsConfig,
-          crypto,
-          logger: logger.getChild(NodeConnectionManager.name),
-        });
-      nodeManager =
-        nodeManager ??
-        new NodeManager({
-          db,
-          sigchain,
-          keyRing,
-          nodeGraph,
-          nodeConnectionManager,
-          taskManager,
-          gestaltGraph,
-          logger: logger.getChild(NodeManager.name),
-        });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        fresh,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      // Remove your own node ID if provided as a seed node
+      const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
+      delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        nodeGraph,
+        tlsConfig,
+        seedNodes: optionsDefaulted.seedNodes,
+        options: optionsDefaulted.nodes,
+        logger: logger.getChild(NodeConnectionManager.name),
+      });
+      nodeManager = new NodeManager({
+        db,
+        sigchain,
+        keyRing,
+        nodeGraph,
+        nodeConnectionManager,
+        taskManager,
+        gestaltGraph,
+        logger: logger.getChild(NodeManager.name),
+      });
       await nodeManager.start();
-      discovery =
-        discovery ??
-        (await Discovery.createDiscovery({
-          db,
-          keyRing,
-          gestaltGraph,
-          identitiesManager,
-          nodeManager,
-          taskManager,
-          logger: logger.getChild(Discovery.name),
-        }));
+      // Add seed nodes to the nodeGraph
+      const setNodeProms = new Array<Promise<void>>();
+      for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
+        const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+        if (nodeId == null) utils.never();
+        const setNodeProm = nodeManager.setNode(
+          nodeId,
+          optionsDefaulted.seedNodes[nodeIdEncoded],
+          true,
+        );
+        setNodeProms.push(setNodeProm);
+      }
+      await Promise.all(setNodeProms);
+      discovery = await Discovery.createDiscovery({
+        db,
+        keyRing,
+        gestaltGraph,
+        identitiesManager,
+        nodeManager,
+        taskManager,
+        logger: logger.getChild(Discovery.name),
+      });
       notificationsManager =
-        notificationsManager ??
-        (await NotificationsManager.createNotificationsManager({
+        await NotificationsManager.createNotificationsManager({
           acl,
           db,
           nodeConnectionManager,
@@ -427,104 +357,74 @@ class PolykeyAgent {
           keyRing,
           logger: logger.getChild(NotificationsManager.name),
           fresh,
-        }));
-      vaultManager =
-        vaultManager ??
-        (await VaultManager.createVaultManager({
-          vaultsPath,
-          keyRing,
-          nodeConnectionManager,
-          notificationsManager,
-          gestaltGraph,
-          acl,
-          db,
-          fs,
-          logger: logger.getChild(VaultManager.name),
-          fresh,
-        }));
-      sessionManager =
-        sessionManager ??
-        (await SessionManager.createSessionManager({
-          db,
-          keyRing,
-          logger: logger.getChild(SessionManager.name),
-          fresh,
-        }));
+        });
+      vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing,
+        nodeConnectionManager,
+        notificationsManager,
+        gestaltGraph,
+        acl,
+        db,
+        fs,
+        logger: logger.getChild(VaultManager.name),
+        fresh,
+      });
+      sessionManager = await SessionManager.createSessionManager({
+        db,
+        keyRing,
+        logger: logger.getChild(SessionManager.name),
+        fresh,
+      });
       // If a recovery code is provided then we reset any sessions in case the
-      //  password changed.
-      if (keyRingConfig.recoveryCode != null) await sessionManager.resetKey();
-      if (rpcServerClient == null) {
-        pkAgentProm = utils.promise();
-        rpcServerClient = await RPCServer.createRPCServer({
-          manifest: clientServerManifest({
-            acl: acl,
-            certManager: certManager,
-            db: db,
-            discovery: discovery,
-            fs: fs,
-            gestaltGraph: gestaltGraph,
-            identitiesManager: identitiesManager,
-            keyRing: keyRing,
-            logger: logger,
-            nodeConnectionManager: nodeConnectionManager,
-            nodeGraph: nodeGraph,
-            nodeManager: nodeManager,
-            notificationsManager: notificationsManager,
-            pkAgentProm: pkAgentProm.p,
-            sessionManager: sessionManager,
-            vaultManager: vaultManager,
-          }),
-          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-            clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
-            networkConfig_.clientParserBufferByteLimit,
-          ),
-          sensitive: false,
-          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
-          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
-          logger: logger.getChild(RPCServer.name + 'Client'),
-        });
+      // password changed.
+      if (optionsDefaulted.keys.recoveryCode != null) {
+        await sessionManager.resetKey();
       }
-      webSocketServerClient =
-        webSocketServerClient ??
-        (await WebSocketServer.createWebSocketServer({
-          connectionCallback: (rpcStream) =>
-            rpcServerClient!.handleStream(rpcStream),
-          host: networkConfig_.clientHost,
-          port: networkConfig_.clientPort,
-          tlsConfig,
-          maxIdleTimeout: networkConfig_.maxIdleTimeout,
-          pingIntervalTime: networkConfig_.pingIntervalTime,
-          pingTimeoutTimeTime: networkConfig_.pingTimeoutTimeTime,
-          logger: logger.getChild('WebSocketServer'),
-        }));
-      if (rpcServerAgent == null) {
-        rpcServerAgent = await RPCServer.createRPCServer({
-          manifest: agentServerManifest({
-            acl: acl,
-            db: db,
-            keyRing: keyRing,
-            logger: logger,
-            nodeConnectionManager: nodeConnectionManager,
-            nodeGraph: nodeGraph,
-            nodeManager: nodeManager,
-            notificationsManager: notificationsManager,
-            sigchain: sigchain,
-            vaultManager: vaultManager,
-          }),
-          middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-            undefined,
-            networkConfig_.clientParserBufferByteLimit,
-          ),
-          sensitive: true,
-          handlerTimeoutTime: networkConfig_.handlerTimeoutTime,
-          handlerTimeoutGraceTime: networkConfig_.handlerTimeoutGraceTime,
-          logger: logger.getChild(RPCServer.name + 'Agent'),
-        });
-      }
+      pkAgentProm = utils.promise();
+      rpcServerClient = await RPCServer.createRPCServer({
+        manifest: clientServerManifest({
+          acl: acl,
+          certManager: certManager,
+          db: db,
+          discovery: discovery,
+          fs: fs,
+          gestaltGraph: gestaltGraph,
+          identitiesManager: identitiesManager,
+          keyRing: keyRing,
+          logger: logger,
+          nodeConnectionManager: nodeConnectionManager,
+          nodeGraph: nodeGraph,
+          nodeManager: nodeManager,
+          notificationsManager: notificationsManager,
+          pkAgentProm: pkAgentProm.p,
+          sessionManager: sessionManager,
+          vaultManager: vaultManager,
+        }),
+        middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+          clientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
+          optionsDefaulted.rpc.parserBufferSize,
+        ),
+        sensitive: false,
+        handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
+        logger: logger.getChild(RPCServer.name + 'Client'),
+      });
+      webSocketServerClient = await WebSocketServer.createWebSocketServer({
+        connectionCallback: (rpcStream) =>
+          rpcServerClient!.handleStream(rpcStream),
+        host: optionsDefaulted.clientServiceHost,
+        port: optionsDefaulted.clientServicePort,
+        tlsConfig,
+        // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
+        maxIdleTimeout: optionsDefaulted.client.keepAliveTimeoutTime,
+        pingIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
+        pingTimeoutTimeTime: optionsDefaulted.client.keepAliveTimeoutTime,
+        logger: logger.getChild('WebSocketServer'),
+      });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await quicSocket?.stop({ force: true });
-      await rpcServerAgent?.destroy(true);
+      await rpcServerAgent?.destroy({ force: true });
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
       await sessionManager?.stop();
@@ -544,7 +444,7 @@ class PolykeyAgent {
       throw e;
     }
     const pkAgent = new this({
-      nodePath,
+      nodePath: optionsDefaulted.nodePath,
       status,
       schema,
       keyRing,
@@ -564,17 +464,21 @@ class PolykeyAgent {
       sessionManager,
       rpcServerClient,
       webSocketServerClient,
-      rpcServerAgent,
-      quicSocket,
-      events,
       fs,
       logger,
     });
     pkAgentProm?.resolveP(pkAgent);
+
     await pkAgent.start({
       password,
-      networkConfig,
-      workers,
+      options: {
+        clientServiceHost: optionsDefaulted.clientServiceHost,
+        clientServicePort: optionsDefaulted.clientServicePort,
+        agentServiceHost: optionsDefaulted.agentServiceHost,
+        agentServicePort: optionsDefaulted.agentServicePort,
+        workers: optionsDefaulted.workers,
+        ipv6Only: optionsDefaulted.ipv6Only,
+      },
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -599,14 +503,32 @@ class PolykeyAgent {
   public readonly vaultManager: VaultManager;
   public readonly notificationsManager: NotificationsManager;
   public readonly sessionManager: SessionManager;
-  public readonly events: EventBus;
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly rpcServerClient: RPCServer;
   public readonly webSocketServerClient: WebSocketServer;
   public readonly rpcServerAgent: RPCServer;
-  public readonly quicSocket: QUICSocket;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
+
+  protected handleEventCertManagerCertChange = async (
+    evt: keysEvents.EventCertManagerCertChange,
+  ) => {
+    const data = evt.detail;
+    this.logger.info(`${KeyRing.name} change propagating`);
+    await this.status.updateStatusLive({
+      nodeId: data.nodeId,
+    });
+    await this.nodeManager.resetBuckets();
+    // Update the sigchain
+    await this.sigchain.onKeyRingChange();
+    const tlsConfig: TLSConfig = {
+      keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
+      certChainPem: await this.certManager.getCertPEMsChainPEM(),
+    };
+    this.webSocketServerClient.setTlsConfig(tlsConfig);
+    this.nodeConnectionManager.updateTlsConfig(tlsConfig);
+    this.logger.info(`${KeyRing.name} change propagated`);
+  };
 
   constructor({
     nodePath,
@@ -629,9 +551,6 @@ class PolykeyAgent {
     sessionManager,
     rpcServerClient,
     webSocketServerClient,
-    rpcServerAgent,
-    quicSocket,
-    events,
     fs,
     logger,
   }: {
@@ -655,9 +574,6 @@ class PolykeyAgent {
     sessionManager: SessionManager;
     rpcServerClient: RPCServer;
     webSocketServerClient: WebSocketServer;
-    rpcServerAgent: RPCServer;
-    quicSocket: QUICSocket;
-    events: EventBus;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -682,86 +598,37 @@ class PolykeyAgent {
     this.sessionManager = sessionManager;
     this.rpcServerClient = rpcServerClient;
     this.webSocketServerClient = webSocketServerClient;
-    this.rpcServerAgent = rpcServerAgent;
-    this.quicSocket = quicSocket;
-    this.events = events;
     this.fs = fs;
   }
 
+  // TODO: add getters for runtime service information?
+
   public async start({
     password,
-    networkConfig = {},
+    options = {},
     workers,
     fresh = false,
   }: {
     password: string;
-    networkConfig?: NetworkConfig;
+    options?: Partial<PolykeyAgentStartOptions>;
     workers?: number;
     fresh?: boolean;
   }) {
+    const optionsDefaulted = utils.mergeObjects(options, {
+      clientServiceHost: config.defaultsUser.clientServiceHost,
+      clientServicePort: config.defaultsUser.clientServicePort,
+      agentServiceHost: config.defaultsUser.agentServiceHost,
+      agentServicePort: config.defaultsUser.agentServicePort,
+      workers: config.defaultsUser.workers,
+      ipv6Only: config.defaultsUser.ipv6Only,
+    });
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
-      // Set up error handling for event handlers
-      this.events[captureRejectionSymbol] = (err, event: symbol) => {
-        let msg = `EventBus error for ${event.toString()}`;
-        if (err instanceof errors.ErrorPolykey) {
-          msg += `: ${err.name}: ${err.description}`;
-          if (err.message !== '') {
-            msg += ` - ${err.message}`;
-          }
-        } else {
-          msg += `: ${err.name}`;
-          if (err.message !== '') {
-            msg += `: ${err.message}`;
-          }
-        }
-        this.logger.error(msg);
-        throw err;
-      };
       // Register event handlers
-      this.events.on(
-        PolykeyAgent.eventSymbols.CertManager,
-        async (data: CertManagerChangeData) => {
-          this.logger.info(`${KeyRing.name} change propagating`);
-          await this.status.updateStatusLive({
-            nodeId: data.nodeId,
-          });
-          await this.nodeManager.resetBuckets();
-          // Update the sigchain
-          await this.sigchain.onKeyRingChange();
-          const tlsConfig: TLSConfig = {
-            keyPrivatePem: keysUtils.privateKeyToPEM(data.keyPair.privateKey),
-            certChainPem: await this.certManager.getCertPEMsChainPEM(),
-          };
-          this.webSocketServerClient.setTlsConfig(tlsConfig);
-          this.nodeConnectionManager.updateTlsConfig(tlsConfig);
-          this.logger.info(`${KeyRing.name} change propagated`);
-        },
+      this.certManager.addEventListener(
+        keysEvents.EventCertManagerCertChange.name,
+        this.handleEventCertManagerCertChange,
       );
-      this.events.on(
-        PolykeyAgent.eventSymbols.QUICServer,
-        async (data: ConnectionData) => {
-          if (this.keyRing.getNodeId().equals(data.remoteNodeId)) return;
-          const address = networkUtils.buildAddress(
-            data.remoteHost,
-            data.remotePort,
-          );
-          const nodeIdEncoded = nodesUtils.encodeNodeId(data.remoteNodeId);
-          this.logger.info(
-            `Connection adding ${nodeIdEncoded}:${address} to ${NodeGraph.name}`,
-          );
-          // Reverse connection was established and authenticated,
-          //  add it to the node graph
-          await this.nodeManager.setNode(data.remoteNodeId, {
-            host: data.remoteHost,
-            port: data.remotePort,
-          });
-        },
-      );
-      const _networkConfig = {
-        ...config.defaults.networkConfig,
-        ...utils.filterEmptyObject(networkConfig),
-      };
       await this.status.start({ pid: process.pid });
       await this.schema.start({ fresh });
       // Starting modules
@@ -808,21 +675,28 @@ class PolykeyAgent {
       // Client server
       await this.webSocketServerClient.start({
         tlsConfig,
-        host: _networkConfig.clientHost,
-        port: _networkConfig.clientPort,
+        host: optionsDefaulted.clientServiceHost,
+        port: optionsDefaulted.clientServicePort,
         connectionCallback: (streamPair) =>
           this.rpcServerClient.handleStream(streamPair),
       });
-      // Agent server
-      await this.quicSocket.start({
-        host: _networkConfig.agentHost,
-        port: _networkConfig.agentPort,
-        ipv6Only: _networkConfig.ipv6Only,
-      });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
-        nodeManager: this.nodeManager,
-        handleStream: (stream) => this.rpcServerAgent.handleStream(stream),
+        host: optionsDefaulted.agentServiceHost,
+        port: optionsDefaulted.agentServicePort,
+        ipv6Only: optionsDefaulted.ipv6Only,
+        manifest: agentServerManifest({
+          acl: this.acl,
+          db: this.db,
+          keyRing: this.keyRing,
+          logger: this.logger,
+          nodeConnectionManager: this.nodeConnectionManager,
+          nodeGraph: this.nodeGraph,
+          nodeManager: this.nodeManager,
+          notificationsManager: this.notificationsManager,
+          sigchain: this.sigchain,
+          vaultManager: this.vaultManager,
+        }),
       });
       await this.nodeGraph.start({ fresh });
       await this.nodeManager.syncNodeGraph(false);
@@ -845,15 +719,18 @@ class PolykeyAgent {
         nodeId: this.keyRing.getNodeId(),
         clientHost: this.webSocketServerClient.getHost(),
         clientPort: this.webSocketServerClient.getPort(),
-        agentHost: this.quicSocket.host,
-        agentPort: this.quicSocket.port,
+        agentHost: this.nodeConnectionManager.host,
+        agentPort: this.nodeConnectionManager.port,
       });
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
       this.logger.warn(
         `Failed Starting ${this.constructor.name} with ${e.message}`,
       );
-      this.events.removeAllListeners();
+      this.certManager.removeEventListener(
+        keysEvents.EventCertManagerCertChange.name,
+        this.handleEventCertManagerCertChange,
+      );
       await this.status?.beginStop({ pid: process.pid });
       await this.taskManager?.stopProcessing();
       await this.taskManager?.stopTasks();
@@ -864,7 +741,6 @@ class PolykeyAgent {
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
-      await this.quicSocket.stop();
       await this.webSocketServerClient.stop(true);
       await this.identitiesManager?.stop();
       await this.gestaltGraph?.stop();
@@ -888,7 +764,10 @@ class PolykeyAgent {
    */
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    this.events.removeAllListeners();
+    this.certManager.removeEventListener(
+      keysEvents.EventCertManagerCertChange.name,
+      this.handleEventCertManagerCertChange,
+    );
     await this.status.beginStop({ pid: process.pid });
     await this.taskManager.stopProcessing();
     await this.taskManager.stopTasks();
@@ -899,7 +778,6 @@ class PolykeyAgent {
     await this.nodeConnectionManager.stop();
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
-    await this.quicSocket.stop();
     await this.webSocketServerClient.stop(true);
     await this.identitiesManager.stop();
     await this.gestaltGraph.stop();
@@ -969,3 +847,5 @@ class PolykeyAgent {
 }
 
 export default PolykeyAgent;
+
+export type { PolykeyAgentOptions };

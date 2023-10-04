@@ -1,12 +1,15 @@
 import type { NodeBucket, NodeBucketIndex, NodeId } from './types';
+import type { CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
+import { utils as quicUtils } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
-import { bytes2BigInt } from '../utils';
+import { bytes2BigInt, never } from '../utils';
+import * as rpcErrors from '../rpc/errors';
 
 const sepBuffer = dbUtils.sep;
 
@@ -313,6 +316,74 @@ function refreshBucketsDelayJitter(
   return (Math.random() - 0.5) * delay * jitterMultiplier;
 }
 
+/**
+ * Converts transport level error reasons to codes for the quic system.
+ *
+ * Any unknown reasons default to code 0.
+ *
+ */
+const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
+  // We're only going to handle RPC errors for now, these include
+  // ErrorRPCHandlerFailed
+  // ErrorRPCMessageLength
+  // ErrorRPCMissingResponse
+  // ErrorRPCOutputStreamError
+  // ErrorPolykeyRemote
+  // ErrorRPCStreamEnded
+  // ErrorRPCTimedOut
+  if (reason instanceof rpcErrors.ErrorRPCHandlerFailed) return 1;
+  if (reason instanceof rpcErrors.ErrorRPCMessageLength) return 2;
+  if (reason instanceof rpcErrors.ErrorRPCMissingResponse) return 3;
+  if (reason instanceof rpcErrors.ErrorRPCOutputStreamError) return 4;
+  if (reason instanceof rpcErrors.ErrorPolykeyRemote) return 5;
+  if (reason instanceof rpcErrors.ErrorRPCStreamEnded) return 6;
+  if (reason instanceof rpcErrors.ErrorRPCTimedOut) return 7;
+  return 0;
+};
+
+/**
+ * Converts any codes from the quic system back to reasons
+ * @param _type
+ * @param code
+ */
+const codeToReason = (_type: 'read' | 'write', code: number): any => {
+  switch (code) {
+    // Rpc errors
+    case 1:
+      return new rpcErrors.ErrorRPCHandlerFailed();
+    case 2:
+      return new rpcErrors.ErrorRPCMessageLength();
+    case 3:
+      return new rpcErrors.ErrorRPCMissingResponse();
+    case 4:
+      return new rpcErrors.ErrorRPCOutputStreamError();
+    case 5:
+      return new rpcErrors.ErrorPolykeyRemote();
+    case 6:
+      return new rpcErrors.ErrorRPCStreamEnded();
+    case 7:
+      return new rpcErrors.ErrorRPCTimedOut();
+    // Base cases
+    case 0:
+      return new nodesErrors.ErrorNodeConnectionTransportGenericError();
+    default:
+      return new nodesErrors.ErrorNodeConnectionTransportUnknownError();
+  }
+};
+
+function parseRemoteCertsChain(remoteCertChain: Array<Uint8Array>) {
+  const certChain = remoteCertChain.map((der) => {
+    const cert = keysUtils.certFromPEM(
+      quicUtils.derToPEM(der) as CertificatePEM,
+    );
+    if (cert == null) never();
+    return cert;
+  });
+  const nodeId = keysUtils.certNodeId(certChain[0]);
+  if (nodeId == null) never();
+  return { nodeId, certChain };
+}
+
 export {
   sepBuffer,
   encodeNodeId,
@@ -335,4 +406,7 @@ export {
   generateRandomNodeIdForBucket,
   isConnectionError,
   refreshBucketsDelayJitter,
+  reasonToCode,
+  codeToReason,
+  parseRemoteCertsChain,
 };

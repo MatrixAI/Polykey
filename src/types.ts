@@ -66,6 +66,15 @@ interface ToString {
 type DeepReadonly<T> = { readonly [K in keyof T]: DeepReadonly<T[K]> };
 
 /**
+ * Recursive partial
+ */
+type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+/**
  * Wrap a type to be reference counted
  * Useful for when we need to garbage collect data
  */
@@ -169,6 +178,7 @@ export type {
   InitialParameters,
   ToString,
   DeepReadonly,
+  DeepPartial,
   Ref,
   Timer,
   PromiseDeconstructed,

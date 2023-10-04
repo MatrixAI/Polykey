@@ -18,6 +18,7 @@ import {
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import Logger from '@matrixai/logger';
 import * as identitiesErrors from './errors';
+import * as identitiesEvents from './events';
 import * as nodesUtils from '../nodes/utils';
 import { promise } from '../utils/index';
 import { encodeProviderIdentityId } from '../ids';
@@ -26,6 +27,14 @@ interface IdentitiesManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new identitiesErrors.ErrorIdentitiesManagerRunning(),
   new identitiesErrors.ErrorIdentitiesManagerDestroyed(),
+  {
+    eventStart: identitiesEvents.EventIdentitiesManagerStart,
+    eventStarted: identitiesEvents.EventIdentitiesManagerStarted,
+    eventStop: identitiesEvents.EventIdentitiesManagerStop,
+    eventStopped: identitiesEvents.EventIdentitiesManagerStopped,
+    eventDestroy: identitiesEvents.EventIdentitiesManagerDestroy,
+    eventDestroyed: identitiesEvents.EventIdentitiesManagerDestroyed,
+  },
 )
 class IdentitiesManager {
   static async createIdentitiesManager({

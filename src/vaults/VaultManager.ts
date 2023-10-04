@@ -32,6 +32,7 @@ import { IdInternal } from '@matrixai/id';
 import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import VaultInternal from './VaultInternal';
+import * as vaultsEvents from './events';
 import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
@@ -58,6 +59,14 @@ interface VaultManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),
   new vaultsErrors.ErrorVaultManagerDestroyed(),
+  {
+    eventStart: vaultsEvents.EventVaultManagerStart,
+    eventStarted: vaultsEvents.EventVaultManagerStarted,
+    eventStop: vaultsEvents.EventVaultManagerStop,
+    eventStopped: vaultsEvents.EventVaultManagerStopped,
+    eventDestroy: vaultsEvents.EventVaultManagerDestroy,
+    eventDestroyed: vaultsEvents.EventVaultManagerDestroyed,
+  },
 )
 class VaultManager {
   static async createVaultManager({
@@ -145,7 +154,7 @@ class VaultManager {
   }) {
     this.logger = logger;
     this.vaultsPath = vaultsPath;
-    this.efsPath = path.join(this.vaultsPath, config.defaults.efsBase);
+    this.efsPath = path.join(this.vaultsPath, config.paths.efsBase);
     this.db = db;
     this.acl = acl;
     this.keyRing = keyRing;

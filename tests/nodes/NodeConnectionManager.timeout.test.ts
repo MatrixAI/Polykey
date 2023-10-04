@@ -6,18 +6,12 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICSocket } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeConnection from '@/nodes/NodeConnection';
 import * as keysUtils from '@/keys/utils';
 import KeyRing from '@/keys/KeyRing';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeGraph from '@/nodes/NodeGraph';
-import Sigchain from '@/sigchain/Sigchain';
-import TaskManager from '@/tasks/TaskManager';
-import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import { sleep } from '@/utils';
 import { generateRandomNodeId } from './utils';
@@ -35,25 +29,18 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
   );
   const localHost = '127.0.0.1';
   const password = 'password';
-  const crypto = tlsTestUtils.createCrypto();
 
   let dataDir: string;
 
   let remotePolykeyAgent1: PolykeyAgent;
   let remoteAddress1: NodeAddress;
   let remoteNodeId1: NodeId;
-  let clientSocket: QUICSocket;
 
   let keyRing: KeyRing;
   let db: DB;
-  let acl: ACL;
-  let gestaltGraph: GestaltGraph;
   let nodeGraph: NodeGraph;
-  let sigchain: Sigchain;
-  let taskManager: TaskManager;
-  let nodeManager: NodeManager;
+  let nodeConnectionManager: NodeConnectionManager;
   let tlsConfig: TLSConfig;
-  const handleStream = () => {};
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -63,30 +50,24 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     // Setting up remote node
     const nodePathA = path.join(dataDir, 'agentA');
     remotePolykeyAgent1 = await PolykeyAgent.createPolykeyAgent({
-      nodePath: nodePathA,
       password,
-      networkConfig: {
-        agentHost: localHost,
-      },
-      keyRingConfig: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
+      options: {
+        nodePath: nodePathA,
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
       },
       logger: logger.getChild('AgentA'),
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteAddress1 = {
-      host: remotePolykeyAgent1.quicSocket.host as Host,
-      port: remotePolykeyAgent1.quicSocket.port as Port,
+      host: remotePolykeyAgent1.nodeConnectionManager.host,
+      port: remotePolykeyAgent1.nodeConnectionManager.port,
     };
-
-    clientSocket = new QUICSocket({
-      logger: logger.getChild('clientSocket'),
-    });
-    await clientSocket.start({
-      host: localHost,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -94,22 +75,15 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
-      logger,
-    });
-    acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
       logger,
     });
     nodeGraph = await NodeGraph.createNodeGraph({
@@ -117,68 +91,38 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       keyRing,
       logger,
     });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyRing,
-      logger,
-    });
-    taskManager = await TaskManager.createTaskManager({
-      db,
-      logger,
-    });
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
   });
 
   afterEach(async () => {
-    await taskManager.stopTasks();
-    await sigchain.stop();
-    await sigchain.destroy();
+    await nodeConnectionManager?.stop();
     await nodeGraph.stop();
     await nodeGraph.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    await acl.stop();
-    await acl.destroy();
     await db.stop();
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
-    await clientSocket.stop({ force: true });
-    await taskManager.stop();
 
     await remotePolykeyAgent1.stop();
   });
 
-  test('starting should add seed nodes to the node graph', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+  test('connection should timeout after connectionIdleTimeoutTime', async () => {
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 500,
+      options: {
+        connectionConnectTimeoutTime: 1000,
+        connectionIdleTimeoutTime: 100,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
-
     // @ts-ignore: kidnap connections
     const connections = nodeConnectionManager.connections;
     // @ts-ignore: kidnap connections
@@ -194,7 +138,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     expect(connAndLock?.connection).toBeDefined();
 
     // Wait for timeout
-    await sleep(1000);
+    await sleep(300);
 
     const finalConnAndLock = connections.get(
       remoteNodeId1.toString() as NodeIdString,
@@ -205,32 +149,19 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('withConnection should extend timeout', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 1000,
+      options: {
+        connectionIdleTimeoutTime: 1000,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
 
@@ -275,32 +206,19 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('withConnection should extend timeout', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 1000,
+      options: {
+        connectionIdleTimeoutTime: 1000,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
 
@@ -329,36 +247,23 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     await nodeConnectionManager.stop();
   });
   test('Connection can time out', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
@@ -369,36 +274,23 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     ).rejects.toThrow();
   });
   test('Connection can time out with passed in timer', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });
@@ -415,36 +307,23 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     ).rejects.toThrow();
   });
   test('Connection can time out with passed in timer and signal', async () => {
-    const nodeConnectionManager = new NodeConnectionManager({
+    nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig,
-      crypto,
-      quicSocket: clientSocket,
       seedNodes: undefined,
-      connectionTimeoutTime: 5000,
-      connectionConnectTime: 200,
+      options: {
+        connectionIdleTimeoutTime: 5000,
+        connectionConnectTimeoutTime: 200,
+      },
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
-      nodeManager,
-      handleStream,
+      host: localHost as Host,
     });
-    await taskManager.startProcessing();
 
     const randomNodeId = generateRandomNodeId();
-    await nodeManager.setNode(randomNodeId, {
+    await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
     });

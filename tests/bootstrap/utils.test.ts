@@ -28,7 +28,9 @@ describe('bootstrap/utils', () => {
     const password = 'password';
     const recoveryCode = await bootstrapUtils.bootstrapState({
       password,
-      nodePath,
+      options: {
+        nodePath,
+      },
       fs,
       logger,
     });
@@ -39,14 +41,14 @@ describe('bootstrap/utils', () => {
     ).toBe(true);
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents.length > 0).toBe(true);
-    expect(nodePathContents).toContain(config.defaults.statusBase);
-    expect(nodePathContents).toContain(config.defaults.stateBase);
+    expect(nodePathContents).toContain(config.paths.statusBase);
+    expect(nodePathContents).toContain(config.paths.stateBase);
     const stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase),
+      path.join(nodePath, config.paths.stateBase),
     );
-    expect(stateContents).toContain(config.defaults.keysBase);
-    expect(stateContents).toContain(config.defaults.dbBase);
-    expect(stateContents).toContain(config.defaults.vaultsBase);
+    expect(stateContents).toContain(config.paths.keysBase);
+    expect(stateContents).toContain(config.paths.dbBase);
+    expect(stateContents).toContain(config.paths.vaultsBase);
   });
   test('bootstraps existing but empty node path', async () => {
     const nodePath = path.join(dataDir, 'polykey');
@@ -54,7 +56,9 @@ describe('bootstrap/utils', () => {
     const password = 'password';
     const recoveryCode = await bootstrapUtils.bootstrapState({
       password,
-      nodePath,
+      options: {
+        nodePath,
+      },
       fs,
       logger,
     });
@@ -65,14 +69,14 @@ describe('bootstrap/utils', () => {
     ).toBe(true);
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents.length > 0).toBe(true);
-    expect(nodePathContents).toContain(config.defaults.statusBase);
-    expect(nodePathContents).toContain(config.defaults.stateBase);
+    expect(nodePathContents).toContain(config.paths.statusBase);
+    expect(nodePathContents).toContain(config.paths.stateBase);
     const stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase),
+      path.join(nodePath, config.paths.stateBase),
     );
-    expect(stateContents).toContain(config.defaults.keysBase);
-    expect(stateContents).toContain(config.defaults.dbBase);
-    expect(stateContents).toContain(config.defaults.vaultsBase);
+    expect(stateContents).toContain(config.paths.keysBase);
+    expect(stateContents).toContain(config.paths.dbBase);
+    expect(stateContents).toContain(config.paths.vaultsBase);
   });
   test('bootstrap fails if non-empty node path', async () => {
     // Normal file
@@ -87,7 +91,9 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        nodePath: nodePath1,
+        options: {
+          nodePath: nodePath1,
+        },
         fs,
         logger,
       }),
@@ -103,7 +109,9 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        nodePath: nodePath2,
+        options: {
+          nodePath: nodePath2,
+        },
         fs,
         logger,
       }),
@@ -115,7 +123,9 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        nodePath: nodePath3,
+        options: {
+          nodePath: nodePath3,
+        },
         fs,
         logger,
       }),
@@ -127,13 +137,17 @@ describe('bootstrap/utils', () => {
     const [result1, result2] = await Promise.allSettled([
       bootstrapUtils.bootstrapState({
         password,
-        nodePath,
+        options: {
+          nodePath,
+        },
         fs,
         logger,
       }),
       bootstrapUtils.bootstrapState({
         password,
-        nodePath,
+        options: {
+          nodePath,
+        },
         fs,
         logger,
       }),
