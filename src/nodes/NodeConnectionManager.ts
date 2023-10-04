@@ -14,8 +14,8 @@ import type {
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
-import type { ConnectionData, Host, Hostname, Port } from '../network/types';
-import type { TLSConfig } from '../network/types';
+import type { ConnectionData, Host, Hostname, Port, TLSConfig } from '../network/types';
+import type { ServerManifest } from '../rpc/types';
 import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
@@ -37,6 +37,8 @@ import manifestClientAgent from './agent/callers';
 import * as utils from '../utils';
 import config from '../config';
 import { running, status } from "@matrixai/async-init";
+import RPCServer from '../rpc/RPCServer';
+import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
 
 type ManifestClientAgent = typeof manifestClientAgent;
 
@@ -109,6 +111,16 @@ class NodeConnectionManager {
    */
   public readonly connectionHolePunchIntervalTime: number;
 
+  /**
+   * Max parse buffer size before RPC parser throws an parse error.
+   */
+  public readonly rpcParserBufferSize: number;
+
+  /**
+   * default timeout for RPC handlers
+   */
+  public readonly rpcCallTimeoutTime: number;
+
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected nodeGraph: NodeGraph;
@@ -134,6 +146,8 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
+  protected rpcServer?: RPCServer;
+
   /**
    * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
    * error event. Will trigger stop of the `NodeConnectionManager` via the
@@ -155,6 +169,11 @@ class NodeConnectionManager {
     if (this[running] && this[status] !== 'stopping') {
       await this.stop();
     }
+  }
+
+  protected handleEventNodeConnectionStream = async (e: nodesEvents.EventNodeConnectionStream) => {
+    const stream = e.detail;
+    this.rpcServer!.handleStream(stream);
   }
 
   /**
@@ -245,6 +264,8 @@ class NodeConnectionManager {
         .clientKeepAliveIntervalTime,
       connectionHolePunchIntervalTime: config.defaultsSystem
         .nodesConnectionHolePunchIntervalTime,
+      rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
+      rpcCallTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
     })
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
@@ -261,6 +282,8 @@ class NodeConnectionManager {
     this.connectionKeepAliveTimeoutTime = optionsDefaulted.connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = optionsDefaulted.connectionKeepAliveIntervalTime;
     this.connectionHolePunchIntervalTime = optionsDefaulted.connectionHolePunchIntervalTime;
+    this.rpcParserBufferSize = optionsDefaulted.rpcParserBufferSize;
+    this.rpcCallTimeoutTime = optionsDefaulted.rpcCallTimeoutTime;
     // Note that all buffers allocated for crypto operations is using
     // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
     // is not shared. Also, all node buffers satisfy the `ArrayBuffer` interface.
@@ -343,11 +366,13 @@ class NodeConnectionManager {
     port = 0 as Port,
     reuseAddr = false,
     ipv6Only = false,
+    manifest = {},
   }: {
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
     ipv6Only?: boolean;
+    manifest?: ServerManifest;
   }) {
     const address = networkUtils.buildAddress(host, port);
     this.logger.info(`Start ${this.constructor.name} on ${address}`);
@@ -355,6 +380,20 @@ class NodeConnectionManager {
     // We should expect that seed nodes are already in the node manager
     // It should not be managed here!
 
+    // setting up RPCServer
+    this.rpcServer = await RPCServer.createRPCServer({
+      manifest,
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+        undefined,
+        this.rpcParserBufferSize,
+      ),
+      sensitive: true,
+      handlerTimeoutTime: this.rpcCallTimeoutTime,
+      handlerTimeoutGraceTime: this.rpcCallTimeoutTime + 2000,
+      logger: this.logger.getChild(RPCServer.name),
+    });
+
+    // Setting up QUICSocket
     await this.quicSocket.start({
       host,
       port,
@@ -397,7 +436,6 @@ class NodeConnectionManager {
       EventAll.name,
       this.handleEventAll,
     );
-
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -453,6 +491,7 @@ class NodeConnectionManager {
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
+    await this.rpcServer?.destroy({ force: true, reason: Error('TMP NCM stopping')}); // TODO
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -929,6 +968,10 @@ class NodeConnectionManager {
     if (this.connections.has(nodeIdString)) utils.never();
     // Setting up events
     nodeConnection.addEventListener(
+      nodesEvents.EventNodeConnectionStream.name,
+      this.handleEventNodeConnectionStream,
+    )
+    nodeConnection.addEventListener(
       EventAll.name,
       this.handleEventAll,
     );
@@ -941,6 +984,10 @@ class NodeConnectionManager {
         // Already locked so already destroying
         if (this.connectionLocks.isLocked(nodeIdString)) return;
         await this.destroyConnection(nodeId);
+        nodeConnection.removeEventListener(
+          nodesEvents.EventNodeConnectionStream.name,
+          this.handleEventNodeConnectionStream,
+        )
         nodeConnection.removeEventListener(
           EventAll.name,
           this.handleEventAll,

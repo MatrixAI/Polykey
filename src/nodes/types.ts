@@ -33,6 +33,8 @@ type NodesOptions = {
   connectionKeepAliveTimeoutTime: number;
   connectionKeepAliveIntervalTime: number;
   connectionHolePunchIntervalTime: number;
+  rpcParserBufferSize: number;
+  rpcCallTimeoutTime: number;
 };
 
 export type {

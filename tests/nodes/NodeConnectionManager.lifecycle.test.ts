@@ -14,7 +14,6 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import { promise, sleep } from '@/utils';
 import * as nodesErrors from '@/nodes/errors';
 import NodeConnection from '@/nodes/NodeConnection';
-import RPCServer from '@/rpc/RPCServer';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
@@ -35,7 +34,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let serverNodeIdEncoded: NodeIdEncoded;
   let keyRingPeer: KeyRing;
   let nodeConnectionManagerPeer: NodeConnectionManager;
-  let rpcServer: RPCServer;
   let serverAddress: NodeAddress;
 
   let keyRing: KeyRing;
@@ -76,13 +74,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManagerPeer.start({
       host: localHost,
     })
-    rpcServer = await RPCServer.createRPCServer({
-      handlerTimeoutGraceTime: 1000,
-      handlerTimeoutTime: 5000,
-      logger: logger.getChild(`${RPCServer.name}`),
-      manifest: {}, // TODO: test server manifest
-      sensitive: false,
-    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -121,7 +112,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await rpcServer.destroy({ force: true });
     await nodeConnectionManagerPeer.stop();
   });
 
