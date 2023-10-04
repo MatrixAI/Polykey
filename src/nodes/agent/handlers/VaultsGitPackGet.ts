@@ -105,7 +105,7 @@ class VaultsGitPackGet extends RawHandler<{
       },
     });
     return [null, outputStream];
-  }
+  };
 }
 
 export default VaultsGitPackGet;

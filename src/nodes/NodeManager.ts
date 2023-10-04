@@ -27,7 +27,7 @@ import type { ClaimLinkNode } from '../claims/payloads/index';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  AgentClaimMessage
+  AgentClaimMessage,
 } from './agent/types';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';

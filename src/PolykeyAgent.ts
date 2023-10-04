@@ -326,7 +326,7 @@ class PolykeyAgent {
         logger: logger.getChild(NodeManager.name),
       });
       await nodeManager.start();
-      // add seed nodes to the nodeGraph
+      // Add seed nodes to the nodeGraph
       const setNodeProms = new Array<Promise<void>>();
       for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
         const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -424,7 +424,7 @@ class PolykeyAgent {
       });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await rpcServerAgent?.destroy({ force:  true });
+      await rpcServerAgent?.destroy({ force: true });
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
       await sessionManager?.stop();
@@ -848,6 +848,4 @@ class PolykeyAgent {
 
 export default PolykeyAgent;
 
-export type {
-  PolykeyAgentOptions,
-};
+export type { PolykeyAgentOptions };

@@ -41,7 +41,9 @@ class VaultsGitInfoGet extends RawHandler<{
     ) {
       utils.never();
     }
-    if (!('action' in params) || typeof params.action != 'string') utils.never();
+    if (!('action' in params) || typeof params.action != 'string') {
+      utils.never();
+    }
     const vaultNameOrId = params.vaultNameOrId;
     const actionType = validation.utils.parseVaultAction(params.action);
     const data = await db.withTransactionF(async (tran) => {
@@ -110,7 +112,7 @@ class VaultsGitInfoGet extends RawHandler<{
       },
       stream,
     ];
-  }
+  };
 }
 
 export default VaultsGitInfoGet;

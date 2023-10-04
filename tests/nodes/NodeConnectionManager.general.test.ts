@@ -125,7 +125,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
-      }
+      },
     });
     tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');

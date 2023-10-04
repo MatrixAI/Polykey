@@ -13,9 +13,9 @@ import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
-import { status } from "@matrixai/async-init";
+import { status } from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { AbstractEvent, EventAll } from "@matrixai/events";
+import { AbstractEvent, EventAll } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
@@ -65,10 +65,12 @@ class NodeConnection<M extends ClientManifest> {
    * error event. Will trigger destruction of the `NodeConnection` via the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventNodeConnectionError = (evt: nodesEvents.EventNodeConnectionError): void => {
+  protected handleEventNodeConnectionError = (
+    evt: nodesEvents.EventNodeConnectionError,
+  ): void => {
     this.logger.warn(`NodeConnection error caused by ${evt.detail.message}`);
-    this.dispatchEvent(new nodesEvents.EventNodeConnectionClose())
-  }
+    this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
+  };
 
   /**
    * Triggers the destruction of the `NodeConnection`. Since this is only in
@@ -76,59 +78,68 @@ class NodeConnection<M extends ClientManifest> {
    * Dispatched by the `EventNodeConnectionError` event as the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventNodeConnectionClose = async (_evt: nodesEvents.EventNodeConnectionClose): Promise<void> => {
-    this.logger.warn(`close event triggering NodeConnection.destroy`)
+  protected handleEventNodeConnectionClose = async (
+    _evt: nodesEvents.EventNodeConnectionClose,
+  ): Promise<void> => {
+    this.logger.warn(`close event triggering NodeConnection.destroy`);
     // This will trigger the destruction of this NodeConnection.
     if (this[status] !== 'destroying') {
-      await this.destroy({force: true});
+      await this.destroy({ force: true });
     }
-  }
+  };
 
   /**
-   * redispatches a `QUICStream` from a `EventQUICConnectionStream` event with
+   * Redispatches a `QUICStream` from a `EventQUICConnectionStream` event with
    * a `EventNodeConnectionStream` event. Should bubble upwards through the
    * `NodeConnectionManager`.
    */
-  protected handleEventQUICConnectionStream = (evt: quicEvents.EventQUICConnectionStream): void => {
-    // re-dispatches the stream under a `EventNodeConnectionStream` event
+  protected handleEventQUICConnectionStream = (
+    evt: quicEvents.EventQUICConnectionStream,
+  ): void => {
+    // Re-dispatches the stream under a `EventNodeConnectionStream` event
     const quicStream = evt.detail;
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionStream({ detail: quicStream }),
     );
-  }
+  };
 
   /**
-   * redispatches `QUICConnection` or  `QUICClient` error events as `NodeConnection` error events.
+   * Redispatches `QUICConnection` or  `QUICClient` error events as `NodeConnection` error events.
    * This should trigger the destruction of the `NodeConnection` through the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventQUICError = (evt: quicEvents.EventQUICConnectionError): void => {
-    const err = new nodesErrors.ErrorNodeConnectionInternalError(
-      undefined,
-      { cause: evt.detail },
-    );
+  protected handleEventQUICError = (
+    evt: quicEvents.EventQUICConnectionError,
+  ): void => {
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(undefined, {
+      cause: evt.detail,
+    });
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
     );
-  }
+  };
 
-  protected handleEventQUICClientDestroyed = (_evt: quicEvents.EventQUICClientDestroyed) => {
+  protected handleEventQUICClientDestroyed = (
+    _evt: quicEvents.EventQUICClientDestroyed,
+  ) => {
     const err = new nodesErrors.ErrorNodeConnectionInternalError(
       'QUICClient destroyed unexpectedly',
     );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
     );
-  }
+  };
 
-  protected handleEventQUICConnectionStopped = (_evt: quicEvents.EventQUICConnectionStopped) => {
+  protected handleEventQUICConnectionStopped = (
+    _evt: quicEvents.EventQUICConnectionStopped,
+  ) => {
     const err = new nodesErrors.ErrorNodeConnectionInternalError(
       'QUICClient stopped unexpectedly',
     );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
     );
-  }
+  };
 
   /**
    * Propagates all events from the `QUICClient` or `QUICConnection` upwards.
@@ -138,12 +149,12 @@ class NodeConnection<M extends ClientManifest> {
    */
   protected handleEventAll = (evt: EventAll): void => {
     // This just propagates events upwards
-    const event = evt.detail
+    const event = evt.detail;
     if (event instanceof AbstractEvent) {
-      // clone and dispatch upwards
+      // Clone and dispatch upwards
       this.dispatchEvent(event.clone());
     }
-  }
+  };
 
   static createNodeConnection<M extends ClientManifest>(
     {
@@ -268,7 +279,9 @@ class NodeConnection<M extends ClientManifest> {
     //  This may de different from the NodeId we validated it as if it renewed at some point.
     const connection = quicClient.connection;
     // Remote certificate information should always be available here due to custom verification
-    const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(connection.getRemoteCertsChain());
+    const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
+      connection.getRemoteCertsChain(),
+    );
 
     const newLogger = logger.getParent() ?? new Logger(this.name);
     const nodeConnection = new this<M>({
@@ -300,7 +313,7 @@ class NodeConnection<M extends ClientManifest> {
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionError.name,
       nodeConnection.handleEventNodeConnectionError,
-      );
+    );
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionClose.name,
       nodeConnection.handleEventNodeConnectionClose,
@@ -317,10 +330,7 @@ class NodeConnection<M extends ClientManifest> {
       quicEvents.EventQUICClientDestroyed.name,
       nodeConnection.handleEventQUICClientDestroyed,
     );
-    quicClient.addEventListener(
-      EventAll.name,
-      nodeConnection.handleEventAll,
-    );
+    quicClient.addEventListener(EventAll.name, nodeConnection.handleEventAll);
     logger.info(`Created ${this.name}`);
     return nodeConnection;
   }
@@ -455,7 +465,7 @@ class NodeConnection<M extends ClientManifest> {
     );
     await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
-    // removing all event listeners
+    // Removing all event listeners
     this.addEventListener(
       nodesEvents.EventNodeConnectionError.name,
       this.handleEventNodeConnectionError,
@@ -487,10 +497,7 @@ class NodeConnection<M extends ClientManifest> {
       quicEvents.EventQUICClientError.name,
       this.handleEventQUICError,
     );
-    quicClientOrConnection.addEventListener(
-      EventAll.name,
-      this.handleEventAll,
-    );
+    quicClientOrConnection.addEventListener(EventAll.name, this.handleEventAll);
     this.dispatchEvent(new nodesEvents.EventNodeConnectionDestroy());
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }

@@ -16,9 +16,7 @@ class EventNodeConnectionDestroyed extends EventNodeConnection {}
 
 class EventNodeConnectionStream extends EventNode<QUICStream> {}
 
-abstract class EventNodeConnectionManager<
-  T = undefined,
-> extends EventNode<T> {}
+abstract class EventNodeConnectionManager<T = undefined> extends EventNode<T> {}
 
 class EventNodeConnectionManagerStart extends EventNodeConnectionManager {}
 
@@ -31,7 +29,6 @@ class EventNodeConnectionManagerStopped extends EventNodeConnectionManager {}
 class EventNodeConnectionManagerError extends EventNodeConnectionManager<Error> {}
 
 class EventNodeConnectionManagerClose extends EventNodeConnectionManager {}
-
 
 class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {}
 

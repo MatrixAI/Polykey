@@ -61,7 +61,9 @@ class ErrorNodeConnectionTimeout<T> extends ErrorNodeConnection<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionMultiConnectionFailed<T> extends ErrorNodeConnection<T> {
+class ErrorNodeConnectionMultiConnectionFailed<
+  T,
+> extends ErrorNodeConnection<T> {
   static description: 'Could not establish connection when multiple resolved hosts were involved';
   exitCode = sysexits.UNAVAILABLE;
 }
@@ -77,47 +79,61 @@ class ErrorNodeConnectionSameNodeId<T> extends ErrorNodeConnection<T> {
   exitCode = sysexits.USAGE;
 }
 class ErrorNodeConnectionInternalError<T> extends ErrorNodeConnection<T> {
-  static description =
-    'There was an internal failure with the NodeConnection';
+  static description = 'There was an internal failure with the NodeConnection';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionTransportUnknownError<T> extends ErrorNodeConnection<T> {
-  static description =
-    'Transport received an unknown error';
+class ErrorNodeConnectionTransportUnknownError<
+  T,
+> extends ErrorNodeConnection<T> {
+  static description = 'Transport received an unknown error';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionTransportGenericError<T> extends ErrorNodeConnection<T> {
-  static description =
-    'Transport received a generic error';
+class ErrorNodeConnectionTransportGenericError<
+  T,
+> extends ErrorNodeConnection<T> {
+  static description = 'Transport received a generic error';
   exitCode = sysexits.USAGE;
 }
 
 class ErrorNodeConnectionManager<T> extends ErrorNodes<T> {}
 
-class ErrorNodeConnectionManagerNotRunning<T> extends ErrorNodeConnectionManager<T> {
+class ErrorNodeConnectionManagerNotRunning<
+  T,
+> extends ErrorNodeConnectionManager<T> {
   static description = 'NodeConnectionManager is not running';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionManagerStopping<T> extends ErrorNodeConnectionManager<T> {
+class ErrorNodeConnectionManagerStopping<
+  T,
+> extends ErrorNodeConnectionManager<T> {
   static description = 'NodeConnectionManager is stopping';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionManagerInternalError<T> extends ErrorNodeConnectionManager<T> {
-  static description = 'There was an internal failure with NodeConnectionManager';
+class ErrorNodeConnectionManagerInternalError<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description =
+    'There was an internal failure with NodeConnectionManager';
   exitCode = sysexits.UNAVAILABLE;
 }
 
-class ErrorNodeConnectionManagerNodeIdRequired<T> extends ErrorNodeConnectionManager<T> {
-  static description = 'No NodeId was provided for establishing a multi connection';
+class ErrorNodeConnectionManagerNodeIdRequired<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description =
+    'No NodeId was provided for establishing a multi connection';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeConnectionManagerMultiConnectionFailed<T> extends ErrorNodeConnectionManager<T> {
-  static description = 'Failed to establish any connection during multi connection establishment';
+class ErrorNodeConnectionManagerMultiConnectionFailed<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description =
+    'Failed to establish any connection during multi connection establishment';
   exitCode = sysexits.TEMPFAIL;
 }
 

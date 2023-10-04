@@ -1,6 +1,6 @@
 import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
-import type { Opaque, InverseRecord } from '../types';
+import type { Opaque, InverseRecord, ObjectEmpty } from '../types';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
@@ -265,7 +265,7 @@ type CertManagerChangeData = {
 /**
  * Used by the PolykeyAgent for it's top level options
  */
-type KeysOptions = KeyRingOptions & CertManagerOptions
+type KeysOptions = KeyRingOptions & CertManagerOptions;
 
 /**
  * Options for the KeyRing
@@ -275,13 +275,17 @@ type KeyRingOptions = {
   passwordMemLimit?: PasswordMemLimit;
   strictMemoryLock: boolean;
 } & (
-  {} | {
-  recoveryCode: RecoveryCode;
-} | {
-  privateKey: PrivateKey;
-} | {
-  privateKeyPath: string;
-});
+  | ObjectEmpty
+  | {
+      recoveryCode: RecoveryCode;
+    }
+  | {
+      privateKey: PrivateKey;
+    }
+  | {
+      privateKeyPath: string;
+    }
+);
 
 /**
  * Options for the CertManager

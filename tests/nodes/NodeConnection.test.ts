@@ -44,7 +44,9 @@ describe(`${NodeConnection.name}`, () => {
     return nc;
   };
 
-  const handleEventQUICConnectionStream = async (event: quicEvents.EventQUICConnectionStream) => {
+  const handleEventQUICConnectionStream = async (
+    event: quicEvents.EventQUICConnectionStream,
+  ) => {
     // Streams are handled via the RPCServer.
     logger.info('Handling stream');
     const stream = event.detail;
@@ -88,11 +90,17 @@ describe(`${NodeConnection.name}`, () => {
     });
     // Setting up handling
     logger.info('Setting up connection handling for server');
-    quicServer.addEventListener(quicEvents.EventQUICConnectionStream.name, handleEventQUICConnectionStream);
+    quicServer.addEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      handleEventQUICConnectionStream,
+    );
     quicServer.addEventListener(
       quicEvents.EventQUICServerStopped.name,
       () => {
-        quicServer.removeEventListener(quicEvents.EventQUICConnectionStream.name, handleEventQUICConnectionStream);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICConnectionStream.name,
+          handleEventQUICConnectionStream,
+        );
       },
       { once: true },
     );
@@ -176,10 +184,13 @@ describe(`${NodeConnection.name}`, () => {
       },
       { timer: 100 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     await serverSocket.stop({ force: true });
     // Wait for destruction, may take 2+ seconds
-    await destroyProm;
+    await destroyProm.p;
   });
   test('get the root chain cert', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
@@ -224,11 +235,19 @@ describe(`${NodeConnection.name}`, () => {
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
-    const errorProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionError);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
+    const errorProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionError,
+    );
     await destroyProm.p;
     const evt = await errorProm.p;
-    expect(evt.detail.cause).toBeInstanceOf(quicErrors.ErrorQUICConnectionPeerTLS);
+    expect(evt.detail.cause).toBeInstanceOf(
+      quicErrors.ErrorQUICConnectionPeerTLS,
+    );
   });
   test('Should fail due to client rejecting server certificate (missing NodeId)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection({
@@ -259,7 +278,10 @@ describe(`${NodeConnection.name}`, () => {
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     await serverSocket.stop({ force: true });
     await destroyProm.p;
   });
@@ -279,7 +301,10 @@ describe(`${NodeConnection.name}`, () => {
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     await nodeConnection.quicConnection.stop({
       isApp: true,
       errorCode: 0,
@@ -303,7 +328,10 @@ describe(`${NodeConnection.name}`, () => {
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     // @ts-ignore: kidnap internal property
     const connectionMap = serverSocket.connectionMap;
     connectionMap.forEach((connection) => {
@@ -317,12 +345,17 @@ describe(`${NodeConnection.name}`, () => {
   });
   test('should wrap reverse connection', async () => {
     const nodeConnectionReverseProm = promise<NodeConnection<any>>();
-    quicServer.removeEventListener(quicEvents.EventQUICConnectionStream.name, handleEventQUICConnectionStream);
+    quicServer.removeEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      handleEventQUICConnectionStream,
+    );
     quicServer.addEventListener(
       quicEvents.EventQUICServerConnection.name,
       async (event: quicEvents.EventQUICServerConnection) => {
         const quicConnection = event.detail;
-        const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(quicConnection.getRemoteCertsChain());
+        const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
+          quicConnection.getRemoteCertsChain(),
+        );
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
             nodeId,
@@ -346,7 +379,10 @@ describe(`${NodeConnection.name}`, () => {
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     const nodeConnectionReverse = await nodeConnectionReverseProm.p;
     await nodeConnectionReverse.destroy({ force: true });
     await destroyProm.p;
@@ -354,12 +390,17 @@ describe(`${NodeConnection.name}`, () => {
   test('should handle reverse streams', async () => {
     const nodeConnectionReverseProm = promise<NodeConnection<any>>();
     const reverseStreamProm = promise<RPCStream<Uint8Array, Uint8Array>>();
-    quicServer.removeEventListener(quicEvents.EventQUICConnectionStream.name, handleEventQUICConnectionStream);
+    quicServer.removeEventListener(
+      quicEvents.EventQUICConnectionStream.name,
+      handleEventQUICConnectionStream,
+    );
     quicServer.addEventListener(
       quicEvents.EventQUICServerConnection.name,
       async (event: quicEvents.EventQUICServerConnection) => {
         const quicConnection = event.detail;
-        const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(quicConnection.getRemoteCertsChain());
+        const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
+          quicConnection.getRemoteCertsChain(),
+        );
         const nodeConnection = await NodeConnection.createNodeConnectionReverse(
           {
             nodeId,
@@ -401,18 +442,20 @@ describe(`${NodeConnection.name}`, () => {
     const nodeConnectionReverse = await nodeConnectionReverseProm.p;
 
     // Checking stream creation
-    const forwardStream = await nodeConnection.quicConnection.newStream();
+    const forwardStream = nodeConnection.quicConnection.newStream();
     const writer1 = forwardStream.writable.getWriter();
     await writer1.write(Buffer.from('Hello!'));
     await reverseStreamProm.p;
 
-    const reverseStream =
-      await nodeConnectionReverse.quicConnection.newStream();
+    const reverseStream = nodeConnectionReverse.quicConnection.newStream();
     const writer2 = reverseStream.writable.getWriter();
     await writer2.write(Buffer.from('Hello!'));
     await forwardStreamProm.p;
 
-    const destroyProm = testsUtils.promFromEvent(nodeConnection, nodesEvents.EventNodeConnectionDestroyed);
+    const destroyProm = testsUtils.promFromEvent(
+      nodeConnection,
+      nodesEvents.EventNodeConnectionDestroyed,
+    );
     await nodeConnectionReverse.destroy({ force: true });
     await destroyProm.p;
   });

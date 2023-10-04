@@ -55,7 +55,7 @@ class KeyRing {
   }: {
     keysPath: string;
     password: string;
-    options: Partial<KeyRingOptions>
+    options: Partial<KeyRingOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
     fs?: FileSystem;
     logger?: Logger;
@@ -73,7 +73,7 @@ class KeyRing {
       fs,
       logger,
     });
-    await keyRing.start({password, fresh});
+    await keyRing.start({ password, fresh });
     logger.info(`Created ${this.name}`);
     return keyRing;
   }

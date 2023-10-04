@@ -62,18 +62,18 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
-      }
-    })
+      },
+    });
     nodeConnectionManagerPeer = new NodeConnectionManager({
       keyRing: keyRingPeer,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
       nodeGraph: {} as NodeGraph,
       tlsConfig: serverTlsConfig,
-      seedNodes: undefined
+      seedNodes: undefined,
     });
     await nodeConnectionManagerPeer.start({
       host: localHost,
-    })
+    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -85,7 +85,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
-      }
+      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -121,7 +121,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      seedNodes: undefined
+      seedNodes: undefined,
     });
     await nodeConnectionManager.start({
       host: localHost,
@@ -135,7 +135,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
-      seedNodes: undefined
+      seedNodes: undefined,
     });
     await nodeConnectionManager.start({
       host: localHost,
@@ -212,8 +212,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     expect(nodesUtils.encodeNodeId(connectionsList[0].nodeId)).toEqual(
       serverNodeIdEncoded,
     );
-    expect(connectionsList[0].address.host).toEqual(nodeConnectionManagerPeer.host);
-    expect(connectionsList[0].address.port).toEqual(nodeConnectionManagerPeer.port);
+    expect(connectionsList[0].address.host).toEqual(
+      nodeConnectionManagerPeer.host,
+    );
+    expect(connectionsList[0].address.port).toEqual(
+      nodeConnectionManagerPeer.port,
+    );
 
     await nodeConnectionManager.stop();
   });
@@ -430,7 +434,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       serverNodeId,
       localHost as Host,
       12345 as Port,
-      {timer: 100},
+      { timer: 100 },
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
