@@ -81,7 +81,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
           strictMemoryLock: false,
         },
       },
-      logger: logger.getChild('AgentA'),
+      logger: logger.getChild('Agent1'),
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteNodeIdEncoded1 = nodesUtils.encodeNodeId(remoteNodeId1);
@@ -103,7 +103,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
           strictMemoryLock: false,
         },
       },
-      logger: logger.getChild('AgentA'),
+      logger: logger.getChild('Agent2'),
     });
     remoteNodeId2 = remotePolykeyAgent2.keyRing.getNodeId();
     remoteAddress2 = {
