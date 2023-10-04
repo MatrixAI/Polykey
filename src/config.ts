@@ -10,11 +10,11 @@ import { version } from '../package.json';
  */
 const testnet: Record<string, NodeAddress> = {
   vg9a9e957878s2qgtbdmu2atvli8ms7muukb1dk4dpbm4llkki3h0: {
-    host: 'testnet.polykey.io' as Host,
+    host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
   },
   vh9oqtvct10eaiv3cl4ebm0ko33sl0qqpvb59vud8cngfvqs4p4ng: {
-    host: 'testnet.polykey.io' as Host,
+    host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
   },
 };

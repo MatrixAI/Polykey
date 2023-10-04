@@ -32,11 +32,11 @@ At the moment, the CLI is embedded in this Polykey Core Library repository. This
 
 Have a bug or a feature-request? Please submit it the issues of the relevant subproject above.
 
-For tutorials, how-to guides, reference and theory, see the [docs](https://polykey.io/docs).
+For tutorials, how-to guides, reference and theory, see the [docs](https://polykey.com/docs).
 
 Have a question? Join our [discussion board](https://github.com/MatrixAI/Polykey/discussions).
 
-Our main website is https://polykey.io
+Our main website is https://polykey.com
 
 ## Installation
 
