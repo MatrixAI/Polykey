@@ -41,7 +41,6 @@ import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
-import {NodeAddress} from "./nodes/types";
 
 /**
  * Optional configuration for `PolykeyAgent`.

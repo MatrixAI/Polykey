@@ -1,39 +1,31 @@
 import type { DeepPartial, FileSystem } from '../types';
-import type { RecoveryCode, Key, PrivateKey } from '../keys/types';
-import type { PasswordMemLimit, PasswordOpsLimit } from '../keys/types';
+import type { RecoveryCode, Key, KeysOptions } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import * as bootstrapErrors from './errors';
 import TaskManager from '../tasks/TaskManager';
-import { IdentitiesManager } from '../identities';
-import { SessionManager } from '../sessions';
-import { Status } from '../status';
-import { Schema } from '../schema';
-import { Sigchain } from '../sigchain';
-import { ACL } from '../acl';
-import { GestaltGraph } from '../gestalts';
-import { KeyRing, CertManager } from '../keys';
-import { NodeGraph, NodeManager } from '../nodes';
-import { VaultManager } from '../vaults';
-import { NotificationsManager } from '../notifications';
-import { mkdirExists } from '../utils';
+import IdentitiesManager from '../identities/IdentitiesManager';
+import SessionManager from '../sessions/SessionManager';
+import Status from '../status/Status';
+import Schema from '../schema/Schema';
+import Sigchain from '../sigchain/Sigchain';
+import ACL from '../acl/ACL';
+import GestaltGraph from '../gestalts/GestaltGraph';
+import KeyRing from '../keys/KeyRing';
+import CertManager from '../keys/CertManager';
+import * as keysUtils from '../keys/utils';
+import NodeGraph from '../nodes/NodeGraph';
+import NodeManager from '../nodes/NodeManager';
+import VaultManager from '../vaults/VaultManager';
+import NotificationsManager from '../notifications/NotificationsManager';
 import config from '../config';
 import * as utils from '../utils';
-import * as keysUtils from '../keys/utils';
 import * as errors from '../errors';
+import * as bootstrapErrors from './errors';
 
 type BootstrapOptions = {
   nodePath: string;
-  keys: {
-    recoveryCode: RecoveryCode;
-    privateKey: PrivateKey;
-    privateKeyPath: string;
-    passwordOpsLimit: PasswordOpsLimit;
-    passwordMemLimit: PasswordMemLimit;
-    strictMemoryLock: boolean;
-    certDuration: number;
-  };
+  keys: KeysOptions;
 };
 
 /**
@@ -68,7 +60,7 @@ async function bootstrapState({
   if (optionsDefaulted.nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
-  await mkdirExists(fs, optionsDefaulted.nodePath);
+  await utils.mkdirExists(fs, optionsDefaulted.nodePath);
   // Setup node path and sub paths
   const statusPath = path.join(
     optionsDefaulted.nodePath,
@@ -112,14 +104,7 @@ async function bootstrapState({
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: {
-        recoveryCode: optionsDefaulted.recoveryCode,
-        privateKey: optionsDefaulted.privateKey,
-        privateKeyPath: optionsDefaulted.privateKeyPath,
-        passwordOpsLimit: optionsDefaulted.passwordOpsLimit,
-        passwordMemLimit: optionsDefaulted.passwordMemLimit,
-        strictMemoryLock: optionsDefaulted.strictMemoryLock,
-      },
+      options: optionsDefaulted.keys,
       fs,
       logger: logger.getChild(KeyRing.name),
       fresh,
@@ -156,9 +141,7 @@ async function bootstrapState({
       keyRing,
       db,
       taskManager,
-      options: {
-        certDuration: optionsDefaulted.certDuration,
-      },
+      options: optionsDefaulted.keys,
       fresh,
       logger,
     });
