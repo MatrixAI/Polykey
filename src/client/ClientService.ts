@@ -157,6 +157,7 @@ class ClientService {
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
     await this.webSocketServer.stop({ force });
+    await this.rpcServer.destroy(force);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -164,7 +165,7 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.rpcServer.destroy(force);
+    await this.stop({ force });
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 

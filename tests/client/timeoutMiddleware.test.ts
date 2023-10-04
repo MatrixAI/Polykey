@@ -149,8 +149,8 @@ describe('timeoutMiddleware', () => {
       () => {},
       () => {},
     );
-    await clientService.destroy({ force: true });
     await rpcClient.destroy();
+    await clientService.destroy({ force: true });
   });
   test('client side timeout updates', async () => {
     // Setup
