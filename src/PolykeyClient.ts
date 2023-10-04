@@ -1,5 +1,5 @@
 import type { FileSystem } from './types';
-import type { StreamFactory } from '@matrixai/rpc/dist/types';
+import type { StreamFactory, IdGen } from '@matrixai/rpc/dist/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
@@ -12,7 +12,7 @@ import * as errors from './errors';
 import * as events from './events';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
-
+let idGen: IdGen;
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
  * a new RPCClient which attempts to connect to an existing PolykeyAgent's
@@ -69,6 +69,7 @@ class PolykeyClient {
       ),
       streamKeepAliveTimeoutTime,
       logger: logger.getChild(RPCClient.name),
+      idGen,
     });
     const pkClient = new this({
       nodePath,

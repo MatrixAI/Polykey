@@ -47,6 +47,7 @@ function authenticationMiddlewareServer(
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
                 data: rpcUtils.fromError(e, true),
+                type: e.type,
               };
               const rpcErrorMessage: JSONRPCResponseError = {
                 jsonrpc: '2.0',
