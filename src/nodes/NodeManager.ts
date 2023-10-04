@@ -201,10 +201,10 @@ class NodeManager {
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
     `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
-  protected handleNodeConnectionEvent = (
+  protected handleNodeConnectionEvent = async (
     e: nodesEvents.EventNodeConnectionManagerConnection,
   ) => {
-    void this.setNode(
+    await this.setNode(
       e.detail.remoteNodeId,
       {
         host: e.detail.remoteHost,
