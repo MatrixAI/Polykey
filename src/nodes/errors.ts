@@ -101,9 +101,24 @@ class ErrorNodeConnectionManagerNotRunning<T> extends ErrorNodeConnectionManager
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeConnectionManagerStopping<T> extends ErrorNodeConnectionManager<T> {
+  static description = 'NodeConnectionManager is stopping';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeConnectionManagerInternalError<T> extends ErrorNodeConnectionManager<T> {
   static description = 'There was an internal failure with NodeConnectionManager';
   exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorNodeConnectionManagerNodeIdRequired<T> extends ErrorNodeConnectionManager<T> {
+  static description = 'No NodeId was provided for establishing a multi connection';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionManagerMultiConnectionFailed<T> extends ErrorNodeConnectionManager<T> {
+  static description = 'Failed to establish any connection during multi connection establishment';
+  exitCode = sysexits.TEMPFAIL;
 }
 
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
@@ -140,7 +155,10 @@ export {
   ErrorNodeConnectionTransportGenericError,
   ErrorNodeConnectionManager,
   ErrorNodeConnectionManagerNotRunning,
+  ErrorNodeConnectionManagerStopping,
   ErrorNodeConnectionManagerInternalError,
+  ErrorNodeConnectionManagerNodeIdRequired,
+  ErrorNodeConnectionManagerMultiConnectionFailed,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
 };
