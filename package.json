@@ -1,6 +1,6 @@
 {
   "name": "polykey",
-  "version": "1.1.5-feature-agent-migration-stage2.0",
+  "version": "1.2.0-staging.0",
   "homepage": "https://polykey.io",
   "author": "Matrix AI",
   "contributors": [
@@ -73,7 +73,7 @@
     "@matrixai/resources": "^1.1.5",
     "@matrixai/timer": "^1.1.1",
     "@matrixai/workers": "^1.3.7",
-    "@matrixai/quic":  "^0.1.3",
+    "@matrixai/quic": "^0.1.3",
     "@matrixai/events": "^3.2.0",
     "@peculiar/asn1-pkcs8": "^2.3.0",
     "@peculiar/asn1-schema": "^2.3.0",
