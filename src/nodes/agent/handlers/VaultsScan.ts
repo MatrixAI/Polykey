@@ -2,7 +2,7 @@ import type { DB } from '@matrixai/db';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  VaultsScanMessage
+  VaultsScanMessage,
 } from '../types';
 import type VaultManager from '../../../vaults/VaultManager';
 import * as agentErrors from '../errors';
@@ -50,7 +50,7 @@ class VaultsScan extends ServerHandler<
         };
       }
     });
-  }
+  };
 }
 
 export default VaultsScan;

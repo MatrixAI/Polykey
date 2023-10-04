@@ -44,11 +44,9 @@ const cleanupReason = Symbol('CleanupReason');
  * - error
  */
 interface RPCServer extends CreateDestroy {}
-@CreateDestroy(
-  {
-    eventDestroyed: rpcEvents.EventRPCServerDestroyed,
-  }
-)
+@CreateDestroy({
+  eventDestroyed: rpcEvents.EventRPCServerDestroyed,
+})
 class RPCServer extends EventTarget {
   /**
    * Creates RPC server.
@@ -198,7 +196,10 @@ class RPCServer extends EventTarget {
     this.logger = logger;
   }
 
-  public async destroy({force = true, reason} : {force?: boolean, reason?: any} = {}): Promise<void> {
+  public async destroy({
+    force = true,
+    reason,
+  }: { force?: boolean; reason?: any } = {}): Promise<void> {
     // Just adding this to enforce expected type
     const _reason = reason;
     this.logger.info(`Destroying ${this.constructor.name}`);

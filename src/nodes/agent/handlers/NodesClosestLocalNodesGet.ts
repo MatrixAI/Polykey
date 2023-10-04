@@ -23,7 +23,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
   AgentRPCRequestParams<NodeIdMessage>,
   AgentRPCResponseResult<NodeAddressMessage>
 > {
-  public handle = async function*(
+  public handle = async function* (
     input: AgentRPCRequestParams<NodeIdMessage>,
   ): AsyncGenerator<AgentRPCResponseResult<NodeAddressMessage>> {
     const { nodeGraph, db } = this.container;
@@ -60,7 +60,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
         };
       }
     });
-  }
+  };
 }
 
 export default NodesClosestLocalNodesGet;

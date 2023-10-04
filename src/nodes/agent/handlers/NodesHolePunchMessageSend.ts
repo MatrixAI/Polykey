@@ -31,7 +31,7 @@ class NodesHolePunchMessageSend extends UnaryHandler<
   AgentRPCRequestParams<HolePunchRelayMessage>,
   AgentRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: AgentRPCRequestParams<HolePunchRelayMessage>,
     _cancel,
     meta,
@@ -110,7 +110,7 @@ class NodesHolePunchMessageSend extends UnaryHandler<
       }
     });
     return {};
-  }
+  };
 }
 
 export default NodesHolePunchMessageSend;

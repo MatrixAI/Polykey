@@ -1,7 +1,6 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { NodeAddress } from '@/nodes/types';
-import type { SeedNodes } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -20,9 +19,9 @@ import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
+import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
-import * as utils from "@/utils";
 
 describe(`${NodeConnectionManager.name} seednodes test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
@@ -204,7 +203,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
-    // add seed nodes to the nodeGraph
+    // Add seed nodes to the nodeGraph
     const setNodeProms = new Array<Promise<void>>();
     for (const nodeIdEncoded in seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -264,7 +263,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
-    // add seed nodes to the nodeGraph
+    // Add seed nodes to the nodeGraph
     const setNodeProms = new Array<Promise<void>>();
     for (const nodeIdEncoded in seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -325,7 +324,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
-    // add seed nodes to the nodeGraph
+    // Add seed nodes to the nodeGraph
     const setNodeProms = new Array<Promise<void>>();
     for (const nodeIdEncoded in seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -384,7 +383,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
-    // add seed nodes to the nodeGraph
+    // Add seed nodes to the nodeGraph
     const setNodeProms = new Array<Promise<void>>();
     for (const nodeIdEncoded in seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
@@ -438,7 +437,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger,
     });
     await nodeManager.start();
-    // add seed nodes to the nodeGraph
+    // Add seed nodes to the nodeGraph
     const setNodeProms = new Array<Promise<void>>();
     for (const nodeIdEncoded in seedNodes) {
       const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);

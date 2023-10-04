@@ -3,6 +3,7 @@ import type { RecoveryCode, Key, KeysOptions } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import * as bootstrapErrors from './errors';
 import TaskManager from '../tasks/TaskManager';
 import IdentitiesManager from '../identities/IdentitiesManager';
 import SessionManager from '../sessions/SessionManager';
@@ -21,7 +22,6 @@ import NotificationsManager from '../notifications/NotificationsManager';
 import config from '../config';
 import * as utils from '../utils';
 import * as errors from '../errors';
-import * as bootstrapErrors from './errors';
 
 type BootstrapOptions = {
   nodePath: string;

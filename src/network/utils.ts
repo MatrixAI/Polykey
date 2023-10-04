@@ -9,9 +9,9 @@ import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import { CryptoError } from '@matrixai/quic/dist/native';
+import { utils as quicUtils } from '@matrixai/quic';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
-import { utils as quicUtils } from '@matrixai/quic'
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.

@@ -34,7 +34,7 @@ class NotificationsSend extends UnaryHandler<
       notificationsManager.receiveNotification(notification, tran),
     );
     return {};
-  }
+  };
 }
 
 export default NotificationsSend;

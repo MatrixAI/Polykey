@@ -14,7 +14,13 @@ import type {
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
-import type { ConnectionData, Host, Hostname, Port, TLSConfig } from '../network/types';
+import type {
+  ConnectionData,
+  Host,
+  Hostname,
+  Port,
+  TLSConfig,
+} from '../network/types';
 import type { ServerManifest } from '../rpc/types';
 import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
@@ -24,19 +30,24 @@ import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { AbstractEvent, EventAll } from "@matrixai/events";
-import { QUICSocket, QUICServer, events as quicEvents, utils as quicUtils } from '@matrixai/quic';
+import { AbstractEvent, EventAll } from '@matrixai/events';
+import {
+  QUICSocket,
+  QUICServer,
+  events as quicEvents,
+  utils as quicUtils,
+} from '@matrixai/quic';
+import { running, status } from '@matrixai/async-init';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
+import manifestClientAgent from './agent/callers';
 import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
-import manifestClientAgent from './agent/callers';
 import * as utils from '../utils';
 import config from '../config';
-import { running, status } from "@matrixai/async-init";
 import RPCServer from '../rpc/RPCServer';
 import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
 
@@ -117,7 +128,7 @@ class NodeConnectionManager {
   public readonly rpcParserBufferSize: number;
 
   /**
-   * default timeout for RPC handlers
+   * Default timeout for RPC handlers
    */
   public readonly rpcCallTimeoutTime: number;
 
@@ -153,10 +164,14 @@ class NodeConnectionManager {
    * error event. Will trigger stop of the `NodeConnectionManager` via the
    * `EventNodeConnectionManagerError` -> `EventNodeConnectionManagerClose` event path.
    */
-  protected handleEventNodeConnectionManagerError = (evt: nodesEvents.EventNodeConnectionManagerError) => {
-    this.logger.warn(`NodeConnectionManager error caused by ${evt.detail.message}`);
+  protected handleEventNodeConnectionManagerError = (
+    evt: nodesEvents.EventNodeConnectionManagerError,
+  ) => {
+    this.logger.warn(
+      `NodeConnectionManager error caused by ${evt.detail.message}`,
+    );
     this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
-  }
+  };
 
   /**
    * Triggers the destruction of the `NodeConnectionManager`. Since this is only in
@@ -164,20 +179,24 @@ class NodeConnectionManager {
    * Dispatched by the `EventNodeConnectionManagerError` event as the
    * `EventNodeConnectionManagerError` -> `EventNodeConnectionManagerClose` event path.
    */
-  protected handleEventNodeConnectionManagerClose = async (_evt: nodesEvents.EventNodeConnectionManagerClose) => {
-    this.logger.warn(`close event triggering NodeConnectionManager.stop`)
+  protected handleEventNodeConnectionManagerClose = async (
+    _evt: nodesEvents.EventNodeConnectionManagerClose,
+  ) => {
+    this.logger.warn(`close event triggering NodeConnectionManager.stop`);
     if (this[running] && this[status] !== 'stopping') {
       await this.stop();
     }
-  }
+  };
 
-  protected handleEventNodeConnectionStream = async (e: nodesEvents.EventNodeConnectionStream) => {
+  protected handleEventNodeConnectionStream = async (
+    e: nodesEvents.EventNodeConnectionStream,
+  ) => {
     const stream = e.detail;
     this.rpcServer!.handleStream(stream);
-  }
+  };
 
   /**
-   * redispatches `QUICSOcket` or `QUICServer` error events as `NodeConnectionManager` error events.
+   * Redispatches `QUICSOcket` or `QUICServer` error events as `NodeConnectionManager` error events.
    * This should trigger the destruction of the `NodeConnection` through the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
@@ -189,40 +208,46 @@ class NodeConnectionManager {
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
     );
-  }
+  };
 
   /**
    * Handle unexpected stoppage of the QUICSocket. Not expected to happen
    * without error but we have it just in case.
    */
-  protected handleEventQUICSocketStopped = (_evt: quicEvents.EventQUICSocketStopped) => {
+  protected handleEventQUICSocketStopped = (
+    _evt: quicEvents.EventQUICSocketStopped,
+  ) => {
     const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
       'QUICSocket stopped unexpectedly',
     );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
     );
-  }
+  };
 
   /**
    * Handle unexpected stoppage of the QUICServer. Not expected to happen
    * without error but we have it just in case.
    */
-  protected handleEventQUICServerStopped = (_evt: quicEvents.EventQUICServerStopped) => {
+  protected handleEventQUICServerStopped = (
+    _evt: quicEvents.EventQUICServerStopped,
+  ) => {
     const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
       'QUICServer stopped unexpectedly',
     );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionManagerError({ detail: err }),
     );
-  }
+  };
 
   /**
    * Handles `EventQUICServerConnection` events. These are reverser or server
    * peer initated connections that needs to be handled and added to the
    * connectio map.
    */
-  protected handleEventQUICServerConnection = async (evt: quicEvents.EventQUICServerConnection) => {
+  protected handleEventQUICServerConnection = async (
+    evt: quicEvents.EventQUICServerConnection,
+  ) => {
     await this.handleConnectionReverse(evt.detail);
   };
 
@@ -252,21 +277,21 @@ class NodeConnectionManager {
     logger?: Logger;
   }) {
     const optionsDefaulted = utils.mergeObjects(options, {
-      connectionFindConcurrencyLimit: config.defaultsSystem
-        .nodesConnectionFindConcurrencyLimit,
-      connectionIdleTimeoutTime: config.defaultsSystem
-        .nodesConnectionIdleTimeoutTime,
-      connectionConnectTimeoutTime: config.defaultsSystem
-        .clientConnectTimeoutTime,
-      connectionKeepAliveTimeoutTime: config.defaultsSystem
-        .clientKeepAliveTimeoutTime,
-      connectionKeepAliveIntervalTime: config.defaultsSystem
-        .clientKeepAliveIntervalTime,
-      connectionHolePunchIntervalTime: config.defaultsSystem
-        .nodesConnectionHolePunchIntervalTime,
+      connectionFindConcurrencyLimit:
+        config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
+      connectionIdleTimeoutTime:
+        config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+      connectionConnectTimeoutTime:
+        config.defaultsSystem.clientConnectTimeoutTime,
+      connectionKeepAliveTimeoutTime:
+        config.defaultsSystem.clientKeepAliveTimeoutTime,
+      connectionKeepAliveIntervalTime:
+        config.defaultsSystem.clientKeepAliveIntervalTime,
+      connectionHolePunchIntervalTime:
+        config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
       rpcCallTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
-    })
+    });
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
@@ -276,12 +301,17 @@ class NodeConnectionManager {
     this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
       return k !== nodeIdEncodedOwn;
     }) as SeedNodes;
-    this.connectionFindConcurrencyLimit = optionsDefaulted.connectionFindConcurrencyLimit;
+    this.connectionFindConcurrencyLimit =
+      optionsDefaulted.connectionFindConcurrencyLimit;
     this.connectionIdleTimeoutTime = optionsDefaulted.connectionIdleTimeoutTime;
-    this.connectionConnectTimeoutTime = optionsDefaulted.connectionConnectTimeoutTime;
-    this.connectionKeepAliveTimeoutTime = optionsDefaulted.connectionKeepAliveTimeoutTime;
-    this.connectionKeepAliveIntervalTime = optionsDefaulted.connectionKeepAliveIntervalTime;
-    this.connectionHolePunchIntervalTime = optionsDefaulted.connectionHolePunchIntervalTime;
+    this.connectionConnectTimeoutTime =
+      optionsDefaulted.connectionConnectTimeoutTime;
+    this.connectionKeepAliveTimeoutTime =
+      optionsDefaulted.connectionKeepAliveTimeoutTime;
+    this.connectionKeepAliveIntervalTime =
+      optionsDefaulted.connectionKeepAliveIntervalTime;
+    this.connectionHolePunchIntervalTime =
+      optionsDefaulted.connectionHolePunchIntervalTime;
     this.rpcParserBufferSize = optionsDefaulted.rpcParserBufferSize;
     this.rpcCallTimeoutTime = optionsDefaulted.rpcCallTimeoutTime;
     // Note that all buffers allocated for crypto operations is using
@@ -301,7 +331,7 @@ class NodeConnectionManager {
             utils.bufferWrap(key) as Key,
             utils.bufferWrap(data),
           );
-          // convert the MAC to an ArrayBuffer
+          // Convert the MAC to an ArrayBuffer
           return sig.slice().buffer;
         },
         async verify(
@@ -408,10 +438,7 @@ class NodeConnectionManager {
       quicEvents.EventQUICSocketStopped.name,
       this.handleEventQUICSocketStopped,
     );
-    this.quicSocket.addEventListener(
-      EventAll.name,
-      this.handleEventAll,
-    );
+    this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
 
     // QUICServer will simply re-use the shared `QUICSocket`
     await this.quicServer.start({
@@ -432,10 +459,7 @@ class NodeConnectionManager {
       quicEvents.EventQUICServerConnection.name,
       this.handleEventQUICServerConnection,
     );
-    this.quicSocket.addEventListener(
-      EventAll.name,
-      this.handleEventAll,
-    );
+    this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -458,10 +482,7 @@ class NodeConnectionManager {
       quicEvents.EventQUICSocketStopped.name,
       this.handleEventQUICSocketStopped,
     );
-    this.quicSocket.removeEventListener(
-      EventAll.name,
-      this.handleEventAll,
-    );
+    this.quicSocket.removeEventListener(EventAll.name, this.handleEventAll);
     this.quicServer.removeEventListener(
       quicEvents.EventQUICServerError.name,
       this.handleEventQUICError,
@@ -474,10 +495,7 @@ class NodeConnectionManager {
       quicEvents.EventQUICServerConnection.name,
       this.handleEventQUICServerConnection,
     );
-    this.quicSocket.removeEventListener(
-      EventAll.name,
-      this.handleEventAll,
-    );
+    this.quicSocket.removeEventListener(EventAll.name, this.handleEventAll);
 
     const destroyProms: Array<Promise<void>> = [];
     for (const [nodeId, connAndTimer] of this.connections) {
@@ -491,7 +509,10 @@ class NodeConnectionManager {
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
-    await this.rpcServer?.destroy({ force: true, reason: new nodesErrors.ErrorNodeConnectionManagerStopping()});
+    await this.rpcServer?.destroy({
+      force: true,
+      reason: new nodesErrors.ErrorNodeConnectionManagerStopping(),
+    });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -740,7 +761,9 @@ class NodeConnectionManager {
   ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
     const nodesEncoded = nodeIds.map((v) => nodesUtils.encodeNodeId(v));
     this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
-    if (nodeIds.length === 0) throw new nodesErrors.ErrorNodeConnectionManagerNodeIdRequired();
+    if (nodeIds.length === 0) {
+      throw new nodesErrors.ErrorNodeConnectionManagerNodeIdRequired();
+    }
     const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
     // 1. short circuit any existing connections
     const nodesShortlist: Set<NodeIdString> = new Set();
@@ -819,8 +842,8 @@ class NodeConnectionManager {
       throw new nodesErrors.ErrorNodeConnectionManagerMultiConnectionFailed(
         undefined,
         {
-          cause: new AggregateError(await Promise.allSettled(connProms))
-        }
+          cause: new AggregateError(await Promise.allSettled(connProms)),
+        },
       );
     }
     return connectionsResults;
@@ -975,11 +998,8 @@ class NodeConnectionManager {
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionStream.name,
       this.handleEventNodeConnectionStream,
-    )
-    nodeConnection.addEventListener(
-      EventAll.name,
-      this.handleEventAll,
     );
+    nodeConnection.addEventListener(EventAll.name, this.handleEventAll);
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionDestroyed.name,
       async () => {
@@ -992,11 +1012,8 @@ class NodeConnectionManager {
         nodeConnection.removeEventListener(
           nodesEvents.EventNodeConnectionStream.name,
           this.handleEventNodeConnectionStream,
-        )
-        nodeConnection.removeEventListener(
-          EventAll.name,
-          this.handleEventAll,
         );
+        nodeConnection.removeEventListener(EventAll.name, this.handleEventAll);
       },
       { once: true },
     );

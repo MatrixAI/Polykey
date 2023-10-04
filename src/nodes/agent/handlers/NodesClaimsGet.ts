@@ -4,7 +4,7 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   ClaimIdMessage,
-  AgentClaimMessage
+  AgentClaimMessage,
 } from '../types';
 import * as claimsUtils from '../../../claims/utils';
 import { ServerHandler } from '../../../rpc/handlers';
@@ -20,7 +20,7 @@ class NodesClaimsGet extends ServerHandler<
   AgentRPCRequestParams<ClaimIdMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 > {
-  public handle = async function*(
+  public handle = async function* (
     _input: ClaimIdMessage,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
     const { sigchain, db } = this.container;
@@ -39,7 +39,7 @@ class NodesClaimsGet extends ServerHandler<
         yield response;
       }
     });
-  }
+  };
 }
 
 export default NodesClaimsGet;

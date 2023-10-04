@@ -1,4 +1,4 @@
-import { AbstractEvent } from "@matrixai/events";
+import { AbstractEvent } from '@matrixai/events';
 
 class RPCErrorEvent extends Event {
   public detail: Error;

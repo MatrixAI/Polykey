@@ -1,7 +1,7 @@
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  AgentClaimMessage
+  AgentClaimMessage,
 } from '../types';
 import type NodeManager from '../../NodeManager';
 import type ACL from '../../../acl/ACL';
@@ -21,7 +21,7 @@ class NodesCrossSignClaim extends DuplexHandler<
   AgentRPCRequestParams<AgentClaimMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
 > {
-  public handle = async function*(
+  public handle = async function* (
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
     _cancel,
     meta,
@@ -38,7 +38,7 @@ class NodesCrossSignClaim extends DuplexHandler<
     }
     // Handle claiming the node
     yield* nodeManager.handleClaimNode(requestingNodeId, input);
-  }
+  };
 }
 
 export default NodesCrossSignClaim;
