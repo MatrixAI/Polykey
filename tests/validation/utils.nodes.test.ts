@@ -8,7 +8,7 @@ describe('nodes validationUtils', () => {
     'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg';
   const nodeIdEncoded3 =
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0';
-  const hostname = 'testnet.polykey.io';
+  const hostname = 'testnet.polykey.com';
   const hostIPv4 = '127.0.0.1';
   const hostIPv6 = '[2001:db8:85a3:8d3:1319:8a2e:370:7348]';
   const port1 = 1314;
