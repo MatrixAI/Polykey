@@ -36,7 +36,6 @@ import * as utils from './utils';
 import * as keysUtils from './keys/utils';
 import * as keysEvents from './keys/events';
 import * as nodesUtils from './nodes/utils';
-import * as nodesEvents from './nodes/events';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
@@ -423,28 +422,6 @@ class PolykeyAgent {
         pingTimeoutTimeTime: optionsDefaulted.client.keepAliveTimeoutTime,
         logger: logger.getChild('WebSocketServer'),
       });
-      rpcServerAgent = await RPCServer.createRPCServer({
-        manifest: agentServerManifest({
-          acl: acl,
-          db: db,
-          keyRing: keyRing,
-          logger: logger,
-          nodeConnectionManager: nodeConnectionManager,
-          nodeGraph: nodeGraph,
-          nodeManager: nodeManager,
-          notificationsManager: notificationsManager,
-          sigchain: sigchain,
-          vaultManager: vaultManager,
-        }),
-        middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-          undefined,
-          optionsDefaulted.rpc.parserBufferSize,
-        ),
-        sensitive: true,
-        handlerTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-        handlerTimeoutGraceTime: optionsDefaulted.rpc.callTimeoutTime + 2000,
-        logger: logger.getChild(RPCServer.name + 'Agent'),
-      });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
       await rpcServerAgent?.destroy({ force:  true });
@@ -487,7 +464,6 @@ class PolykeyAgent {
       sessionManager,
       rpcServerClient,
       webSocketServerClient,
-      rpcServerAgent,
       fs,
       logger,
     });
@@ -534,11 +510,6 @@ class PolykeyAgent {
   public readonly rpcServerAgent: RPCServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
-  protected handleEventNodeStream = (e: nodesEvents.EventNodeConnectionStream) => {
-    const stream = e.detail;
-    this.rpcServerAgent.handleStream(stream);
-  };
-
   protected handleEventCertManagerCertChange = async (
     evt: keysEvents.EventCertManagerCertChange,
   ) => {
@@ -580,7 +551,6 @@ class PolykeyAgent {
     sessionManager,
     rpcServerClient,
     webSocketServerClient,
-    rpcServerAgent,
     fs,
     logger,
   }: {
@@ -604,7 +574,6 @@ class PolykeyAgent {
     sessionManager: SessionManager;
     rpcServerClient: RPCServer;
     webSocketServerClient: WebSocketServer;
-    rpcServerAgent: RPCServer;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -629,7 +598,6 @@ class PolykeyAgent {
     this.sessionManager = sessionManager;
     this.rpcServerClient = rpcServerClient;
     this.webSocketServerClient = webSocketServerClient;
-    this.rpcServerAgent = rpcServerAgent;
     this.fs = fs;
   }
 
@@ -713,14 +681,22 @@ class PolykeyAgent {
           this.rpcServerClient.handleStream(streamPair),
       });
       await this.nodeManager.start();
-      this.nodeConnectionManager.addEventListener(
-        nodesEvents.EventNodeConnectionStream.name,
-        this.handleEventNodeStream,
-      );
       await this.nodeConnectionManager.start({
         host: optionsDefaulted.agentServiceHost,
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
+        manifest: agentServerManifest({
+          acl: this.acl,
+          db: this.db,
+          keyRing: this.keyRing,
+          logger: this.logger,
+          nodeConnectionManager: this.nodeConnectionManager,
+          nodeGraph: this.nodeGraph,
+          nodeManager: this.nodeManager,
+          notificationsManager: this.notificationsManager,
+          sigchain: this.sigchain,
+          vaultManager: this.vaultManager,
+        }),
       });
       await this.nodeGraph.start({ fresh });
       await this.nodeManager.syncNodeGraph(false);
@@ -764,10 +740,6 @@ class PolykeyAgent {
       await this.discovery?.stop();
       await this.nodeGraph?.stop();
       await this.nodeConnectionManager?.stop();
-      this.nodeConnectionManager.removeEventListener(
-        nodesEvents.EventNodeConnectionStream.name,
-        this.handleEventNodeStream,
-      );
       await this.nodeManager?.stop();
       await this.webSocketServerClient.stop(true);
       await this.identitiesManager?.stop();
@@ -804,10 +776,6 @@ class PolykeyAgent {
     await this.vaultManager.stop();
     await this.discovery.stop();
     await this.nodeConnectionManager.stop();
-    this.nodeConnectionManager.removeEventListener(
-      nodesEvents.EventNodeConnectionStream.name,
-      this.handleEventNodeStream,
-    );
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
     await this.webSocketServerClient.stop(true);
