@@ -491,7 +491,7 @@ class NodeConnectionManager {
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
-    await this.rpcServer?.destroy({ force: true, reason: Error('TMP NCM stopping')}); // TODO
+    await this.rpcServer?.destroy({ force: true, reason: new nodesErrors.ErrorNodeConnectionManagerStopping()});
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -740,7 +740,7 @@ class NodeConnectionManager {
   ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
     const nodesEncoded = nodeIds.map((v) => nodesUtils.encodeNodeId(v));
     this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
-    if (nodeIds.length === 0) throw Error('TMP, must provide at least 1 node');
+    if (nodeIds.length === 0) throw new nodesErrors.ErrorNodeConnectionManagerNodeIdRequired();
     const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
     // 1. short circuit any existing connections
     const nodesShortlist: Set<NodeIdString> = new Set();
@@ -816,9 +816,12 @@ class NodeConnectionManager {
       await Promise.allSettled(connProms);
     }
     if (connectionsResults.size === 0) {
-      // TODO: This needs to throw if none were established.
-      //  The usual use case is a single node, this shouldn't be a aggregate error type.
-      throw Error('TMP No connections established!');
+      throw new nodesErrors.ErrorNodeConnectionManagerMultiConnectionFailed(
+        undefined,
+        {
+          cause: new AggregateError(await Promise.allSettled(connProms))
+        }
+      );
     }
     return connectionsResults;
   }
@@ -885,6 +888,8 @@ class NodeConnectionManager {
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
+      // FIXME: only here to see if this condition happens.
+      //  this NEEDS to be removed, but I want to know if this branch happens at all.
       throw Error(
         'TMP IMP, This should be exceedingly rare, lets see if it happens',
       );
