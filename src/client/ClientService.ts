@@ -6,7 +6,7 @@ import type {
 } from '@matrixai/rpc/dist/types';
 import type { TLSConfig } from '../network/types';
 import Logger from '@matrixai/logger';
-import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { CreateDestroyStartStop, status, destroyed } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as errors from './errors';
 import * as events from './events';
 import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
@@ -126,6 +126,25 @@ class ClientService {
     return this.webSocketServer.port;
   }
 
+  protected handleEventWebSocketServerConnection = (evt: wsEvents.EventWebSocketServerConnection) => {
+    const conn = evt.detail;
+    const streamHandler = (evt: wsEvents.EventWebSocketConnectionStream) => {
+      if (
+        this.rpcServer[destroyed] ||
+        this.rpcServer[status] === "destroying" ||
+        this.rpcServer[status] === "stopping"
+      ) {
+        return
+      }
+      const stream = evt.detail;
+      this.rpcServer.handleStream(stream);
+    };
+    conn.addEventListener(wsEvents.EventWebSocketConnectionStream.name, streamHandler);
+    conn.addEventListener(wsEvents.EventWebSocketConnectionClose.name, () => {
+      conn.removeEventListener(wsEvents.EventWebSocketConnectionStream.name, streamHandler);
+    }, { once: true });
+  }
+
   public async start({
     options: {
       host = config.defaultsUser.clientServiceHost,
@@ -138,13 +157,7 @@ class ClientService {
     };
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.webSocketServer.addEventListener(wsEvents.EventWebSocketServerConnection.name, (evt: wsEvents.EventWebSocketServerConnection) => {
-      const conn = evt.detail;
-      conn.addEventListener(wsEvents.EventWebSocketConnectionStream.name, (evt: wsEvents.EventWebSocketConnectionStream) => {
-        const stream = evt.detail;
-        this.rpcServer.handleStream(stream);
-      })
-    })
+    this.webSocketServer.addEventListener(wsEvents.EventWebSocketServerConnection.name, this.handleEventWebSocketServerConnection)
     await this.webSocketServer.start({
       host,
       port,
@@ -156,8 +169,8 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.webSocketServer.stop({ force });
     await this.rpcServer.destroy(force);
+    await this.webSocketServer.stop({ force });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
