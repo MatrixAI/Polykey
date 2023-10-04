@@ -12,7 +12,7 @@ class AgentStatusHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<StatusResultMessage>
 > {
-  public async handle(): Promise<ClientRPCResponseResult<StatusResultMessage>> {
+  public handle = async(): Promise<ClientRPCResponseResult<StatusResultMessage>> => {
     const { pkAgentProm } = this.container;
     const pkAgent = await pkAgentProm;
     return {

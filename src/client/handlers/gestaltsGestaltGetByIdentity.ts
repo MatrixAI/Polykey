@@ -17,9 +17,9 @@ class GestaltsGestaltGetByIdentityHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<GestaltMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult<GestaltMessage>> {
+  ): Promise<ClientRPCResponseResult<GestaltMessage>> => {
     const { db, gestaltGraph } = this.container;
     const {
       providerId,

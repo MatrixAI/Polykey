@@ -19,8 +19,8 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
     actionsList: Array<GestaltAction>;
   }>
 > {
-  public async handle(input: ClientRPCRequestParams<IdentityMessage>): Promise<
-    ClientRPCResponseResult<{
+  public handle = async(input: ClientRPCRequestParams<IdentityMessage>): Promise<
+    ClientRPCResponseResult<=> {
       actionsList: Array<GestaltAction>;
     }>
   > {

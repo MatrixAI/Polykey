@@ -16,9 +16,9 @@ class VaultsCloneHandler extends UnaryHandler<
   ClientRPCRequestParams<CloneMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<CloneMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager } = this.container;
     const {
       nodeId,

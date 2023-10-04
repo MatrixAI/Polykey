@@ -15,9 +15,9 @@ class NotificationsSendHandler extends UnaryHandler<
   ClientRPCRequestParams<NotificationSendMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NotificationSendMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { notificationsManager } = this.container;
     const {
       nodeId,

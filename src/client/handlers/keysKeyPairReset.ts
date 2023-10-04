@@ -10,9 +10,9 @@ class KeysKeyPairResethandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<PasswordMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { certManager } = this.container;
     // Other domains will be updated accordingly via the `EventBus` so we
     // only need to modify the KeyManager

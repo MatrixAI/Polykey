@@ -16,9 +16,9 @@ class NodesClaimHandler extends UnaryHandler<
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<ClaimNodeMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { nodeManager, db } = this.container;
 
     const {

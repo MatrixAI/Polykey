@@ -16,9 +16,9 @@ class IdentitiesTokenGetHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<Partial<TokenMessage>>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult<Partial<TokenMessage>>> {
+  ): Promise<ClientRPCResponseResult<Partial<TokenMessage>>> => {
     const { identitiesManager, db } = this.container;
     const {
       providerId,

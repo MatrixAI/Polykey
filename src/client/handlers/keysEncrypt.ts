@@ -14,9 +14,9 @@ class KeysEncryptHandler extends UnaryHandler<
   ClientRPCRequestParams<DecryptMessage>,
   ClientRPCResponseResult<DataMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<DecryptMessage>,
-  ): Promise<ClientRPCResponseResult<DataMessage>> {
+  ): Promise<ClientRPCResponseResult<DataMessage>> => {
     const { keyRing } = this.container;
 
     let publicKey: PublicKey | undefined;

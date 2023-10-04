@@ -18,9 +18,9 @@ class IdentitiesInviteHandler extends UnaryHandler<
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<ClaimNodeMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { acl, notificationsManager, logger } = this.container;
     const {
       nodeId,

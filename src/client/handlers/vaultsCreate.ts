@@ -13,9 +13,9 @@ class VaultsCreateHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultNameMessage>,
   ClientRPCResponseResult<VaultIdMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<VaultNameMessage>,
-  ): Promise<ClientRPCResponseResult<VaultIdMessage>> {
+  ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
     const { db, vaultManager } = this.container;
 
     const vaultId = await db.withTransactionF((tran) =>

@@ -10,7 +10,7 @@ class KeysCertsGetHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<CertMessage>
 > {
-  public async handle(): Promise<ClientRPCResponseResult<CertMessage>> {
+  public handle = async(): Promise<ClientRPCResponseResult<CertMessage>> => {
     const { certManager } = this.container;
     const cert = await certManager.getCurrentCertPEM();
     return {

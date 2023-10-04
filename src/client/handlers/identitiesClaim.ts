@@ -14,9 +14,9 @@ class IdentitiesClaimHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<ClaimIdMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult<ClaimIdMessage>> {
+  ): Promise<ClientRPCResponseResult<ClaimIdMessage>> => {
     const { identitiesManager } = this.container;
     const {
       providerId,

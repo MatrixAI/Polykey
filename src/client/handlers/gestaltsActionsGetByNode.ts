@@ -17,9 +17,9 @@ class GestaltsActionsGetByNodeHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<ActionsListMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<ActionsListMessage>> {
+  ): Promise<ClientRPCResponseResult<ActionsListMessage>> => {
     const { db, gestaltGraph } = this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {

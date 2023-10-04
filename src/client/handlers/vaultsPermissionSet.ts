@@ -25,9 +25,9 @@ class VaultsPermissionSetHandler extends UnaryHandler<
   ClientRPCRequestParams<PermissionSetMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<PermissionSetMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager, gestaltGraph, acl, notificationsManager } =
       this.container;
     await db.withTransactionF(async (tran) => {

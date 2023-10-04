@@ -18,9 +18,9 @@ class GestaltsGestaltTrustByNodeHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { db, gestaltGraph, discovery } = this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {

@@ -19,9 +19,9 @@ class VaultsPullHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsPullMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<VaultsPullMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager } = this.container;
     let pullVaultId;
     pullVaultId = vaultsUtils.decodeVaultId(input.pullVault);

@@ -15,9 +15,9 @@ class NodesFindHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<AddressMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<AddressMessage>> {
+  ): Promise<ClientRPCResponseResult<AddressMessage>> => {
     const { nodeConnectionManager } = this.container;
 
     const {

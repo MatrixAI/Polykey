@@ -14,9 +14,9 @@ class KeysVerifyHandler extends UnaryHandler<
   ClientRPCRequestParams<VerifySignatureMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<VerifySignatureMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { keyRing } = this.container;
     let publicKey: PublicKey | undefined;
     try {

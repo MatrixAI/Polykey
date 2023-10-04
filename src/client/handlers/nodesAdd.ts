@@ -19,9 +19,9 @@ class NodesAddHandler extends UnaryHandler<
   ClientRPCRequestParams<NodesAddMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NodesAddMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { nodeManager, db } = this.container;
     const {
       nodeId,
