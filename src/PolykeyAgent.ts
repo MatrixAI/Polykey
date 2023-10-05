@@ -201,7 +201,6 @@ class PolykeyAgent {
     let sessionManager: SessionManager | undefined;
     let rpcServerClient: RPCServer | undefined;
     let webSocketServerClient: WebSocketServer | undefined;
-    let rpcServerAgent: RPCServer | undefined;
     try {
       status = new Status({
         statusPath,
@@ -424,7 +423,6 @@ class PolykeyAgent {
       });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await rpcServerAgent?.destroy({ force:  true });
       await rpcServerClient?.destroy();
       await webSocketServerClient?.stop(true);
       await sessionManager?.stop();
@@ -507,7 +505,6 @@ class PolykeyAgent {
   public readonly logger: Logger;
   public readonly rpcServerClient: RPCServer;
   public readonly webSocketServerClient: WebSocketServer;
-  public readonly rpcServerAgent: RPCServer;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   protected handleEventCertManagerCertChange = async (
@@ -826,7 +823,6 @@ class PolykeyAgent {
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
-    await this.rpcServerAgent.destroy();
     await this.rpcServerClient.destroy();
     await this.identitiesManager.destroy();
     await this.gestaltGraph.destroy();
