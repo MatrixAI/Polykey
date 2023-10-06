@@ -5,7 +5,7 @@ import type { PublicKey } from '../../keys/types';
 import { never } from '../../utils/index';
 import * as keysUtils from '../../keys/utils/index';
 import * as keysErrors from '../../keys/errors';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class KeysEncryptHandler extends UnaryHandler<
   {

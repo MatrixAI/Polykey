@@ -1,6 +1,6 @@
 import type NodesClaimsGetHandler from '../handlers/NodesClaimsGet';
 import type { HandlerTypes } from '../../../rpc/types';
-import { ServerCaller } from '../../../rpc/callers';
+import { ServerCaller } from '@matrixai/rpc/dist/callers';
 
 type CallerTypes = HandlerTypes<NodesClaimsGetHandler>;
 

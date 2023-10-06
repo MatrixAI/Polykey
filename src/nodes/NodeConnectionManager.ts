@@ -21,7 +21,7 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
-import type { ServerManifest } from '../rpc/types';
+import type { ServerManifest } from '@matrixai/rpc/dist/types';
 import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
@@ -48,8 +48,8 @@ import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import config from '../config';
-import RPCServer from '../rpc/RPCServer';
-import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
+import RPCServer from '@matrixai/rpc/dist/RPCServer';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 
 type ManifestClientAgent = typeof manifestClientAgent;
 
@@ -417,9 +417,7 @@ class NodeConnectionManager {
         undefined,
         this.rpcParserBufferSize,
       ),
-      sensitive: true,
       handlerTimeoutTime: this.rpcCallTimeoutTime,
-      handlerTimeoutGraceTime: this.rpcCallTimeoutTime + 2000,
       logger: this.logger.getChild(RPCServer.name),
     });
 
@@ -509,10 +507,11 @@ class NodeConnectionManager {
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
-    await this.rpcServer?.destroy({
-      force: true,
-      reason: new nodesErrors.ErrorNodeConnectionManagerStopping(),
-    });
+    // await this.rpcServer?.destroy({
+    //   force: true,
+    //   reason: new nodesErrors.ErrorNodeConnectionManagerStopping(),
+    // });
+    await this.rpcServer?.destroy(true);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 

@@ -10,12 +10,14 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Timer } from '@matrixai/timer';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
+import { UnaryCaller } from '@matrixai/rpc/dist/callers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import RPCClient from '@/rpc/RPCClient';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
 import { WebSocketClient } from '@matrixai/ws';
 import { promise } from '@/utils';
@@ -52,9 +54,9 @@ describe('timeoutMiddleware', () => {
       keysPath,
       logger,
       options: {
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
       }
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -120,6 +122,7 @@ describe('timeoutMiddleware', () => {
       logger
     });
     const rpcClient = await RPCClient.createRPCClient({
+      idGen: async () => null,
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,
@@ -146,7 +149,6 @@ describe('timeoutMiddleware', () => {
       () => {},
       () => {},
     );
-    await rpcServer.destroy(true);
     await rpcClient.destroy();
     await clientService.destroy({ force: true });
   });
@@ -176,8 +178,6 @@ describe('timeoutMiddleware', () => {
         middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
         rpcCallTimeoutTime: 100,
       },
-      host,
-      tlsConfig,
       logger,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
@@ -189,6 +189,7 @@ describe('timeoutMiddleware', () => {
       logger,
     });
     const rpcClient = await RPCClient.createRPCClient({
+      idGen: async () => null,
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,

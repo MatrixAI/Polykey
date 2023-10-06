@@ -3,7 +3,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class AgentStatusHandler extends UnaryHandler<
   {
@@ -18,10 +18,10 @@ class AgentStatusHandler extends UnaryHandler<
     return {
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(pkAgent.keyRing.getNodeId()),
-      clientHost: pkAgent.webSocketServerClient.getHost(),
-      clientPort: pkAgent.webSocketServerClient.getPort(),
-      agentHost: pkAgent.nodeConnectionManager.host,
-      agentPort: pkAgent.nodeConnectionManager.port,
+      clientHost: pkAgent.clientServiceHost,
+      clientPort: pkAgent.clientServicePort,
+      agentHost: pkAgent.agentServiceHost,
+      agentPort: pkAgent.agentServicePort,
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     };

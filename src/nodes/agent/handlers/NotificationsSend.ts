@@ -8,7 +8,7 @@ import type KeyRing from '../../../keys/KeyRing';
 import type NotificationsManager from '../../../notifications/NotificationsManager';
 import type { SignedNotification } from '../../../notifications/types';
 import * as notificationsUtils from '../../../notifications/utils';
-import { UnaryHandler } from '../../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Sends a notification to a node

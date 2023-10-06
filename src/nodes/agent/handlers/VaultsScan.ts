@@ -8,7 +8,7 @@ import type VaultManager from '../../../vaults/VaultManager';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
 import * as vaultsUtils from '../../../vaults/utils';
-import { ServerHandler } from '../../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Scan vaults.

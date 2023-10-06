@@ -1,6 +1,6 @@
 import type NodesHolePunchMessageSendHandler from '../handlers/NodesHolePunchMessageSend';
 import type { HandlerTypes } from '../../../rpc/types';
-import { UnaryCaller } from '../../../rpc/callers';
+import { UnaryCaller } from '@matrixai/rpc/dist/callers';
 
 type CallerTypes = HandlerTypes<NodesHolePunchMessageSendHandler>;
 

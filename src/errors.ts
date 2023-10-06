@@ -81,5 +81,4 @@ export * from './tasks/errors';
 export * from './tokens/errors';
 export * from './validation/errors';
 export * from './utils/errors';
-export * from './rpc/errors';
 export * from './workers/errors';

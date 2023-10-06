@@ -13,16 +13,14 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import VaultManager from '@/vaults/VaultManager';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import GestaltGraph from '@/gestalts/GestaltGraph';
-import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
-import RPCServer from '@/rpc/RPCServer';
-import RPCClient from '@/rpc/RPCClient';
 import {
   vaultsCreate,
   VaultsCreateHandler,
@@ -61,6 +59,7 @@ import {
   vaultsVersion,
   VaultsVersionHandler,
 } from '@/client';
+import ClientService from '@/client/ClientService';
 import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
@@ -78,7 +77,7 @@ describe('vaultsClone', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -114,7 +113,7 @@ describe('vaultsClone', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -167,12 +166,12 @@ describe('vaultsCreateDeleteList', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -208,7 +207,7 @@ describe('vaultsCreateDeleteList', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -220,7 +219,8 @@ describe('vaultsCreateDeleteList', () => {
   });
   test('creates, lists, and deletes vaults', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsCreate: new VaultsCreateHandler({
           vaultManager,
@@ -235,19 +235,16 @@ describe('vaultsCreateDeleteList', () => {
           db,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -294,12 +291,12 @@ describe('vaultsLog', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -358,7 +355,7 @@ describe('vaultsLog', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -370,26 +367,24 @@ describe('vaultsLog', () => {
   });
   test('should get the full log', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsLog: new VaultsLogHandler({
           vaultManager,
           db,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -414,26 +409,24 @@ describe('vaultsLog', () => {
   });
   test('should get a part of the log', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsLog: new VaultsLogHandler({
           vaultManager,
           db,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -458,26 +451,24 @@ describe('vaultsLog', () => {
   });
   test('should get a specific commit', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsLog: new VaultsLogHandler({
           vaultManager,
           db,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -507,13 +498,13 @@ describe('vaultsPermissionSetUnsetGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const nodeId = testsUtils.generateRandomNodeId();
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
   let acl: ACL;
@@ -578,7 +569,7 @@ describe('vaultsPermissionSetUnsetGet', () => {
   });
   afterEach(async () => {
     mockedSendNotification.mockRestore();
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await notificationsManager.stop();
@@ -593,7 +584,8 @@ describe('vaultsPermissionSetUnsetGet', () => {
   });
   test('sets, gets, and unsets vault permissions', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsPermissionSet: new VaultsPermissionSetHandler({
           acl,
@@ -614,19 +606,16 @@ describe('vaultsPermissionSetUnsetGet', () => {
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -697,7 +686,7 @@ describe('vaultsPull', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
   let acl: ACL;
@@ -757,7 +746,7 @@ describe('vaultsPull', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await notificationsManager.stop();
@@ -829,12 +818,12 @@ describe('vaultsRename', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -870,7 +859,7 @@ describe('vaultsRename', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -882,26 +871,24 @@ describe('vaultsRename', () => {
   });
   test('should rename vault', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsRename: new VaultsRenameHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -935,7 +922,7 @@ describe('vaultsScan', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -971,7 +958,7 @@ describe('vaultsScan', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1035,12 +1022,12 @@ describe('vaultsSecretsEdit', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1076,7 +1063,7 @@ describe('vaultsSecretsEdit', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1088,26 +1075,24 @@ describe('vaultsSecretsEdit', () => {
   });
   test('edits secrets', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsEdit: new VaultsSecretsEditHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1148,12 +1133,12 @@ describe('vaultsSecretsMkdir', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1189,7 +1174,7 @@ describe('vaultsSecretsMkdir', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1201,26 +1186,24 @@ describe('vaultsSecretsMkdir', () => {
   });
   test('makes a directory', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsMkdir: new VaultsSecretsMkdirHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1255,12 +1238,12 @@ describe('vaultsSecretsNewDeleteGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1296,7 +1279,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1308,7 +1291,8 @@ describe('vaultsSecretsNewDeleteGet', () => {
   });
   test('creates, gets, and deletes secrets', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsNew: new VaultsSecretsNewHandler({
           db,
@@ -1323,19 +1307,16 @@ describe('vaultsSecretsNewDeleteGet', () => {
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1388,13 +1369,13 @@ describe('vaultsSecretsNewDirList', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const fs: FileSystem = require('fs');
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1430,7 +1411,7 @@ describe('vaultsSecretsNewDirList', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1442,7 +1423,8 @@ describe('vaultsSecretsNewDirList', () => {
   });
   test('adds and lists a directory of secrets', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsNewDir: new VaultsSecretsNewDirHandler({
           db,
@@ -1454,19 +1436,16 @@ describe('vaultsSecretsNewDirList', () => {
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1515,13 +1494,13 @@ describe('vaultsSecretsRename', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const fs: FileSystem = require('fs');
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1557,7 +1536,7 @@ describe('vaultsSecretsRename', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1569,26 +1548,24 @@ describe('vaultsSecretsRename', () => {
   });
   test('renames a secret', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsRename: new VaultsSecretsRenameHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1629,13 +1606,13 @@ describe('vaultsSecretsStat', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const fs: FileSystem = require('fs');
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
 
@@ -1671,7 +1648,7 @@ describe('vaultsSecretsStat', () => {
     });
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1683,26 +1660,24 @@ describe('vaultsSecretsStat', () => {
   });
   test('stats a file', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsSecretsStat: new VaultsSecretsStatHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1738,13 +1713,13 @@ describe('vaultsVersion', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   const fs: FileSystem = require('fs');
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
   let vaultId: VaultId;
@@ -1791,7 +1766,7 @@ describe('vaultsVersion', () => {
     vaultId = await vaultManager.createVault(vaultName);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await vaultManager.stop();
     await db.stop();
@@ -1803,26 +1778,24 @@ describe('vaultsVersion', () => {
   });
   test('should switch a vault to a version', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsVersion: new VaultsVersionHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1861,26 +1834,24 @@ describe('vaultsVersion', () => {
   });
   test('should fail to find a non existent version', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         vaultsVersion: new VaultsVersionHandler({
           db,
           vaultManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {

@@ -6,7 +6,7 @@ import type NodeManager from '../../nodes/NodeManager';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesClaimHandler extends UnaryHandler<
   {

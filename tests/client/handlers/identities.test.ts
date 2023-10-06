@@ -2,8 +2,8 @@ import type { TLSConfig } from '@/network/types';
 import type { IdentityId, ProviderId } from '@/ids';
 import type { ClientRPCResponseResult } from '@/client/types';
 import type {
-  IdentityMessage,
   IdentityInfoMessage,
+  IdentityMessage,
 } from '@/client/handlers/types';
 import type { Claim } from '@/claims/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
@@ -15,13 +15,12 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
+import { encodeProviderIdentityId } from '@/ids';
 import Sigchain from '@/sigchain/Sigchain';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import { IdentitiesAuthenticateHandler } from '@/client/handlers/identitiesAuthenticate';
-import RPCClient from '@/rpc/RPCClient';
-import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as validationErrors from '@/validation/errors';
@@ -48,9 +47,9 @@ import {
 } from '@/client';
 import * as claimsUtils from '@/claims/utils';
 import * as nodesUtils from '@/nodes/utils';
-import { encodeProviderIdentityId } from '@/ids';
 import Token from '@/tokens/Token';
 import * as identitiesErrors from '@/identities/errors';
+import ClientService from '@/client/ClientService';
 import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
@@ -62,12 +61,12 @@ describe('identitiesAuthenticate', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   let testProvider: TestProvider;
@@ -109,7 +108,7 @@ describe('identitiesAuthenticate', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -121,25 +120,23 @@ describe('identitiesAuthenticate', () => {
   });
   test('authenticates identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticate: new IdentitiesAuthenticateHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -161,7 +158,7 @@ describe('identitiesAuthenticate', () => {
         expect(message.response).toBeUndefined();
         const authRequest = message.request!;
         expect(authRequest.url).toBe('test.com');
-        expect(authRequest.dataMap['userCode']).toBe('randomtestcode');
+        expect(authRequest.dataMap['userCode']).toBe('randomTestCode');
       }
       if (step === 1) {
         expect(message.request).toBeUndefined();
@@ -185,25 +182,23 @@ describe('identitiesAuthenticate', () => {
   });
   test('cannot authenticate invalid provider', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticate: new IdentitiesAuthenticateHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -232,12 +227,12 @@ describe('identitiesAuthenticatedGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   const providerToken = {
@@ -272,7 +267,7 @@ describe('identitiesAuthenticatedGet', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -284,25 +279,23 @@ describe('identitiesAuthenticatedGet', () => {
   });
   test('gets an authenticated identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -336,25 +329,35 @@ describe('identitiesAuthenticatedGet', () => {
   });
   test('does not get an unauthenticated identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
+    clientService = await ClientService.createClientService({
       tlsConfig,
-      logger: logger.getChild('server'),
+      manifest: {
+        identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
+          identitiesManager,
+        }),
+      },
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -388,25 +391,23 @@ describe('identitiesAuthenticatedGet', () => {
   });
   test('gets authenticated identities from multiple providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -464,25 +465,23 @@ describe('identitiesAuthenticatedGet', () => {
   });
   test('gets authenticated identities a specific provider', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -546,12 +545,12 @@ describe('identitiesClaim', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   let mockedAddClaim: jest.SpyInstance;
@@ -630,7 +629,7 @@ describe('identitiesClaim', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await sigchain.stop();
@@ -644,25 +643,23 @@ describe('identitiesClaim', () => {
   });
   test('claims identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesClaim: new IdentitiesClaimHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -690,25 +687,23 @@ describe('identitiesClaim', () => {
   });
   test('cannot claim invalid identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesClaim: new IdentitiesClaimHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -750,12 +745,12 @@ describe('identitiesInfoConnectedGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   const testToken = {
@@ -793,7 +788,7 @@ describe('identitiesInfoConnectedGet', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -805,25 +800,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets connected identities from a single provider', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -890,25 +883,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets connected identities to a particular identity id', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -972,25 +963,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets connected identities from multiple providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1062,25 +1051,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets connected identities from all providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1153,25 +1140,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('searches for identities matching a search term', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1232,25 +1217,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('searches for identities matching multiple search terms', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1318,25 +1301,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('searches for identities matching a search term across multiple providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1408,25 +1389,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets no connected identities', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1480,25 +1459,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets one connected identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1564,25 +1541,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('cannot get more identities than available', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1655,25 +1630,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('can only get from authenticated providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1733,25 +1706,23 @@ describe('identitiesInfoConnectedGet', () => {
   });
   test('gets disconnected identities', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoConnectedGet: new IdentitiesInfoConnectedGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1783,12 +1754,12 @@ describe('identitiesInfoGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   const testToken = {
@@ -1826,7 +1797,7 @@ describe('identitiesInfoGet', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -1838,25 +1809,23 @@ describe('identitiesInfoGet', () => {
   });
   test('gets an identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1903,25 +1872,23 @@ describe('identitiesInfoGet', () => {
   });
   test('searches for a handle across providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -1990,25 +1957,23 @@ describe('identitiesInfoGet', () => {
   });
   test('searches for identities matching a search term', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2031,14 +1996,13 @@ describe('identitiesInfoGet', () => {
       url: 'provider1.com/user1',
     };
     provider1.users['user1'] = user1;
-    const user2 = {
+    provider2.users['user1'] = {
       providerId: provider2.id,
       identityId: 'user1' as IdentityId,
       name: 'def',
       email: 'def@test.com',
       url: 'provider2.com/user1',
     };
-    provider2.users['user1'] = user2;
     identitiesManager.registerProvider(provider1);
     identitiesManager.registerProvider(provider2);
     await identitiesManager.putToken(
@@ -2072,25 +2036,23 @@ describe('identitiesInfoGet', () => {
   });
   test('gets no connected identities', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2104,22 +2066,20 @@ describe('identitiesInfoGet', () => {
 
     // Setup provider
     const provider = new TestProvider();
-    const user1 = {
+    provider.users['user1'] = {
       providerId: provider.id,
       identityId: 'user1' as IdentityId,
       name: 'User1',
       email: 'user1@test.com',
       url: 'test.com/user1',
     };
-    provider.users['user1'] = user1;
-    const user2 = {
+    provider.users['user2'] = {
       providerId: provider.id,
       identityId: 'user2' as IdentityId,
       name: 'User2',
       email: 'user2@test.com',
       url: 'test.com/user2',
     };
-    provider.users['user2'] = user2;
     identitiesManager.registerProvider(provider);
     await identitiesManager.putToken(
       provider.id,
@@ -2140,25 +2100,23 @@ describe('identitiesInfoGet', () => {
   });
   test('gets one connected identity', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2181,14 +2139,13 @@ describe('identitiesInfoGet', () => {
       url: 'test.com/user1',
     };
     provider1.users['user1'] = user1;
-    const user2 = {
+    provider2.users['user1'] = {
       providerId: provider2.id,
       identityId: 'user1' as IdentityId,
       name: 'User1',
       email: 'user1@test.com',
       url: 'test.com/user1',
     };
-    provider2.users['user1'] = user2;
     identitiesManager.registerProvider(provider1);
     identitiesManager.registerProvider(provider2);
     await identitiesManager.putToken(
@@ -2222,25 +2179,23 @@ describe('identitiesInfoGet', () => {
   });
   test('cannot get more identities than available', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2311,25 +2266,23 @@ describe('identitiesInfoGet', () => {
   });
   test('can only get from authenticated providers', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInfoGet: new IdentitiesInfoGetHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2352,14 +2305,13 @@ describe('identitiesInfoGet', () => {
       url: 'test.com/user1',
     };
     provider1.users['user1'] = user1;
-    const user2 = {
+    provider2.users['user1'] = {
       providerId: provider2.id,
       identityId: 'user1' as IdentityId,
       name: 'User2',
       email: 'user2@test.com',
       url: 'test.com/user2',
     };
-    provider2.users['user1'] = user2;
     identitiesManager.registerProvider(provider1);
     identitiesManager.registerProvider(provider2);
     await identitiesManager.putToken(
@@ -2393,12 +2345,12 @@ describe('identitiesInvite', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   let mockedAddClaim: jest.SpyInstance;
@@ -2477,7 +2429,7 @@ describe('identitiesInvite', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await sigchain.stop();
@@ -2497,7 +2449,8 @@ describe('identitiesInvite', () => {
     const notificationsManager = {
       sendNotification: jest.fn(),
     };
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesInvite: new IdentitiesInviteHandler({
           acl: acl as unknown as ACL,
@@ -2506,19 +2459,16 @@ describe('identitiesInvite', () => {
           logger,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2546,12 +2496,12 @@ describe('identitiesProvidersList', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   const id1 = 'provider1' as ProviderId;
@@ -2592,7 +2542,7 @@ describe('identitiesProvidersList', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -2605,25 +2555,23 @@ describe('identitiesProvidersList', () => {
   });
   test('identitiesProvidersList', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesProvidersList: new IdentitiesProvidersListHandler({
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {
@@ -2646,12 +2594,12 @@ describe('identitiesTokenPutDeleteGet', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   const testToken = {
@@ -2690,7 +2638,7 @@ describe('identitiesTokenPutDeleteGet', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
+    await clientService?.stop({ force: true });
     await webSocketClient.destroy(true);
     await identitiesManager.stop();
     await keyRing.stop();
@@ -2702,7 +2650,8 @@ describe('identitiesTokenPutDeleteGet', () => {
   });
   test('puts/deletes/gets tokens', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         identitiesTokenPut: new IdentitiesTokenPutHandler({
           identitiesManager,
@@ -2717,19 +2666,16 @@ describe('identitiesTokenPutDeleteGet', () => {
           identitiesManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
     const rpcClient = await RPCClient.createRPCClient({
       manifest: {

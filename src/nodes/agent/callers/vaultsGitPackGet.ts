@@ -1,4 +1,4 @@
-import { RawCaller } from '../../../rpc/callers';
+import { RawCaller } from '@matrixai/rpc/dist/callers';
 
 const vaultsGitPackGet = new RawCaller();
 

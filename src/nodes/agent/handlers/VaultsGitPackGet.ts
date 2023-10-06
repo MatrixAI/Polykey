@@ -3,7 +3,7 @@ import type { PassThrough } from 'readable-stream';
 import type { VaultName } from '../../../vaults/types';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
-import type { JSONRPCRequest } from '../../../rpc/types';
+import { JSONRPCRequest } from '@matrixai/rpc/dist/types';
 import type { JSONValue } from '../../../types';
 import { ReadableStream } from 'stream/web';
 import * as agentErrors from '../errors';
@@ -13,7 +13,7 @@ import * as nodesUtils from '../../utils';
 import * as vaultsUtils from '../../../vaults/utils';
 import * as vaultsErrors from '../../../vaults/errors';
 import * as utils from '../../../utils';
-import { RawHandler } from '../../../rpc/handlers';
+import { RawHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Gets the git pack of a vault.

@@ -1,7 +1,7 @@
 import type { ClientRPCRequestParams } from '../types';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
-import type { JSONRPCRequest } from '../../rpc/types';
+import type { JSONRPCRequest } from '@matrixai/rpc/dist/types';
 import type { SessionToken } from '../../sessions/types';
 import * as clientErrors from '../errors';
 

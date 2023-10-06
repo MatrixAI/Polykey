@@ -15,7 +15,7 @@ import type {
 import type KeyRing from '../keys/KeyRing';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type RPCClient from '../rpc/RPCClient';
+import type RPCClient from '@matrixai/rpc/dist/RPCClient';
 import type agentClientManifest from '../nodes/agent/callers';
 import type { POJO } from '../types';
 import path from 'path';

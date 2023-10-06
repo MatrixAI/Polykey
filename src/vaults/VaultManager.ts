@@ -36,6 +36,7 @@ import * as vaultsEvents from './events';
 import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';
+import * as vaultsEvents from './events';
 import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
 import * as nodesUtils from '../nodes/utils';

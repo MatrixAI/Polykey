@@ -9,7 +9,7 @@ import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
 import { bytes2BigInt, never } from '../utils';
-import * as rpcErrors from '../rpc/errors';
+import * as rpcErrors from '@matrixai/rpc/dist/errors';
 
 const sepBuffer = dbUtils.sep;
 

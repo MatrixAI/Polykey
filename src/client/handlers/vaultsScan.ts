@@ -5,7 +5,7 @@ import type { NodeId } from '../../ids';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { ServerHandler } from '../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsScanHandler extends ServerHandler<
   {
