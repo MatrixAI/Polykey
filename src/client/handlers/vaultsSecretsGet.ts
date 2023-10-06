@@ -2,10 +2,10 @@ import type { DB } from '@matrixai/db';
 import type { ContentMessage, SecretIdentifierMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsSecretsGetHandler extends UnaryHandler<
   {
@@ -15,7 +15,7 @@ class VaultsSecretsGetHandler extends UnaryHandler<
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<ContentMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
   ): Promise<ClientRPCResponseResult<ContentMessage>> => {
     const { vaultManager, db } = this.container;
@@ -40,7 +40,7 @@ class VaultsSecretsGetHandler extends UnaryHandler<
         secretContent: secretContent.toString('binary'),
       };
     });
-  }
+  };
 }
 
 export { VaultsSecretsGetHandler };

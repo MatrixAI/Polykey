@@ -2,7 +2,7 @@ import type { ClaimIdMessage, IdentityMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -14,7 +14,7 @@ class IdentitiesClaimHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<ClaimIdMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<IdentityMessage>,
   ): Promise<ClientRPCResponseResult<ClaimIdMessage>> => {
     const { identitiesManager } = this.container;
@@ -44,7 +44,7 @@ class IdentitiesClaimHandler extends UnaryHandler<
       claimId: claimData.id,
       url: claimData.url,
     };
-  }
+  };
 }
 
 export { IdentitiesClaimHandler };

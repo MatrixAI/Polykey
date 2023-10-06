@@ -2,8 +2,8 @@ import type { DB } from '@matrixai/db';
 import type { VaultIdMessage, VaultNameMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsCreateHandler extends UnaryHandler<
   {
@@ -13,7 +13,7 @@ class VaultsCreateHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultNameMessage>,
   ClientRPCResponseResult<VaultIdMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<VaultNameMessage>,
   ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
     const { db, vaultManager } = this.container;
@@ -25,7 +25,7 @@ class VaultsCreateHandler extends UnaryHandler<
     return {
       vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
     };
-  }
+  };
 }
 
 export { VaultsCreateHandler };

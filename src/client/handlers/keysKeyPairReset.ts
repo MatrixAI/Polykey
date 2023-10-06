@@ -1,7 +1,7 @@
 import type { PasswordMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type CertManager from '../../keys/CertManager';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysKeyPairResethandler extends UnaryHandler<
   {
@@ -10,7 +10,7 @@ class KeysKeyPairResethandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<PasswordMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { certManager } = this.container;
@@ -18,7 +18,7 @@ class KeysKeyPairResethandler extends UnaryHandler<
     // only need to modify the KeyManager
     await certManager.resetCertWithNewKeyPair(input.password);
     return {};
-  }
+  };
 }
 
 export { KeysKeyPairResethandler };

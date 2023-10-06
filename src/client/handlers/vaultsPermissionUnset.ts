@@ -6,12 +6,12 @@ import type { NodeId } from '../../ids';
 import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as validationUtils from '../../validation/utils';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsPermissionUnsetHandler extends UnaryHandler<
   {
@@ -23,7 +23,7 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
   ClientRPCRequestParams<PermissionSetMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<PermissionSetMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager, gestaltGraph, acl } = this.container;
@@ -82,7 +82,7 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsPermissionUnsetHandler };

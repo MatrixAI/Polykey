@@ -7,11 +7,10 @@ import type {
 } from '../types';
 import type NodeGraph from '../../NodeGraph';
 import type { NodeId } from '../../../ids';
+import { ServerHandler } from '@matrixai/rpc';
 import * as validation from '../../../validation';
 import * as nodesUtils from '../../utils';
 import * as utils from '../../../utils';
-import { ServerHandler } from '@matrixai/rpc/dist/handlers';
-
 
 /**
  * Gets the closest local nodes to a target node

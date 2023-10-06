@@ -2,17 +2,17 @@ import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
-} from '@matrixai/rpc/dist/types';
+} from '@matrixai/rpc';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { Session } from '../../sessions/index';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
-import type { JSONRPCError, JSONRPCResponseError } from '@matrixai/rpc/dist/types';
+import type { JSONRPCError, JSONRPCResponseError } from '@matrixai/rpc';
 import { TransformStream } from 'stream/web';
+import { utils as rpcUtils } from '@matrixai/rpc';
 import { authenticate, decodeAuth } from '../utils/utils';
 import { sysexits } from '../../errors';
 import * as utils from '../../utils/index';
-import * as rpcUtils from '@matrixai/rpc/dist/utils';
 
 function authenticationMiddlewareServer(
   sessionManager: SessionManager,

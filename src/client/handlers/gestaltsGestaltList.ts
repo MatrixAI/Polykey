@@ -2,8 +2,8 @@ import type { DB } from '@matrixai/db';
 import type { GestaltMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
+import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class GestaltsGestaltListHandler extends ServerHandler<
   {

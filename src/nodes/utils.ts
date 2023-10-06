@@ -5,11 +5,11 @@ import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import lexi from 'lexicographic-integer';
 import { utils as quicUtils } from '@matrixai/quic';
+import { errors as rpcErrors } from '@matrixai/rpc';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { encodeNodeId, decodeNodeId } from '../ids';
 import { bytes2BigInt, never } from '../utils';
-import * as rpcErrors from '@matrixai/rpc/dist/errors';
 
 const sepBuffer = dbUtils.sep;
 
@@ -335,7 +335,7 @@ const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
   if (reason instanceof rpcErrors.ErrorRPCMessageLength) return 2;
   if (reason instanceof rpcErrors.ErrorRPCMissingResponse) return 3;
   if (reason instanceof rpcErrors.ErrorRPCOutputStreamError) return 4;
-  if (reason instanceof rpcErrors.ErrorPolykeyRemote) return 5;
+  if (reason instanceof rpcErrors.ErrorRPCRemote) return 5;
   if (reason instanceof rpcErrors.ErrorRPCStreamEnded) return 6;
   if (reason instanceof rpcErrors.ErrorRPCTimedOut) return 7;
   return 0;
@@ -358,7 +358,7 @@ const codeToReason = (_type: 'read' | 'write', code: number): any => {
     case 4:
       return new rpcErrors.ErrorRPCOutputStreamError();
     case 5:
-      return new rpcErrors.ErrorPolykeyRemote();
+      return new rpcErrors.ErrorRPCRemote();
     case 6:
       return new rpcErrors.ErrorRPCStreamEnded();
     case 7:

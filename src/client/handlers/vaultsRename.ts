@@ -2,9 +2,9 @@ import type { DB } from '@matrixai/db';
 import type { VaultIdMessage, VaultsRenameMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsRenameHandler extends UnaryHandler<
   {
@@ -14,7 +14,7 @@ class VaultsRenameHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsRenameMessage>,
   ClientRPCResponseResult<VaultIdMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<VaultsRenameMessage>,
   ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
     const { db, vaultManager } = this.container;
@@ -33,7 +33,7 @@ class VaultsRenameHandler extends UnaryHandler<
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
       };
     });
-  }
+  };
 }
 
 export { VaultsRenameHandler };

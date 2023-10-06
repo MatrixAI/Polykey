@@ -3,7 +3,7 @@ import type { IdentityMessage, TokenMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../ids/index';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -16,7 +16,7 @@ class IdentitiesTokenPutHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage & TokenMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<IdentityMessage & TokenMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { identitiesManager, db } = this.container;
@@ -43,7 +43,7 @@ class IdentitiesTokenPutHandler extends UnaryHandler<
       identitiesManager.putToken(providerId, identityId, input.token, tran),
     );
     return {};
-  }
+  };
 }
 
 export { IdentitiesTokenPutHandler };

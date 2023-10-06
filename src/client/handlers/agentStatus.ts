@@ -1,9 +1,9 @@
 import type { StatusResultMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
 import * as keysUtils from '../../keys/utils';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class AgentStatusHandler extends UnaryHandler<
   {
@@ -12,7 +12,9 @@ class AgentStatusHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<StatusResultMessage>
 > {
-  public handle = async(): Promise<ClientRPCResponseResult<StatusResultMessage>> => {
+  public handle = async (): Promise<
+    ClientRPCResponseResult<StatusResultMessage>
+  > => {
     const { pkAgentProm } = this.container;
     const pkAgent = await pkAgentProm;
     return {
@@ -25,7 +27,7 @@ class AgentStatusHandler extends UnaryHandler<
       publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
       certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
     };
-  }
+  };
 }
 
 export { AgentStatusHandler };

@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { NodeId } from '../../ids/index';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -17,7 +17,7 @@ class GestaltsActionsUnsetByNodeHandler extends UnaryHandler<
   ClientRPCRequestParams<SetNodeActionMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<SetNodeActionMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { db, gestaltGraph } = this.container;
@@ -39,7 +39,7 @@ class GestaltsActionsUnsetByNodeHandler extends UnaryHandler<
       gestaltGraph.unsetGestaltAction(['node', nodeId], action, tran),
     );
     return {};
-  }
+  };
 }
 
 export { GestaltsActionsUnsetByNodeHandler };

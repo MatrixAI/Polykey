@@ -4,8 +4,8 @@ import type { NodeId } from '../../ids';
 import type NodeGraph from '../../nodes/NodeGraph';
 import type { NodesGetMessage } from '../handlers/types';
 import { IdInternal } from '@matrixai/id';
+import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class NodesGetAllHandler extends ServerHandler<
   {

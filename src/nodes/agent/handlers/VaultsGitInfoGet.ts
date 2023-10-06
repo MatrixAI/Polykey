@@ -3,9 +3,10 @@ import type Logger from '@matrixai/logger';
 import type { ContextTimed } from '@matrixai/contexts';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
-import { JSONRPCRequest } from '@matrixai/rpc/dist/types';
 import type { JSONValue } from '../../../types';
+import type { JSONRPCRequest } from '@matrixai/rpc';
 import { ReadableStream } from 'stream/web';
+import { RawHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
 import * as validation from '../../../validation';
 import * as vaultsUtils from '../../../vaults/utils';
@@ -13,7 +14,6 @@ import * as vaultsErrors from '../../../vaults/errors';
 import * as nodesUtils from '../../utils';
 import * as agentUtils from '../utils';
 import * as utils from '../../../utils';
-import { RawHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Gets the git info of a vault.

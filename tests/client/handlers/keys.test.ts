@@ -7,10 +7,10 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { KeysCertsChainGetHandler } from '@/client/handlers/keysCertsChainGet';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import CertManager from '@/keys/CertManager';
@@ -41,8 +41,8 @@ import {
 import PolykeyAgent from '@/PolykeyAgent';
 import { NodeManager } from '@/nodes';
 import { publicKeyToJWK } from '@/keys/utils';
-import * as testsUtils from '../../utils';
 import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils';
 
 describe('keysCertsChainGet', () => {
   const logger = new Logger('keysCertsChainGet test', LogLevel.WARN, [

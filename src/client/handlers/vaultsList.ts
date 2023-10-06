@@ -2,8 +2,8 @@ import type { DB } from '@matrixai/db';
 import type { VaultListMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
-import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsListHandler extends ServerHandler<
   {

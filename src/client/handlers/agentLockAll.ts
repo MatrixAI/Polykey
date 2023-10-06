@@ -1,7 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type SessionManager from '../../sessions/SessionManager';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class AgentLockAllHandler extends UnaryHandler<
   {
@@ -11,11 +11,11 @@ class AgentLockAllHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public handle = async(): Promise<ClientRPCResponseResult> => {
+  public handle = async (): Promise<ClientRPCResponseResult> => {
     const { db, sessionManager } = this.container;
     await db.withTransactionF((tran) => sessionManager.resetKey(tran));
     return {};
-  }
+  };
 }
 
 export { AgentLockAllHandler };

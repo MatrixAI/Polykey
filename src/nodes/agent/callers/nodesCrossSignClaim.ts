@@ -1,6 +1,6 @@
 import type NodesCrossSignClaimHandler from '../handlers/NodesCrossSignClaim';
-import type { HandlerTypes } from '../../../rpc/types';
-import { DuplexCaller } from '@matrixai/rpc/dist/callers';
+import type { HandlerTypes } from '@matrixai/rpc';
+import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesCrossSignClaimHandler>;
 

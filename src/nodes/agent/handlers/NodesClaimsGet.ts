@@ -6,8 +6,8 @@ import type {
   ClaimIdMessage,
   AgentClaimMessage,
 } from '../types';
+import { ServerHandler } from '@matrixai/rpc';
 import * as claimsUtils from '../../../claims/utils';
-import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 /**
  * Gets the sigchain claims of a node

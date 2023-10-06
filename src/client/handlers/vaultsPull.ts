@@ -4,12 +4,12 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { VaultName } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsPullHandler extends UnaryHandler<
   {
@@ -19,7 +19,7 @@ class VaultsPullHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsPullMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<VaultsPullMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager } = this.container;
@@ -64,7 +64,7 @@ class VaultsPullHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsPullHandler };

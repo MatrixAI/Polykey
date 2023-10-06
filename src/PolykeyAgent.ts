@@ -7,9 +7,14 @@ import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { CreateDestroyStartStop, ready } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import RPCServer from '@matrixai/rpc/dist/RPCServer';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { RPCServer } from '@matrixai/rpc';
+import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import { WebSocketServer } from '@matrixai/ws';
+import { RPCClient } from '@matrixai/rpc';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import KeyRing from './keys/KeyRing';
@@ -40,8 +45,6 @@ import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
 import ClientService from './client/ClientService';
-import { WebSocketServer } from '@matrixai/ws';
-import { RPCClient } from '@matrixai/rpc';
 
 /**
  * Optional configuration for `PolykeyAgent`.
@@ -410,8 +413,7 @@ class PolykeyAgent {
           host: optionsDefaulted.clientServiceHost,
           port: optionsDefaulted.clientServicePort,
           keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
-          keepAliveIntervalTime:
-            optionsDefaulted.client.keepAliveIntervalTime,
+          keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
           rpcCallTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
           rpcParserBufferSize: optionsDefaulted.rpc.parserBufferSize,
         },
@@ -676,7 +678,7 @@ class PolykeyAgent {
         options: {
           host: optionsDefaulted.clientServiceHost,
           port: optionsDefaulted.clientServicePort,
-        }
+        },
       });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({

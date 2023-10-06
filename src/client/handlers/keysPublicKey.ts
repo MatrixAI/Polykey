@@ -1,8 +1,8 @@
 import type { PasswordMessage, PublicKeyMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as keysUtils from '../../keys/utils/index';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class KeysPublicKeyHandler extends UnaryHandler<
   {
@@ -11,13 +11,15 @@ class KeysPublicKeyHandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult<PublicKeyMessage>
 > {
-  public handle = async(): Promise<ClientRPCResponseResult<PublicKeyMessage>> => {
+  public handle = async (): Promise<
+    ClientRPCResponseResult<PublicKeyMessage>
+  > => {
     const { keyRing } = this.container;
     const publicKeyJwk = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
     return {
       publicKeyJwk,
     };
-  }
+  };
 }
 
 export { KeysPublicKeyHandler };

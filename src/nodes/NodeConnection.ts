@@ -3,7 +3,7 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { Certificate } from '../keys/types';
-import type { ClientManifest } from '@matrixai/rpc/dist/types';
+import type { ClientManifest } from '@matrixai/rpc';
 import type {
   QUICSocket,
   ClientCryptoOps,
@@ -17,11 +17,11 @@ import { status } from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventAll } from '@matrixai/events';
 import { QUICClient, events as quicEvents } from '@matrixai/quic';
+import { RPCClient } from '@matrixai/rpc';
+import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import * as networkUtils from '../network/utils';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 import config from '../config';
@@ -266,7 +266,7 @@ class NodeConnection<M extends ClientManifest> {
       quicEvents.EventQUICConnectionStream.name,
       throwFunction,
     );
-    const rpcClient = await RPCClient.createRPCClient<M>({
+    const rpcClient = new RPCClient<M>({
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async () => {
@@ -350,7 +350,7 @@ class NodeConnection<M extends ClientManifest> {
   }): Promise<NodeConnection<M>> {
     logger.info(`Creating ${this.name}`);
     // Creating RPCClient
-    const rpcClient = await RPCClient.createRPCClient<M>({
+    const rpcClient = new RPCClient<M>({
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async (_ctx) => {
@@ -463,7 +463,6 @@ class NodeConnection<M extends ClientManifest> {
           }
         : {},
     );
-    await this.rpcClient.destroy();
     this.logger.debug(`${this.constructor.name} triggered destroyed event`);
     // Removing all event listeners
     this.addEventListener(

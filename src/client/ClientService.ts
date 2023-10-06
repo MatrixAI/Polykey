@@ -3,15 +3,19 @@ import type {
   JSONRPCResponse,
   MiddlewareFactory,
   ServerManifest,
-} from '@matrixai/rpc/dist/types';
+} from '@matrixai/rpc';
 import type { TLSConfig } from '../network/types';
 import Logger from '@matrixai/logger';
-import { CreateDestroyStartStop, status, destroyed } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as errors from './errors';
-import * as events from './events';
+import {
+  CreateDestroyStartStop,
+  status,
+  destroyed,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
-import RPCServer from '@matrixai/rpc/dist/RPCServer';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import { RPCServer } from '@matrixai/rpc';
+import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import * as events from './events';
+import * as errors from './errors';
 import config from '../config';
 
 interface ClientService extends CreateDestroyStartStop {}
@@ -62,10 +66,9 @@ class ClientService {
   }): Promise<ClientService> {
     logger.info(`Creating ${this.name}`);
 
-    const rpcServer = await RPCServer.createRPCServer({
+    const rpcServer = new RPCServer({
       idGen: async () => null,
       handlerTimeoutTime: rpcCallTimeoutTime,
-      manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         // ClientUtilsMiddleware.middlewareServer(sessionManager, keyRing),
         middlewareFactory,
@@ -74,12 +77,14 @@ class ClientService {
       logger: logger.getChild(RPCServer.name),
     });
 
+    await rpcServer.start({ manifest });
+
     const webSocketServer = new WebSocketServer({
       config: {
-        key:tlsConfig.keyPrivatePem,
+        key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         keepAliveIntervalTime,
-        keepAliveTimeoutTime
+        keepAliveTimeoutTime,
       },
       // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
       logger: logger.getChild(WebSocketServer.name),
@@ -126,24 +131,36 @@ class ClientService {
     return this.webSocketServer.port;
   }
 
-  protected handleEventWebSocketServerConnection = (evt: wsEvents.EventWebSocketServerConnection) => {
+  protected handleEventWebSocketServerConnection = (
+    evt: wsEvents.EventWebSocketServerConnection,
+  ) => {
     const conn = evt.detail;
     const streamHandler = (evt: wsEvents.EventWebSocketConnectionStream) => {
       if (
         this.rpcServer[destroyed] ||
-        this.rpcServer[status] === "destroying" ||
-        this.rpcServer[status] === "stopping"
+        this.rpcServer[status] === 'destroying' ||
+        this.rpcServer[status] === 'stopping'
       ) {
-        return
+        return;
       }
       const stream = evt.detail;
       this.rpcServer.handleStream(stream);
     };
-    conn.addEventListener(wsEvents.EventWebSocketConnectionStream.name, streamHandler);
-    conn.addEventListener(wsEvents.EventWebSocketConnectionClose.name, () => {
-      conn.removeEventListener(wsEvents.EventWebSocketConnectionStream.name, streamHandler);
-    }, { once: true });
-  }
+    conn.addEventListener(
+      wsEvents.EventWebSocketConnectionStream.name,
+      streamHandler,
+    );
+    conn.addEventListener(
+      wsEvents.EventWebSocketConnectionClose.name,
+      () => {
+        conn.removeEventListener(
+          wsEvents.EventWebSocketConnectionStream.name,
+          streamHandler,
+        );
+      },
+      { once: true },
+    );
+  };
 
   public async start({
     options: {
@@ -157,7 +174,10 @@ class ClientService {
     };
   }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.webSocketServer.addEventListener(wsEvents.EventWebSocketServerConnection.name, this.handleEventWebSocketServerConnection)
+    this.webSocketServer.addEventListener(
+      wsEvents.EventWebSocketServerConnection.name,
+      this.handleEventWebSocketServerConnection,
+    );
     await this.webSocketServer.start({
       host,
       port,
@@ -169,7 +189,7 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.rpcServer.destroy(force);
+    await this.rpcServer.stop({ force: true });
     await this.webSocketServer.stop({ force });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -185,7 +205,7 @@ class ClientService {
   public setTlsConfig(tlsConfig: TLSConfig): void {
     this.webSocketServer.updateConfig({
       key: tlsConfig.keyPrivatePem,
-      cert: tlsConfig.certChainPem
+      cert: tlsConfig.certChainPem,
     });
   }
 }

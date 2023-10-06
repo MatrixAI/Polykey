@@ -1,7 +1,7 @@
 import type { DataMessage, SignatureMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysSignHandler extends UnaryHandler<
   {
@@ -10,7 +10,7 @@ class KeysSignHandler extends UnaryHandler<
   ClientRPCRequestParams<DataMessage>,
   ClientRPCResponseResult<SignatureMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<DataMessage>,
   ): Promise<ClientRPCResponseResult<SignatureMessage>> => {
     const { keyRing } = this.container;
@@ -18,7 +18,7 @@ class KeysSignHandler extends UnaryHandler<
     return {
       signature: signature.toString('binary'),
     };
-  }
+  };
 }
 
 export { KeysSignHandler };

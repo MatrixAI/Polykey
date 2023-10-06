@@ -1,14 +1,14 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
-import type { RPCStream } from '@/rpc/types';
+import type { RPCStream } from '@matrixai/rpc';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
 import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
+import { RPCServer, RPCClient } from '@matrixai/rpc';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesEvents from '@/nodes/events';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import NodeConnection from '@/nodes/NodeConnection';
 import { promise } from '@/utils';
 import * as networkUtils from '@/network/utils';

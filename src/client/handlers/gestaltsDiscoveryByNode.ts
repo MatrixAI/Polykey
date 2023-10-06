@@ -2,7 +2,7 @@ import type { NodeIdMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids/index';
 import type Discovery from '../../discovery/Discovery';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -14,7 +14,7 @@ class GestaltsDiscoveryByNodeHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { discovery } = this.container;
@@ -33,7 +33,7 @@ class GestaltsDiscoveryByNodeHandler extends UnaryHandler<
     await discovery.queueDiscoveryByNode(nodeId);
 
     return {};
-  }
+  };
 }
 
 export { GestaltsDiscoveryByNodeHandler };

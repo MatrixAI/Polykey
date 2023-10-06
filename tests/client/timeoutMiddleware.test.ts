@@ -14,12 +14,12 @@ import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import { UnaryCaller } from '@matrixai/rpc/dist/callers';
 import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
-import { WebSocketClient } from '@matrixai/ws';
 import { promise } from '@/utils';
 import ClientService from '@/client/ClientService';
 import * as testsUtils from '../utils';
@@ -57,7 +57,7 @@ describe('timeoutMiddleware', () => {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
-      }
+      },
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
@@ -97,10 +97,10 @@ describe('timeoutMiddleware', () => {
         _meta,
         ctx,
       ) => {
-        console.log(input)
+        console.log(input);
         ctxProm.resolveP(ctx);
         return input;
-      }
+      };
     }
     clientService = await ClientService.createClientService({
       tlsConfig,
@@ -119,7 +119,7 @@ describe('timeoutMiddleware', () => {
       },
       host: localhost,
       port: clientService.port,
-      logger
+      logger,
     });
     const rpcClient = await RPCClient.createRPCClient({
       idGen: async () => null,
@@ -166,7 +166,7 @@ describe('timeoutMiddleware', () => {
         _ctx,
       ) => {
         return input;
-      }
+      };
     }
     clientService = await ClientService.createClientService({
       tlsConfig,

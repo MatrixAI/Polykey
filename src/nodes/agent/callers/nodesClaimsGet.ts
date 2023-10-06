@@ -1,7 +1,8 @@
 import type NodesClaimsGetHandler from '../handlers/NodesClaimsGet';
-import type { HandlerTypes } from '../../../rpc/types';
-import { ServerCaller } from '@matrixai/rpc/dist/callers';
+import type { HandlerTypes } from '@matrixai/rpc';
+import { callers } from '@matrixai/rpc';
 
+const ServerCaller = callers.ServerCaller;
 type CallerTypes = HandlerTypes<NodesClaimsGetHandler>;
 
 const nodesClaimsGet = new ServerCaller<

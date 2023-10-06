@@ -2,9 +2,9 @@ import type { DB } from '@matrixai/db';
 import type { VaultsLatestVersionMessage, VaultsVersionMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsVersionHandler extends UnaryHandler<
   {
@@ -14,7 +14,7 @@ class VaultsVersionHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsVersionMessage>,
   ClientRPCResponseResult<VaultsLatestVersionMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<VaultsVersionMessage>,
   ): Promise<ClientRPCResponseResult<VaultsLatestVersionMessage>> => {
     const { vaultManager, db } = this.container;
@@ -45,7 +45,7 @@ class VaultsVersionHandler extends UnaryHandler<
         latestVersion,
       };
     });
-  }
+  };
 }
 
 export { VaultsVersionHandler };

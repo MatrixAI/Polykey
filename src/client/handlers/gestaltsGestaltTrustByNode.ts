@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { NodeId } from '../../ids/index';
 import type Discovery from '../../discovery/Discovery';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -18,7 +18,7 @@ class GestaltsGestaltTrustByNodeHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { db, gestaltGraph, discovery } = this.container;
@@ -51,7 +51,7 @@ class GestaltsGestaltTrustByNodeHandler extends UnaryHandler<
     });
 
     return {};
-  }
+  };
 }
 
 export { GestaltsGestaltTrustByNodeHandler };

@@ -1,7 +1,7 @@
 import type { PasswordMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysPasswordChangeHandler extends UnaryHandler<
   {
@@ -10,13 +10,13 @@ class KeysPasswordChangeHandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<PasswordMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { keyRing } = this.container;
     await keyRing.changePassword(input.password);
     return {};
-  }
+  };
 }
 
 export { KeysPasswordChangeHandler };

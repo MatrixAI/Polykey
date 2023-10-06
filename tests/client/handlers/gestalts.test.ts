@@ -18,13 +18,13 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { GestaltsActionsGetByIdentityHandler } from '@/client/handlers/gestaltsActionsGetByIdentity';
 import { GestaltsActionsSetByIdentityHandler } from '@/client/handlers/gestaltsActionsSetByIdentity';
 import { GestaltsActionsUnsetByIdentityHandler } from '@/client/handlers/gestaltsActionsUnsetByIdentity';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
@@ -66,12 +66,12 @@ import * as gestaltUtils from '@/gestalts/utils';
 import * as gestaltsErrors from '@/gestalts/errors';
 import { sleep } from '@/utils/utils';
 import PolykeyAgent from '@/PolykeyAgent';
+import ClientService from '@/client/ClientService';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils/utils';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
-import ClientService from '@/client/ClientService';
 
 describe('gestaltsActionsByIdentity', () => {
   const logger = new Logger('gestaltsActionsByIdentity test', LogLevel.WARN, [
@@ -306,7 +306,7 @@ describe('gestaltsActionsByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -493,7 +493,7 @@ describe('gestaltsDiscoverByIdentity', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -665,7 +665,7 @@ describe('gestaltsDiscoverByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -773,7 +773,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -859,7 +859,7 @@ describe('gestaltsGestaltGetByNode', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let webSocketClient: WebSocketClient;
-  let clientService: ClientService;;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -918,7 +918,7 @@ describe('gestaltsGestaltGetByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1002,7 +1002,7 @@ describe('gestaltsGestaltList', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let webSocketClient: WebSocketClient;
-  let clientService: ClientService;;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -1061,7 +1061,7 @@ describe('gestaltsGestaltList', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1140,7 +1140,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let webSocketClient: WebSocketClient;
-  let clientService: ClientService;;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -1290,7 +1290,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
           }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1350,7 +1350,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
           }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1407,7 +1407,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
           }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1456,7 +1456,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
           }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1520,7 +1520,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
           }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1589,7 +1589,7 @@ describe('gestaltsGestaltTrustByNode', () => {
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let webSocketClient: WebSocketClient;
-  let clientService: ClientService;;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -1778,7 +1778,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1820,7 +1820,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -1861,7 +1861,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });

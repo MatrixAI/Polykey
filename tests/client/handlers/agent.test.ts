@@ -5,12 +5,12 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { running } from '@matrixai/async-init';
+import { RPCServer, RPCClient } from '@matrixai/rpc';
+import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import { AgentLockAllHandler } from '@/client/handlers/agentLockAll';
-import RPCClient from '@/rpc/RPCClient';
 import { Session, SessionManager } from '@/sessions';
 import WebSocketClient from '@/websockets/WebSocketClient';
 import {
@@ -27,7 +27,6 @@ import * as nodesUtils from '@/nodes/utils';
 import config from '@/config';
 import Status from '@/status/Status';
 import CertManager from '@/keys/CertManager';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import * as clientUtilsAuthMiddleware from '@/client/utils/authenticationMiddleware';
 import * as clientUtils from '@/client/utils';
 import ClientService from '@/client/ClientService';
@@ -100,7 +99,7 @@ describe('agentLockAll', () => {
       options: {
         host: localhost,
       },
-      logger: logger.getChild(ClientService.name)
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       expectedNodeIds: [keyRing.getNodeId()],
@@ -108,7 +107,7 @@ describe('agentLockAll', () => {
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         agentLockAll,
       },
@@ -172,7 +171,7 @@ describe('agentStatus', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -182,7 +181,7 @@ describe('agentStatus', () => {
       port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         agentStatus,
       },
@@ -276,7 +275,7 @@ describe('agentStop', () => {
         }),
       },
       options: {
-        host: localhost
+        host: localhost,
       },
       logger: logger.getChild(ClientService.name),
     });
@@ -286,7 +285,7 @@ describe('agentStop', () => {
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         agentStop,
       },
@@ -383,7 +382,7 @@ describe('agentUnlock', () => {
     clientService = await ClientService.createClientService({
       tlsConfig,
       manifest: {
-        agentUnlock: new AgentUnlockHandler({})
+        agentUnlock: new AgentUnlockHandler({}),
       },
       options: {
         host: localhost,
@@ -402,7 +401,7 @@ describe('agentUnlock', () => {
       logger,
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         agentUnlock,
       },

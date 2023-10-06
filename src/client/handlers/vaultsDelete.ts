@@ -3,9 +3,9 @@ import type { SuccessMessage, VaultIdentifierMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsDeleteHandler extends UnaryHandler<
   {
@@ -15,7 +15,7 @@ class VaultsDeleteHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultIdentifierMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public handle = async(
+  public handle = async (
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager } = this.container;
@@ -34,7 +34,7 @@ class VaultsDeleteHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsDeleteHandler };
