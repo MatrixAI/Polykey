@@ -11,9 +11,9 @@ class KeysDecryptHandler extends UnaryHandler<
   ClientRPCRequestParams<DataMessage>,
   ClientRPCResponseResult<DataMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<DataMessage>,
-  ): Promise<ClientRPCResponseResult<DataMessage>> {
+  ): Promise<ClientRPCResponseResult<DataMessage>> => {
     const { keyRing } = this.container;
     const data = keyRing.decrypt(Buffer.from(input.data, 'binary'));
     if (data == null) never();

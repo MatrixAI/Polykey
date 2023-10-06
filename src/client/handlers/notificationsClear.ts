@@ -11,7 +11,7 @@ class NotificationsClearHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public async handle(): Promise<ClientRPCResponseResult> {
+  public handle = async(): Promise<ClientRPCResponseResult> => {
     const { db, notificationsManager } = this.container;
     await db.withTransactionF((tran) =>
       notificationsManager.clearNotifications(tran),

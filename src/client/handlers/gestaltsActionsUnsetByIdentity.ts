@@ -17,9 +17,9 @@ class GestaltsActionsUnsetByIdentityHandler extends UnaryHandler<
   ClientRPCRequestParams<SetIdentityActionMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<SetIdentityActionMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { db, gestaltGraph } = this.container;
     const {
       action,

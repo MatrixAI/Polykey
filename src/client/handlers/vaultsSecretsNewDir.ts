@@ -17,9 +17,9 @@ class VaultsSecretsNewDirHandler extends UnaryHandler<
   ClientRPCRequestParams<SecretDirMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<SecretDirMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { vaultManager, db, fs } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

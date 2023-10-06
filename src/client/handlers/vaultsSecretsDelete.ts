@@ -5,7 +5,7 @@ import type VaultManager from '../../vaults/VaultManager';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsSecretsDeleteHandler extends UnaryHandler<
   {
@@ -15,9 +15,9 @@ class VaultsSecretsDeleteHandler extends UnaryHandler<
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { vaultManager, db } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

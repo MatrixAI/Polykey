@@ -7,7 +7,7 @@ class AgentUnlockHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public async handle(): Promise<ClientRPCResponseResult> {
+  public handle = async(): Promise<ClientRPCResponseResult> => {
     // This is a NOP handler,
     // authentication and unlocking is handled via middleware.
     // Failure to authenticate will be an error from the middleware layer.

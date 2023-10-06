@@ -5,7 +5,7 @@ import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { ServerHandler } from '../../rpc/handlers';
+import { ServerHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsLogHandler extends ServerHandler<
   {

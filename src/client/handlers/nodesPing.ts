@@ -14,9 +14,9 @@ class NodesPingHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { nodeManager } = this.container;
     const {
       nodeId,

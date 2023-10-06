@@ -14,9 +14,9 @@ class VaultsVersionHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsVersionMessage>,
   ClientRPCResponseResult<VaultsLatestVersionMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<VaultsVersionMessage>,
-  ): Promise<ClientRPCResponseResult<VaultsLatestVersionMessage>> {
+  ): Promise<ClientRPCResponseResult<VaultsLatestVersionMessage>> => {
     const { vaultManager, db } = this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

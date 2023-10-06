@@ -11,8 +11,8 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
     providerIds: Array<string>;
   }>
 > {
-  public async handle(): Promise<
-    ClientRPCResponseResult<{
+  public handle = async(): Promise<
+    ClientRPCResponseResult<=> {
       providerIds: Array<string>;
     }>
   > {

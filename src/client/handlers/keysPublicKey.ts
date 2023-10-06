@@ -11,7 +11,7 @@ class KeysPublicKeyHandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult<PublicKeyMessage>
 > {
-  public async handle(): Promise<ClientRPCResponseResult<PublicKeyMessage>> {
+  public handle = async(): Promise<ClientRPCResponseResult<PublicKeyMessage>> => {
     const { keyRing } = this.container;
     const publicKeyJwk = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
     return {

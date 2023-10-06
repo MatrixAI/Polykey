@@ -14,9 +14,9 @@ class GestaltsDiscoveryByIdentityHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { discovery } = this.container;
     const {
       providerId,

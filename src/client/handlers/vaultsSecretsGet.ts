@@ -15,9 +15,9 @@ class VaultsSecretsGetHandler extends UnaryHandler<
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<ContentMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
-  ): Promise<ClientRPCResponseResult<ContentMessage>> {
+  ): Promise<ClientRPCResponseResult<ContentMessage>> => {
     const { vaultManager, db } = this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

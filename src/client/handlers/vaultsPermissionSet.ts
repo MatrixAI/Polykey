@@ -12,7 +12,7 @@ import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 
 class VaultsPermissionSetHandler extends UnaryHandler<
   {
@@ -25,9 +25,9 @@ class VaultsPermissionSetHandler extends UnaryHandler<
   ClientRPCRequestParams<PermissionSetMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<PermissionSetMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager, gestaltGraph, acl, notificationsManager } =
       this.container;
     await db.withTransactionF(async (tran) => {

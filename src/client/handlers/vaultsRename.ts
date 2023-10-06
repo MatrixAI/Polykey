@@ -14,9 +14,9 @@ class VaultsRenameHandler extends UnaryHandler<
   ClientRPCRequestParams<VaultsRenameMessage>,
   ClientRPCResponseResult<VaultIdMessage>
 > {
-  public async handle(
+  public handle = async(
     input: ClientRPCRequestParams<VaultsRenameMessage>,
-  ): Promise<ClientRPCResponseResult<VaultIdMessage>> {
+  ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
     const { db, vaultManager } = this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(

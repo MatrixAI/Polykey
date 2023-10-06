@@ -10,7 +10,7 @@ class AgentStopHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public async handle(): Promise<ClientRPCResponseResult> {
+  public handle = async(): Promise<ClientRPCResponseResult> => {
     const { pkAgentProm } = this.container;
     const pkAgent = await pkAgentProm;
     // If not running or in stopping status, then respond successfully
