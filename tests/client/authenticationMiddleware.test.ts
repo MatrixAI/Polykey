@@ -22,6 +22,7 @@ import { UnaryHandler } from '@/rpc/handlers';
 import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
 import WebSocketServer from '@/websockets/WebSocketServer';
 import WebSocketClient from '@/websockets/WebSocketClient';
+import ClientService from '@/client/ClientService';
 import * as testsUtils from '../utils';
 
 describe('authenticationMiddleware', () => {

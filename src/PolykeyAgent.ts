@@ -9,7 +9,6 @@ import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import RPCServer from './rpc/RPCServer';
-import WebSocketServer from './websockets/WebSocketServer';
 import * as rpcUtilsMiddleware from './rpc/utils/middleware';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
@@ -40,6 +39,7 @@ import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
 import { serverManifest as clientServerManifest } from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
+import { WebSocketServer } from '@matrixai/ws';
 
 /**
  * Optional configuration for `PolykeyAgent`.
