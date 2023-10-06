@@ -701,10 +701,13 @@ class PolykeyAgent {
       await this.notificationsManager.start({ fresh });
       await this.sessionManager.start({ fresh });
       await this.taskManager.startProcessing();
-      if (workers != null) {
+      if (optionsDefaulted.workers != null) {
         this.workerManager = await workersUtils.createWorkerManager({
           // 0 means max workers
-          cores: workers === 0 ? undefined : workers,
+          cores:
+            optionsDefaulted.workers === 0
+              ? undefined
+              : optionsDefaulted.workers,
           logger: this.logger.getChild(WorkerManager.name),
         });
         this.vaultManager.setWorkerManager(this.workerManager);

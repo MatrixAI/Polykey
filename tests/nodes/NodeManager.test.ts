@@ -38,6 +38,8 @@ describe(`${NodeManager.name} test`, () => {
     pingTimeoutTime: 5000,
     pingNode: mockedPingNode,
     isSeedNode: mockedIsSeedNode,
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
   } as unknown as NodeConnectionManager;
   const dummySigchain = {} as Sigchain;
 

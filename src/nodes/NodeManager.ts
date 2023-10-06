@@ -49,6 +49,7 @@ import {
   parseSignedClaim,
 } from '../claims/utils';
 import Token from '../tokens/Token';
+import config from '../config';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
@@ -226,6 +227,8 @@ class NodeManager {
     refreshBucketDelay = 3600000, // 1 hour in milliseconds
     refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
     retrySeedConnectionsDelay = 120000, // 2 minuets
+    connectionConnectTimeoutTime = config.defaultsSystem
+      .nodesConnectionConnectTimeoutTime,
     logger,
   }: {
     db: DB;
@@ -238,7 +241,7 @@ class NodeManager {
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
     retrySeedConnectionsDelay?: number;
-    longTaskTimeout?: number;
+    connectionConnectTimeoutTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -256,6 +259,7 @@ class NodeManager {
       Math.min(refreshBucketDelayJitter, 1),
     );
     this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
+    this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
   }
 
   public async start() {

@@ -1543,10 +1543,10 @@ class NodeConnectionManager {
         },
         ctx,
       );
+      return true;
     } catch {
       return false;
     }
-    return true;
   }
 
   /**
