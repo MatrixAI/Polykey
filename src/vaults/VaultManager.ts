@@ -33,7 +33,6 @@ import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
 import VaultInternal from './VaultInternal';
 import * as vaultsEvents from './events';
-import * as vaultsEvents from './events';
 import * as utils from '../utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as vaultsErrors from '../vaults/errors';

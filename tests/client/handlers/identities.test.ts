@@ -21,7 +21,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { IdentitiesAuthenticateHandler } from '@/client/handlers/identitiesAuthenticate';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import { WebSocketClient } from '@matrixai/ws';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as validationErrors from '@/validation/errors';
 import {
@@ -91,10 +91,12 @@ describe('identitiesAuthenticate', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -109,7 +111,7 @@ describe('identitiesAuthenticate', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -133,16 +135,18 @@ describe('identitiesAuthenticate', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticate,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -195,16 +199,18 @@ describe('identitiesAuthenticate', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticate,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -252,10 +258,12 @@ describe('identitiesAuthenticatedGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -268,7 +276,7 @@ describe('identitiesAuthenticatedGet', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -292,16 +300,18 @@ describe('identitiesAuthenticatedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -354,16 +364,18 @@ describe('identitiesAuthenticatedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -404,16 +416,18 @@ describe('identitiesAuthenticatedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -478,16 +492,18 @@ describe('identitiesAuthenticatedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesAuthenticatedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -605,10 +621,12 @@ describe('identitiesClaim', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -630,7 +648,7 @@ describe('identitiesClaim', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await sigchain.stop();
     await keyRing.stop();
@@ -656,16 +674,18 @@ describe('identitiesClaim', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesClaim,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -700,16 +720,18 @@ describe('identitiesClaim', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesClaim,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -773,10 +795,12 @@ describe('identitiesInfoConnectedGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -789,7 +813,7 @@ describe('identitiesInfoConnectedGet', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -813,16 +837,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -896,16 +922,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -976,16 +1004,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1064,16 +1094,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1153,16 +1185,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1230,16 +1264,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1314,16 +1350,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1402,16 +1440,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1472,16 +1512,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1554,16 +1596,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1643,16 +1687,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1719,16 +1765,18 @@ describe('identitiesInfoConnectedGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoConnectedGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1782,10 +1830,12 @@ describe('identitiesInfoGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -1798,7 +1848,7 @@ describe('identitiesInfoGet', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -1822,16 +1872,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1885,16 +1937,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1970,16 +2024,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2049,16 +2105,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2113,16 +2171,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2192,16 +2252,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2279,16 +2341,18 @@ describe('identitiesInfoGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInfoGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2405,10 +2469,12 @@ describe('identitiesInvite', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     sigchain = await Sigchain.createSigchain({
       db,
@@ -2430,7 +2496,7 @@ describe('identitiesInvite', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await sigchain.stop();
     await keyRing.stop();
@@ -2465,16 +2531,18 @@ describe('identitiesInvite', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesInvite,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2527,10 +2595,12 @@ describe('identitiesProvidersList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -2543,7 +2613,7 @@ describe('identitiesProvidersList', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -2568,16 +2638,18 @@ describe('identitiesProvidersList', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesProvidersList,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2623,10 +2695,12 @@ describe('identitiesTokenPutDeleteGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -2639,7 +2713,7 @@ describe('identitiesTokenPutDeleteGet', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -2672,18 +2746,20 @@ describe('identitiesTokenPutDeleteGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         identitiesTokenPut,
         identitiesTokenDelete,
         identitiesTokenGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 

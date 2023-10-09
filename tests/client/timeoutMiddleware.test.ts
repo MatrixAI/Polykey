@@ -97,7 +97,6 @@ describe('timeoutMiddleware', () => {
         _meta,
         ctx,
       ) => {
-        console.log(input);
         ctxProm.resolveP(ctx);
         return input;
       };
@@ -121,8 +120,7 @@ describe('timeoutMiddleware', () => {
       port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
-      idGen: async () => null,
+    const rpcClient = new RPCClient({
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,
@@ -149,7 +147,6 @@ describe('timeoutMiddleware', () => {
       () => {},
       () => {},
     );
-    await rpcClient.destroy();
     await clientService.destroy({ force: true });
   });
   test('client side timeout updates', async () => {
@@ -188,7 +185,7 @@ describe('timeoutMiddleware', () => {
       port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       idGen: async () => null,
       manifest: {
         testHandler: new UnaryCaller<

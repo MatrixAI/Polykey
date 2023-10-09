@@ -360,8 +360,8 @@ describe(`${NodeManager.name} test`, () => {
     });
     const serverNodeId = server.keyRing.getNodeId();
     const serverNodeAddress: NodeAddress = {
-      host: server.nodeConnectionManager.host as Host,
-      port: server.nodeConnectionManager.port as Port,
+      host: server.agentServiceHost,
+      port: server.agentServicePort,
     };
     await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 

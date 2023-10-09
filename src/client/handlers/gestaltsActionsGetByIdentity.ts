@@ -20,10 +20,10 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
   }>
 > {
   public handle = async(input: ClientRPCRequestParams<IdentityMessage>): Promise<
-    ClientRPCResponseResult<=> {
+    ClientRPCResponseResult<{
       actionsList: Array<GestaltAction>;
     }>
-  > {
+  > => {
     const { db, gestaltGraph } = this.container;
     const {
       providerId,

@@ -515,12 +515,12 @@ describe('VaultManager', () => {
 
       // Adding details to each agent
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.nodeConnectionManager.host as Host,
-        port: remoteKeynode2.nodeConnectionManager.port as Port,
+        host: remoteKeynode2.agentServiceHost,
+        port: remoteKeynode2.agentServicePort,
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.nodeConnectionManager.host as Host,
-        port: remoteKeynode1.nodeConnectionManager.port as Port,
+        host: remoteKeynode1.agentServiceHost,
+        port: remoteKeynode1.agentServicePort,
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -555,10 +555,12 @@ describe('VaultManager', () => {
       keyRing = await KeyRing.createKeyRing({
         keysPath: path.join(allDataDir, 'allKeyRing'),
         password: 'password',
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
       });
       localNodeId = keyRing.getNodeId();
 
@@ -577,12 +579,12 @@ describe('VaultManager', () => {
       await nodeConnectionManager.start({ host: localhost as Host });
       await taskManager.startProcessing();
       await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.nodeConnectionManager.host as Host,
-        port: remoteKeynode1.nodeConnectionManager.port as Port,
+        host: remoteKeynode1.agentServiceHost,
+        port: remoteKeynode1.agentServicePort,
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.nodeConnectionManager.host as Host,
-        port: remoteKeynode2.nodeConnectionManager.port as Port,
+        host: remoteKeynode2.agentServiceHost,
+        port: remoteKeynode2.agentServicePort,
       });
     });
     afterEach(async () => {
@@ -1382,8 +1384,8 @@ describe('VaultManager', () => {
 
         // Letting nodeGraph know where the remote agent is
         await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.nodeConnectionManager.host as Host,
-          port: remoteKeynode1.nodeConnectionManager.port as Port,
+          host: remoteKeynode1.agentServiceHost,
+          port: remoteKeynode1.agentServicePort,
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

@@ -11,13 +11,13 @@ import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import RPCServer from '@matrixai/rpc/dist/RPCServer';
 import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/identities/utils';
-import { NodesClaimsGetHandler } from '@/agent/handlers/nodesClaimsGet';
-import { nodesClaimsGet } from '@/agent/handlers/clientManifest';
+import NodesClaimsGet from '@/nodes/agent/handlers/NodesClaimsGet';
+import { nodesClaimsGet } from '@/nodes/agent/callers';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
 import * as keysUtils from '@/keys/utils/index';
-import * as tlsTestsUtils from '../../utils/tls';
-import * as testNodesUtils from '../../nodes/utils';
+import * as tlsTestsUtils from '../../../utils/tls';
+import * as testNodesUtils from '../../../nodes/utils';
 
 describe('nodesClaimsGet', () => {
   const logger = new Logger('nodesClaimsGet test', LogLevel.WARN, [
@@ -52,10 +52,12 @@ describe('nodesClaimsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -70,15 +72,15 @@ describe('nodesClaimsGet', () => {
 
     // Setting up server
     const serverManifest = {
-      nodesClaimsGet: new NodesClaimsGetHandler({
+      nodesClaimsGet: new NodesClaimsGet({
         db,
         sigchain,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {

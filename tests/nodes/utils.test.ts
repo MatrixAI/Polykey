@@ -213,7 +213,6 @@ describe('nodes/utils', () => {
     check(rpcErrors.ErrorRPCMessageLength);
     check(rpcErrors.ErrorRPCMissingResponse);
     check(rpcErrors.ErrorRPCOutputStreamError);
-    check(rpcErrors.ErrorPolykeyRemote);
     check(rpcErrors.ErrorRPCStreamEnded);
     check(rpcErrors.ErrorRPCTimedOut);
   });

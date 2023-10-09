@@ -86,7 +86,6 @@ class ClientService {
         keepAliveIntervalTime,
         keepAliveTimeoutTime,
       },
-      // FIXME: Not sure about this, maxIdleTimeout doesn't seem to be used?
       logger: logger.getChild(WebSocketServer.name),
     });
 

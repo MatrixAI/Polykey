@@ -5,14 +5,14 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { running } from '@matrixai/async-init';
-import { RPCServer, RPCClient } from '@matrixai/rpc';
+import { RPCClient } from '@matrixai/rpc';
 import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { AgentLockAllHandler } from '@/client/handlers/agentLockAll';
 import { Session, SessionManager } from '@/sessions';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import { WebSocketClient } from '@matrixai/ws';
 import {
   agentLockAll,
   agentStatus,
@@ -33,12 +33,12 @@ import ClientService from '@/client/ClientService';
 import * as testsUtils from '../../utils';
 
 describe('agentLockAll', () => {
-  const logger = new Logger('agentLockAll test', LogLevel.WARN, [
+  const logger = new Logger('agentLockAll test', LogLevel.INFO, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const password = 'helloWorld';
+  const password = 'password';
   const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
@@ -62,10 +62,12 @@ describe('agentLockAll', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     sessionManager = await SessionManager.createSessionManager({
@@ -77,10 +79,9 @@ describe('agentLockAll', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await taskManager.stop();
     await keyRing.stop();
-    await db.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -102,7 +103,9 @@ describe('agentLockAll', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
@@ -111,7 +114,7 @@ describe('agentLockAll', () => {
       manifest: {
         agentLockAll,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -125,7 +128,7 @@ describe('agentStatus', () => {
   const logger = new Logger('agentStatus test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
+  const password = 'password';
   const localhost = '127.0.0.1';
   let dataDir: string;
   let pkAgent: PolykeyAgent;
@@ -154,7 +157,7 @@ describe('agentStatus', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await clientClient?.destroy(true);
+    await clientClient?.destroy({force: true});
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -176,7 +179,9 @@ describe('agentStatus', () => {
       logger: logger.getChild(ClientService.name),
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       port: clientService.port,
       logger,
@@ -185,7 +190,7 @@ describe('agentStatus', () => {
       manifest: {
         agentStatus,
       },
-      streamFactory: async () => clientClient.startConnection(),
+      streamFactory: () => clientClient.connection.newStream(),
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test
@@ -208,7 +213,7 @@ describe('agentStop', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const password = 'helloWorld';
+  const password = 'password';
   const localhost = '127.0.0.1';
   let dataDir: string;
   let nodePath: string;
@@ -234,10 +239,12 @@ describe('agentStop', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -256,7 +263,7 @@ describe('agentStop', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await taskManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -280,7 +287,9 @@ describe('agentStop', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
@@ -289,7 +298,7 @@ describe('agentStop', () => {
       manifest: {
         agentStop,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -315,7 +324,7 @@ describe('agentUnlock', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
+  const password = 'password';
   const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
@@ -342,10 +351,12 @@ describe('agentUnlock', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
@@ -367,7 +378,7 @@ describe('agentUnlock', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await clientClient.destroy(true);
+    await clientClient.destroy({ force: true });
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -386,17 +397,17 @@ describe('agentUnlock', () => {
       },
       options: {
         host: localhost,
-        middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-          clientUtilsAuthMiddleware.authenticationMiddlewareServer(
-            sessionManager,
-            keyRing,
-          ),
+        middlewareFactory: clientUtilsAuthMiddleware.authenticationMiddlewareServer(
+          sessionManager,
+          keyRing,
         ),
       },
       logger: logger.getChild(ClientService.name),
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger,
       port: clientService.port,
@@ -405,7 +416,7 @@ describe('agentUnlock', () => {
       manifest: {
         agentUnlock,
       },
-      streamFactory: async () => clientClient.startConnection(),
+      streamFactory: () => clientClient.connection.newStream(),
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         clientUtilsAuthMiddleware.authenticationMiddlewareClient(session),
       ),

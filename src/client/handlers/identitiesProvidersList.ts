@@ -12,10 +12,10 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
   }>
 > {
   public handle = async(): Promise<
-    ClientRPCResponseResult<=> {
+    ClientRPCResponseResult< {
       providerIds: Array<string>;
     }>
-  > {
+  > => {
     const { identitiesManager } = this.container;
     const providers = identitiesManager.getProviders();
     return {

@@ -25,7 +25,7 @@ import TaskManager from '@/tasks/TaskManager';
 import { GestaltsActionsGetByIdentityHandler } from '@/client/handlers/gestaltsActionsGetByIdentity';
 import { GestaltsActionsSetByIdentityHandler } from '@/client/handlers/gestaltsActionsSetByIdentity';
 import { GestaltsActionsUnsetByIdentityHandler } from '@/client/handlers/gestaltsActionsUnsetByIdentity';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import { WebSocketClient } from '@matrixai/ws';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
 import * as nodesUtils from '@/nodes/utils';
@@ -104,10 +104,12 @@ describe('gestaltsActionsByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -123,7 +125,7 @@ describe('gestaltsActionsByIdentity', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -159,18 +161,20 @@ describe('gestaltsActionsByIdentity', () => {
       logger: logger.getChild('server'),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsActionsGetByIdentity,
         gestaltsActionsSetByIdentity,
         gestaltsActionsUnsetByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -257,10 +261,12 @@ describe('gestaltsActionsByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -276,7 +282,7 @@ describe('gestaltsActionsByNode', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -311,18 +317,20 @@ describe('gestaltsActionsByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsActionsGetByNode,
         gestaltsActionsSetByNode,
         gestaltsActionsUnsetByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -391,10 +399,12 @@ describe('gestaltsDiscoverByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -472,7 +482,7 @@ describe('gestaltsDiscoverByIdentity', () => {
     await sigchain.stop();
     await identitiesManager.stop();
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -498,16 +508,18 @@ describe('gestaltsDiscoverByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsDiscoveryByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -565,10 +577,12 @@ describe('gestaltsDiscoverByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -644,7 +658,7 @@ describe('gestaltsDiscoverByNode', () => {
     await sigchain.stop();
     await identitiesManager.stop();
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -670,16 +684,18 @@ describe('gestaltsDiscoverByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsDiscoveryByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -732,10 +748,12 @@ describe('gestaltsGestaltGetByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -751,7 +769,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -778,16 +796,18 @@ describe('gestaltsGestaltGetByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltGetByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -877,10 +897,12 @@ describe('gestaltsGestaltGetByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -896,7 +918,7 @@ describe('gestaltsGestaltGetByNode', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -923,16 +945,18 @@ describe('gestaltsGestaltGetByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltGetByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1020,10 +1044,12 @@ describe('gestaltsGestaltList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1039,7 +1065,7 @@ describe('gestaltsGestaltList', () => {
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -1066,16 +1092,18 @@ describe('gestaltsGestaltList', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltList,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1168,10 +1196,12 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -1266,7 +1296,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     await sigchain.stop();
     await identitiesManager.stop();
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -1295,16 +1325,18 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1355,16 +1387,18 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1412,16 +1446,18 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1461,16 +1497,18 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1525,16 +1563,18 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByIdentity,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1662,10 +1702,12 @@ describe('gestaltsGestaltTrustByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -1749,7 +1791,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     await sigchain.stop();
     await identitiesManager.stop();
     await clientService.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await acl.stop();
     await gestaltGraph.stop();
     await taskManager.stop();
@@ -1783,16 +1825,18 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1825,16 +1869,18 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1866,16 +1912,18 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         gestaltsGestaltTrustByNode,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 

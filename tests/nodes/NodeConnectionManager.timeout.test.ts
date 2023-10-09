@@ -65,8 +65,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     remoteNodeId1 = remotePolykeyAgent1.keyRing.getNodeId();
     remoteAddress1 = {
-      host: remotePolykeyAgent1.nodeConnectionManager.host,
-      port: remotePolykeyAgent1.nodeConnectionManager.port,
+      host: remotePolykeyAgent1.agentServiceHost,
+      port: remotePolykeyAgent1.agentServicePort,
     };
 
     // Setting up client dependencies

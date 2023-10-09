@@ -11,10 +11,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { RPCServer } from '@matrixai/rpc';
-import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
-import { WebSocketServer } from '@matrixai/ws';
-import { RPCClient } from '@matrixai/rpc';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import KeyRing from './keys/KeyRing';
@@ -602,12 +598,12 @@ class PolykeyAgent {
 
   @ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServiceHost() {
-    return this.nodeConnectionManager.host as string;
+    return this.nodeConnectionManager.host;
   }
 
   @ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServicePort() {
-    return this.nodeConnectionManager.port as number;
+    return this.nodeConnectionManager.port;
   }
 
   public async start({

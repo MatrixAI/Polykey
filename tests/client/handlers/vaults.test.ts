@@ -18,7 +18,7 @@ import VaultManager from '@/vaults/VaultManager';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import GestaltGraph from '@/gestalts/GestaltGraph';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import { WebSocketClient } from '@matrixai/ws';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
 import {
@@ -89,10 +89,12 @@ describe('vaultsClone', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -114,7 +116,7 @@ describe('vaultsClone', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -147,11 +149,11 @@ describe('vaultsClone', () => {
   //       logger: logger.getChild('client'),
   //       port: webSocketServer.port,
   //     });
-  //     const rpcClient = await RPCClient.createRPCClient({
+  //     const rpcClient = new RPCClient({
   //       manifest: {
   //         notificationsSend,
   //       },
-  //       streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+  //       streamFactory: () => webSocketClient.connection.newStream(),
   //       logger: logger.getChild('clientRPC'),
   //     });
   //
@@ -183,10 +185,12 @@ describe('vaultsCreateDeleteList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -208,7 +212,7 @@ describe('vaultsCreateDeleteList', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -241,18 +245,21 @@ describe('vaultsCreateDeleteList', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
+
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsCreate,
         vaultsDelete,
         vaultsList,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -316,10 +323,12 @@ describe('vaultsLog', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -356,7 +365,7 @@ describe('vaultsLog', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -381,16 +390,18 @@ describe('vaultsLog', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsLog,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -423,16 +434,18 @@ describe('vaultsLog', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsLog,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -465,16 +478,18 @@ describe('vaultsLog', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsLog,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -523,10 +538,12 @@ describe('vaultsPermissionSetUnsetGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -570,7 +587,7 @@ describe('vaultsPermissionSetUnsetGet', () => {
   afterEach(async () => {
     mockedSendNotification.mockRestore();
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await notificationsManager.stop();
     await gestaltGraph.stop();
@@ -612,18 +629,20 @@ describe('vaultsPermissionSetUnsetGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsPermissionSet,
         vaultsPermissionGet,
         vaultsPermissionUnset,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -701,10 +720,12 @@ describe('vaultsPull', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -747,7 +768,7 @@ describe('vaultsPull', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await notificationsManager.stop();
     await gestaltGraph.stop();
@@ -797,13 +818,13 @@ describe('vaultsPull', () => {
   //     logger: logger.getChild('client'),
   //     port: webSocketServer.port,
   //   });
-  //   const rpcClient = await RPCClient.createRPCClient({
+  //   const rpcClient = new RPCClient({
   //     manifest: {
   //       vaultsPermissionSet,
   //       vaultsPermissionGet,
   //       vaultsPermissionUnset,
   //     },
-  //     streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+  //     streamFactory: () => webSocketClient.connection.newStream(),
   //     logger: logger.getChild('clientRPC'),
   //   });
   //
@@ -835,10 +856,12 @@ describe('vaultsRename', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -860,7 +883,7 @@ describe('vaultsRename', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -885,16 +908,18 @@ describe('vaultsRename', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsRename,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -934,10 +959,12 @@ describe('vaultsScan', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -959,7 +986,7 @@ describe('vaultsScan', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -992,11 +1019,11 @@ describe('vaultsScan', () => {
   //     logger: logger.getChild('client'),
   //     port: webSocketServer.port,
   //   });
-  //   const rpcClient = await RPCClient.createRPCClient({
+  //   const rpcClient = new RPCClient({
   //     manifest: {
   //       vaultsRename,
   //     },
-  //     streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+  //     streamFactory: () => webSocketClient.connection.newStream(),
   //     logger: logger.getChild('clientRPC'),
   //   });
   //
@@ -1039,10 +1066,12 @@ describe('vaultsSecretsEdit', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1064,7 +1093,7 @@ describe('vaultsSecretsEdit', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1089,16 +1118,18 @@ describe('vaultsSecretsEdit', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsEdit,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1150,10 +1181,12 @@ describe('vaultsSecretsMkdir', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1175,7 +1208,7 @@ describe('vaultsSecretsMkdir', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1200,16 +1233,18 @@ describe('vaultsSecretsMkdir', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsMkdir,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1255,10 +1290,12 @@ describe('vaultsSecretsNewDeleteGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1280,7 +1317,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1313,18 +1350,20 @@ describe('vaultsSecretsNewDeleteGet', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsNew,
         vaultsSecretsDelete,
         vaultsSecretsGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1387,10 +1426,12 @@ describe('vaultsSecretsNewDirList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1412,7 +1453,7 @@ describe('vaultsSecretsNewDirList', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1442,17 +1483,19 @@ describe('vaultsSecretsNewDirList', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsNewDir,
         vaultsSecretsList,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1512,10 +1555,12 @@ describe('vaultsSecretsRename', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1537,7 +1582,7 @@ describe('vaultsSecretsRename', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1562,16 +1607,18 @@ describe('vaultsSecretsRename', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsRename,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1624,10 +1671,12 @@ describe('vaultsSecretsStat', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1649,7 +1698,7 @@ describe('vaultsSecretsStat', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1674,16 +1723,18 @@ describe('vaultsSecretsStat', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsStat,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1741,10 +1792,12 @@ describe('vaultsVersion', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -1767,7 +1820,7 @@ describe('vaultsVersion', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();
@@ -1792,16 +1845,18 @@ describe('vaultsVersion', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsVersion,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1848,16 +1903,18 @@ describe('vaultsVersion', () => {
       logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
       port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         vaultsVersion,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       logger: logger.getChild('clientRPC'),
     });
 
