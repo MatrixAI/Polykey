@@ -55,7 +55,7 @@ class KeyRing {
   }: {
     keysPath: string;
     password: string;
-    options: Partial<KeyRingOptions>;
+    options?: Partial<KeyRingOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
     fs?: FileSystem;
     logger?: Logger;
