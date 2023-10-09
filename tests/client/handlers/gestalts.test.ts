@@ -1767,8 +1767,8 @@ describe('gestaltsGestaltTrustByNode', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({ host: localhost as Host });
     await nodeManager.setNode(nodeIdRemote, {
-      host: node.agentServiceHost as Host,
-      port: node.agentServicePort as Port,
+      host: node.agentServiceHost,
+      port: node.agentServicePort,
     });
     discovery = await Discovery.createDiscovery({
       db,

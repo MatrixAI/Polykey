@@ -211,8 +211,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.agentServiceHost as Host,
-      port: nodeA.agentServicePort as Port,
+      host: nodeA.agentServiceHost,
+      port: nodeA.agentServicePort,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
