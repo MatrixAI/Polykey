@@ -1,6 +1,5 @@
-import type * as quicEvents from '@matrixai/quic/dist/events';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import type { AgentClaimMessage } from '@/agent/handlers/types';
+import type { AgentClaimMessage } from '@/nodes/agent/types';
 import type { NodeId } from '@/ids';
 import type { ClaimLinkNode } from '@/claims/payloads';
 import type { KeyPair } from '@/keys/types';
@@ -8,15 +7,15 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer } from '@matrixai/quic';
+import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import RPCServer from '@matrixai/rpc/dist/RPCServer';
 import Sigchain from '@/sigchain/Sigchain';
-import { nodesCrossSignClaim } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
-import { NodesCrossSignClaimHandler } from '@/agent/handlers/nodesCrossSignClaim';
+import { nodesCrossSignClaim } from '@/nodes/agent/callers';
+import NodesCrossSignClaim from '@/nodes/agent/handlers/NodesCrossSignClaim';
 import ACL from '@/acl/ACL';
 import NodeManager from '@/nodes/NodeManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -26,7 +25,7 @@ import * as claimsUtils from '@/claims/utils';
 import { Token } from '@/tokens';
 import * as nodesUtils from '@/nodes/utils';
 import { generateKeyPair } from '@/keys/utils/generate';
-import * as tlsTestsUtils from '../../utils/tls';
+import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('nodesCrossSignClaim', () => {
   const logger = new Logger('nodesCrossSignClaim test', LogLevel.WARN, [
@@ -67,10 +66,12 @@ describe('nodesCrossSignClaim', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     remoteNodeId = keyRing.getNodeId();
     const dbPath = path.join(dataDir, 'db');
@@ -116,7 +117,7 @@ describe('nodesCrossSignClaim', () => {
 
     // Setting up server
     const serverManifest = {
-      nodesCrossSignClaim: new NodesCrossSignClaimHandler({
+      nodesCrossSignClaim: new NodesCrossSignClaim({
         acl,
         nodeManager,
       }),
@@ -133,7 +134,9 @@ describe('nodesCrossSignClaim', () => {
         key: tlsConfigServer.keyPrivatePem,
         cert: tlsConfigServer.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       crypto: {
         key: keysUtils.generateKey(),
@@ -142,7 +145,7 @@ describe('nodesCrossSignClaim', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -150,25 +153,37 @@ describe('nodesCrossSignClaim', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'serverStop',
+      quicEvents.EventQUICServerConnection.name,
+      handleConnection,
+    );
+    quicServer.addEventListener(
+      quicEvents.EventQUICSocketStopped.name,
       () => {
-        quicServer.removeEventListener('serverConnection', handleConnection);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICServerConnection.name,
+          handleConnection,
+        );
       },
       { once: true },
     );
@@ -179,8 +194,8 @@ describe('nodesCrossSignClaim', () => {
     // Setting up client
     rpcClient = await RPCClient.createRPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
       logger,
     });
@@ -195,7 +210,9 @@ describe('nodesCrossSignClaim', () => {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       host: localHost,
       port: quicServer.port,
@@ -205,7 +222,7 @@ describe('nodesCrossSignClaim', () => {
   });
   afterEach(async () => {
     await taskManager.stop();
-    await rpcServer.destroy(true);
+    await rpcServer.destroy({ force: true });
     await quicServer.stop({ force: true });
     await nodeGraph.stop();
     await sigchain.stop();

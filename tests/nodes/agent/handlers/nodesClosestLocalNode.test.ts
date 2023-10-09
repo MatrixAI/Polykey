@@ -1,22 +1,21 @@
-import type * as quicEvents from '@matrixai/quic/dist/events';
 import type { NodeIdEncoded } from '@/ids';
 import type { Host, Port } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer } from '@matrixai/quic';
+import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import RPCServer from '@matrixai/rpc/dist/RPCServer';
-import { nodesClosestLocalNodesGet } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
-import { NodesClosestLocalNodesGetHandler } from '@/agent/handlers/nodesClosestLocalNodesGet';
+import { nodesClosestLocalNodesGet } from '@/nodes/agent/callers';
+import NodesClosestLocalNodesGet from '@/nodes/agent/handlers/NodesClosestLocalNodesGet';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as keysUtils from '@/keys/utils/index';
-import * as testNodesUtils from '../../nodes/utils';
-import * as tlsTestsUtils from '../../utils/tls';
+import * as testNodesUtils from '../../../nodes/utils';
+import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -51,10 +50,12 @@ describe('nodesClosestLocalNode', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -69,7 +70,7 @@ describe('nodesClosestLocalNode', () => {
 
     // Setting up server
     const serverManifest = {
-      nodesClosestLocalNodesGet: new NodesClosestLocalNodesGetHandler({
+      nodesClosestLocalNodesGet: new NodesClosestLocalNodesGet({
         db,
         nodeGraph,
       }),
@@ -92,7 +93,7 @@ describe('nodesClosestLocalNode', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -100,25 +101,37 @@ describe('nodesClosestLocalNode', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'serverStio',
+      quicEvents.EventQUICServerConnection.name,
+      handleConnection,
+    );
+    quicServer.addEventListener(
+      quicEvents.EventQUICServerStopped.name,
       () => {
-        quicServer.removeEventListener('serverConnection', handleConnection);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICServerConnection.name,
+          handleConnection,
+        );
       },
       { once: true },
     );
@@ -129,8 +142,8 @@ describe('nodesClosestLocalNode', () => {
     // Setting up client
     rpcClient = await RPCClient.createRPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
       logger,
     });
@@ -148,7 +161,7 @@ describe('nodesClosestLocalNode', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy(true);
+    await rpcServer.destroy({ force: true });
     await quicServer.stop({ force: true });
     await nodeGraph.stop();
     await db.stop();

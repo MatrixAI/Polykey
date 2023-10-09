@@ -1,25 +1,30 @@
-import type * as quicEvents from '@matrixai/quic/dist/events';
-import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { Host } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer, QUICSocket } from '@matrixai/quic';
+import {
+  QUICClient,
+  QUICServer,
+  QUICSocket,
+  events as quicEvents,
+} from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import RPCServer from '@matrixai/rpc/dist/RPCServer';
-import { nodesHolePunchMessageSend } from '@/agent/handlers/clientManifest';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';
-import { NodesHolePunchMessageSendHandler } from '@/agent/handlers/nodesHolePunchMessageSend';
+import { nodesHolePunchMessageSend } from '@/nodes/agent/callers';
+import NodesHolePunchMessageSend from '@/nodes/agent/handlers/NodesHolePunchMessageSend';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
+import ACL from '@/acl/ACL';
+import Sigchain from '@/sigchain/Sigchain';
+import TaskManager from '@/tasks/TaskManager';
 import * as keysUtils from '@/keys/utils/index';
-import * as tlsTestsUtils from '../../utils/tls';
-import ACL from '../../../src/acl/ACL';
-import Sigchain from '../../../src/sigchain/Sigchain';
-import TaskManager from '../../../src/tasks/TaskManager';
+import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('nodesHolePunchMessage', () => {
   const logger = new Logger('nodesHolePunchMessage test', LogLevel.WARN, [
@@ -60,10 +65,12 @@ describe('nodesHolePunchMessage', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -105,12 +112,12 @@ describe('nodesHolePunchMessage', () => {
     );
     nodeConnectionManager = new NodeConnectionManager({
       tlsConfig: tlsConfigClient,
-      crypto,
-      quicSocket,
       keyRing,
       nodeGraph,
-      connectionConnectTime: 2000,
-      connectionTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -124,12 +131,12 @@ describe('nodesHolePunchMessage', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ nodeManager, handleStream: () => {} });
+    await nodeConnectionManager.start({ host: localHost as Host });
     await taskManager.startProcessing();
 
     // Setting up server
     const serverManifest = {
-      nodesHolePunchMessageSend: new NodesHolePunchMessageSendHandler({
+      nodesHolePunchMessageSend: new NodesHolePunchMessageSend({
         db,
         keyRing,
         nodeConnectionManager,
@@ -147,7 +154,9 @@ describe('nodesHolePunchMessage', () => {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       crypto: {
         key: keysUtils.generateKey(),
@@ -156,7 +165,7 @@ describe('nodesHolePunchMessage', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -164,16 +173,22 @@ describe('nodesHolePunchMessage', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
@@ -193,8 +208,8 @@ describe('nodesHolePunchMessage', () => {
     // Setting up client
     rpcClient = await RPCClient.createRPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
       logger,
     });
@@ -206,7 +221,9 @@ describe('nodesHolePunchMessage', () => {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       host: localHost,
       port: quicServer.port,
@@ -215,7 +232,7 @@ describe('nodesHolePunchMessage', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy(true);
+    await rpcServer.destroy({ force: true });
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
     await quicServer.stop({ force: true });
