@@ -85,12 +85,12 @@ describe('Discovery', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      logger: logger.getChild('KeyRing'),
       options: {
         passwordOpsLimit: keysUtils.passwordOpsLimits.min,
         passwordMemLimit: keysUtils.passwordMemLimits.min,
         strictMemoryLock: false,
       },
+      logger: logger.getChild('KeyRing'),
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({

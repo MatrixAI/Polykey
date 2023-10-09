@@ -5,7 +5,7 @@ import type {
   KeyPair,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
-import type { ClientCrypto, ServerCrypto } from '@matrixai/quic';
+import type { ClientCryptoOps, ServerCryptoOps } from '@matrixai/quic';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
 
@@ -63,7 +63,7 @@ async function createTLSConfigWithChain(
   };
 }
 
-function createCrypto(): ServerCrypto & ClientCrypto {
+function createCrypto(): ServerCryptoOps & ClientCryptoOps {
   return {
     randomBytes: async (data: ArrayBuffer) => {
       const randomBytes = keysUtils.getRandomBytes(data.byteLength);

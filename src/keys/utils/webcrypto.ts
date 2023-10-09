@@ -12,11 +12,6 @@ import * as utils from '../../utils';
 const webcrypto = new peculiarWebcrypto.Crypto();
 
 /**
- * Monkey patches the global crypto object polyfill.
- */
-globalThis.crypto = webcrypto;
-
-/**
  * Imports Ed25519 public `CryptoKey` from key buffer.
  * If `publicKey` is already `CryptoKey`, then this just returns it.
  */

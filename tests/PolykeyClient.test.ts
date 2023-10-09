@@ -7,7 +7,7 @@ import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils/index';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import { WebSocketClient } from '@matrixai/ws';
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -54,13 +54,15 @@ describe('PolykeyClient', () => {
     await session.writeToken('dummy' as SessionToken);
     // Using fresh: true means that any token would be destroyed
     const webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: pkAgent.clientServiceHost,
       port: pkAgent.clientServicePort,
       logger,
     });
     const pkClient = await PolykeyClient.createPolykeyClient({
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
       nodePath,
       fs,
       logger,
@@ -72,6 +74,6 @@ describe('PolykeyClient', () => {
     expect(await session.readToken()).toBeDefined();
     await pkClient.destroy();
     expect(await session.readToken()).toBeUndefined();
-    await webSocketClient.destroy(true);
+    await webSocketClient.destroy({ force: true });
   });
 });

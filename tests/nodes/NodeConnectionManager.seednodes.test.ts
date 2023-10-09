@@ -24,7 +24,7 @@ import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} seednodes test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -187,7 +187,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       options: {
-        connectionKeepAliveIntervalTime: 1000,
+        connectionConnectTimeoutTime: 1000,
       },
       tlsConfig,
       seedNodes,
@@ -200,6 +200,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       nodeGraph,
       sigchain,
       taskManager,
+      connectionConnectTimeoutTime: 1000,
       logger,
     });
     await nodeManager.start();
@@ -246,8 +247,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       options: {
-        connectionKeepAliveTimeoutTime: 1000,
-        connectionKeepAliveIntervalTime: 500,
+        connectionConnectTimeoutTime: 1000,
       },
       tlsConfig,
       seedNodes,
@@ -260,6 +260,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       nodeGraph,
       sigchain,
       taskManager,
+      connectionConnectTimeoutTime: 1000,
       logger,
     });
     await nodeManager.start();
@@ -308,7 +309,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       options: {
-        connectionKeepAliveIntervalTime: 1000,
+        connectionConnectTimeoutTime: 1000,
       },
       tlsConfig,
       seedNodes,
@@ -321,6 +322,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       nodeGraph,
       sigchain,
       taskManager,
+      connectionConnectTimeoutTime: 1000,
       logger,
     });
     await nodeManager.start();
@@ -358,7 +360,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       'refreshBucket',
     );
     mockedRefreshBucket.mockImplementation(createPromiseCancellableNop());
-
     const seedNodes = {
       [remoteNodeIdEncoded1]: remoteAddress1,
     };
@@ -367,7 +368,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       options: {
-        connectionKeepAliveIntervalTime: 1000,
+        connectionConnectTimeoutTime: 1000,
       },
       tlsConfig,
       seedNodes,
@@ -380,6 +381,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       nodeGraph,
       sigchain,
       taskManager,
+      connectionConnectTimeoutTime: 1000,
       logger,
     });
     await nodeManager.start();
@@ -403,6 +405,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await remotePolykeyAgent1.nodeGraph.setNode(remoteNodeId2, remoteAddress2);
 
+    // We expect the following to happen
+    // 1. local asks remote 1 for list, remote1 returns information about remote 2
+    // 2. local attempts a ping to remote 2 and forms a connection
+    // 3. due to connection establishment local and remote 2 add each others information to their node graph
+
     await nodeManager.syncNodeGraph(true, 500);
     // Local and remote nodes should know each other now
     expect(await nodeGraph.getNode(remoteNodeId2)).toBeDefined();
@@ -421,7 +428,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       options: {
-        connectionKeepAliveIntervalTime: 1000,
+        connectionConnectTimeoutTime: 1000,
       },
       tlsConfig,
       seedNodes,
@@ -434,6 +441,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       nodeGraph,
       sigchain,
       taskManager,
+      connectionConnectTimeoutTime: 1000,
       logger,
     });
     await nodeManager.start();

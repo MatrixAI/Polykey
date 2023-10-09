@@ -30,9 +30,11 @@ describe(KeyRing.name, () => {
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     await expect(async () => {
       await keyRing.destroy();
@@ -56,9 +58,11 @@ describe(KeyRing.name, () => {
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('public.jwk');
@@ -77,9 +81,11 @@ describe(KeyRing.name, () => {
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const nodeId = keyRing.getNodeId();
     const keyPair = {
@@ -104,9 +110,11 @@ describe(KeyRing.name, () => {
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
     });
     const keysPathContents1 = await fs.promises.readdir(keysPath);
     expect(keysPathContents1).toContain('public.jwk');
@@ -124,9 +132,11 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(await keyRing.checkPassword(password)).toBe(true);
       await keyRing.changePassword('new password');
@@ -139,8 +149,10 @@ describe(KeyRing.name, () => {
         keysPath,
         password: 'first password',
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
       });
       await keyRing.changePassword('second password');
       await keyRing.stop();
@@ -153,9 +165,11 @@ describe(KeyRing.name, () => {
         await KeyRing.createKeyRing({
           password: 'wrong password',
           keysPath,
+          options: {
+            passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+            passwordMemLimit: keysUtils.passwordMemLimits.min,
+          },
           logger,
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
         });
       }).rejects.toThrow(keysErrors.ErrorKeyPairParse);
     });
@@ -166,9 +180,11 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       const nodeId = keyRing.getNodeId();
       const recoveryCode = keyRing.recoveryCode!;
@@ -205,11 +221,13 @@ describe(KeyRing.name, () => {
       const keysPath1 = `${dataDir}/keys1`;
       const keyRing1 = await KeyRing.createKeyRing({
         password,
-        recoveryCode,
         keysPath: keysPath1,
+        options: {
+          recoveryCode,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(keyRing1.recoveryCode).toBe(recoveryCode);
       const nodeId1 = keyRing1.getNodeId();
@@ -217,11 +235,13 @@ describe(KeyRing.name, () => {
       const keysPath2 = `${dataDir}/keys2`;
       const keyRing2 = await KeyRing.createKeyRing({
         password,
-        recoveryCode,
         keysPath: keysPath2,
+        options: {
+          recoveryCode,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(keyRing2.recoveryCode).toBe(recoveryCode);
       const nodeId2 = keyRing2.getNodeId();
@@ -235,9 +255,11 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       const keyPair = {
         publicKey: Buffer.from(keyRing.keyPair.publicKey),
@@ -261,10 +283,12 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password,
-        privateKey: keyPair.privateKey,
+        options: {
+          privateKey: keyPair.privateKey,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(keyRing.keyPair).toStrictEqual(keyPair);
       // There cannot be a recovery code if private key was supplied
@@ -289,10 +313,12 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password: 'newpassword',
-        privateKeyPath: `${dataDir}/private-key.jwe`,
+        options: {
+          privateKeyPath: `${dataDir}/private-key.jwe`,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(keyRing.keyPair).toStrictEqual(keyPair);
       // There cannot be a recovery code if private key was supplied
@@ -313,10 +339,12 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         keysPath,
         password: 'newpassword',
-        privateKeyPath: `${dataDir}/private-key.jwk`,
+        options: {
+          privateKeyPath: `${dataDir}/private-key.jwk`,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       expect(keyRing.keyPair).toStrictEqual(keyPair);
       // There cannot be a recovery code if private key was supplied
@@ -336,9 +364,11 @@ describe(KeyRing.name, () => {
       keyRing = await KeyRing.createKeyRing({
         password,
         keysPath,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
     });
     afterAll(async () => {
@@ -376,9 +406,11 @@ describe(KeyRing.name, () => {
       const keyRing = await KeyRing.createKeyRing({
         password,
         keysPath,
+        options: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+        },
         logger,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
       });
       // Make a copy of the existing DB key
       const dbKey = Buffer.from(keyRing.dbKey);

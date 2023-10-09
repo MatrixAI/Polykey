@@ -42,6 +42,8 @@ import PolykeyAgent from '@/PolykeyAgent';
 import { NodeManager } from '@/nodes';
 import { publicKeyToJWK } from '@/keys/utils';
 import ClientService from '@/client/ClientService';
+import { sleep } from '@/utils';
+import * as keysEvents from '@/keys/events';
 import * as testsUtils from '../../utils';
 
 describe('keysCertsChainGet', () => {
@@ -570,10 +572,18 @@ describe('keysKeyPairRenew', () => {
     expect(mockedRefreshBuckets).toHaveBeenCalledTimes(0);
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
+    const certChangeEventProm = testsUtils.promFromEvent(
+      pkAgent.certManager,
+      keysEvents.EventCertManagerCertChange,
+    );
     // Run command
     await rpcClient.methods.keysKeyPairRenew({
       password: 'somepassphrase',
     });
+    // Awaiting change to propagate
+    await certChangeEventProm.p;
+    // Wait some time after event for domains to update
+    await sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
@@ -690,10 +700,18 @@ describe('keysKeyPairReset', () => {
     expect(mockedRefreshBuckets).not.toHaveBeenCalled();
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
+    const certChangeEventProm = testsUtils.promFromEvent(
+      pkAgent.certManager,
+      keysEvents.EventCertManagerCertChange,
+    );
     // Run command
     await rpcClient.methods.keysKeyPairReset({
       password: 'somepassphrase',
     });
+    // Awaiting change to propagate
+    await certChangeEventProm.p;
+    // Wait some time after event for domains to update
+    await sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property

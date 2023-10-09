@@ -1,11 +1,10 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimIdEncoded } from '@/ids';
-import type * as quicEvents from '@matrixai/quic/dist/events';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer } from '@matrixai/quic';
+import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import RPCServer from '@matrixai/rpc/dist/RPCServer';
@@ -95,7 +94,7 @@ describe('nodesClaimsGet', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -103,25 +102,37 @@ describe('nodesClaimsGet', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'serverStop',
+      quicEvents.EventQUICServerConnection.name,
+      handleConnection,
+    );
+    quicServer.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
       () => {
-        quicServer.removeEventListener('serverConnection', handleConnection);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICServerConnection.name,
+          handleConnection,
+        );
       },
       { once: true },
     );
@@ -130,10 +141,10 @@ describe('nodesClaimsGet', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
       logger,
     });
@@ -151,7 +162,7 @@ describe('nodesClaimsGet', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy(true);
+    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
     await sigchain.stop();
     await db.stop();
