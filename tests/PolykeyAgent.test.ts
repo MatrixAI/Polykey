@@ -11,6 +11,7 @@ import * as errors from '@/errors';
 import config from '@/config';
 import { promise } from '@/utils/index';
 import * as keysUtils from '@/keys/utils/index';
+import * as keysEvents from '@/keys/events';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -233,11 +234,13 @@ describe('PolykeyAgent', () => {
         logger,
       });
       const prom = promise<CertManagerChangeData>();
-      pkAgent.events.on(
-        PolykeyAgent.eventSymbols.CertManager,
-        async (data: CertManagerChangeData) => {
+      pkAgent.certManager.addEventListener(
+        keysEvents.EventCertManagerCertChange.name,
+        async (evt: keysEvents.EventCertManagerCertChange) => {
+          const data = evt.detail;
           prom.resolveP(data);
         },
+        { once: true },
       );
       await pkAgent.certManager.renewCertWithNewKeyPair(password);
 
@@ -266,11 +269,13 @@ describe('PolykeyAgent', () => {
         logger,
       });
       const prom = promise<CertManagerChangeData>();
-      pkAgent.events.on(
-        PolykeyAgent.eventSymbols.CertManager,
-        async (data: CertManagerChangeData) => {
+      pkAgent.certManager.addEventListener(
+        keysEvents.EventCertManagerCertChange.name,
+        async (evt: keysEvents.EventCertManagerCertChange) => {
+          const data = evt.detail;
           prom.resolveP(data);
         },
+        { once: true },
       );
       await pkAgent.certManager.resetCertWithNewKeyPair(password);
 
@@ -299,11 +304,13 @@ describe('PolykeyAgent', () => {
         logger,
       });
       const prom = promise<CertManagerChangeData>();
-      pkAgent.events.on(
-        PolykeyAgent.eventSymbols.CertManager,
-        async (data: CertManagerChangeData) => {
+      pkAgent.certManager.addEventListener(
+        keysEvents.EventCertManagerCertChange.name,
+        async (evt: keysEvents.EventCertManagerCertChange) => {
+          const data = evt.detail;
           prom.resolveP(data);
         },
+        { once: true },
       );
       await pkAgent.certManager.resetCertWithCurrentKeyPair();
 
