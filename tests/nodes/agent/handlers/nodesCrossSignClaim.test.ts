@@ -122,10 +122,10 @@ describe('nodesCrossSignClaim', () => {
         nodeManager,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfigServer = await tlsTestsUtils.createTLSConfig(
       keyRing.keyPair,
     );
@@ -192,7 +192,7 @@ describe('nodesCrossSignClaim', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
       streamFactory: async () => {
         return quicClient.connection.newStream();
@@ -222,7 +222,7 @@ describe('nodesCrossSignClaim', () => {
   });
   afterEach(async () => {
     await taskManager.stop();
-    await rpcServer.destroy({ force: true });
+    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
     await nodeGraph.stop();
     await sigchain.stop();

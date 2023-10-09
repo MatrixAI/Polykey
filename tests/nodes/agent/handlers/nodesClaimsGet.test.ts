@@ -141,7 +141,7 @@ describe('nodesClaimsGet', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
       streamFactory: async () => {
         return quicClient.connection.newStream();
@@ -162,7 +162,7 @@ describe('nodesClaimsGet', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy({ force: true });
+    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
     await sigchain.stop();
     await db.stop();

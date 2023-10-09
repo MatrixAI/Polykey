@@ -75,10 +75,10 @@ describe('nodesClosestLocalNode', () => {
         nodeGraph,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
@@ -140,7 +140,7 @@ describe('nodesClosestLocalNode', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
       streamFactory: async () => {
         return quicClient.connection.newStream();
@@ -161,7 +161,7 @@ describe('nodesClosestLocalNode', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy({ force: true });
+    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
     await nodeGraph.stop();
     await db.stop();

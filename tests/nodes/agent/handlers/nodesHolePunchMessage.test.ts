@@ -144,10 +144,10 @@ describe('nodesHolePunchMessage', () => {
         logger,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
@@ -206,7 +206,7 @@ describe('nodesHolePunchMessage', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
       streamFactory: async () => {
         return quicClient.connection.newStream();
@@ -232,7 +232,7 @@ describe('nodesHolePunchMessage', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy({ force: true });
+    await rpcServer.stop({ force: true });
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
     await quicServer.stop({ force: true });
