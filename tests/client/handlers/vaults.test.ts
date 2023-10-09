@@ -14,11 +14,11 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
+import { WebSocketClient } from '@matrixai/ws';
 import VaultManager from '@/vaults/VaultManager';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import GestaltGraph from '@/gestalts/GestaltGraph';
-import { WebSocketClient } from '@matrixai/ws';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import ACL from '@/acl/ACL';
 import {

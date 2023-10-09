@@ -19,7 +19,9 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
     actionsList: Array<GestaltAction>;
   }>
 > {
-  public handle = async(input: ClientRPCRequestParams<IdentityMessage>): Promise<
+  public handle = async (
+    input: ClientRPCRequestParams<IdentityMessage>,
+  ): Promise<
     ClientRPCResponseResult<{
       actionsList: Array<GestaltAction>;
     }>
@@ -51,7 +53,7 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
     return {
       actionsList: Object.keys(result) as Array<GestaltAction>,
     };
-  }
+  };
 }
 
 export { GestaltsActionsGetByIdentityHandler };

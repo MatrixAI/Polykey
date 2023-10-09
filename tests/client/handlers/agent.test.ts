@@ -7,12 +7,12 @@ import { DB } from '@matrixai/db';
 import { running } from '@matrixai/async-init';
 import { RPCClient } from '@matrixai/rpc';
 import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import { AgentLockAllHandler } from '@/client/handlers/agentLockAll';
 import { Session, SessionManager } from '@/sessions';
-import { WebSocketClient } from '@matrixai/ws';
 import {
   agentLockAll,
   agentStatus,
@@ -157,7 +157,7 @@ describe('agentStatus', () => {
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
-    await clientClient?.destroy({force: true});
+    await clientClient?.destroy({ force: true });
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -397,10 +397,11 @@ describe('agentUnlock', () => {
       },
       options: {
         host: localhost,
-        middlewareFactory: clientUtilsAuthMiddleware.authenticationMiddlewareServer(
-          sessionManager,
-          keyRing,
-        ),
+        middlewareFactory:
+          clientUtilsAuthMiddleware.authenticationMiddlewareServer(
+            sessionManager,
+            keyRing,
+          ),
       },
       logger: logger.getChild(ClientService.name),
     });

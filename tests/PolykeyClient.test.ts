@@ -3,11 +3,11 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { WebSocketClient } from '@matrixai/ws';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils/index';
-import { WebSocketClient } from '@matrixai/ws';
 
 describe('PolykeyClient', () => {
   const password = 'password';

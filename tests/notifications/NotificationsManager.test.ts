@@ -1,5 +1,5 @@
 import type { NodeId, NodeIdEncoded } from '@/ids/types';
-import type { Host, Port } from '@/network/types';
+import type { Host } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';

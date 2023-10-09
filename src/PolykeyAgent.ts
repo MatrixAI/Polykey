@@ -715,10 +715,10 @@ class PolykeyAgent {
       await this.status.finishStart({
         pid: process.pid,
         nodeId: this.keyRing.getNodeId(),
-        clientHost: this.clientServiceHost,
-        clientPort: this.clientServicePort,
-        agentHost: this.agentServiceHost,
-        agentPort: this.agentServicePort,
+        clientHost: this.clientService.host,
+        clientPort: this.clientService.port,
+        agentHost: this.nodeConnectionManager.host,
+        agentPort: this.nodeConnectionManager.port,
       });
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {

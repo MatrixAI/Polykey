@@ -1,5 +1,5 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host, Port } from '@/network/types';
+import type { Host } from '@/network/types';
 import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';

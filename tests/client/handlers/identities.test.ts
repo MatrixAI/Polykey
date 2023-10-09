@@ -16,12 +16,12 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import RPCClient from '@matrixai/rpc/dist/RPCClient';
+import { WebSocketClient } from '@matrixai/ws';
 import { encodeProviderIdentityId } from '@/ids';
 import Sigchain from '@/sigchain/Sigchain';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { IdentitiesAuthenticateHandler } from '@/client/handlers/identitiesAuthenticate';
-import { WebSocketClient } from '@matrixai/ws';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import * as validationErrors from '@/validation/errors';
 import {

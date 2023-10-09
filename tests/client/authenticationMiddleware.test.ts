@@ -12,6 +12,7 @@ import RPCClient from '@matrixai/rpc/dist/RPCClient';
 import { UnaryCaller } from '@matrixai/rpc/dist/callers';
 import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
 import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
@@ -19,7 +20,6 @@ import CertManager from '@/keys/CertManager';
 import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/client/utils';
 import * as authMiddleware from '@/client/utils/authenticationMiddleware';
-import { WebSocketClient } from '@matrixai/ws';
 import ClientService from '@/client/ClientService';
 import * as testsUtils from '../utils';
 

@@ -370,7 +370,7 @@ class NodeConnectionManager {
       minIdleTimeout: optionsDefaulted.connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
-    // setting up RPCServer
+    // Setting up RPCServer
     const rpcServer = new RPCServer({
       middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
         undefined,

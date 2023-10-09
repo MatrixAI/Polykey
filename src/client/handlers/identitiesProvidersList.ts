@@ -11,8 +11,8 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
     providerIds: Array<string>;
   }>
 > {
-  public handle = async(): Promise<
-    ClientRPCResponseResult< {
+  public handle = async (): Promise<
+    ClientRPCResponseResult<{
       providerIds: Array<string>;
     }>
   > => {
@@ -21,7 +21,7 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
     return {
       providerIds: Object.keys(providers),
     };
-  }
+  };
 }
 
 export { IdentitiesProvidersListHandler };

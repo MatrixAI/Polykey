@@ -9,11 +9,11 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { RPCServer, RPCClient } from '@matrixai/rpc';
+import { RPCClient } from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { NotificationsClearHandler } from '@/client/handlers/notificationsClear';
-import { WebSocketClient } from '@matrixai/ws';
 import {
   notificationsClear,
   notificationsRead,
@@ -143,7 +143,7 @@ describe('notificationsClear', () => {
     await nodeManager.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await clientService.stop({ force: true })
+    await clientService.stop({ force: true });
     await webSocketClient.destroy({ force: true });
     await taskManager.stop();
     await keyRing.stop();
@@ -297,7 +297,7 @@ describe('notificationsRead', () => {
     mockedReadNotifications.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await clientService.stop({ force: true })
+    await clientService.stop({ force: true });
     await webSocketClient.destroy({ force: true });
     await notificationsManager.stop();
     await sigchain.stop();
@@ -837,7 +837,7 @@ describe('notificationsSend', () => {
     mockedSendNotification.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await clientService.stop({ force: true })
+    await clientService.stop({ force: true });
     await webSocketClient.destroy({ force: true });
     await notificationsManager.stop();
     await sigchain.stop();

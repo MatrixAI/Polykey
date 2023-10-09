@@ -6,7 +6,7 @@ import type {
   VaultName,
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
-import type { Host, Port } from '@/network/types';
+import type { Host } from '@/network/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';

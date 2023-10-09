@@ -1,4 +1,4 @@
-import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { NodeId } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
