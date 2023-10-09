@@ -609,7 +609,6 @@ class PolykeyAgent {
   public async start({
     password,
     options = {},
-    workers,
     fresh = false,
   }: {
     password: string;

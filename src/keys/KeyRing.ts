@@ -16,7 +16,7 @@ import type {
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { FileSystem } from '../types';
+import type { FileSystem, ObjectEmpty } from '../types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import {
@@ -73,7 +73,8 @@ class KeyRing {
       fs,
       logger,
     });
-    await keyRing.start({ password, fresh });
+    // Spreading defaulted options to start to provide the keys overrides
+    await keyRing.start({ password, fresh, ...optionsDefaulted });
     logger.info(`Created ${this.name}`);
     return keyRing;
   }
@@ -135,8 +136,8 @@ class KeyRing {
     options: {
       password: string;
       fresh?: boolean;
-    } & ( // eslint-disable-next-line @typescript-eslint/ban-types
-      | {}
+    } & (
+      | ObjectEmpty
       | { recoveryCode: RecoveryCode }
       | { privateKey: PrivateKey }
       | { privateKeyPath: string }
