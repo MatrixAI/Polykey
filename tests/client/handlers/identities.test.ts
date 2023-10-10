@@ -164,7 +164,7 @@ describe('identitiesAuthenticate', () => {
         expect(message.response).toBeUndefined();
         const authRequest = message.request!;
         expect(authRequest.url).toBe('test.com');
-        expect(authRequest.dataMap['userCode']).toBe('randomTestCode');
+        expect(authRequest.dataMap['userCode']).toBe('randomtestcode');
       }
       if (step === 1) {
         expect(message.request).toBeUndefined();
