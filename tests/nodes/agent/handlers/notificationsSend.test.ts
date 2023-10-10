@@ -5,7 +5,7 @@ import type { Host } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import Logger, {formatting, LogLevel, StreamHandler} from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
@@ -30,7 +30,7 @@ import * as testUtils from '../../../utils/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('notificationsSend', () => {
-  const logger = new Logger('notificationsSend test', LogLevel.INFO, [
+  const logger = new Logger('notificationsSend test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -262,8 +262,8 @@ describe('notificationsSend', () => {
   afterEach(async () => {
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
+    await rpcServer.stop({ force: true });
     await notificationsManager.stop();
     await nodeManager.stop();
     await nodeConnectionManager.stop();
