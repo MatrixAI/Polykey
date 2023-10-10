@@ -1111,50 +1111,48 @@ describe(TaskManager.name, () => {
       lazy: true,
       logger,
     });
-
     // Edge case delays
     // same as 0 delay
-    await taskManager.scheduleTask({
+    const task0 = await taskManager.scheduleTask({
       handlerId,
       delay: NaN,
       lazy: true,
     });
-    // Same as max delay
-    await taskManager.scheduleTask({
+    // Same as max delay - never gets executed
+    const taskInfinite = await taskManager.scheduleTask({
       handlerId,
       delay: Infinity,
       lazy: true,
     });
-
     // Normal delays
-    await taskManager.scheduleTask({
+    const task500 = await taskManager.scheduleTask({
       handlerId,
       delay: 500,
       lazy: true,
     });
-    await taskManager.scheduleTask({
+    const task1000 = await taskManager.scheduleTask({
       handlerId,
       delay: 1000,
       lazy: true,
     });
-    await taskManager.scheduleTask({
+    const task1500 = await taskManager.scheduleTask({
       handlerId,
       delay: 1500,
       lazy: true,
     });
-
     expect(handler).toHaveBeenCalledTimes(0);
     await taskManager.startProcessing();
-    await sleep(250);
+    await task0.promise();
     expect(handler).toHaveBeenCalledTimes(1);
-    await sleep(500);
+    await task500.promise();
     expect(handler).toHaveBeenCalledTimes(2);
-    await sleep(500);
+    await task1000.promise();
     expect(handler).toHaveBeenCalledTimes(3);
-    await sleep(500);
+    await task1500.promise();
     expect(handler).toHaveBeenCalledTimes(4);
-
     await taskManager.stop();
+    expect(taskInfinite.status).toBe('scheduled');
+    expect(taskInfinite.deadline).toBe(Infinity);
   });
   test('queued tasks should be started in priority order', async () => {
     const handler = jest.fn();
