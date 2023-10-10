@@ -67,6 +67,7 @@ import * as gestaltsErrors from '@/gestalts/errors';
 import { sleep } from '@/utils/utils';
 import PolykeyAgent from '@/PolykeyAgent';
 import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
 import * as testUtils from '../../utils/utils';
@@ -175,6 +176,7 @@ describe('gestaltsActionsByIdentity', () => {
         gestaltsActionsUnsetByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -331,6 +333,7 @@ describe('gestaltsActionsByNode', () => {
         gestaltsActionsUnsetByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -520,6 +523,7 @@ describe('gestaltsDiscoverByIdentity', () => {
         gestaltsDiscoveryByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -696,6 +700,7 @@ describe('gestaltsDiscoverByNode', () => {
         gestaltsDiscoveryByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -808,6 +813,7 @@ describe('gestaltsGestaltGetByIdentity', () => {
         gestaltsGestaltGetByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -957,6 +963,7 @@ describe('gestaltsGestaltGetByNode', () => {
         gestaltsGestaltGetByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1104,6 +1111,7 @@ describe('gestaltsGestaltList', () => {
         gestaltsGestaltList,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1337,6 +1345,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltsGestaltTrustByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1399,6 +1408,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltsGestaltTrustByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1458,6 +1468,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltsGestaltTrustByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1509,6 +1520,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltsGestaltTrustByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1575,6 +1587,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
         gestaltsGestaltTrustByIdentity,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1837,6 +1850,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         gestaltsGestaltTrustByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1881,6 +1895,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         gestaltsGestaltTrustByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1924,6 +1939,7 @@ describe('gestaltsGestaltTrustByNode', () => {
         gestaltsGestaltTrustByNode,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

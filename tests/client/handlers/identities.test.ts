@@ -50,6 +50,7 @@ import * as nodesUtils from '@/nodes/utils';
 import Token from '@/tokens/Token';
 import * as identitiesErrors from '@/identities/errors';
 import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testUtils from '../../utils';
 import * as testsUtils from '../../utils';
 import TestProvider from '../../identities/TestProvider';
@@ -147,6 +148,7 @@ describe('identitiesAuthenticate', () => {
         identitiesAuthenticate,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -211,6 +213,7 @@ describe('identitiesAuthenticate', () => {
         identitiesAuthenticate,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -312,6 +315,7 @@ describe('identitiesAuthenticatedGet', () => {
         identitiesAuthenticatedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -376,6 +380,7 @@ describe('identitiesAuthenticatedGet', () => {
         identitiesAuthenticatedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -428,6 +433,7 @@ describe('identitiesAuthenticatedGet', () => {
         identitiesAuthenticatedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -504,6 +510,7 @@ describe('identitiesAuthenticatedGet', () => {
         identitiesAuthenticatedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -686,6 +693,7 @@ describe('identitiesClaim', () => {
         identitiesClaim,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -732,6 +740,7 @@ describe('identitiesClaim', () => {
         identitiesClaim,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -849,6 +858,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -934,6 +944,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1016,6 +1027,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1106,6 +1118,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1197,6 +1210,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1276,6 +1290,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1362,6 +1377,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1452,6 +1468,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1524,6 +1541,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1608,6 +1626,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1699,6 +1718,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1777,6 +1797,7 @@ describe('identitiesInfoConnectedGet', () => {
         identitiesInfoConnectedGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1884,6 +1905,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1949,6 +1971,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2036,6 +2059,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2117,6 +2141,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2183,6 +2208,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2264,6 +2290,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2353,6 +2380,7 @@ describe('identitiesInfoGet', () => {
         identitiesInfoGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2543,6 +2571,7 @@ describe('identitiesInvite', () => {
         identitiesInvite,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2650,6 +2679,7 @@ describe('identitiesProvidersList', () => {
         identitiesProvidersList,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -2760,6 +2790,7 @@ describe('identitiesTokenPutDeleteGet', () => {
         identitiesTokenGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

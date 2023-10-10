@@ -357,6 +357,7 @@ class NodeConnection<M extends ClientManifest> {
       streamFactory: async (_ctx) => {
         return quicConnection.newStream();
       },
+      toError: networkUtils.toError,
       logger: logger.getChild(RPCClient.name),
     });
     // Creating NodeConnection

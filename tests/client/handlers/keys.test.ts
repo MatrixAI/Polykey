@@ -44,6 +44,7 @@ import { publicKeyToJWK } from '@/keys/utils';
 import ClientService from '@/client/ClientService';
 import { sleep } from '@/utils';
 import * as keysEvents from '@/keys/events';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 
 describe('keysCertsChainGet', () => {
@@ -149,6 +150,7 @@ describe('keysCertsChainGet', () => {
         keysCertsChainGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -263,6 +265,7 @@ describe('keysCertsGet', () => {
         keysCertsGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -358,6 +361,7 @@ describe('keysEncryptDecrypt', () => {
         keysDecrypt,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -455,6 +459,7 @@ describe('keysKeyPair', () => {
         keysKeyPair,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -552,6 +557,7 @@ describe('keysKeyPairRenew', () => {
         keysKeyPairRenew,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -680,6 +686,7 @@ describe('keysKeyPairReset', () => {
         keysKeyPairReset,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -817,6 +824,7 @@ describe('keysPasswordChange', () => {
         keysPasswordChange,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -913,6 +921,7 @@ describe('keysPublicKey', () => {
         keysPublicKey,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1015,6 +1024,7 @@ describe('keysSignVerify', () => {
         keysVerify,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

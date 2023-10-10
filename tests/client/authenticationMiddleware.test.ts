@@ -21,6 +21,7 @@ import { Session, SessionManager } from '@/sessions';
 import * as clientRPCUtils from '@/client/utils';
 import * as authMiddleware from '@/client/utils/authenticationMiddleware';
 import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../utils';
 
 describe('authenticationMiddleware', () => {
@@ -134,6 +135,7 @@ describe('authenticationMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),

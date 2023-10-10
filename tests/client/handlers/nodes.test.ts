@@ -14,6 +14,7 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import { NodesAddHandler } from '@/client/handlers/nodesAdd';
 import * as nodesUtils from '@/nodes/utils';
+import * as networkUtils from '@/network/utils';
 import NodeManager from '@/nodes/NodeManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -162,6 +163,7 @@ describe('nodesAdd', () => {
         nodesAdd,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -210,6 +212,7 @@ describe('nodesAdd', () => {
         nodesAdd,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -421,6 +424,7 @@ describe('nodesClaim', () => {
         nodesClaim,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -460,6 +464,7 @@ describe('nodesClaim', () => {
         nodesClaim,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -592,6 +597,7 @@ describe('nodesFind', () => {
         nodesFind,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -630,6 +636,7 @@ describe('nodesFind', () => {
         nodesFind,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -768,6 +775,7 @@ describe('nodesPing', () => {
         nodesPing,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -806,6 +814,7 @@ describe('nodesPing', () => {
         nodesPing,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -844,6 +853,7 @@ describe('nodesPing', () => {
         nodesPing,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

@@ -12,6 +12,8 @@ import * as errors from './errors';
 import * as events from './events';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
+import * as networkUtils from './network/utils';
+
 let idGen: IdGen;
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -67,6 +69,7 @@ class PolykeyClient {
         clientUtilsMiddleware.middlewareClient(session),
         parserBufferByteLimit,
       ),
+      toError: networkUtils.toError,
       streamKeepAliveTimeoutTime,
       logger: logger.getChild(RPCClient.name),
       idGen,

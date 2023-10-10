@@ -30,6 +30,7 @@ import CertManager from '@/keys/CertManager';
 import * as clientUtilsAuthMiddleware from '@/client/utils/authenticationMiddleware';
 import * as clientUtils from '@/client/utils';
 import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 
 describe('agentLockAll', () => {
@@ -115,6 +116,7 @@ describe('agentLockAll', () => {
         agentLockAll,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -191,6 +193,7 @@ describe('agentStatus', () => {
         agentStatus,
       },
       streamFactory: () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('RPCClient'),
     });
     // Doing the test
@@ -299,6 +302,7 @@ describe('agentStop', () => {
         agentStop,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -421,6 +425,7 @@ describe('agentUnlock', () => {
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         clientUtilsAuthMiddleware.authenticationMiddlewareClient(session),
       ),
+      toError: networkUtils.toError,
       logger,
     });
 

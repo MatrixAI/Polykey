@@ -30,6 +30,7 @@ import TaskManager from '@/tasks/TaskManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
 
@@ -181,6 +182,7 @@ describe('notificationsClear', () => {
         notificationsClear,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -341,6 +343,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -407,6 +410,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -490,6 +494,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -573,6 +578,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -636,6 +642,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -712,6 +719,7 @@ describe('notificationsRead', () => {
         notificationsRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -880,6 +888,7 @@ describe('notificationsSend', () => {
         notificationsSend,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

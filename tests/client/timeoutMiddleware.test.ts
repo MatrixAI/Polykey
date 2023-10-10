@@ -22,6 +22,7 @@ import CertManager from '@/keys/CertManager';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
 import { promise } from '@/utils';
 import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../utils';
 
 describe('timeoutMiddleware', () => {
@@ -128,6 +129,7 @@ describe('timeoutMiddleware', () => {
         >(),
       },
       streamFactory: () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
@@ -147,7 +149,7 @@ describe('timeoutMiddleware', () => {
       () => {},
       () => {},
     );
-    await clientService.destroy({ force: true });
+    await clientService.stop({ force: true });
   });
   test('client side timeout updates', async () => {
     // Setup
@@ -194,6 +196,7 @@ describe('timeoutMiddleware', () => {
         >(),
       },
       streamFactory: async () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),

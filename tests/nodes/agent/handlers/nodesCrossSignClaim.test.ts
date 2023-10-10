@@ -25,6 +25,7 @@ import * as claimsUtils from '@/claims/utils';
 import { Token } from '@/tokens';
 import * as nodesUtils from '@/nodes/utils';
 import { generateKeyPair } from '@/keys/utils/generate';
+import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('nodesCrossSignClaim', () => {
@@ -123,6 +124,7 @@ describe('nodesCrossSignClaim', () => {
       }),
     };
     rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
     await rpcServer.start({ manifest: serverManifest });
@@ -197,6 +199,7 @@ describe('nodesCrossSignClaim', () => {
       streamFactory: async () => {
         return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     clientKeyPair = generateKeyPair();

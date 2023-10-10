@@ -83,6 +83,7 @@ describe(`${NodeConnection.name}`, () => {
     });
     rpcServer = new RPCServer({
       handlerTimeoutTime: 5000,
+      fromError: networkUtils.fromError,
       logger: logger.getChild(`${RPCServer.name}`),
     });
     await rpcServer.start({ manifest: {} });

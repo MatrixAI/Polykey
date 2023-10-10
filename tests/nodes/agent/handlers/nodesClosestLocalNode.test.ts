@@ -14,6 +14,7 @@ import { nodesClosestLocalNodesGet } from '@/nodes/agent/callers';
 import NodesClosestLocalNodesGet from '@/nodes/agent/handlers/NodesClosestLocalNodesGet';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as keysUtils from '@/keys/utils/index';
+import * as networkUtils from '@/network/utils';
 import * as testNodesUtils from '../../../nodes/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 
@@ -76,6 +77,7 @@ describe('nodesClosestLocalNode', () => {
       }),
     };
     rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
     await rpcServer.start({ manifest: serverManifest });
@@ -145,6 +147,7 @@ describe('nodesClosestLocalNode', () => {
       streamFactory: async () => {
         return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({

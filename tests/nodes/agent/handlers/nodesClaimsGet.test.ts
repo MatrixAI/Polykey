@@ -15,6 +15,7 @@ import { nodesClaimsGet } from '@/nodes/agent/callers';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
 import * as keysUtils from '@/keys/utils/index';
+import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 import * as testNodesUtils from '../../../nodes/utils';
 
@@ -77,6 +78,7 @@ describe('nodesClaimsGet', () => {
       }),
     };
     rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
     await rpcServer.start({ manifest: serverManifest });
@@ -146,6 +148,7 @@ describe('nodesClaimsGet', () => {
       streamFactory: async () => {
         return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({

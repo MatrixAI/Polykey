@@ -5,7 +5,7 @@ import type { Host } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, {formatting, LogLevel, StreamHandler} from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
@@ -165,8 +165,8 @@ describe('notificationsSend', () => {
       }),
     };
     rpcServer = new RPCServer({
-      logger,
       fromError: networkUtils.fromError,
+      logger,
     });
     await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);

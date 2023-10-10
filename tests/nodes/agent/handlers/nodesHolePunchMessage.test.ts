@@ -24,6 +24,7 @@ import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import * as keysUtils from '@/keys/utils/index';
+import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('nodesHolePunchMessage', () => {
@@ -145,6 +146,7 @@ describe('nodesHolePunchMessage', () => {
       }),
     };
     rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
     await rpcServer.start({ manifest: serverManifest });
@@ -211,6 +213,7 @@ describe('nodesHolePunchMessage', () => {
       streamFactory: async () => {
         return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({

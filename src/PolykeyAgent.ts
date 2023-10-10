@@ -824,7 +824,7 @@ class PolykeyAgent {
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
-    await this.clientService.destroy({ force: true });
+    await this.clientService.destroy();
     await this.identitiesManager.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();

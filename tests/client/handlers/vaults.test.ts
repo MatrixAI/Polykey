@@ -63,6 +63,7 @@ import ClientService from '@/client/ClientService';
 import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 
 describe('vaultsClone', () => {
@@ -260,6 +261,7 @@ describe('vaultsCreateDeleteList', () => {
         vaultsList,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -402,6 +404,7 @@ describe('vaultsLog', () => {
         vaultsLog,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -446,6 +449,7 @@ describe('vaultsLog', () => {
         vaultsLog,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -490,6 +494,7 @@ describe('vaultsLog', () => {
         vaultsLog,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -643,6 +648,7 @@ describe('vaultsPermissionSetUnsetGet', () => {
         vaultsPermissionUnset,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -920,6 +926,7 @@ describe('vaultsRename', () => {
         vaultsRename,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1130,6 +1137,7 @@ describe('vaultsSecretsEdit', () => {
         vaultsSecretsEdit,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1245,6 +1253,7 @@ describe('vaultsSecretsMkdir', () => {
         vaultsSecretsMkdir,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1364,6 +1373,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
         vaultsSecretsGet,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1496,6 +1506,7 @@ describe('vaultsSecretsNewDirList', () => {
         vaultsSecretsList,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1619,6 +1630,7 @@ describe('vaultsSecretsRename', () => {
         vaultsSecretsRename,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1735,6 +1747,7 @@ describe('vaultsSecretsStat', () => {
         vaultsSecretsStat,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1857,6 +1870,7 @@ describe('vaultsVersion', () => {
         vaultsVersion,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -1915,6 +1929,7 @@ describe('vaultsVersion', () => {
         vaultsVersion,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

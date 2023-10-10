@@ -6,17 +6,15 @@ import type {
 } from '@matrixai/rpc';
 import type { TLSConfig } from '../network/types';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  status,
-  destroyed,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { running, status } from '@matrixai/async-init';
 import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
 import { RPCServer } from '@matrixai/rpc';
 import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import * as events from './events';
 import * as errors from './errors';
 import config from '../config';
+import * as networkUtils from '../network/utils';
 
 interface ClientService extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -74,6 +72,7 @@ class ClientService {
         middlewareFactory,
         rpcParserBufferSize,
       ),
+      fromError: networkUtils.fromError,
       logger: logger.getChild(RPCServer.name),
     });
 
@@ -135,14 +134,11 @@ class ClientService {
   ) => {
     const conn = evt.detail;
     const streamHandler = (evt: wsEvents.EventWebSocketConnectionStream) => {
-      if (
-        this.rpcServer[destroyed] ||
-        this.rpcServer[status] === 'destroying' ||
-        this.rpcServer[status] === 'stopping'
-      ) {
+      const stream = evt.detail;
+      if (!this.rpcServer[running] || this.rpcServer[status] === 'stopping') {
+        stream.cancel(Error('TMP RPCServer not running'));
         return;
       }
-      const stream = evt.detail;
       this.rpcServer.handleStream(stream);
     };
     conn.addEventListener(
@@ -188,16 +184,17 @@ class ClientService {
     force = false,
   }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.rpcServer.stop({ force: true });
     await this.webSocketServer.stop({ force });
+    this.webSocketServer.removeEventListener(
+      wsEvents.EventWebSocketServerConnection.name,
+      this.handleEventWebSocketServerConnection,
+    );
+    await this.rpcServer.stop({ force: true });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy({
-    force = false,
-  }: { force?: boolean } = {}): Promise<void> {
+  public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.stop({ force });
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
