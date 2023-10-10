@@ -10,10 +10,12 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Timer } from '@matrixai/timer';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
-import { UnaryCaller } from '@matrixai/rpc/dist/callers';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import {
+  RPCClient,
+  UnaryCaller,
+  UnaryHandler,
+  middleware as rpcUtilsMiddleware,
+} from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';

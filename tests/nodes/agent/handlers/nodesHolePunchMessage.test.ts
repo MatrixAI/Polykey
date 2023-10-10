@@ -11,8 +11,7 @@ import {
   events as quicEvents,
 } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
-import RPCServer from '@matrixai/rpc/dist/RPCServer';
+import { RPCClient, RPCServer } from '@matrixai/rpc';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';

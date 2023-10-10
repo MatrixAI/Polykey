@@ -8,17 +8,19 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
-import { UnaryCaller } from '@matrixai/rpc/dist/callers';
-import { UnaryHandler } from '@matrixai/rpc/dist/handlers';
-import * as rpcUtilsMiddleware from '@matrixai/rpc/dist/middleware';
+import {
+  RPCClient,
+  UnaryCaller,
+  UnaryHandler,
+  middleware as rpcUtilsMiddleware,
+} from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
 import { Session, SessionManager } from '@/sessions';
-import * as clientRPCUtils from '@/client/utils';
+import * as clientUtils from '@/client/utils';
 import * as authMiddleware from '@/client/utils/authenticationMiddleware';
 import ClientService from '@/client/ClientService';
 import * as networkUtils from '@/network/utils';
@@ -145,7 +147,7 @@ describe('authenticationMiddleware', () => {
     // Doing the test
     const result = await rpcClient.methods.testHandler({
       metadata: {
-        authorization: clientRPCUtils.encodeAuthFromPassword(password),
+        authorization: clientUtils.encodeAuthFromPassword(password),
       },
     });
     expect(result).toMatchObject({

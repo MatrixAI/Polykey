@@ -15,7 +15,7 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
+import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import { encodeProviderIdentityId } from '@/ids';
 import Sigchain from '@/sigchain/Sigchain';
