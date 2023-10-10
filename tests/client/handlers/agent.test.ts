@@ -33,7 +33,7 @@ import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 
 describe('agentLockAll', () => {
-  const logger = new Logger('agentLockAll test', LogLevel.INFO, [
+  const logger = new Logger('agentLockAll test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),

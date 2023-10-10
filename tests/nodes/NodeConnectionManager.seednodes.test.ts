@@ -24,7 +24,7 @@ import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} seednodes test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.INFO, [
+  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
