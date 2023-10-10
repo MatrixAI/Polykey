@@ -38,7 +38,7 @@ import * as keysEvents from './keys/events';
 import * as nodesUtils from './nodes/utils';
 import * as workersUtils from './workers/utils';
 import TaskManager from './tasks/TaskManager';
-import { serverManifest as clientServerManifest } from './client/handlers';
+import { serverManifest } from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
 import ClientService from './client/ClientService';
 
@@ -382,7 +382,7 @@ class PolykeyAgent {
       }
       pkAgentProm = utils.promise();
       clientService = await ClientService.createClientService({
-        manifest: clientServerManifest({
+        manifest: serverManifest({
           acl: acl,
           certManager: certManager,
           db: db,
