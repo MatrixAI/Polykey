@@ -4,14 +4,17 @@ import type { Address, Host, Hostname, Port } from './types';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { NodeAddress } from '../nodes/types';
+import type { JSONValue } from '../types';
 import type { X509Certificate } from '@peculiar/x509';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import { CryptoError } from '@matrixai/quic/dist/native';
 import { utils as quicUtils } from '@matrixai/quic';
+import { AbstractError } from '@matrixai/errors';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import * as errors from '../errors';
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
@@ -406,6 +409,199 @@ async function resolveHostnames(
   return final;
 }
 
+// TODO: review and fix the `toError` and `fromError` code here.
+//  Right now it's very basic and need fleshing out.
+
+/**
+ * Replacer function for serialising errors over RPC (used by `JSON.stringify`
+ * in `fromError`)
+ * Polykey errors are handled by their inbuilt `toJSON` method , so this only
+ * serialises other errors
+ */
+function replacer(key: string, value: any): any {
+  if (value instanceof AggregateError) {
+    // AggregateError has an `errors` property
+    return {
+      type: value.constructor.name,
+      data: {
+        errors: value.errors,
+        message: value.message,
+        stack: value.stack,
+      },
+    };
+  } else if (value instanceof Error) {
+    // If it's some other type of error then only serialise the message and
+    // stack (and the type of the error)
+    return {
+      type: value.name,
+      data: {
+        message: value.message,
+        stack: value.stack,
+      },
+    };
+  } else {
+    // If it's not an error then just leave as is
+    return value;
+  }
+}
+
+/**
+ * The same as `replacer`, however this will additionally filter out any
+ * sensitive data that should not be sent over the network when sending to an
+ * agent (as opposed to a client)
+ */
+function sensitiveReplacer(key: string, value: any) {
+  if (key === 'stack') {
+    return;
+  } else {
+    return replacer(key, value);
+  }
+}
+
+/**
+ * Error constructors for non-Polykey errors
+ * Allows these errors to be reconstructed from RPC metadata
+ */
+const standardErrors = {
+  Error,
+  TypeError,
+  SyntaxError,
+  ReferenceError,
+  EvalError,
+  RangeError,
+  URIError,
+  AggregateError,
+  AbstractError,
+};
+
+/**
+ * Reviver function for deserialising errors sent over RPC (used by
+ * `JSON.parse` in `toError`)
+ * The final result returned will always be an error - if the deserialised
+ * data is of an unknown type then this will be wrapped as an
+ * `ErrorPolykeyUnknown`
+ */
+function reviver(key: string, value: any): any {
+  // If the value is an error then reconstruct it
+  if (
+    typeof value === 'object' &&
+    typeof value.type === 'string' &&
+    typeof value.data === 'object'
+  ) {
+    try {
+      let eClass = errors[value.type];
+      if (eClass != null) return eClass.fromJSON(value);
+      eClass = standardErrors[value.type];
+      if (eClass != null) {
+        let e;
+        switch (eClass) {
+          case AbstractError:
+            return eClass.fromJSON();
+          case AggregateError:
+            if (
+              !Array.isArray(value.data.errors) ||
+              typeof value.data.message !== 'string' ||
+              ('stack' in value.data && typeof value.data.stack !== 'string')
+            ) {
+              throw new TypeError(`cannot decode JSON to ${value.type}`);
+            }
+            e = new eClass(value.data.errors, value.data.message);
+            e.stack = value.data.stack;
+            break;
+          default:
+            if (
+              typeof value.data.message !== 'string' ||
+              ('stack' in value.data && typeof value.data.stack !== 'string')
+            ) {
+              throw new TypeError(`Cannot decode JSON to ${value.type}`);
+            }
+            e = new eClass(value.data.message);
+            e.stack = value.data.stack;
+            break;
+        }
+        return e;
+      }
+    } catch (e) {
+      // If `TypeError` which represents decoding failure
+      // then return value as-is
+      // Any other exception is a bug
+      if (!(e instanceof TypeError)) {
+        throw e;
+      }
+    }
+    // Other values are returned as-is
+    return value;
+  } else if (key === '') {
+    // Root key will be ''
+    // Reaching here means the root JSON value is not a valid exception
+    // Therefore ErrorPolykeyUnknown is only ever returned at the top-level
+    return new errors.ErrorPolykeyUnknown('Unknown error JSON', {
+      data: {
+        json: value,
+      },
+    });
+  } else {
+    return value;
+  }
+}
+
+function fromError(error: any) {
+  switch (typeof error) {
+    case 'symbol':
+    case 'bigint':
+    case 'function':
+      throw TypeError(`${error} cannot be serialized`);
+  }
+
+  if (error instanceof Error) {
+    const cause = fromError(error.cause);
+    const timestamp: string = ((error as any).timestamp ?? new Date()).toJSON();
+    if (error instanceof AbstractError) {
+      return error.toJSON();
+    } else if (error instanceof AggregateError) {
+      // AggregateError has an `errors` property
+      return {
+        type: error.constructor.name,
+        message: error.message,
+        data: {
+          errors: error.errors.map(fromError),
+          stack: error.stack,
+          timestamp,
+          cause,
+        },
+      };
+    }
+
+    // If it's some other type of error then only serialise the message and
+    // stack (and the type of the error)
+    return {
+      type: error.name,
+      message: error.message,
+      data: {
+        stack: error.stack,
+        timestamp,
+        cause,
+      },
+    };
+  }
+}
+
+function toError(errorData: JSONValue): Error {
+  if (
+    errorData != null &&
+    typeof errorData === 'object' &&
+    'type' in errorData &&
+    typeof errorData.type === 'string' &&
+    'data' in errorData &&
+    typeof errorData.data === 'object'
+  ) {
+    const eClass = errors[errorData.type];
+    const err = eClass.fromJSON(errorData);
+    if (eClass != null) return err;
+  }
+  return Error('TMP Some error, this needs to be fleshed out');
+}
+
 export {
   isHost,
   isHostWildcard,
@@ -419,4 +615,6 @@ export {
   verifyServerCertificateChain,
   verifyClientCertificateChain,
   resolveHostnames,
+  fromError,
+  toError,
 };

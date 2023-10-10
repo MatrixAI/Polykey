@@ -38,8 +38,7 @@ import {
   utils as quicUtils,
 } from '@matrixai/quic';
 import { running, status } from '@matrixai/async-init';
-import { RPCServer } from '@matrixai/rpc';
-import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import { RPCServer, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -376,6 +375,7 @@ class NodeConnectionManager {
         undefined,
         this.rpcParserBufferSize,
       ),
+      fromError: networkUtils.fromError,
       handlerTimeoutTime: this.rpcCallTimeoutTime,
       logger: this.logger.getChild(RPCServer.name),
     });

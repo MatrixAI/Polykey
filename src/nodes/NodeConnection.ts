@@ -272,6 +272,7 @@ class NodeConnection<M extends ClientManifest> {
       streamFactory: async () => {
         return quicConnection.newStream();
       },
+      toError: networkUtils.toError,
       logger: logger.getChild(RPCClient.name),
     });
     if (validatedNodeId == null) never();

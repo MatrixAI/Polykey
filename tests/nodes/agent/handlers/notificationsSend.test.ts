@@ -8,8 +8,7 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import RPCClient from '@matrixai/rpc/dist/RPCClient';
-import RPCServer from '@matrixai/rpc/dist/RPCServer';
+import { RPCClient, RPCServer } from '@matrixai/rpc';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -24,13 +23,14 @@ import { Token } from '@/tokens';
 import * as notificationsErrors from '@/notifications/errors';
 import * as validationErrors from '@/validation/errors';
 import * as keysUtils from '@/keys/utils/index';
+import * as networkUtils from '@/network/utils';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import * as testUtils from '../../../utils/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('notificationsSend', () => {
-  const logger = new Logger('notificationsSend test', LogLevel.WARN, [
+  const logger = new Logger('notificationsSend test', LogLevel.INFO, [
     new StreamHandler(),
   ]);
   const password = 'password';
@@ -166,6 +166,7 @@ describe('notificationsSend', () => {
     };
     rpcServer = new RPCServer({
       logger,
+      fromError: networkUtils.fromError,
     });
     await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
@@ -237,6 +238,7 @@ describe('notificationsSend', () => {
       streamFactory: async () => {
         return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
