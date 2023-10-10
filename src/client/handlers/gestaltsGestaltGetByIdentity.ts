@@ -3,8 +3,8 @@ import type { GestaltMessage, IdentityMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
-import { UnaryHandler } from '../../rpc/handlers';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -17,9 +17,9 @@ class GestaltsGestaltGetByIdentityHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<GestaltMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult<GestaltMessage>> {
+  ): Promise<ClientRPCResponseResult<GestaltMessage>> => {
     const { db, gestaltGraph } = this.container;
     const {
       providerId,
@@ -68,7 +68,7 @@ class GestaltsGestaltGetByIdentityHandler extends UnaryHandler<
       }
     }
     return gestaltMessage;
-  }
+  };
 }
 
 export { GestaltsGestaltGetByIdentityHandler };

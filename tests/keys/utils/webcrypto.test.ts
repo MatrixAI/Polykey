@@ -1,14 +1,8 @@
 import { testProp } from '@fast-check/jest';
-import webcrypto, {
-  importKeyPair,
-  exportKeyPair,
-} from '@/keys/utils/webcrypto';
+import { importKeyPair, exportKeyPair } from '@/keys/utils/webcrypto';
 import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/webcrypto', () => {
-  test('webcrypto polyfill is monkey patched globally', async () => {
-    expect(globalThis.crypto).toBe(webcrypto);
-  });
   testProp(
     'import and export ed25519 keypair',
     [testsKeysUtils.keyPairArb],

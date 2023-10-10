@@ -39,11 +39,13 @@ describe(CertManager.name, () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      privateKey,
+      options: {
+        privateKey,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     dbPath = `${dataDir}/db`;
     db = await DB.createDB({

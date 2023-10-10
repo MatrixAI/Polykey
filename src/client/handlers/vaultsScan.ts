@@ -2,10 +2,10 @@ import type { NodeIdMessage, VaultsScanMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
+import { ServerHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { ServerHandler } from '../../rpc/handlers';
 
 class VaultsScanHandler extends ServerHandler<
   {

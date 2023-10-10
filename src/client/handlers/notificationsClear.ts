@@ -1,7 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class NotificationsClearHandler extends UnaryHandler<
   {
@@ -11,13 +11,13 @@ class NotificationsClearHandler extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public async handle(): Promise<ClientRPCResponseResult> {
+  public handle = async (): Promise<ClientRPCResponseResult> => {
     const { db, notificationsManager } = this.container;
     await db.withTransactionF((tran) =>
       notificationsManager.clearNotifications(tran),
     );
     return {};
-  }
+  };
 }
 
 export { NotificationsClearHandler };

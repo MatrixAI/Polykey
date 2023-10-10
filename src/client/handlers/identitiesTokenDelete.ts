@@ -3,7 +3,7 @@ import type { IdentityMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../ids/index';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -16,9 +16,9 @@ class IdentitiesTokenDeleteHandler extends UnaryHandler<
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<IdentityMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { identitiesManager, db } = this.container;
     const {
       providerId,
@@ -43,7 +43,7 @@ class IdentitiesTokenDeleteHandler extends UnaryHandler<
       identitiesManager.delToken(providerId, identityId, tran),
     );
     return {};
-  }
+  };
 }
 
 export { IdentitiesTokenDeleteHandler };

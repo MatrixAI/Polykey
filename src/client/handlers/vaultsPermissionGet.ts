@@ -6,10 +6,10 @@ import type ACL from '../../acl/ACL';
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId, NodeIdEncoded } from '../../ids';
 import { IdInternal } from '@matrixai/id';
+import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
-import { ServerHandler } from '../../rpc/handlers';
 
 class VaultsPermissionGetHandler extends ServerHandler<
   {

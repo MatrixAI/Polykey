@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids/index';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type ACL from '../../acl/ACL';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -18,9 +18,9 @@ class IdentitiesInviteHandler extends UnaryHandler<
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<ClaimNodeMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { acl, notificationsManager, logger } = this.container;
     const {
       nodeId,
@@ -48,7 +48,7 @@ class IdentitiesInviteHandler extends UnaryHandler<
     // Allowing claims from that gestalt
     await acl.setNodeAction(nodeId, 'claim');
     return {};
-  }
+  };
 }
 
 export { IdentitiesInviteHandler };

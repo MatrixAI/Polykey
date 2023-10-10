@@ -9,13 +9,11 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { RPCClient } from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import { NotificationsClearHandler } from '@/client/handlers/notificationsClear';
-import RPCClient from '@/rpc/RPCClient';
-import WebSocketServer from '@/websockets/WebSocketServer';
-import WebSocketClient from '@/websockets/WebSocketClient';
 import {
   notificationsClear,
   notificationsRead,
@@ -23,6 +21,7 @@ import {
   notificationsSend,
   NotificationsSendHandler,
 } from '@/client';
+import ClientService from '@/client/ClientService';
 import * as nodesUtils from '@/nodes/utils';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
@@ -31,6 +30,7 @@ import TaskManager from '@/tasks/TaskManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
 
@@ -41,12 +41,12 @@ describe('notificationsClear', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -68,10 +68,12 @@ describe('notificationsClear', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -103,8 +105,10 @@ describe('notificationsClear', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -118,7 +122,7 @@ describe('notificationsClear', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -140,8 +144,8 @@ describe('notificationsClear', () => {
     await nodeManager.stop();
     await nodeConnectionManager.stop();
     await nodeGraph.stop();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await taskManager.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
@@ -151,32 +155,34 @@ describe('notificationsClear', () => {
   });
   test('puts/deletes/gets tokens', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsClear: new NotificationsClearHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsClear,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -192,7 +198,7 @@ describe('notificationsRead', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   const nodeIdSender = testNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const nodeIdReceiverEncoded = 'test';
@@ -200,7 +206,7 @@ describe('notificationsRead', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -223,10 +229,12 @@ describe('notificationsRead', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -258,8 +266,10 @@ describe('notificationsRead', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -273,7 +283,7 @@ describe('notificationsRead', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -289,8 +299,8 @@ describe('notificationsRead', () => {
     mockedReadNotifications.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await notificationsManager.stop();
     await sigchain.stop();
     await nodeGraph.stop();
@@ -307,32 +317,33 @@ describe('notificationsRead', () => {
   });
   test('reads a single notification', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -373,32 +384,33 @@ describe('notificationsRead', () => {
   });
   test('reads unread notifications', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -456,32 +468,33 @@ describe('notificationsRead', () => {
   });
   test('reads notifications in reverse order', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -539,32 +552,33 @@ describe('notificationsRead', () => {
   });
   test('reads gestalt invite notifications', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -602,32 +616,33 @@ describe('notificationsRead', () => {
   });
   test('reads vault share notifications', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -678,32 +693,33 @@ describe('notificationsRead', () => {
   });
   test('reads no notifications', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsRead: new NotificationsReadHandler({
           db,
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsRead,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -732,12 +748,12 @@ describe('notificationsSend', () => {
     ),
   ]);
   const password = 'helloWorld';
-  const host = '127.0.0.1' as Host;
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -760,10 +776,12 @@ describe('notificationsSend', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
@@ -794,8 +812,10 @@ describe('notificationsSend', () => {
       keyRing,
       nodeGraph,
       tlsConfig: {} as TLSConfig,
-      connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -809,7 +829,7 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host });
+    await nodeConnectionManager.start({ host: localhost as Host });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -825,8 +845,8 @@ describe('notificationsSend', () => {
     mockedSendNotification.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await notificationsManager.stop();
     await sigchain.stop();
     await nodeGraph.stop();
@@ -843,31 +863,32 @@ describe('notificationsSend', () => {
   });
   test('sends a notification', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         notificationsSend: new NotificationsSendHandler({
           notificationsManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         notificationsSend,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

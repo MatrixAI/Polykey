@@ -1,10 +1,10 @@
 import type { FileSystem } from './types';
-import type { StreamFactory } from './rpc/types';
+import type { StreamFactory } from '@matrixai/rpc';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import RPCClient from './rpc/RPCClient';
-import * as rpcUtilsMiddleware from './rpc/utils/middleware';
+import { RPCClient } from '@matrixai/rpc';
+import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import * as clientUtilsMiddleware from './client/utils/middleware';
 import { Session } from './sessions';
 import * as utils from './utils';
@@ -12,6 +12,7 @@ import * as errors from './errors';
 import * as events from './events';
 import config from './config';
 import { clientManifest } from './client/handlers/clientManifest';
+import * as networkUtils from './network/utils';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -60,13 +61,14 @@ class PolykeyClient {
       logger: logger.getChild(Session.name),
       fresh,
     });
-    const rpcClientClient = await RPCClient.createRPCClient({
+    const rpcClientClient = new RPCClient({
       manifest: clientManifest,
       streamFactory,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         clientUtilsMiddleware.middlewareClient(session),
         parserBufferByteLimit,
       ),
+      toError: networkUtils.toError,
       streamKeepAliveTimeoutTime,
       logger: logger.getChild(RPCClient.name),
     });
@@ -122,7 +124,6 @@ class PolykeyClient {
 
   public async destroy() {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    await this.rpcClientClient.destroy();
     await this.session.destroy();
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }

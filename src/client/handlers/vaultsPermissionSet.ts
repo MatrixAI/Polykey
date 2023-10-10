@@ -7,12 +7,12 @@ import type ACL from '../../acl/ACL';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId } from '../../ids';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class VaultsPermissionSetHandler extends UnaryHandler<
   {
@@ -25,9 +25,9 @@ class VaultsPermissionSetHandler extends UnaryHandler<
   ClientRPCRequestParams<PermissionSetMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<PermissionSetMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager, gestaltGraph, acl, notificationsManager } =
       this.container;
     await db.withTransactionF(async (tran) => {
@@ -80,7 +80,7 @@ class VaultsPermissionSetHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsPermissionSetHandler };

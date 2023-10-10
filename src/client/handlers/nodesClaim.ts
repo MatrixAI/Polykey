@@ -3,10 +3,10 @@ import type { ClaimNodeMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type NodeManager from '../../nodes/NodeManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesClaimHandler extends UnaryHandler<
   {
@@ -16,9 +16,9 @@ class NodesClaimHandler extends UnaryHandler<
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<ClaimNodeMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { nodeManager, db } = this.container;
 
     const {
@@ -44,7 +44,7 @@ class NodesClaimHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { NodesClaimHandler };

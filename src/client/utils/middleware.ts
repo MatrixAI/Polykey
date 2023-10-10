@@ -4,7 +4,7 @@ import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
-} from '../../rpc/types';
+} from '@matrixai/rpc';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
 import * as authenticationMiddlewareUtils from './authenticationMiddleware';

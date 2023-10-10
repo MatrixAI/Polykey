@@ -18,9 +18,30 @@ class ErrorClientAuthDenied<T> extends ErrorClient<T> {
   exitCode = sysexits.NOPERM;
 }
 
+class ErrorClientService<T> extends ErrorClient<T> {}
+
+class ErrorClientServiceRunning<T> extends ErrorClientService<T> {
+  static description = 'ClientService is running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorClientServiceNotRunning<T> extends ErrorClientService<T> {
+  static description = 'ClientService is not running';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorClientServiceDestroyed<T> extends ErrorClientService<T> {
+  static description = 'ClientService is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   ErrorClient,
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
+  ErrorClientService,
+  ErrorClientServiceRunning,
+  ErrorClientServiceNotRunning,
+  ErrorClientServiceDestroyed,
 };

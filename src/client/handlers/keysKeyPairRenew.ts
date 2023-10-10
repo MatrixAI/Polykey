@@ -1,7 +1,7 @@
 import type { PasswordMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type CertManager from '../../keys/CertManager';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysKeyPairRenewHandler extends UnaryHandler<
   {
@@ -10,9 +10,9 @@ class KeysKeyPairRenewHandler extends UnaryHandler<
   ClientRPCRequestParams<PasswordMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<PasswordMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { certManager } = this.container;
 
     // Other domains will be updated accordingly via the `EventBus` so we
@@ -20,7 +20,7 @@ class KeysKeyPairRenewHandler extends UnaryHandler<
     await certManager.renewCertWithNewKeyPair(input.password);
 
     return {};
-  }
+  };
 }
 
 export { KeysKeyPairRenewHandler };

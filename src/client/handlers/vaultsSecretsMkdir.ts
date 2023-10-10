@@ -2,10 +2,10 @@ import type { DB } from '@matrixai/db';
 import type { SecretMkdirMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class VaultsSecretsMkdirHandler extends UnaryHandler<
   {
@@ -15,9 +15,9 @@ class VaultsSecretsMkdirHandler extends UnaryHandler<
   ClientRPCRequestParams<SecretMkdirMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<SecretMkdirMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { vaultManager, db } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
@@ -42,7 +42,7 @@ class VaultsSecretsMkdirHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsSecretsMkdirHandler };

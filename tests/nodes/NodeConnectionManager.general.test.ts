@@ -157,8 +157,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       logger,
     });
     serverAddress = {
-      host: remotePolykeyAgent.nodeConnectionManager.host as Host,
-      port: remotePolykeyAgent.nodeConnectionManager.port as Port,
+      host: remotePolykeyAgent.agentServiceHost,
+      port: remotePolykeyAgent.agentServicePort,
     };
   });
 

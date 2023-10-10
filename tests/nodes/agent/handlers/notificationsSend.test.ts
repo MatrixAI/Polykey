@@ -1,22 +1,20 @@
-import type * as quicEvents from '@matrixai/quic/dist/events';
 import type { Notification, SignedNotification } from '@/notifications/types';
 import type { NodeId } from '@/ids';
-import type GestaltGraph from '../../../src/gestalts/GestaltGraph';
+import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { Host } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer } from '@matrixai/quic';
+import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
-import RPCClient from '@/rpc/RPCClient';
-import RPCServer from '@/rpc/RPCServer';
-import { notificationsSend } from '@/agent/handlers/clientManifest';
+import { RPCClient, RPCServer } from '@matrixai/rpc';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as notificationsUtils from '@/notifications/utils';
-import { NotificationsSendHandler } from '@/agent/handlers/notificationsSend';
+import { notificationsSend } from '@/nodes/agent/callers';
+import NotificationsSend from '@/nodes/agent/handlers/NotificationsSend';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
@@ -25,10 +23,11 @@ import { Token } from '@/tokens';
 import * as notificationsErrors from '@/notifications/errors';
 import * as validationErrors from '@/validation/errors';
 import * as keysUtils from '@/keys/utils/index';
-import Sigchain from '../../../src/sigchain/Sigchain';
-import TaskManager from '../../../src/tasks/TaskManager';
-import * as testUtils from '../../utils/utils';
-import * as tlsTestsUtils from '../../utils/tls';
+import * as networkUtils from '@/network/utils';
+import Sigchain from '@/sigchain/Sigchain';
+import TaskManager from '@/tasks/TaskManager';
+import * as testUtils from '../../../utils/utils';
+import * as tlsTestsUtils from '../../../utils/tls';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -71,10 +70,12 @@ describe('notificationsSend', () => {
     senderKeyRing = await KeyRing.createKeyRing({
       keysPath: senderKeysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     senderNodeId = senderKeyRing.getNodeId();
 
@@ -83,10 +84,12 @@ describe('notificationsSend', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -124,8 +127,10 @@ describe('notificationsSend', () => {
       tlsConfig: tlsConfigClient,
       keyRing,
       nodeGraph,
-      connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -153,23 +158,26 @@ describe('notificationsSend', () => {
 
     // Setting up server
     const serverManifest = {
-      notificationsSend: new NotificationsSendHandler({
+      notificationsSend: new NotificationsSend({
         db,
         keyRing,
         notificationsManager,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       crypto: {
         key: keysUtils.generateKey(),
@@ -178,7 +186,7 @@ describe('notificationsSend', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -186,25 +194,37 @@ describe('notificationsSend', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'serverStop',
+      quicEvents.EventQUICServerConnection.name,
+      handleConnection,
+    );
+    quicServer.addEventListener(
+      quicEvents.EventQUICServerStopped.name,
       () => {
-        quicServer.removeEventListener('serverConnection', handleConnection);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICServerConnection.name,
+          handleConnection,
+        );
       },
       { once: true },
     );
@@ -213,11 +233,12 @@ describe('notificationsSend', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
@@ -228,7 +249,9 @@ describe('notificationsSend', () => {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,
         verifyPeer: true,
-        verifyAllowFail: true,
+        verifyCallback: async () => {
+          return undefined;
+        },
       },
       host: localHost,
       port: quicServer.port,
@@ -239,8 +262,8 @@ describe('notificationsSend', () => {
   afterEach(async () => {
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await rpcServer.destroy(true);
     await quicServer.stop({ force: true });
+    await rpcServer.stop({ force: true });
     await notificationsManager.stop();
     await nodeManager.stop();
     await nodeConnectionManager.stop();

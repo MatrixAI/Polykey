@@ -5,11 +5,11 @@ import type { NodeId } from '../../ids';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NodeAddress } from '../../nodes/types';
 import type NodeManager from '../../nodes/NodeManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import { matchSync } from '../../utils/index';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import * as nodeErrors from '../../nodes/errors';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesAddHandler extends UnaryHandler<
   {
@@ -19,9 +19,9 @@ class NodesAddHandler extends UnaryHandler<
   ClientRPCRequestParams<NodesAddMessage>,
   ClientRPCResponseResult
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<NodesAddMessage>,
-  ): Promise<ClientRPCResponseResult> {
+  ): Promise<ClientRPCResponseResult> => {
     const { nodeManager, db } = this.container;
     const {
       nodeId,
@@ -71,7 +71,7 @@ class NodesAddHandler extends UnaryHandler<
       ),
     );
     return {};
-  }
+  };
 }
 
 export { NodesAddHandler };

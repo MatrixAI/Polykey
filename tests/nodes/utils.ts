@@ -1,4 +1,4 @@
-import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { NodeId } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
@@ -71,14 +71,14 @@ function generateNodeIdForBucket(
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.nodeConnectionManager.host,
-    port: remoteNode.nodeConnectionManager.port,
-  } as NodeAddress);
+    host: remoteNode.agentServiceHost,
+    port: remoteNode.agentServicePort,
+  });
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.nodeConnectionManager.host,
-    port: localNode.nodeConnectionManager.port,
-  } as NodeAddress);
+    host: localNode.agentServiceHost,
+    port: localNode.agentServicePort,
+  });
 }
 
 const nodeIdArb = fc

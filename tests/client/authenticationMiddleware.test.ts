@@ -8,28 +8,30 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import {
+  RPCClient,
+  UnaryCaller,
+  UnaryHandler,
+  middleware as rpcUtilsMiddleware,
+} from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import RPCClient from '@/rpc/RPCClient';
 import { Session, SessionManager } from '@/sessions';
-import * as clientRPCUtils from '@/client/utils';
+import * as clientUtils from '@/client/utils';
 import * as authMiddleware from '@/client/utils/authenticationMiddleware';
-import { UnaryCaller } from '@/rpc/callers';
-import { UnaryHandler } from '@/rpc/handlers';
-import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
-import WebSocketServer from '@/websockets/WebSocketServer';
-import WebSocketClient from '@/websockets/WebSocketClient';
+import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../utils';
 
 describe('authenticationMiddleware', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
-  const host = '127.0.0.1';
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -37,7 +39,7 @@ describe('authenticationMiddleware', () => {
   let certManager: CertManager;
   let session: Session;
   let sessionManager: SessionManager;
-  let clientServer: WebSocketServer;
+  let clientService: ClientService;
   let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
 
@@ -55,10 +57,12 @@ describe('authenticationMiddleware', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
@@ -79,8 +83,8 @@ describe('authenticationMiddleware', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await clientServer?.stop(true);
-    await clientClient?.destroy(true);
+    await clientService?.stop({ force: true });
+    await clientClient?.destroy({ force: true });
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -103,37 +107,37 @@ describe('authenticationMiddleware', () => {
         return input;
       }
     }
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-        authMiddleware.authenticationMiddlewareServer(sessionManager, keyRing),
-      ),
-      logger,
-    });
-    clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        rpcServer.handleStream(streamPair);
+      options: {
+        host: localhost,
+        middlewareFactory: authMiddleware.authenticationMiddlewareServer(
+          sessionManager,
+          keyRing,
+        ),
       },
-      host,
-      tlsConfig,
-      logger,
+      logger: logger.getChild(ClientService.name),
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
-      port: clientServer.getPort(),
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,
           ClientRPCResponseResult
         >(),
       },
-      streamFactory: async () => clientClient.startConnection(),
+      streamFactory: async () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         authMiddleware.authenticationMiddlewareClient(session),
       ),
@@ -143,7 +147,7 @@ describe('authenticationMiddleware', () => {
     // Doing the test
     const result = await rpcClient.methods.testHandler({
       metadata: {
-        authorization: clientRPCUtils.encodeAuthFromPassword(password),
+        authorization: clientUtils.encodeAuthFromPassword(password),
       },
     });
     expect(result).toMatchObject({

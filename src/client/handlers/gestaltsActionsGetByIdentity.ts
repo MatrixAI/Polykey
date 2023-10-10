@@ -4,7 +4,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
 import type { IdentityId, ProviderId } from '../../ids/index';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
@@ -19,11 +19,13 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
     actionsList: Array<GestaltAction>;
   }>
 > {
-  public async handle(input: ClientRPCRequestParams<IdentityMessage>): Promise<
+  public handle = async (
+    input: ClientRPCRequestParams<IdentityMessage>,
+  ): Promise<
     ClientRPCResponseResult<{
       actionsList: Array<GestaltAction>;
     }>
-  > {
+  > => {
     const { db, gestaltGraph } = this.container;
     const {
       providerId,
@@ -51,7 +53,7 @@ class GestaltsActionsGetByIdentityHandler extends UnaryHandler<
     return {
       actionsList: Object.keys(result) as Array<GestaltAction>,
     };
-  }
+  };
 }
 
 export { GestaltsActionsGetByIdentityHandler };

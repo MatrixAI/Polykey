@@ -1,6 +1,6 @@
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import { UnaryHandler } from '../../rpc/handlers';
+import { UnaryHandler } from '@matrixai/rpc';
 
 class IdentitiesProvidersListHandler extends UnaryHandler<
   {
@@ -11,17 +11,17 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
     providerIds: Array<string>;
   }>
 > {
-  public async handle(): Promise<
+  public handle = async (): Promise<
     ClientRPCResponseResult<{
       providerIds: Array<string>;
     }>
-  > {
+  > => {
     const { identitiesManager } = this.container;
     const providers = identitiesManager.getProviders();
     return {
       providerIds: Object.keys(providers),
     };
-  }
+  };
 }
 
 export { IdentitiesProvidersListHandler };

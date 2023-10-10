@@ -2,10 +2,10 @@ import type { DataMessage, DecryptMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey } from '../../keys/types';
+import { UnaryHandler } from '@matrixai/rpc';
 import { never } from '../../utils/index';
 import * as keysUtils from '../../keys/utils/index';
 import * as keysErrors from '../../keys/errors';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class KeysEncryptHandler extends UnaryHandler<
   {
@@ -14,9 +14,9 @@ class KeysEncryptHandler extends UnaryHandler<
   ClientRPCRequestParams<DecryptMessage>,
   ClientRPCResponseResult<DataMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<DecryptMessage>,
-  ): Promise<ClientRPCResponseResult<DataMessage>> {
+  ): Promise<ClientRPCResponseResult<DataMessage>> => {
     const { keyRing } = this.container;
 
     let publicKey: PublicKey | undefined;
@@ -31,7 +31,7 @@ class KeysEncryptHandler extends UnaryHandler<
     return {
       data: data.toString('binary'),
     };
-  }
+  };
 }
 
 export { KeysEncryptHandler };

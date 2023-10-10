@@ -10,12 +10,12 @@ import type NodeManager from '../../NodeManager';
 import type KeyRing from '../../../keys/KeyRing';
 import type { Host, Port } from '../../../network/types';
 import type { NodeId } from '../../../ids';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils';
 import * as agentErrors from '../errors';
 import * as nodesUtils from '../../utils';
 import * as validation from '../../../validation';
 import * as utils from '../../../utils';
-import { UnaryHandler } from '../../../rpc/handlers';
 
 /**
  * Sends a hole punch message to a node

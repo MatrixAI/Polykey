@@ -7,13 +7,11 @@ import path from 'path';
 import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { RPCClient } from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import { KeysCertsChainGetHandler } from '@/client/handlers/keysCertsChainGet';
-import RPCClient from '@/rpc/RPCClient';
-import WebSocketServer from '@/websockets/WebSocketServer';
-import WebSocketClient from '@/websockets/WebSocketClient';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import CertManager from '@/keys/CertManager';
 import TaskManager from '@/tasks/TaskManager';
@@ -43,6 +41,10 @@ import {
 import PolykeyAgent from '@/PolykeyAgent';
 import { NodeManager } from '@/nodes';
 import { publicKeyToJWK } from '@/keys/utils';
+import ClientService from '@/client/ClientService';
+import { sleep } from '@/utils';
+import * as keysEvents from '@/keys/events';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
 
 describe('keysCertsChainGet', () => {
@@ -58,7 +60,7 @@ describe('keysCertsChainGet', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   let taskManager: TaskManager;
@@ -81,10 +83,12 @@ describe('keysCertsChainGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -109,8 +113,8 @@ describe('keysCertsChainGet', () => {
     mockedGetRootCertChainPems.mockRestore();
     await certManager.stop();
     await taskManager.stop();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -121,31 +125,32 @@ describe('keysCertsChainGet', () => {
   });
   test('gets the root certchain', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysCertsChainGet: new KeysCertsChainGetHandler({
           certManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysCertsChainGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -170,7 +175,7 @@ describe('keysCertsGet', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
   let taskManager: TaskManager;
@@ -193,10 +198,12 @@ describe('keysCertsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -221,8 +228,8 @@ describe('keysCertsGet', () => {
     mockedGetRootCertPem.mockRestore();
     await certManager.stop();
     await taskManager.stop();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -233,31 +240,32 @@ describe('keysCertsGet', () => {
   });
   test('gets the root certificate', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysCertsGet: new KeysCertsGetHandler({
           certManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysCertsGet,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -278,7 +286,7 @@ describe('keysEncryptDecrypt', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
 
@@ -295,10 +303,12 @@ describe('keysEncryptDecrypt', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -310,8 +320,8 @@ describe('keysEncryptDecrypt', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -322,7 +332,8 @@ describe('keysEncryptDecrypt', () => {
   });
   test('encrypts and decrypts data', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysEncrypt: new KeysEncryptHandler({
           keyRing,
@@ -331,26 +342,26 @@ describe('keysEncryptDecrypt', () => {
           keyRing,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysEncrypt,
         keysDecrypt,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -377,7 +388,7 @@ describe('keysKeyPair', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
 
@@ -394,10 +405,12 @@ describe('keysKeyPair', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -409,8 +422,8 @@ describe('keysKeyPair', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -421,31 +434,32 @@ describe('keysKeyPair', () => {
   });
   test('gets the keypair', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysKeyPair: new KeysKeyPairHandler({
           keyRing,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysKeyPair,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -480,7 +494,7 @@ describe('keysKeyPairRenew', () => {
   let dataDir: string;
   let pkAgent: PolykeyAgent;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let mockedRefreshBuckets: jest.SpyInstance;
 
@@ -508,8 +522,8 @@ describe('keysKeyPairRenew', () => {
   });
   afterEach(async () => {
     mockedRefreshBuckets.mockRestore();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -518,31 +532,32 @@ describe('keysKeyPairRenew', () => {
   });
   test('renews the root key pair', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysKeyPairRenew: new KeysKeyPairRenewHandler({
           certManager: pkAgent.certManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysKeyPairRenew,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -563,10 +578,18 @@ describe('keysKeyPairRenew', () => {
     expect(mockedRefreshBuckets).toHaveBeenCalledTimes(0);
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
+    const certChangeEventProm = testsUtils.promFromEvent(
+      pkAgent.certManager,
+      keysEvents.EventCertManagerCertChange,
+    );
     // Run command
     await rpcClient.methods.keysKeyPairRenew({
       password: 'somepassphrase',
     });
+    // Awaiting change to propagate
+    await certChangeEventProm.p;
+    // Wait some time after event for domains to update
+    await sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
@@ -599,7 +622,7 @@ describe('keysKeyPairReset', () => {
   const localhost = '127.0.0.1';
   let dataDir: string;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let pkAgent: PolykeyAgent;
   let tlsConfig: TLSConfig;
   let mockedRefreshBuckets: jest.SpyInstance;
@@ -628,8 +651,8 @@ describe('keysKeyPairReset', () => {
   });
   afterEach(async () => {
     mockedRefreshBuckets.mockRestore();
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await pkAgent.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -638,31 +661,32 @@ describe('keysKeyPairReset', () => {
   });
   test('resets the root key pair', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysKeyPairReset: new KeysKeyPairResethandler({
           certManager: pkAgent.certManager,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [pkAgent.keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysKeyPairReset,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -683,10 +707,18 @@ describe('keysKeyPairReset', () => {
     expect(mockedRefreshBuckets).not.toHaveBeenCalled();
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
+    const certChangeEventProm = testsUtils.promFromEvent(
+      pkAgent.certManager,
+      keysEvents.EventCertManagerCertChange,
+    );
     // Run command
     await rpcClient.methods.keysKeyPairReset({
       password: 'somepassphrase',
     });
+    // Awaiting change to propagate
+    await certChangeEventProm.p;
+    // Wait some time after event for domains to update
+    await sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
     const nodeId2 = pkAgent.keyRing.getNodeId();
     // @ts-ignore - get protected property
@@ -721,7 +753,7 @@ describe('keysPasswordChange', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
 
@@ -738,10 +770,12 @@ describe('keysPasswordChange', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -753,8 +787,8 @@ describe('keysPasswordChange', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -765,31 +799,32 @@ describe('keysPasswordChange', () => {
   });
   test('changes the password', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysPasswordChange: new KeysPasswordChangeHandler({
           keyRing,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysPasswordChange,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -815,7 +850,7 @@ describe('keysPublicKey', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
 
@@ -832,10 +867,12 @@ describe('keysPublicKey', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -847,8 +884,8 @@ describe('keysPublicKey', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -859,31 +896,32 @@ describe('keysPublicKey', () => {
   });
   test('gets the public key', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysPublicKey: new KeysPublicKeyHandler({
           keyRing,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysPublicKey,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 
@@ -911,7 +949,7 @@ describe('keysSignVerify', () => {
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
-  let webSocketServer: WebSocketServer;
+  let clientService: ClientService;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
 
@@ -928,10 +966,12 @@ describe('keysSignVerify', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -943,8 +983,8 @@ describe('keysSignVerify', () => {
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   });
   afterEach(async () => {
-    await webSocketServer.stop(true);
-    await webSocketClient.destroy(true);
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
     await identitiesManager.stop();
     await keyRing.stop();
     await db.stop();
@@ -955,7 +995,8 @@ describe('keysSignVerify', () => {
   });
   test('signs and verifies with root keypair', async () => {
     // Setup
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         keysSign: new KeysSignHandler({
           keyRing,
@@ -964,26 +1005,26 @@ describe('keysSignVerify', () => {
           keyRing,
         }),
       },
-      logger,
-    });
-    webSocketServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => rpcServer.handleStream(streamPair),
-      host: localhost,
-      tlsConfig,
-      logger: logger.getChild('server'),
+      options: {
+        host: localhost,
+      },
+      logger: logger.getChild(ClientService.name),
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
+      config: {
+        verifyPeer: false,
+      },
       host: localhost,
       logger: logger.getChild('client'),
-      port: webSocketServer.getPort(),
+      port: clientService.port,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         keysSign,
         keysVerify,
       },
-      streamFactory: (ctx) => webSocketClient.startConnection(ctx),
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
       logger: logger.getChild('clientRPC'),
     });
 

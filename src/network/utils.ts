@@ -4,14 +4,17 @@ import type { Address, Host, Hostname, Port } from './types';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { NodeId } from '../ids/types';
 import type { NodeAddress } from '../nodes/types';
+import type { JSONValue } from '../types';
 import type { X509Certificate } from '@peculiar/x509';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import { CryptoError } from '@matrixai/quic/dist/native';
 import { utils as quicUtils } from '@matrixai/quic';
+import { AbstractError } from '@matrixai/errors';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import * as errors from '../errors';
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
@@ -406,6 +409,66 @@ async function resolveHostnames(
   return final;
 }
 
+// TODO: review and fix the `toError` and `fromError` code here.
+//  Right now it's very basic and need fleshing out.
+
+function fromError(error: any) {
+  switch (typeof error) {
+    case 'symbol':
+    case 'bigint':
+    case 'function':
+      throw TypeError(`${error} cannot be serialized`);
+  }
+
+  if (error instanceof Error) {
+    const cause = fromError(error.cause);
+    const timestamp: string = ((error as any).timestamp ?? new Date()).toJSON();
+    if (error instanceof AbstractError) {
+      return error.toJSON();
+    } else if (error instanceof AggregateError) {
+      // AggregateError has an `errors` property
+      return {
+        type: error.constructor.name,
+        message: error.message,
+        data: {
+          errors: error.errors.map(fromError),
+          stack: error.stack,
+          timestamp,
+          cause,
+        },
+      };
+    }
+
+    // If it's some other type of error then only serialise the message and
+    // stack (and the type of the error)
+    return {
+      type: error.name,
+      message: error.message,
+      data: {
+        stack: error.stack,
+        timestamp,
+        cause,
+      },
+    };
+  }
+}
+
+function toError(errorData: JSONValue): Error {
+  if (
+    errorData != null &&
+    typeof errorData === 'object' &&
+    'type' in errorData &&
+    typeof errorData.type === 'string' &&
+    'data' in errorData &&
+    typeof errorData.data === 'object'
+  ) {
+    const eClass = errors[errorData.type];
+    const err = eClass.fromJSON(errorData);
+    if (eClass != null) return err;
+  }
+  return Error('TMP Some error, this needs to be fleshed out');
+}
+
 export {
   isHost,
   isHostWildcard,
@@ -419,4 +482,6 @@ export {
   verifyServerCertificateChain,
   verifyClientCertificateChain,
   resolveHostnames,
+  fromError,
+  toError,
 };

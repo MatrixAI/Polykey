@@ -1,5 +1,5 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host, Port } from '@/network/types';
+import type { Host } from '@/network/types';
 import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
@@ -85,10 +85,12 @@ describe('Discovery', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger: logger.getChild('KeyRing'),
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -156,8 +158,10 @@ describe('Discovery', () => {
       keyRing,
       nodeGraph,
       tlsConfig,
-      connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      options: {
+        connectionConnectTimeoutTime: 2000,
+        connectionIdleTimeoutTime: 2000,
+      },
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -207,8 +211,8 @@ describe('Discovery', () => {
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.nodeConnectionManager.host as Host,
-      port: nodeA.nodeConnectionManager.port as Port,
+      host: nodeA.agentServiceHost,
+      port: nodeA.agentServicePort,
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());

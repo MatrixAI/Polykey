@@ -10,33 +10,35 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Timer } from '@matrixai/timer';
+import {
+  RPCClient,
+  UnaryCaller,
+  UnaryHandler,
+  middleware as rpcUtilsMiddleware,
+} from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
-import RPCServer from '@/rpc/RPCServer';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import RPCClient from '@/rpc/RPCClient';
 import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
-import { UnaryCaller } from '@/rpc/callers';
-import { UnaryHandler } from '@/rpc/handlers';
-import * as rpcUtilsMiddleware from '@/rpc/utils/middleware';
-import WebSocketServer from '@/websockets/WebSocketServer';
-import WebSocketClient from '@/websockets/WebSocketClient';
 import { promise } from '@/utils';
+import ClientService from '@/client/ClientService';
+import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../utils';
 
 describe('timeoutMiddleware', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'helloworld';
-  const host = '127.0.0.1';
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let clientServer: WebSocketServer;
+  let clientService: ClientService;
   let clientClient: WebSocketClient;
   let tlsConfig: TLSConfig;
 
@@ -54,15 +56,18 @@ describe('timeoutMiddleware', () => {
       password,
       keysPath,
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
+      options: {},
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -70,8 +75,8 @@ describe('timeoutMiddleware', () => {
   afterEach(async () => {
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await clientServer?.stop(true);
-    await clientClient?.destroy(true);
+    await clientService?.stop({ force: true });
+    await clientClient?.destroy({ force: true });
     await certManager.stop();
     await taskManager.stop();
     await keyRing.stop();
@@ -89,47 +94,44 @@ describe('timeoutMiddleware', () => {
       ClientRPCRequestParams,
       ClientRPCResponseResult
     > {
-      public async handle(
+      public handle = async (
         input: ClientRPCRequestParams,
         _cancel,
         _meta,
         ctx,
-      ): Promise<ClientRPCResponseResult> {
+      ) => {
         ctxProm.resolveP(ctx);
         return input;
-      }
+      };
     }
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-        timeoutMiddleware.timeoutMiddlewareServer,
-      ),
-      logger,
-    });
-    clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        rpcServer.handleStream(streamPair);
+      options: {
+        host: localhost,
+        middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
       },
-      host,
-      tlsConfig,
-      logger,
+      logger: logger.getChild(ClientService.name),
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
-      port: clientServer.getPort(),
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,
           ClientRPCResponseResult
         >(),
       },
-      streamFactory: async () => clientClient.startConnection(),
+      streamFactory: () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),
@@ -149,8 +151,7 @@ describe('timeoutMiddleware', () => {
       () => {},
       () => {},
     );
-    await rpcServer.destroy(true);
-    await rpcClient.destroy();
+    await clientService.stop({ force: true });
   });
   test('client side timeout updates', async () => {
     // Setup
@@ -159,45 +160,45 @@ describe('timeoutMiddleware', () => {
       ClientRPCRequestParams,
       ClientRPCResponseResult
     > {
-      public async handle(
+      public handle = async (
         input: ClientRPCRequestParams,
-        _,
-      ): Promise<ClientRPCResponseResult> {
+        _cancel,
+        _meta,
+        _ctx,
+      ) => {
         return input;
-      }
+      };
     }
-    const rpcServer = await RPCServer.createRPCServer({
+    clientService = await ClientService.createClientService({
+      tlsConfig,
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-        timeoutMiddleware.timeoutMiddlewareServer,
-      ),
-      handlerTimeoutTime: 100,
-      logger,
-    });
-    clientServer = await WebSocketServer.createWebSocketServer({
-      connectionCallback: (streamPair) => {
-        rpcServer.handleStream(streamPair);
+      options: {
+        host: localhost,
+        middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
+        rpcCallTimeoutTime: 100,
       },
-      host,
-      tlsConfig,
       logger,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
-      expectedNodeIds: [keyRing.getNodeId()],
-      host,
-      port: clientServer.getPort(),
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      port: clientService.port,
       logger,
     });
-    const rpcClient = await RPCClient.createRPCClient({
+    const rpcClient = new RPCClient({
+      idGen: async () => null,
       manifest: {
         testHandler: new UnaryCaller<
           ClientRPCRequestParams,
           ClientRPCResponseResult
         >(),
       },
-      streamFactory: async () => clientClient.startConnection(),
+      streamFactory: async () => clientClient.connection.newStream(),
+      toError: networkUtils.toError,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
         timeoutMiddleware.timeoutMiddlewareClient,
       ),

@@ -1,23 +1,22 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClaimIdEncoded } from '@/ids';
-import type * as quicEvents from '@matrixai/quic/dist/events';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { QUICClient, QUICServer } from '@matrixai/quic';
+import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
+import { RPCClient, RPCServer } from '@matrixai/rpc';
 import * as nodesUtils from '@/nodes/utils';
 import { encodeProviderIdentityId } from '@/identities/utils';
-import RPCClient from '@/rpc/RPCClient';
-import RPCServer from '@/rpc/RPCServer';
-import { NodesClaimsGetHandler } from '@/agent/handlers/nodesClaimsGet';
-import { nodesClaimsGet } from '@/agent/handlers/clientManifest';
+import NodesClaimsGet from '@/nodes/agent/handlers/NodesClaimsGet';
+import { nodesClaimsGet } from '@/nodes/agent/callers';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
 import * as keysUtils from '@/keys/utils/index';
-import * as tlsTestsUtils from '../../utils/tls';
-import * as testNodesUtils from '../../nodes/utils';
+import * as networkUtils from '@/network/utils';
+import * as tlsTestsUtils from '../../../utils/tls';
+import * as testNodesUtils from '../../../nodes/utils';
 
 describe('nodesClaimsGet', () => {
   const logger = new Logger('nodesClaimsGet test', LogLevel.WARN, [
@@ -52,10 +51,12 @@ describe('nodesClaimsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -70,15 +71,16 @@ describe('nodesClaimsGet', () => {
 
     // Setting up server
     const serverManifest = {
-      nodesClaimsGet: new NodesClaimsGetHandler({
+      nodesClaimsGet: new NodesClaimsGet({
         db,
         sigchain,
       }),
     };
-    rpcServer = await RPCServer.createRPCServer({
-      manifest: serverManifest,
+    rpcServer = new RPCServer({
+      fromError: networkUtils.fromError,
       logger,
     });
+    await rpcServer.start({ manifest: serverManifest });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     quicServer = new QUICServer({
       config: {
@@ -93,7 +95,7 @@ describe('nodesClaimsGet', () => {
       logger,
     });
     const handleStream = async (
-      event: quicEvents.QUICConnectionStreamEvent,
+      event: quicEvents.EventQUICConnectionStream,
     ) => {
       // Streams are handled via the RPCServer.
       const stream = event.detail;
@@ -101,25 +103,37 @@ describe('nodesClaimsGet', () => {
       rpcServer.handleStream(stream);
     };
     const handleConnection = async (
-      event: quicEvents.QUICServerConnectionEvent,
+      event: quicEvents.EventQUICServerConnection,
     ) => {
       // Needs to setup stream handler
       const conn = event.detail;
       logger.info('!!!!Handling new Connection!!!!!');
-      conn.addEventListener('connectionStream', handleStream);
       conn.addEventListener(
-        'connectionStop',
+        quicEvents.EventQUICConnectionStream.name,
+        handleStream,
+      );
+      conn.addEventListener(
+        quicEvents.EventQUICConnectionStopped.name,
         () => {
-          conn.removeEventListener('connectionStream', handleStream);
+          conn.removeEventListener(
+            quicEvents.EventQUICConnectionStream.name,
+            handleStream,
+          );
         },
         { once: true },
       );
     };
-    quicServer.addEventListener('serverConnection', handleConnection);
     quicServer.addEventListener(
-      'serverStop',
+      quicEvents.EventQUICServerConnection.name,
+      handleConnection,
+    );
+    quicServer.addEventListener(
+      quicEvents.EventQUICConnectionStopped.name,
       () => {
-        quicServer.removeEventListener('serverConnection', handleConnection);
+        quicServer.removeEventListener(
+          quicEvents.EventQUICServerConnection.name,
+          handleConnection,
+        );
       },
       { once: true },
     );
@@ -128,11 +142,12 @@ describe('nodesClaimsGet', () => {
     });
 
     // Setting up client
-    rpcClient = await RPCClient.createRPCClient({
+    rpcClient = new RPCClient({
       manifest: clientManifest,
-      streamFactory: () => {
-        return quicClient.connection.streamNew();
+      streamFactory: async () => {
+        return quicClient.connection.newStream();
       },
+      toError: networkUtils.toError,
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
@@ -149,7 +164,7 @@ describe('nodesClaimsGet', () => {
     });
   });
   afterEach(async () => {
-    await rpcServer.destroy(true);
+    await rpcServer.stop({ force: true });
     await quicServer.stop({ force: true });
     await sigchain.stop();
     await db.stop();

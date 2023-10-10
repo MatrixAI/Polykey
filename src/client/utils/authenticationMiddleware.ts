@@ -2,17 +2,17 @@ import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
-} from '../../rpc/types';
+} from '@matrixai/rpc';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { Session } from '../../sessions/index';
 import type SessionManager from '../../sessions/SessionManager';
 import type KeyRing from '../../keys/KeyRing';
-import type { JSONRPCError, JSONRPCResponseError } from '../../rpc/types';
+import type { JSONRPCError, JSONRPCResponseError } from '@matrixai/rpc';
 import { TransformStream } from 'stream/web';
 import { authenticate, decodeAuth } from '../utils/utils';
 import { sysexits } from '../../errors';
 import * as utils from '../../utils/index';
-import * as rpcUtils from '../../rpc/utils/utils';
+import * as networkUtils from '../../network/utils';
 
 function authenticationMiddlewareServer(
   sessionManager: SessionManager,
@@ -46,7 +46,7 @@ function authenticationMiddlewareServer(
               const rpcError: JSONRPCError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
-                data: rpcUtils.fromError(e, true),
+                data: networkUtils.fromError(e),
               };
               const rpcErrorMessage: JSONRPCResponseError = {
                 jsonrpc: '2.0',

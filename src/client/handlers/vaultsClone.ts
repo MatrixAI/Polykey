@@ -3,10 +3,10 @@ import type { CloneMessage, SuccessMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class VaultsCloneHandler extends UnaryHandler<
   {
@@ -16,9 +16,9 @@ class VaultsCloneHandler extends UnaryHandler<
   ClientRPCRequestParams<CloneMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<CloneMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager } = this.container;
     const {
       nodeId,
@@ -42,7 +42,7 @@ class VaultsCloneHandler extends UnaryHandler<
     return {
       success: true,
     };
-  }
+  };
 }
 
 export { VaultsCloneHandler };

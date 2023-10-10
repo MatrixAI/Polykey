@@ -1,5 +1,5 @@
 import type { NodeId, NodeIdEncoded } from '@/ids/types';
-import type { Host, Port } from '@/network/types';
+import type { Host } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';
@@ -64,10 +64,12 @@ describe('NotificationsManager', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      options: {
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+      },
       logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -146,8 +148,8 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.nodeConnectionManager.host as Host,
-      port: receiver.nodeConnectionManager.port as Port,
+      host: receiver.agentServiceHost,
+      port: receiver.agentServicePort,
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {

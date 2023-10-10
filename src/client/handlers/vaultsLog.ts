@@ -3,9 +3,9 @@ import type { LogEntryMessage, VaultsLogMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
+import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { ServerHandler } from '../../rpc/handlers';
 
 class VaultsLogHandler extends ServerHandler<
   {

@@ -79,7 +79,7 @@ class CertManager {
     db: DB;
     keyRing: KeyRing;
     taskManager: TaskManager;
-    options: Partial<CertManagerOptions>;
+    options?: Partial<CertManagerOptions>;
     workerManager?: PolykeyWorkerManagerInterface;
     logger?: Logger;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;

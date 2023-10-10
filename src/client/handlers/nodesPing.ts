@@ -2,10 +2,10 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { NodeId } from '../../ids';
 import type { NodeIdMessage, SuccessMessage } from '../handlers/types';
 import type NodeManager from '../../nodes/NodeManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesPingHandler extends UnaryHandler<
   {
@@ -14,9 +14,9 @@ class NodesPingHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { nodeManager } = this.container;
     const {
       nodeId,
@@ -37,7 +37,7 @@ class NodesPingHandler extends UnaryHandler<
     return {
       success,
     };
-  }
+  };
 }
 
 export { NodesPingHandler };

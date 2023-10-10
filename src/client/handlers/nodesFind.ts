@@ -2,11 +2,11 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { AddressMessage, NodeIdMessage } from '../handlers/types';
 import type { NodeId } from '../../ids';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class NodesFindHandler extends UnaryHandler<
   {
@@ -15,9 +15,9 @@ class NodesFindHandler extends UnaryHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<AddressMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<AddressMessage>> {
+  ): Promise<ClientRPCResponseResult<AddressMessage>> => {
     const { nodeConnectionManager } = this.container;
 
     const {
@@ -42,7 +42,7 @@ class NodesFindHandler extends UnaryHandler<
       host: address.host,
       port: address.port,
     };
-  }
+  };
 }
 
 export { NodesFindHandler };

@@ -2,10 +2,10 @@ import type { SuccessMessage, VerifySignatureMessage } from './types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey, Signature } from '../../keys/types';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as keysUtils from '../../keys/utils/index';
 import { never } from '../../utils/index';
 import * as keysErrors from '../../keys/errors';
-import { UnaryHandler } from '../../rpc/handlers';
 
 class KeysVerifyHandler extends UnaryHandler<
   {
@@ -14,9 +14,9 @@ class KeysVerifyHandler extends UnaryHandler<
   ClientRPCRequestParams<VerifySignatureMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
-  public async handle(
+  public handle = async (
     input: ClientRPCRequestParams<VerifySignatureMessage>,
-  ): Promise<ClientRPCResponseResult<SuccessMessage>> {
+  ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { keyRing } = this.container;
     let publicKey: PublicKey | undefined;
     try {
@@ -34,7 +34,7 @@ class KeysVerifyHandler extends UnaryHandler<
     return {
       success,
     };
-  }
+  };
 }
 
 export { KeysVerifyHandler };

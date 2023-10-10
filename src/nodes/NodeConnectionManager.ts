@@ -21,7 +21,7 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
-import type { ServerManifest } from '../rpc/types';
+import type { ServerManifest } from '@matrixai/rpc';
 import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
@@ -38,6 +38,7 @@ import {
   utils as quicUtils,
 } from '@matrixai/quic';
 import { running, status } from '@matrixai/async-init';
+import { RPCServer, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -48,8 +49,6 @@ import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import config from '../config';
-import RPCServer from '../rpc/RPCServer';
-import * as rpcUtilsMiddleware from '../rpc/utils/middleware';
 
 type ManifestClientAgent = typeof manifestClientAgent;
 
@@ -157,7 +156,7 @@ class NodeConnectionManager {
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
-  protected rpcServer?: RPCServer;
+  protected rpcServer: RPCServer;
 
   /**
    * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
@@ -192,7 +191,7 @@ class NodeConnectionManager {
     e: nodesEvents.EventNodeConnectionStream,
   ) => {
     const stream = e.detail;
-    this.rpcServer!.handleStream(stream);
+    this.rpcServer.handleStream(stream);
   };
 
   /**
@@ -370,9 +369,21 @@ class NodeConnectionManager {
       minIdleTimeout: optionsDefaulted.connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
+    // Setting up RPCServer
+    const rpcServer = new RPCServer({
+      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+        undefined,
+        this.rpcParserBufferSize,
+      ),
+      fromError: networkUtils.fromError,
+      handlerTimeoutTime: this.rpcCallTimeoutTime,
+      logger: this.logger.getChild(RPCServer.name),
+    });
+
     this.quicClientCrypto = quicClientCrypto;
     this.quicSocket = quicSocket;
     this.quicServer = quicServer;
+    this.rpcServer = rpcServer;
   }
 
   /**
@@ -409,20 +420,7 @@ class NodeConnectionManager {
 
     // We should expect that seed nodes are already in the node manager
     // It should not be managed here!
-
-    // setting up RPCServer
-    this.rpcServer = await RPCServer.createRPCServer({
-      manifest,
-      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
-        undefined,
-        this.rpcParserBufferSize,
-      ),
-      sensitive: true,
-      handlerTimeoutTime: this.rpcCallTimeoutTime,
-      handlerTimeoutGraceTime: this.rpcCallTimeoutTime + 2000,
-      logger: this.logger.getChild(RPCServer.name),
-    });
-
+    await this.rpcServer.start({ manifest });
     // Setting up QUICSocket
     await this.quicSocket.start({
       host,
@@ -509,10 +507,7 @@ class NodeConnectionManager {
     await Promise.all(destroyProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
-    await this.rpcServer?.destroy({
-      force: true,
-      reason: new nodesErrors.ErrorNodeConnectionManagerStopping(),
-    });
+    await this.rpcServer.stop({ force: true });
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -1548,10 +1543,10 @@ class NodeConnectionManager {
         },
         ctx,
       );
+      return true;
     } catch {
       return false;
     }
-    return true;
   }
 
   /**

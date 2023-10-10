@@ -7,10 +7,10 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import lexi from 'lexicographic-integer';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
+import { errors as rpcErrors } from '@matrixai/rpc';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
-import * as rpcErrors from '@/rpc/errors';
 import * as testNodesUtils from './utils';
 
 describe('nodes/utils', () => {
@@ -213,7 +213,6 @@ describe('nodes/utils', () => {
     check(rpcErrors.ErrorRPCMessageLength);
     check(rpcErrors.ErrorRPCMissingResponse);
     check(rpcErrors.ErrorRPCOutputStreamError);
-    check(rpcErrors.ErrorPolykeyRemote);
     check(rpcErrors.ErrorRPCStreamEnded);
     check(rpcErrors.ErrorRPCTimedOut);
   });

@@ -5,10 +5,10 @@ import type {
 } from '../types';
 import type NodeManager from '../../NodeManager';
 import type ACL from '../../../acl/ACL';
+import { DuplexHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
 import * as nodesErrors from '../../errors';
-import { DuplexHandler } from '../../../rpc/handlers';
 
 /**
  * Claims a node
