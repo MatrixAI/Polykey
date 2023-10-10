@@ -355,18 +355,6 @@ describe('identitiesAuthenticatedGet', () => {
       },
       logger: logger.getChild(ClientService.name),
     });
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        identitiesAuthenticatedGet: new IdentitiesAuthenticatedGetHandler({
-          identitiesManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       config: {
         verifyPeer: false,
