@@ -1,6 +1,10 @@
 import type { DB } from '@matrixai/db';
-import type { VaultIdentifierMessage, VaultPermissionMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  VaultIdentifierMessage,
+  VaultPermissionMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type ACL from '../../acl/ACL';
 import type { VaultAction, VaultActions } from '../../vaults/types';
@@ -11,7 +15,7 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as nodesUtils from '../../nodes/utils';
 
-class VaultsPermissionGetHandler extends ServerHandler<
+class VaultsPermissionGet extends ServerHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -64,4 +68,4 @@ class VaultsPermissionGetHandler extends ServerHandler<
   }
 }
 
-export { VaultsPermissionGetHandler };
+export default VaultsPermissionGet;

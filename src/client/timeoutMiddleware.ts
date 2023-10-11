@@ -1,6 +1,6 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { JSONRPCRequest, JSONRPCResponse } from '@matrixai/rpc';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
 import type { JSONValue } from '@matrixai/rpc';
 import { TransformStream } from 'stream/web';
 

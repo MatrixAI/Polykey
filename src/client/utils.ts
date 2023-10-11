@@ -1,13 +1,13 @@
 import type { JSONRPCRequest } from '@matrixai/rpc';
-import type { ClientRPCRequestParams } from '../types';
-import type SessionManager from '../../sessions/SessionManager';
-import type { Certificate, CertificatePEM } from '../../keys/types';
-import type KeyRing from '../../keys/KeyRing';
-import type { SessionToken } from '../../sessions/types';
-import type { NodeId } from '../../ids';
+import type { ClientRPCRequestParams } from './types';
+import type SessionManager from '../sessions/SessionManager';
+import type { SessionToken } from '../sessions/types';
+import type KeyRing from '../keys/KeyRing';
+import type { Certificate, CertificatePEM } from '../keys/types';
+import type { NodeId } from '../ids';
 import { utils as wsUtils } from '@matrixai/ws';
-import * as keysUtils from '../../keys/utils';
-import * as clientErrors from '../errors';
+import * as keysUtils from '../keys/utils';
+import * as clientErrors from './errors';
 
 async function authenticate(
   sessionManager: SessionManager,

@@ -3,7 +3,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class NotificationsClearHandler extends UnaryHandler<
+class NotificationsClear extends UnaryHandler<
   {
     db: DB;
     notificationsManager: NotificationsManager;
@@ -20,4 +20,4 @@ class NotificationsClearHandler extends UnaryHandler<
   };
 }
 
-export { NotificationsClearHandler };
+export default NotificationsClear;

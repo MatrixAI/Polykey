@@ -1,10 +1,14 @@
-import type { PasswordMessage, PublicKeyMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  PasswordMessage,
+  PublicKeyMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as keysUtils from '../../keys/utils/index';
 
-class KeysPublicKeyHandler extends UnaryHandler<
+class KeysPublicKey extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -22,4 +26,4 @@ class KeysPublicKeyHandler extends UnaryHandler<
   };
 }
 
-export { KeysPublicKeyHandler };
+export default KeysPublicKey;

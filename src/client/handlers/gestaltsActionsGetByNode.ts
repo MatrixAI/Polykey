@@ -1,6 +1,10 @@
 import type { DB } from '@matrixai/db';
-import type { ActionsListMessage, NodeIdMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ActionsListMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NodeIdMessage,
+} from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
 import type { NodeId } from '../../ids/index';
@@ -9,7 +13,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class GestaltsActionsGetByNodeHandler extends UnaryHandler<
+class GestaltsActionsGetByNode extends UnaryHandler<
   {
     gestaltGraph: GestaltGraph;
     db: DB;
@@ -42,4 +46,4 @@ class GestaltsActionsGetByNodeHandler extends UnaryHandler<
   };
 }
 
-export { GestaltsActionsGetByNodeHandler };
+export default GestaltsActionsGetByNode;

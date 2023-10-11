@@ -1,8 +1,8 @@
-import type VaultsScanHandler from '../handlers/VaultsScan';
 import type { HandlerTypes } from '@matrixai/rpc';
+import type VaultsScan from '../handlers/VaultsScan';
 import { ServerCaller } from '@matrixai/rpc';
 
-type CallerTypes = HandlerTypes<VaultsScanHandler>;
+type CallerTypes = HandlerTypes<VaultsScan>;
 
 const vaultsScan = new ServerCaller<
   CallerTypes['input'],

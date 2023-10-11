@@ -1,12 +1,16 @@
 import type { DB } from '@matrixai/db';
-import type { VaultIdMessage, VaultsRenameMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  VaultIdMessage,
+  VaultsRenameMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 
-class VaultsRenameHandler extends UnaryHandler<
+class VaultsRename extends UnaryHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -36,4 +40,4 @@ class VaultsRenameHandler extends UnaryHandler<
   };
 }
 
-export { VaultsRenameHandler };
+export default VaultsRename;

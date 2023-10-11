@@ -1,11 +1,14 @@
 import type { DB } from '@matrixai/db';
-import type { GestaltMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  GestaltMessage,
+} from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
 
-class GestaltsGestaltListHandler extends ServerHandler<
+class GestaltsGestaltList extends ServerHandler<
   {
     gestaltGraph: GestaltGraph;
     db: DB;
@@ -57,4 +60,4 @@ class GestaltsGestaltListHandler extends ServerHandler<
   }
 }
 
-export { GestaltsGestaltListHandler };
+export default GestaltsGestaltList;

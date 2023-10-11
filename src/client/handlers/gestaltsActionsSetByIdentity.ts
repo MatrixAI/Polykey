@@ -1,6 +1,9 @@
 import type { DB } from '@matrixai/db';
-import type { SetIdentityActionMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  SetIdentityActionMessage,
+} from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
@@ -55,4 +58,4 @@ class GestaltsActionsSetByIdentityHandler extends UnaryHandler<
   };
 }
 
-export { GestaltsActionsSetByIdentityHandler };
+export default GestaltsActionsSetByIdentityHandler;

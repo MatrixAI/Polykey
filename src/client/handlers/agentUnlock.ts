@@ -2,7 +2,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type { ContainerType } from '@matrixai/rpc';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class AgentUnlockHandler extends UnaryHandler<
+class AgentUnlock extends UnaryHandler<
   ContainerType,
   ClientRPCRequestParams,
   ClientRPCResponseResult
@@ -15,4 +15,4 @@ class AgentUnlockHandler extends UnaryHandler<
   };
 }
 
-export { AgentUnlockHandler };
+export default AgentUnlock;

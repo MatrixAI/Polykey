@@ -3,26 +3,25 @@ import type PolykeyAgent from '../../PolykeyAgent';
 import { running, status } from '@matrixai/async-init';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class AgentStopHandler extends UnaryHandler<
+class AgentStop extends UnaryHandler<
   {
-    pkAgentProm: Promise<PolykeyAgent>;
+    polykeyAgent: PolykeyAgent;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
   public handle = async (): Promise<ClientRPCResponseResult> => {
-    const { pkAgentProm } = this.container;
-    const pkAgent = await pkAgentProm;
+    const { polykeyAgent } = this.container;
     // If not running or in stopping status, then respond successfully
-    if (!pkAgent[running] || pkAgent[status] === 'stopping') {
+    if (!polykeyAgent[running] || polykeyAgent[status] === 'stopping') {
       return {};
     }
     // Stop PK agent in the background, allow the RPC time to respond
     setTimeout(async () => {
-      await pkAgent.stop();
+      await polykeyAgent.stop();
     }, 500);
     return {};
   };
 }
 
-export { AgentStopHandler };
+export default AgentStop;

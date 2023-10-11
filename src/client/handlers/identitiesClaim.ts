@@ -1,5 +1,9 @@
-import type { ClaimIdMessage, IdentityMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClaimIdMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  IdentityMessage,
+} from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -7,7 +11,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class IdentitiesClaimHandler extends UnaryHandler<
+class IdentitiesClaim extends UnaryHandler<
   {
     identitiesManager: IdentitiesManager;
   },
@@ -47,4 +51,4 @@ class IdentitiesClaimHandler extends UnaryHandler<
   };
 }
 
-export { IdentitiesClaimHandler };
+export default IdentitiesClaim;

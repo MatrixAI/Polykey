@@ -1,5 +1,8 @@
-import type { AuthProcessMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  AuthProcessMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types';
 import type { ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import { ServerHandler } from '@matrixai/rpc';
@@ -8,7 +11,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync, never } from '../../utils/index';
 
-class IdentitiesAuthenticateHandler extends ServerHandler<
+class IdentitiesAuthenticate extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
@@ -71,4 +74,4 @@ class IdentitiesAuthenticateHandler extends ServerHandler<
   }
 }
 
-export { IdentitiesAuthenticateHandler };
+export default IdentitiesAuthenticate;

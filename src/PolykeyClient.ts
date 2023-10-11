@@ -4,15 +4,15 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { RPCClient } from '@matrixai/rpc';
-import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
-import * as clientUtilsMiddleware from './client/utils/middleware';
+import { middleware as rpcMiddleware } from '@matrixai/rpc';
+import * as clientMiddleware from './client/middleware';
 import { Session } from './sessions';
 import * as utils from './utils';
 import * as errors from './errors';
 import * as events from './events';
 import config from './config';
-import { clientManifest } from './client/handlers/clientManifest';
 import * as networkUtils from './network/utils';
+import clientClientManifest from './client/callers';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -62,10 +62,10 @@ class PolykeyClient {
       fresh,
     });
     const rpcClientClient = new RPCClient({
-      manifest: clientManifest,
+      manifest: clientClientManifest,
       streamFactory,
-      middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(
-        clientUtilsMiddleware.middlewareClient(session),
+      middlewareFactory: rpcMiddleware.defaultClientMiddlewareWrapper(
+        clientMiddleware.middlewareClient(session),
         parserBufferByteLimit,
       ),
       toError: networkUtils.toError,
@@ -86,7 +86,7 @@ class PolykeyClient {
 
   public readonly nodePath: string;
   public readonly session: Session;
-  public readonly rpcClientClient: RPCClient<typeof clientManifest>;
+  public readonly rpcClientClient: RPCClient<typeof clientClientManifest>;
 
   protected fs: FileSystem;
   protected logger: Logger;
@@ -99,7 +99,7 @@ class PolykeyClient {
     logger,
   }: {
     nodePath: string;
-    rpcClientClient: RPCClient<typeof clientManifest>;
+    rpcClientClient: RPCClient<typeof clientClientManifest>;
     session: Session;
     fs: FileSystem;
     logger: Logger;

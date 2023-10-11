@@ -1,13 +1,17 @@
 import type { DB } from '@matrixai/db';
-import type { LogEntryMessage, VaultsLogMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  LogEntryMessage,
+  VaultsLogMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { VaultName } from '../../vaults/types';
 import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 
-class VaultsLogHandler extends ServerHandler<
+class VaultsLog extends ServerHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -54,4 +58,4 @@ class VaultsLogHandler extends ServerHandler<
   }
 }
 
-export { VaultsLogHandler };
+export default VaultsLog;

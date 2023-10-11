@@ -1,5 +1,8 @@
-import type { NodeIdMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NodeIdMessage,
+} from '../types';
 import type { NodeId } from '../../ids/index';
 import type Discovery from '../../discovery/Discovery';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -7,7 +10,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class GestaltsDiscoveryByNodeHandler extends UnaryHandler<
+class GestaltsDiscoveryByNode extends UnaryHandler<
   {
     discovery: Discovery;
   },
@@ -36,4 +39,4 @@ class GestaltsDiscoveryByNodeHandler extends UnaryHandler<
   };
 }
 
-export { GestaltsDiscoveryByNodeHandler };
+export default GestaltsDiscoveryByNode;

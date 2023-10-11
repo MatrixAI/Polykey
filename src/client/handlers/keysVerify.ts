@@ -1,5 +1,9 @@
-import type { SuccessMessage, VerifySignatureMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  SuccessMessage,
+  VerifySignatureMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey, Signature } from '../../keys/types';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -7,7 +11,7 @@ import * as keysUtils from '../../keys/utils/index';
 import { never } from '../../utils/index';
 import * as keysErrors from '../../keys/errors';
 
-class KeysVerifyHandler extends UnaryHandler<
+class KeysVerify extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -37,4 +41,4 @@ class KeysVerifyHandler extends UnaryHandler<
   };
 }
 
-export { KeysVerifyHandler };
+export default KeysVerify;

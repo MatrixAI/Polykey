@@ -2,7 +2,7 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class IdentitiesProvidersListHandler extends UnaryHandler<
+class IdentitiesProvidersList extends UnaryHandler<
   {
     identitiesManager: IdentitiesManager;
   },
@@ -24,4 +24,4 @@ class IdentitiesProvidersListHandler extends UnaryHandler<
   };
 }
 
-export { IdentitiesProvidersListHandler };
+export default IdentitiesProvidersList;

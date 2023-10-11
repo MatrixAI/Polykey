@@ -1,6 +1,9 @@
 import type Logger from '@matrixai/logger';
-import type { ClaimNodeMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClaimNodeMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types';
 import type { NodeId } from '../../ids/index';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type ACL from '../../acl/ACL';
@@ -9,7 +12,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class IdentitiesInviteHandler extends UnaryHandler<
+class IdentitiesInvite extends UnaryHandler<
   {
     acl: ACL;
     notificationsManager: NotificationsManager;
@@ -51,4 +54,4 @@ class IdentitiesInviteHandler extends UnaryHandler<
   };
 }
 
-export { IdentitiesInviteHandler };
+export default IdentitiesInvite;

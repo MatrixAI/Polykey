@@ -1,13 +1,16 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NodesGetMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { NodeId } from '../../ids';
 import type NodeGraph from '../../nodes/NodeGraph';
-import type { NodesGetMessage } from '../handlers/types';
 import { IdInternal } from '@matrixai/id';
 import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
 
-class NodesGetAllHandler extends ServerHandler<
+class NodesGetAll extends ServerHandler<
   {
     nodeGraph: NodeGraph;
     keyRing: KeyRing;
@@ -48,4 +51,4 @@ class NodesGetAllHandler extends ServerHandler<
   }
 }
 
-export { NodesGetAllHandler };
+export default NodesGetAll;

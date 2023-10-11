@@ -1,6 +1,9 @@
 import type { DB } from '@matrixai/db';
-import type { SetIdentityActionMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  SetIdentityActionMessage,
+} from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
@@ -9,7 +12,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class GestaltsActionsUnsetByIdentityHandler extends UnaryHandler<
+class GestaltsActionsUnsetByIdentity extends UnaryHandler<
   {
     gestaltGraph: GestaltGraph;
     db: DB;
@@ -55,4 +58,4 @@ class GestaltsActionsUnsetByIdentityHandler extends UnaryHandler<
   };
 }
 
-export { GestaltsActionsUnsetByIdentityHandler };
+export default GestaltsActionsUnsetByIdentity;

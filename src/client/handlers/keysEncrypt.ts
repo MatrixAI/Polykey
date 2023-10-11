@@ -1,5 +1,9 @@
-import type { DataMessage, DecryptMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  DataMessage,
+  DecryptMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey } from '../../keys/types';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -7,7 +11,7 @@ import { never } from '../../utils/index';
 import * as keysUtils from '../../keys/utils/index';
 import * as keysErrors from '../../keys/errors';
 
-class KeysEncryptHandler extends UnaryHandler<
+class KeysEncrypt extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -34,4 +38,4 @@ class KeysEncryptHandler extends UnaryHandler<
   };
 }
 
-export { KeysEncryptHandler };
+export default KeysEncrypt;

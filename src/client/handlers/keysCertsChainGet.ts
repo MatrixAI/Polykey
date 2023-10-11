@@ -1,9 +1,12 @@
-import type { CertMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  CertMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types';
 import type CertManager from '../../keys/CertManager';
 import { ServerHandler } from '@matrixai/rpc';
 
-class KeysCertsChainGetHandler extends ServerHandler<
+class KeysCertsChainGet extends ServerHandler<
   {
     certManager: CertManager;
   },
@@ -26,4 +29,4 @@ class KeysCertsChainGetHandler extends ServerHandler<
   }
 }
 
-export { KeysCertsChainGetHandler };
+export default KeysCertsChainGet;

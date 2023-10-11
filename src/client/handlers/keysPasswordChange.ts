@@ -1,9 +1,12 @@
-import type { PasswordMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  PasswordMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class KeysPasswordChangeHandler extends UnaryHandler<
+class KeysPasswordChange extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -19,4 +22,4 @@ class KeysPasswordChangeHandler extends UnaryHandler<
   };
 }
 
-export { KeysPasswordChangeHandler };
+export default KeysPasswordChange;

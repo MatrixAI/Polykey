@@ -1,13 +1,17 @@
 import type { DB } from '@matrixai/db';
-import type { SecretIdentifierMessage, SuccessMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  SecretIdentifierMessage,
+  SuccessMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 
-class VaultsSecretsDeleteHandler extends UnaryHandler<
+class VaultsSecretsDelete extends UnaryHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -43,4 +47,4 @@ class VaultsSecretsDeleteHandler extends UnaryHandler<
   };
 }
 
-export { VaultsSecretsDeleteHandler };
+export default VaultsSecretsDelete;

@@ -1,6 +1,10 @@
 import type { DB } from '@matrixai/db';
-import type { PermissionSetMessage, SuccessMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  PermissionSetMessage,
+  SuccessMessage,
+} from '../types';
 import type { VaultAction } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import type VaultManager from '../../vaults/VaultManager';
@@ -13,7 +17,7 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as vaultsErrors from '../../vaults/errors';
 
-class VaultsPermissionUnsetHandler extends UnaryHandler<
+class VaultsPermissionUnset extends UnaryHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -85,4 +89,4 @@ class VaultsPermissionUnsetHandler extends UnaryHandler<
   };
 }
 
-export { VaultsPermissionUnsetHandler };
+export default VaultsPermissionUnset;

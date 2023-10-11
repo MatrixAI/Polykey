@@ -1,5 +1,9 @@
-import type { ProviderSearchMessage, IdentityInfoMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  IdentityInfoMessage,
+  ProviderSearchMessage,
+} from '../types';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityData } from '../../identities/types';
@@ -9,7 +13,7 @@ import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 import * as identitiesErrors from '../../identities/errors';
 
-class IdentitiesInfoConnectedGetHandler extends ServerHandler<
+class IdentitiesInfoConnectedGet extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
@@ -104,4 +108,4 @@ class IdentitiesInfoConnectedGetHandler extends ServerHandler<
   }
 }
 
-export { IdentitiesInfoConnectedGetHandler };
+export default IdentitiesInfoConnectedGet;

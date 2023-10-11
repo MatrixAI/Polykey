@@ -1,13 +1,17 @@
 import type { DB } from '@matrixai/db';
-import type { SecretMkdirMessage, SuccessMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  SecretMkdirMessage,
+  SuccessMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 
-class VaultsSecretsMkdirHandler extends UnaryHandler<
+class VaultsSecretsMkdir extends UnaryHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -45,4 +49,4 @@ class VaultsSecretsMkdirHandler extends UnaryHandler<
   };
 }
 
-export { VaultsSecretsMkdirHandler };
+export default VaultsSecretsMkdir;

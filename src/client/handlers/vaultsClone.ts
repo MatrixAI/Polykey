@@ -1,6 +1,10 @@
 import type { DB } from '@matrixai/db';
-import type { CloneMessage, SuccessMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  CloneMessage,
+  SuccessMessage,
+} from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -8,7 +12,7 @@ import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 
-class VaultsCloneHandler extends UnaryHandler<
+class VaultsClone extends UnaryHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -45,4 +49,4 @@ class VaultsCloneHandler extends UnaryHandler<
   };
 }
 
-export { VaultsCloneHandler };
+export default VaultsClone;

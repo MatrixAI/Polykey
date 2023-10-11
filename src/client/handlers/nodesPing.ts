@@ -1,13 +1,17 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NodeIdMessage,
+  SuccessMessage,
+} from '../types';
 import type { NodeId } from '../../ids';
-import type { NodeIdMessage, SuccessMessage } from '../handlers/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
-class NodesPingHandler extends UnaryHandler<
+class NodesPing extends UnaryHandler<
   {
     nodeManager: NodeManager;
   },
@@ -40,4 +44,4 @@ class NodesPingHandler extends UnaryHandler<
   };
 }
 
-export { NodesPingHandler };
+export default NodesPing;

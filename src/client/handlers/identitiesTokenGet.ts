@@ -1,6 +1,10 @@
 import type { DB } from '@matrixai/db';
-import type { IdentityMessage, TokenMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  IdentityMessage,
+  TokenMessage,
+} from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -8,7 +12,7 @@ import { validateSync } from '../../validation/index';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils/index';
 
-class IdentitiesTokenGetHandler extends UnaryHandler<
+class IdentitiesTokenGet extends UnaryHandler<
   {
     db: DB;
     identitiesManager: IdentitiesManager;
@@ -48,4 +52,4 @@ class IdentitiesTokenGetHandler extends UnaryHandler<
   };
 }
 
-export { IdentitiesTokenGetHandler };
+export default IdentitiesTokenGet;

@@ -1,5 +1,8 @@
-import type { NotificationSendMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NotificationSendMessage,
+} from '../types';
 import type { NodeId } from '../../ids';
 import type { General } from '../../notifications/types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
@@ -8,7 +11,7 @@ import { validateSync } from '../../validation';
 import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
-class NotificationsSendHandler extends UnaryHandler<
+class NotificationsSend extends UnaryHandler<
   {
     notificationsManager: NotificationsManager;
   },
@@ -44,4 +47,4 @@ class NotificationsSendHandler extends UnaryHandler<
   };
 }
 
-export { NotificationsSendHandler };
+export default NotificationsSend;

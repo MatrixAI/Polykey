@@ -1,9 +1,13 @@
-import type { DataMessage, SignatureMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  DataMessage,
+  SignatureMessage,
+} from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import { UnaryHandler } from '@matrixai/rpc';
 
-class KeysSignHandler extends UnaryHandler<
+class KeysSign extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
@@ -21,4 +25,4 @@ class KeysSignHandler extends UnaryHandler<
   };
 }
 
-export { KeysSignHandler };
+export default KeysSign;

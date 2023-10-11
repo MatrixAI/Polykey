@@ -1,5 +1,9 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { AddressMessage, NodeIdMessage } from '../handlers/types';
+import type {
+  AddressMessage,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  NodeIdMessage,
+} from '../types';
 import type { NodeId } from '../../ids';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -8,7 +12,7 @@ import { matchSync } from '../../utils';
 import * as validationUtils from '../../validation/utils';
 import * as nodesErrors from '../../nodes/errors';
 
-class NodesFindHandler extends UnaryHandler<
+class NodesFind extends UnaryHandler<
   {
     nodeConnectionManager: NodeConnectionManager;
   },
@@ -45,4 +49,4 @@ class NodesFindHandler extends UnaryHandler<
   };
 }
 
-export { NodesFindHandler };
+export default NodesFind;

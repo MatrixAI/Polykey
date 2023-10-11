@@ -1,6 +1,9 @@
 import type { DB } from '@matrixai/db';
-import type { IdentityMessage } from './types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  IdentityMessage,
+} from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityId, ProviderId } from '../../ids/index';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -46,4 +49,4 @@ class IdentitiesTokenDeleteHandler extends UnaryHandler<
   };
 }
 
-export { IdentitiesTokenDeleteHandler };
+export default IdentitiesTokenDeleteHandler;

@@ -1,12 +1,12 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type { Session } from '../../sessions';
+import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
+import type { Session } from '../sessions';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
 } from '@matrixai/rpc';
-import type SessionManager from '../../sessions/SessionManager';
-import type KeyRing from '../../keys/KeyRing';
+import type SessionManager from '../sessions/SessionManager';
+import type KeyRing from '../keys/KeyRing';
 import * as authenticationMiddlewareUtils from './authenticationMiddleware';
 import * as timeoutMiddlewareUtils from './timeoutMiddleware';
 
