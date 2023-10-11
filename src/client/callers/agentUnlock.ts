@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type AgentUnlock from '../handlers/agentUnlock';
+import type AgentUnlock from '../handlers/AgentUnlock';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<AgentUnlock>;

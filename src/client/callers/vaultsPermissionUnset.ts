@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsPermissionUnset from '../handlers/vaultsPermissionUnset';
+import type VaultsPermissionUnset from '../handlers/VaultsPermissionUnset';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsPermissionUnset>;

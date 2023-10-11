@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesAdd from '../handlers/nodesAdd';
+import type NodesAdd from '../handlers/NodesAdd';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesAdd>;

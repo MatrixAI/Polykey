@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsPermissionGet from '../handlers/vaultsPermissionGet';
+import type VaultsPermissionGet from '../handlers/VaultsPermissionGet';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsPermissionGet>;

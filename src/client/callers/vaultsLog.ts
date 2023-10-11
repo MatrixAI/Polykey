@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsLog from '../handlers/vaultsLog';
+import type VaultsLog from '../handlers/VaultsLog';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsLog>;

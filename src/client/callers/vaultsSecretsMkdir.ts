@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsSecretsMkdir from '../handlers/vaultsSecretsMkdir';
+import type VaultsSecretsMkdir from '../handlers/VaultsSecretsMkdir';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsMkdir>;

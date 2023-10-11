@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type IdentitiesTokenDelete from '../handlers/identitiesTokenDelete';
+import type IdentitiesTokenDelete from '../handlers/IdentitiesTokenDelete';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<IdentitiesTokenDelete>;

@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type GestaltsGestaltList from '../handlers/gestaltsGestaltList';
+import type GestaltsGestaltList from '../handlers/GestaltsGestaltList';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<GestaltsGestaltList>;

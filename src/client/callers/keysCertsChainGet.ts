@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysCertsChainGet from '../handlers/keysCertsChainGet';
+import type KeysCertsChainGet from '../handlers/KeysCertsChainGet';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysCertsChainGet>;

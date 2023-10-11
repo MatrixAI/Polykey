@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type GestaltsActionsUnsetByNode from '../handlers/gestaltsActionsUnsetByNode';
+import type GestaltsActionsUnsetByNode from '../handlers/GestaltsActionsUnsetByNode';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<GestaltsActionsUnsetByNode>;
