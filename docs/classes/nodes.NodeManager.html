@@ -1,0 +1,940 @@
+<!DOCTYPE html><html class="default" lang="en"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NodeManager | polykey</title><meta name="description" content="Documentation for polykey"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/search.js" id="tsd-search-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os"</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container">
+<div class="table-cell" id="tsd-search" data-base="..">
+<div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M15.7824 13.833L12.6666 10.7177C12.5259 10.5771 12.3353 10.499 12.1353 10.499H11.6259C12.4884 9.39596 13.001 8.00859 13.001 6.49937C13.001 2.90909 10.0914 0 6.50048 0C2.90959 0 0 2.90909 0 6.49937C0 10.0896 2.90959 12.9987 6.50048 12.9987C8.00996 12.9987 9.39756 12.4863 10.5008 11.6239V12.1332C10.5008 12.3332 10.5789 12.5238 10.7195 12.6644L13.8354 15.7797C14.1292 16.0734 14.6042 16.0734 14.8948 15.7797L15.7793 14.8954C16.0731 14.6017 16.0731 14.1267 15.7824 13.833ZM6.50048 10.499C4.29094 10.499 2.50018 8.71165 2.50018 6.49937C2.50018 4.29021 4.28781 2.49976 6.50048 2.49976C8.71001 2.49976 10.5008 4.28708 10.5008 6.49937C10.5008 8.70852 8.71314 10.499 6.50048 10.499Z" fill="var(--color-text)"></path></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div>
+<div class="field">
+<div id="tsd-toolbar-links"></div></div>
+<ul class="results">
+<li class="state loading">Preparing search index...</li>
+<li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">polykey</a></div>
+<div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="2" fill="var(--color-text)"></rect><rect x="1" y="7" width="14" height="2" fill="var(--color-text)"></rect><rect x="1" y="11" width="14" height="2" fill="var(--color-text)"></rect></svg></a></div></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb">
+<li><a href="../modules.html">polykey</a></li>
+<li><a href="../modules/nodes.html">nodes</a></li>
+<li><a href="nodes.NodeManager.html">NodeManager</a></li></ul>
+<h1>Class NodeManager</h1></div>
+<section class="tsd-panel tsd-hierarchy">
+<h4>Hierarchy</h4>
+<ul class="tsd-hierarchy">
+<li><span class="tsd-signature-type ">StartStop</span>
+<ul class="tsd-hierarchy">
+<li><span class="target">NodeManager</span></li></ul></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L57">src/nodes/NodeManager.ts:57</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L64">src/nodes/NodeManager.ts:64</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
+<h5 class="tsd-index-heading uppercase" role="button" aria-expanded="false" tabIndex=0><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1.5 5.50969L8 11.6609L14.5 5.50969L12.5466 3.66086L8 7.96494L3.45341 3.66086L1.5 5.50969Z" fill="var(--color-text)"></path></svg> Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Constructors</h3>
+<div class="tsd-index-list"><a href="nodes.NodeManager.html#constructor" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-512"><rect fill="var(--color-icon-background)" stroke="#4D7FFF" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)"></path></g></svg><span>constructor</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Properties</h3>
+<div class="tsd-index-list"><a href="nodes.NodeManager.html#_initLock_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-1024"><rect fill="var(--color-icon-background)" stroke="#FF984D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.354 16V7.24H12.174C12.99 7.24 13.638 7.476 14.118 7.948C14.606 8.412 14.85 9.036 14.85 9.82C14.85 10.604 14.606 11.232 14.118 11.704C13.638 12.168 12.99 12.4 12.174 12.4H10.434V16H9.354ZM10.434 11.428H12.174C12.646 11.428 13.022 11.284 13.302 10.996C13.59 10.7 13.734 10.308 13.734 9.82C13.734 9.324 13.59 8.932 13.302 8.644C13.022 8.356 12.646 8.212 12.174 8.212H10.434V11.428Z" fill="var(--color-text)"></path></g></svg><span>[init<wbr/>Lock]</span></a>
+<a href="nodes.NodeManager.html#basePath" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>base<wbr/>Path</span></a>
+<a href="nodes.NodeManager.html#checkSeedConnectionsHandler" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler</span></a>
+<a href="nodes.NodeManager.html#checkSeedConnectionsHandlerId" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler<wbr/>Id</span></a>
+<a href="nodes.NodeManager.html#connectionConnectTimeoutTime" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>connection<wbr/>Connect<wbr/>Timeout<wbr/>Time</span></a>
+<a href="nodes.NodeManager.html#db" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>db</span></a>
+<a href="nodes.NodeManager.html#gcBucketHandler" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gc<wbr/>Bucket<wbr/>Handler</span></a>
+<a href="nodes.NodeManager.html#gcBucketHandlerId" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gc<wbr/>Bucket<wbr/>Handler<wbr/>Id</span></a>
+<a href="nodes.NodeManager.html#gestaltGraph" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a>
+<a href="nodes.NodeManager.html#keyRing" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a>
+<a href="nodes.NodeManager.html#logger" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a>
+<a href="nodes.NodeManager.html#nodeConnectionManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a>
+<a href="nodes.NodeManager.html#nodeGraph" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph</span></a>
+<a href="nodes.NodeManager.html#pendingNodes" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>pending<wbr/>Nodes</span></a>
+<a href="nodes.NodeManager.html#pingAndSetNodeHandler" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler</span></a>
+<a href="nodes.NodeManager.html#pingAndSetNodeHandlerId" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler<wbr/>Id</span></a>
+<a href="nodes.NodeManager.html#refreshBucketDelay" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Delay</span></a>
+<a href="nodes.NodeManager.html#refreshBucketDelayJitter" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Delay<wbr/>Jitter</span></a>
+<a href="nodes.NodeManager.html#refreshBucketHandler" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Handler</span></a>
+<a href="nodes.NodeManager.html#refreshBucketHandlerId" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Handler<wbr/>Id</span></a>
+<a href="nodes.NodeManager.html#retrySeedConnectionsDelay" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>retry<wbr/>Seed<wbr/>Connections<wbr/>Delay</span></a>
+<a href="nodes.NodeManager.html#sigchain" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>sigchain</span></a>
+<a href="nodes.NodeManager.html#taskManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Manager</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Accessors</h3>
+<div class="tsd-index-list"><a href="nodes.NodeManager.html#_eventHandled_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-262144"><rect fill="var(--color-icon-background)" stroke="#FF4D4D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M8.85 16L11.13 7.24H12.582L14.85 16H13.758L13.182 13.672H10.53L9.954 16H8.85ZM10.746 12.76H12.954L12.282 10.06C12.154 9.548 12.054 9.12 11.982 8.776C11.91 8.432 11.866 8.208 11.85 8.104C11.834 8.208 11.79 8.432 11.718 8.776C11.646 9.12 11.546 9.544 11.418 10.048L10.746 12.76Z" fill="var(--color-text)"></path></g></svg><span>[event<wbr/>Handled]</span></a>
+<a href="nodes.NodeManager.html#_eventHandlers_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handlers]</span></a>
+<a href="nodes.NodeManager.html#_eventTarget_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Target]</span></a>
+<a href="nodes.NodeManager.html#_handleEventError_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[handle<wbr/>Event<wbr/>Error]</span></a>
+<a href="nodes.NodeManager.html#_running_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[running]</span></a>
+<a href="nodes.NodeManager.html#_statusP_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status<wbr/>P]</span></a>
+<a href="nodes.NodeManager.html#_status_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status]</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Methods</h3>
+<div class="tsd-index-list"><a href="nodes.NodeManager.html#addEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-2048"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)"></path></g></svg><span>add<wbr/>Event<wbr/>Listener</span></a>
+<a href="nodes.NodeManager.html#addPendingNode" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>add<wbr/>Pending<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#claimNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>claim<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#dispatchEvent" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a>
+<a href="nodes.NodeManager.html#garbageCollectBucket" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>garbage<wbr/>Collect<wbr/>Bucket</span></a>
+<a href="nodes.NodeManager.html#getBucket" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket</span></a>
+<a href="nodes.NodeManager.html#getNodeAddress" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Address</span></a>
+<a href="nodes.NodeManager.html#handleClaimNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Claim<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#handleNodeConnectionEvent" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Node<wbr/>Connection<wbr/>Event</span></a>
+<a href="nodes.NodeManager.html#knowsNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>knows<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#pingNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>ping<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#refreshBucket" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>refresh<wbr/>Bucket</span></a>
+<a href="nodes.NodeManager.html#removeEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a>
+<a href="nodes.NodeManager.html#requestChainData" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>request<wbr/>Chain<wbr/>Data</span></a>
+<a href="nodes.NodeManager.html#resetBuckets" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>reset<wbr/>Buckets</span></a>
+<a href="nodes.NodeManager.html#setNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#setupGCTask" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setupGCTask</span></a>
+<a href="nodes.NodeManager.html#setupRefreshBucketTasks" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setup<wbr/>Refresh<wbr/>Bucket<wbr/>Tasks</span></a>
+<a href="nodes.NodeManager.html#start" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a>
+<a href="nodes.NodeManager.html#stop" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a>
+<a href="nodes.NodeManager.html#syncNodeGraph" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>sync<wbr/>Node<wbr/>Graph</span></a>
+<a href="nodes.NodeManager.html#unsetNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node</span></a>
+<a href="nodes.NodeManager.html#updateRefreshBucketDelay" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>update<wbr/>Refresh<wbr/>Bucket<wbr/>Delay</span></a>
+</div></section></div></details></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Constructors</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="constructor" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="constructor.new_NodeManager"><span class="tsd-kind-constructor-signature">new <wbr/>Node<wbr/>Manager</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a><a href="#constructor.new_NodeManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">connectionConnectTimeoutTime</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeConnectionManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeGraph</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">refreshBucketDelay</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">refreshBucketDelayJitter</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">retrySeedConnectionsDelay</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">: </span><a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">connection<wbr/>Connect<wbr/>Timeout<wbr/>Time</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">gestalt<wbr/>Graph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Graph</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Delay</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Delay<wbr/>Jitter</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">retry<wbr/>Seed<wbr/>Connections<wbr/>Delay</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">: </span><a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></h5></li></ul></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.constructor</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L219">src/nodes/NodeManager.ts:219</a></li></ul></aside></li></ul></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Properties</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>[init<wbr/>Lock]</span><a href="#_initLock_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">[init<wbr/>Lock]</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">RWLockWriter</span></div><aside class="tsd-sources">
+<p>Inherited from StartStop.[initLock]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:9</li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="basePath" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>base<wbr/>Path</span><a href="#basePath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">base<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L83">src/nodes/NodeManager.ts:83</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="checkSeedConnectionsHandler" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler</span><a href="#checkSeedConnectionsHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">check<wbr/>Seed<wbr/>Connections<wbr/>Handler</span><span class="tsd-signature-symbol">:</span> <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L150">src/nodes/NodeManager.ts:150</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="checkSeedConnectionsHandlerId" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler<wbr/>Id</span><a href="#checkSeedConnectionsHandlerId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">check<wbr/>Seed<wbr/>Connections<wbr/>Handler<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L202">src/nodes/NodeManager.ts:202</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="connectionConnectTimeoutTime" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>connection<wbr/>Connect<wbr/>Timeout<wbr/>Time</span><a href="#connectionConnectTimeoutTime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">connection<wbr/>Connect<wbr/>Timeout<wbr/>Time</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+<div class="tsd-comment tsd-typography"><p>Time used to establish <code>NodeConnection</code></p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L81">src/nodes/NodeManager.ts:81</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="db" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L65">src/nodes/NodeManager.ts:65</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="gcBucketHandler" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>gc<wbr/>Bucket<wbr/>Handler</span><a href="#gcBucketHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">gc<wbr/>Bucket<wbr/>Handler</span><span class="tsd-signature-symbol">:</span> <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L110">src/nodes/NodeManager.ts:110</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="gcBucketHandlerId" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>gc<wbr/>Bucket<wbr/>Handler<wbr/>Id</span><a href="#gcBucketHandlerId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">gc<wbr/>Bucket<wbr/>Handler<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L128">src/nodes/NodeManager.ts:128</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="gestaltGraph" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>gestalt<wbr/>Graph</span><a href="#gestaltGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">gestalt<wbr/>Graph</span><span class="tsd-signature-symbol">:</span> <a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L72">src/nodes/NodeManager.ts:72</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="keyRing" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>key<wbr/>Ring</span><a href="#keyRing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">:</span> <a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L68">src/nodes/NodeManager.ts:68</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L66">src/nodes/NodeManager.ts:66</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeConnectionManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Connection<wbr/>Manager</span><a href="#nodeConnectionManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L69">src/nodes/NodeManager.ts:69</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraph" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph</span><a href="#nodeGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L70">src/nodes/NodeManager.ts:70</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="pendingNodes" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>pending<wbr/>Nodes</span><a href="#pendingNodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">pending<wbr/>Nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L76">src/nodes/NodeManager.ts:76</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="pingAndSetNodeHandler" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler</span><a href="#pingAndSetNodeHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler</span><span class="tsd-signature-symbol">:</span> <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L130">src/nodes/NodeManager.ts:130</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="pingAndSetNodeHandlerId" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler<wbr/>Id</span><a href="#pingAndSetNodeHandlerId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L148">src/nodes/NodeManager.ts:148</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="refreshBucketDelay" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>refresh<wbr/>Bucket<wbr/>Delay</span><a href="#refreshBucketDelay" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Delay</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L73">src/nodes/NodeManager.ts:73</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="refreshBucketDelayJitter" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>refresh<wbr/>Bucket<wbr/>Delay<wbr/>Jitter</span><a href="#refreshBucketDelayJitter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Delay<wbr/>Jitter</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L74">src/nodes/NodeManager.ts:74</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="refreshBucketHandler" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>refresh<wbr/>Bucket<wbr/>Handler</span><a href="#refreshBucketHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Handler</span><span class="tsd-signature-symbol">:</span> <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L84">src/nodes/NodeManager.ts:84</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="refreshBucketHandlerId" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>refresh<wbr/>Bucket<wbr/>Handler<wbr/>Id</span><a href="#refreshBucketHandlerId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">refresh<wbr/>Bucket<wbr/>Handler<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L108">src/nodes/NodeManager.ts:108</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="retrySeedConnectionsDelay" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>retry<wbr/>Seed<wbr/>Connections<wbr/>Delay</span><a href="#retrySeedConnectionsDelay" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">retry<wbr/>Seed<wbr/>Connections<wbr/>Delay</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L75">src/nodes/NodeManager.ts:75</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="sigchain" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>sigchain</span><a href="#sigchain" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">:</span> <a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L67">src/nodes/NodeManager.ts:67</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="taskManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>task<wbr/>Manager</span><a href="#taskManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L71">src/nodes/NodeManager.ts:71</a></li></ul></aside></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Accessors</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandled_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Handled]</span><a href="#_eventHandled_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventHandled_._eventHandled_-1"><span class="tsd-signature-symbol">get</span> [eventHandled]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[eventHandled]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:7</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandlers_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Handlers]</span><a href="#_eventHandlers_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventHandlers_._eventHandlers_-1"><span class="tsd-signature-symbol">get</span> [eventHandlers]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[eventHandlers]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:6</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventTarget_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Target]</span><a href="#_eventTarget_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventTarget_._eventTarget_-1"><span class="tsd-signature-symbol">get</span> [eventTarget]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">EventTarget</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">EventTarget</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[eventTarget]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:5</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_handleEventError_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[handle<wbr/>Event<wbr/>Error]</span><a href="#_handleEventError_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_handleEventError_._handleEventError_-1"><span class="tsd-signature-symbol">get</span> [handleEventError]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span></h4>
+<ul class="tsd-parameters">
+<li class="tsd-parameter-signature">
+<ul class="tsd-signatures tsd-is-external">
+<li class="tsd-signature" id="_handleEventError_._handleEventError_-1.__type.__type-1"><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">evt</span>: <span class="tsd-signature-type ">EventError</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4></li></ul></li></ul><aside class="tsd-sources">
+<p>Inherited from StartStop.[handleEventError]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:8</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_running_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[running]</span><a href="#_running_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_running_._running_-1"><span class="tsd-signature-symbol">get</span> [running]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[running]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:6</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_statusP_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[status<wbr/>P]</span><a href="#_statusP_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_statusP_._statusP_-1"><span class="tsd-signature-symbol">get</span> [statusP]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[statusP]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:8</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_status_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[status]</span><a href="#_status_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_status_._status_-1"><span class="tsd-signature-symbol">get</span> [status]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Status</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Status</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.[status]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:7</li></ul></aside></li></ul></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Methods</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="addEventListener" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>add<wbr/>Event<wbr/>Listener</span><a href="#addEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="addEventListener.addEventListener-1"><span class="tsd-kind-call-signature">add<wbr/>Event<wbr/>Listener</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">callback</span>, <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span><a href="#addEventListener.addEventListener-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">callback</span>: <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOrEventListenerObject</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">AddEventListenerOptions</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.addEventListener</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:9</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="addPendingNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>add<wbr/>Pending<wbr/>Node</span><a href="#addPendingNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="addPendingNode.addPendingNode-1"><span class="tsd-kind-call-signature">add<wbr/>Pending<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">block</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">pingTimeoutTime</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#addPendingNode.addPendingNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">block</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">pingTimeoutTime</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = ...</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">ContextTimed</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L912">src/nodes/NodeManager.ts:912</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="claimNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>claim<wbr/>Node</span><a href="#claimNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="claimNode.claimNode-1"><span class="tsd-kind-call-signature">claim<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">targetNodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#claimNode.claimNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Call this function upon receiving a &quot;claim node request&quot; notification from
+another node.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">targetNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">ContextTimed</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L440">src/nodes/NodeManager.ts:440</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="dispatchEvent.dispatchEvent-1"><span class="tsd-kind-call-signature">dispatch<wbr/>Event</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span><a href="#dispatchEvent.dispatchEvent-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">event</span>: <span class="tsd-signature-type ">Event</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.dispatchEvent</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:11</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="garbageCollectBucket" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>garbage<wbr/>Collect<wbr/>Bucket</span><a href="#garbageCollectBucket" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="garbageCollectBucket.garbageCollectBucket-1"><span class="tsd-kind-call-signature">garbage<wbr/>Collect<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">pingTimeoutTime</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#garbageCollectBucket.garbageCollectBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">pingTimeoutTime</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L807">src/nodes/NodeManager.ts:807</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getBucket" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Bucket</span><a href="#getBucket" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getBucket.getBucket-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span><a href="#getBucket.getBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the specified bucket from the NodeGraph</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L671">src/nodes/NodeManager.ts:671</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getNodeAddress" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Node<wbr/>Address</span><a href="#getNodeAddress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getNodeAddress.getNodeAddress-1"><span class="tsd-kind-call-signature">get<wbr/>Node<wbr/>Address</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a><span class="tsd-signature-symbol">&gt;</span><a href="#getNodeAddress.getNodeAddress-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Retrieves the node Address from the NodeGraph</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
+<div class="tsd-comment tsd-typography"><p>node ID of the target node</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a><span class="tsd-signature-symbol">&gt;</span></h4><p>Node Address of the target node</p>
+
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L648">src/nodes/NodeManager.ts:648</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="handleClaimNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>handle<wbr/>Claim<wbr/>Node</span><a href="#handleClaimNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="handleClaimNode.handleClaimNode-1"><span class="tsd-kind-call-signature">handle<wbr/>Claim<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">requestingNodeId</span>, <span class="tsd-kind-parameter">input</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentRPCResponseResult.html" class="tsd-signature-type tsd-kind-type-alias">AgentRPCResponseResult</a><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentClaimMessage.html" class="tsd-signature-type tsd-kind-type-alias">AgentClaimMessage</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleClaimNode.handleClaimNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">requestingNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">input</span>: <span class="tsd-signature-type ">AsyncIterableIterator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentRPCRequestParams.html" class="tsd-signature-type tsd-kind-type-alias">AgentRPCRequestParams</a><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentClaimMessage.html" class="tsd-signature-type tsd-kind-type-alias">AgentClaimMessage</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentRPCResponseResult.html" class="tsd-signature-type tsd-kind-type-alias">AgentRPCResponseResult</a><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.agent.types.AgentClaimMessage.html" class="tsd-signature-type tsd-kind-type-alias">AgentClaimMessage</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L552">src/nodes/NodeManager.ts:552</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="handleNodeConnectionEvent" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>handle<wbr/>Node<wbr/>Connection<wbr/>Event</span><a href="#handleNodeConnectionEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="handleNodeConnectionEvent.handleNodeConnectionEvent-1"><span class="tsd-kind-call-signature">handle<wbr/>Node<wbr/>Connection<wbr/>Event</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">e</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleNodeConnectionEvent.handleNodeConnectionEvent-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">e</span>: <a href="events.EventNodeConnectionManagerConnection.html" class="tsd-signature-type tsd-kind-class">EventNodeConnectionManagerConnection</a></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L205">src/nodes/NodeManager.ts:205</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="knowsNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>knows<wbr/>Node</span><a href="#knowsNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="knowsNode.knowsNode-1"><span class="tsd-kind-call-signature">knows<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">targetNodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span><a href="#knowsNode.knowsNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Determines whether a node ID -&gt; node address mapping exists in the NodeGraph</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">targetNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
+<div class="tsd-comment tsd-typography"><p>the node ID of the node to find</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><p>true if the node exists in the table, false otherwise</p>
+
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L661">src/nodes/NodeManager.ts:661</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="pingNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>ping<wbr/>Node</span><a href="#pingNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="pingNode.pingNode-1"><span class="tsd-kind-call-signature">ping<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">address</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span><a href="#pingNode.pingNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Determines whether a node in the Polykey network is online.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
+<div class="tsd-comment tsd-typography"><p>NodeId of the node we&#39;re pinging</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">address</span>: <a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5>
+<div class="tsd-comment tsd-typography"><p>Optional Host and Port we want to ping</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><p>true if online, false if offline</p>
+
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L335">src/nodes/NodeManager.ts:335</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="refreshBucket" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>refresh<wbr/>Bucket</span><a href="#refreshBucket" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="refreshBucket.refreshBucket-1"><span class="tsd-kind-call-signature">refresh<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">pingTimeoutTime</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#refreshBucket.refreshBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Kademlia refresh bucket operation.
+It picks a random node within a bucket and does a search for that node.
+Connections during the search will share node information with other
+nodes.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">pingTimeoutTime</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L1000">src/nodes/NodeManager.ts:1000</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="removeEventListener.removeEventListener-1"><span class="tsd-kind-call-signature">remove<wbr/>Event<wbr/>Listener</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">callback</span>, <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span><a href="#removeEventListener.removeEventListener-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">callback</span>: <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOrEventListenerObject</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOptions</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.removeEventListener</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:10</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="requestChainData" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>request<wbr/>Chain<wbr/>Data</span><a href="#requestChainData" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="requestChainData.requestChainData-1"><span class="tsd-kind-call-signature">request<wbr/>Chain<wbr/>Data</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">targetNodeId</span>, <span class="tsd-kind-parameter">claimId</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/claims.types.ClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ClaimId</a><span class="tsd-signature-symbol">, </span><a href="../types/claims.types.SignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">SignedClaim</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><a href="#requestChainData.requestChainData-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Connects to the target node, and retrieves its sigchain data.
+Verifies and returns the decoded chain as ChainData. Note: this will drop
+any unverifiable claims.
+For node1 -&gt; node2 claims, the verification process also involves connecting
+to node2 to verify the claim (to retrieve its signing public key).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">targetNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
+<div class="tsd-comment tsd-typography"><p>Id of the node to connect request the chain data of.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">claimId</span>: <a href="../types/claims.types.ClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ClaimId</a></h5>
+<div class="tsd-comment tsd-typography"><p>If set then we get the claims newer that this claim Id.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/claims.types.ClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ClaimId</a><span class="tsd-signature-symbol">, </span><a href="../types/claims.types.SignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">SignedClaim</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L380">src/nodes/NodeManager.ts:380</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="resetBuckets" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>reset<wbr/>Buckets</span><a href="#resetBuckets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="resetBuckets.resetBuckets-1"><span class="tsd-kind-call-signature">reset<wbr/>Buckets</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#resetBuckets.resetBuckets-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>To be called on key renewal. Re-orders all nodes in all buckets with respect
+to the new node ID.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L987">src/nodes/NodeManager.ts:987</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="setNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>set<wbr/>Node</span><a href="#setNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="setNode.setNode-1"><span class="tsd-kind-call-signature">set<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">block</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">force</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">pingTimeoutTime</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setNode.setNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Adds a node to the node graph. This assumes that you have already authenticated the node
+Updates the node if the node already exists
+This operation is blocking by default - set <code>block</code> 2qto false to make it non-blocking</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
+<div class="tsd-comment tsd-typography"><p>Id of the node we wish to add</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5>
+<div class="tsd-comment tsd-typography"><p>Expected address of the node we want to add</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">block</span>: <span class="tsd-signature-type">boolean</span></h5>
+<div class="tsd-comment tsd-typography"><p>When true it will wait for any garbage collection to finish before returning.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">force</span>: <span class="tsd-signature-type">boolean</span></h5>
+<div class="tsd-comment tsd-typography"><p>Flag for if we want to add the node without authenticating or if the bucket is full.
+This will drop the oldest node in favor of the new.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">pingTimeoutTime</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"><p>Timeout for each ping operation during garbage collection.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L696">src/nodes/NodeManager.ts:696</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="setupGCTask" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setupGCTask</span><a href="#setupGCTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="setupGCTask.setupGCTask-1"><span class="tsd-kind-call-signature">setupGCTask</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setupGCTask.setupGCTask-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L937">src/nodes/NodeManager.ts:937</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="setupRefreshBucketTasks" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setup<wbr/>Refresh<wbr/>Bucket<wbr/>Tasks</span><a href="#setupRefreshBucketTasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="setupRefreshBucketTasks.setupRefreshBucketTasks-1"><span class="tsd-kind-call-signature">setup<wbr/>Refresh<wbr/>Bucket<wbr/>Tasks</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><a href="#setupRefreshBucketTasks.setupRefreshBucketTasks-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L1025">src/nodes/NodeManager.ts:1025</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="start.start-1"><span class="tsd-kind-call-signature">start</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#start.start-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.start</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L265">src/nodes/NodeManager.ts:265</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="stop.stop-1"><span class="tsd-kind-call-signature">stop</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#stop.stop-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from StartStop.stop</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L299">src/nodes/NodeManager.ts:299</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="syncNodeGraph" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>sync<wbr/>Node<wbr/>Graph</span><a href="#syncNodeGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="syncNodeGraph.syncNodeGraph-1"><span class="tsd-kind-call-signature">sync<wbr/>Node<wbr/>Graph</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">block</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">pingTimeoutTime</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#syncNodeGraph.syncNodeGraph-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Perform an initial database synchronisation: get k of the closest nodes
+from each seed node and add them to this database
+Establish a connection to each node before adding it
+By default this operation is blocking, set <code>block</code> to <code>false</code> to make it
+non-blocking</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">block</span>: <span class="tsd-signature-type">boolean</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">pingTimeoutTime</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L1182">src/nodes/NodeManager.ts:1182</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="unsetNode" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>unset<wbr/>Node</span><a href="#unsetNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="unsetNode.unsetNode-1"><span class="tsd-kind-call-signature">unset<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#unsetNode.unsetNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Removes a node from the NodeGraph</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L979">src/nodes/NodeManager.ts:979</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="updateRefreshBucketDelay" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>update<wbr/>Refresh<wbr/>Bucket<wbr/>Delay</span><a href="#updateRefreshBucketDelay" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="updateRefreshBucketDelay.updateRefreshBucketDelay-1"><span class="tsd-kind-call-signature">update<wbr/>Refresh<wbr/>Bucket<wbr/>Delay</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">delay</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">lazy</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/tasks.types.Task.html" class="tsd-signature-type tsd-kind-type-alias">Task</a><span class="tsd-signature-symbol">&gt;</span><a href="#updateRefreshBucketDelay.updateRefreshBucketDelay-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">delay</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = ...</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">lazy</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = true</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/tasks.types.Task.html" class="tsd-signature-type tsd-kind-type-alias">Task</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeManager.ts#L1100">src/nodes/NodeManager.ts:1100</a></li></ul></aside></li></ul></section></section></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-index-accordion"><summary class="tsd-accordion-summary">
+<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)" id="icon-chevronDown"></path></svg>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility">
+<h4 class="uppercase">Member Visibility</h4><form>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-private" name="private"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Private</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></form></div>
+<div class="tsd-theme-toggle">
+<h4 class="uppercase">Theme</h4><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-index-accordion tsd-page-navigation"><summary class="tsd-accordion-summary">
+<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="#icon-chevronDown"></use></svg>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<ul>
+<li><a href="#constructor" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-512"></use></svg><span>constructor</span></a></li>
+<li><a href="#_initLock_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>[init<wbr/>Lock]</span></a></li>
+<li><a href="#basePath" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>base<wbr/>Path</span></a></li>
+<li><a href="#checkSeedConnectionsHandler" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler</span></a></li>
+<li><a href="#checkSeedConnectionsHandlerId" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>check<wbr/>Seed<wbr/>Connections<wbr/>Handler<wbr/>Id</span></a></li>
+<li><a href="#connectionConnectTimeoutTime" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>connection<wbr/>Connect<wbr/>Timeout<wbr/>Time</span></a></li>
+<li><a href="#db" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>db</span></a></li>
+<li><a href="#gcBucketHandler" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gc<wbr/>Bucket<wbr/>Handler</span></a></li>
+<li><a href="#gcBucketHandlerId" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gc<wbr/>Bucket<wbr/>Handler<wbr/>Id</span></a></li>
+<li><a href="#gestaltGraph" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a></li>
+<li><a href="#keyRing" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a></li>
+<li><a href="#logger" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a></li>
+<li><a href="#nodeConnectionManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a></li>
+<li><a href="#nodeGraph" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph</span></a></li>
+<li><a href="#pendingNodes" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>pending<wbr/>Nodes</span></a></li>
+<li><a href="#pingAndSetNodeHandler" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler</span></a></li>
+<li><a href="#pingAndSetNodeHandlerId" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>And<wbr/>Set<wbr/>Node<wbr/>Handler<wbr/>Id</span></a></li>
+<li><a href="#refreshBucketDelay" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Delay</span></a></li>
+<li><a href="#refreshBucketDelayJitter" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Delay<wbr/>Jitter</span></a></li>
+<li><a href="#refreshBucketHandler" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Handler</span></a></li>
+<li><a href="#refreshBucketHandlerId" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>refresh<wbr/>Bucket<wbr/>Handler<wbr/>Id</span></a></li>
+<li><a href="#retrySeedConnectionsDelay" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>retry<wbr/>Seed<wbr/>Connections<wbr/>Delay</span></a></li>
+<li><a href="#sigchain" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>sigchain</span></a></li>
+<li><a href="#taskManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Manager</span></a></li>
+<li><a href="#_eventHandled_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handled]</span></a></li>
+<li><a href="#_eventHandlers_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handlers]</span></a></li>
+<li><a href="#_eventTarget_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Target]</span></a></li>
+<li><a href="#_handleEventError_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[handle<wbr/>Event<wbr/>Error]</span></a></li>
+<li><a href="#_running_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[running]</span></a></li>
+<li><a href="#_statusP_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status<wbr/>P]</span></a></li>
+<li><a href="#_status_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status]</span></a></li>
+<li><a href="#addEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>add<wbr/>Event<wbr/>Listener</span></a></li>
+<li><a href="#addPendingNode" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>add<wbr/>Pending<wbr/>Node</span></a></li>
+<li><a href="#claimNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>claim<wbr/>Node</span></a></li>
+<li><a href="#dispatchEvent" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a></li>
+<li><a href="#garbageCollectBucket" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>garbage<wbr/>Collect<wbr/>Bucket</span></a></li>
+<li><a href="#getBucket" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket</span></a></li>
+<li><a href="#getNodeAddress" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Address</span></a></li>
+<li><a href="#handleClaimNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Claim<wbr/>Node</span></a></li>
+<li><a href="#handleNodeConnectionEvent" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Node<wbr/>Connection<wbr/>Event</span></a></li>
+<li><a href="#knowsNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>knows<wbr/>Node</span></a></li>
+<li><a href="#pingNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>ping<wbr/>Node</span></a></li>
+<li><a href="#refreshBucket" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>refresh<wbr/>Bucket</span></a></li>
+<li><a href="#removeEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a></li>
+<li><a href="#requestChainData" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>request<wbr/>Chain<wbr/>Data</span></a></li>
+<li><a href="#resetBuckets" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>reset<wbr/>Buckets</span></a></li>
+<li><a href="#setNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node</span></a></li>
+<li><a href="#setupGCTask" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setupGCTask</span></a></li>
+<li><a href="#setupRefreshBucketTasks" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setup<wbr/>Refresh<wbr/>Bucket<wbr/>Tasks</span></a></li>
+<li><a href="#start" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a></li>
+<li><a href="#stop" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a></li>
+<li><a href="#syncNodeGraph" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>sync<wbr/>Node<wbr/>Graph</span></a></li>
+<li><a href="#unsetNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node</span></a></li>
+<li><a href="#updateRefreshBucketDelay" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>update<wbr/>Refresh<wbr/>Bucket<wbr/>Delay</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>
+<ul class="tsd-small-nested-navigation">
+<li><a href="../modules/acl.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>acl</span></a></li>
+<li><a href="../modules/bootstrap.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>bootstrap</span></a></li>
+<li><a href="../modules/claims.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>claims</span></a></li>
+<li><a href="../modules/client.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>client</span></a></li>
+<li><a href="../modules/discovery.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>discovery</span></a></li>
+<li><a href="../modules/errors.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>errors</span></a></li>
+<li><a href="../modules/events.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>events</span></a></li>
+<li><a href="../modules/gestalts.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>gestalts</span></a></li>
+<li><a href="../modules/git.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>git</span></a></li>
+<li><a href="../modules/http.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>http</span></a></li>
+<li><a href="../modules/identities.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>identities</span></a></li>
+<li><a href="../modules/ids.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>ids</span></a></li>
+<li><a href="../modules/keys.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>keys</span></a></li>
+<li><a href="../modules/network.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>network</span></a></li>
+<li>
+<details class="tsd-index-accordion" open data-key="nodes"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="#icon-chevronDown"></use></svg><a href="../modules/nodes.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>nodes</span></a></summary>
+<div class="tsd-accordion-details">
+<ul class="tsd-nested-navigation">
+<li><a href="../modules/nodes.agent.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>agent</span></a></li>
+<li><a href="../modules/nodes.errors.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>errors</span></a></li>
+<li><a href="../modules/nodes.events.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>events</span></a></li>
+<li><a href="../modules/nodes.types.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>types</span></a></li>
+<li><a href="../modules/nodes.utils.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>utils</span></a></li>
+<li><a href="nodes.NodeConnection.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-128"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-class)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)"></path></g></svg><span>Node<wbr/>Connection</span></a></li>
+<li><a href="nodes.NodeConnectionManager.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Node<wbr/>Connection<wbr/>Manager</span></a></li>
+<li><a href="nodes.NodeGraph.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Node<wbr/>Graph</span></a></li>
+<li><a href="nodes.NodeManager.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Node<wbr/>Manager</span></a></li></ul></div></details></li>
+<li><a href="../modules/notifications.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>notifications</span></a></li>
+<li><a href="../modules/schema.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>schema</span></a></li>
+<li><a href="../modules/sessions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>sessions</span></a></li>
+<li><a href="../modules/sigchain.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>sigchain</span></a></li>
+<li><a href="../modules/status.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>status</span></a></li>
+<li><a href="../modules/tasks.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>tasks</span></a></li>
+<li><a href="../modules/tokens.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>tokens</span></a></li>
+<li><a href="../modules/utils.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>utils</span></a></li>
+<li><a href="../modules/validation.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>validation</span></a></li>
+<li><a href="../modules/vaults.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>vaults</span></a></li>
+<li><a href="../modules/workers.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>workers</span></a></li>
+<li><a href="ErrorPolykey.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Error<wbr/>Polykey</span></a></li>
+<li><a href="EventPolykey.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Event<wbr/>Polykey</span></a></li>
+<li><a href="PolykeyAgent.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Polykey<wbr/>Agent</span></a></li>
+<li><a href="PolykeyClient.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Polykey<wbr/>Client</span></a></li>
+<li><a href="../interfaces/FileSystem.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-256"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-interface)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.51 16V15.016H11.298V8.224H9.51V7.24H14.19V8.224H12.402V15.016H14.19V16H9.51Z" fill="var(--color-text)"></path></g></svg><span>File<wbr/>System</span></a></li>
+<li><a href="../interfaces/ToString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg><span>To<wbr/>String</span></a></li>
+<li><a href="../types/AbstractConstructorParameters.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4194304"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-type-alias)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.31 16V8.224H8.91V7.24H14.79V8.224H12.39V16H11.31Z" fill="var(--color-text)"></path></g></svg><span>Abstract<wbr/>Constructor<wbr/>Parameters</span></a></li>
+<li><a href="../types/Callback.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Callback</span></a></li>
+<li><a href="../types/DeepPartial.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Deep<wbr/>Partial</span></a></li>
+<li><a href="../types/DeepReadonly.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Deep<wbr/>Readonly</span></a></li>
+<li><a href="../types/FileHandle.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>File<wbr/>Handle</span></a></li>
+<li><a href="../types/FunctionProperties.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Function<wbr/>Properties</span></a></li>
+<li><a href="../types/Initial.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Initial</span></a></li>
+<li><a href="../types/InitialParameters.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Initial<wbr/>Parameters</span></a></li>
+<li><a href="../types/InverseRecord.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Inverse<wbr/>Record</span></a></li>
+<li><a href="../types/JSONValue.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>JSONValue</span></a></li>
+<li><a href="../types/NonEmptyArray.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Non<wbr/>Empty<wbr/>Array</span></a></li>
+<li><a href="../types/NonFunctionProperties.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Non<wbr/>Function<wbr/>Properties</span></a></li>
+<li><a href="../types/ObjectEmpty.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Object<wbr/>Empty</span></a></li>
+<li><a href="../types/Opaque.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Opaque</span></a></li>
+<li><a href="../types/POJO.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>POJO</span></a></li>
+<li><a href="../types/PromiseDeconstructed.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Promise<wbr/>Deconstructed</span></a></li>
+<li><a href="../types/RecordKeyFromValue.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Record<wbr/>Key<wbr/>From<wbr/>Value</span></a></li>
+<li><a href="../types/Ref.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Ref</span></a></li>
+<li><a href="../types/Timer.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Timer</span></a></li>
+<li><a href="../variables/config.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-32"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-variable)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.106 16L8.85 7.24H9.966L11.454 13.192C11.558 13.608 11.646 13.996 11.718 14.356C11.79 14.708 11.842 14.976 11.874 15.16C11.906 14.976 11.954 14.708 12.018 14.356C12.09 13.996 12.178 13.608 12.282 13.192L13.758 7.24H14.85L12.582 16H11.106Z" fill="var(--color-text)"></path></g></svg><span>config</span></a></li></ul></nav></div></div></div>
+<div class="tsd-generator">
+<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div>
+<div class="overlay"></div></body></html>

@@ -1,0 +1,674 @@
+<!DOCTYPE html><html class="default" lang="en"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>PolykeyAgent | polykey</title><meta name="description" content="Documentation for polykey"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/search.js" id="tsd-search-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os"</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container">
+<div class="table-cell" id="tsd-search" data-base="..">
+<div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M15.7824 13.833L12.6666 10.7177C12.5259 10.5771 12.3353 10.499 12.1353 10.499H11.6259C12.4884 9.39596 13.001 8.00859 13.001 6.49937C13.001 2.90909 10.0914 0 6.50048 0C2.90959 0 0 2.90909 0 6.49937C0 10.0896 2.90959 12.9987 6.50048 12.9987C8.00996 12.9987 9.39756 12.4863 10.5008 11.6239V12.1332C10.5008 12.3332 10.5789 12.5238 10.7195 12.6644L13.8354 15.7797C14.1292 16.0734 14.6042 16.0734 14.8948 15.7797L15.7793 14.8954C16.0731 14.6017 16.0731 14.1267 15.7824 13.833ZM6.50048 10.499C4.29094 10.499 2.50018 8.71165 2.50018 6.49937C2.50018 4.29021 4.28781 2.49976 6.50048 2.49976C8.71001 2.49976 10.5008 4.28708 10.5008 6.49937C10.5008 8.70852 8.71314 10.499 6.50048 10.499Z" fill="var(--color-text)"></path></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div>
+<div class="field">
+<div id="tsd-toolbar-links"></div></div>
+<ul class="results">
+<li class="state loading">Preparing search index...</li>
+<li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">polykey</a></div>
+<div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="2" fill="var(--color-text)"></rect><rect x="1" y="7" width="14" height="2" fill="var(--color-text)"></rect><rect x="1" y="11" width="14" height="2" fill="var(--color-text)"></rect></svg></a></div></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb">
+<li><a href="../modules.html">polykey</a></li>
+<li><a href="PolykeyAgent.html">PolykeyAgent</a></li></ul>
+<h1>Class PolykeyAgent</h1></div>
+<section class="tsd-panel tsd-hierarchy">
+<h4>Hierarchy</h4>
+<ul class="tsd-hierarchy">
+<li><span class="tsd-signature-type ">CreateDestroyStartStop</span>
+<ul class="tsd-hierarchy">
+<li><span class="target">PolykeyAgent</span></li></ul></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L79">src/PolykeyAgent.ts:79</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L92">src/PolykeyAgent.ts:92</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
+<h5 class="tsd-index-heading uppercase" role="button" aria-expanded="false" tabIndex=0><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1.5 5.50969L8 11.6609L14.5 5.50969L12.5466 3.66086L8 7.96494L3.45341 3.66086L1.5 5.50969Z" fill="var(--color-text)"></path></svg> Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Constructors</h3>
+<div class="tsd-index-list"><a href="PolykeyAgent.html#constructor" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-512"><rect fill="var(--color-icon-background)" stroke="#4D7FFF" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)"></path></g></svg><span>constructor</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Properties</h3>
+<div class="tsd-index-list"><a href="PolykeyAgent.html#_initLock_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-1024"><rect fill="var(--color-icon-background)" stroke="#FF984D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.354 16V7.24H12.174C12.99 7.24 13.638 7.476 14.118 7.948C14.606 8.412 14.85 9.036 14.85 9.82C14.85 10.604 14.606 11.232 14.118 11.704C13.638 12.168 12.99 12.4 12.174 12.4H10.434V16H9.354ZM10.434 11.428H12.174C12.646 11.428 13.022 11.284 13.302 10.996C13.59 10.7 13.734 10.308 13.734 9.82C13.734 9.324 13.59 8.932 13.302 8.644C13.022 8.356 12.646 8.212 12.174 8.212H10.434V11.428Z" fill="var(--color-text)"></path></g></svg><span>[init<wbr/>Lock]</span></a>
+<a href="PolykeyAgent.html#acl" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>acl</span></a>
+<a href="PolykeyAgent.html#certManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>cert<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#clientService" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>client<wbr/>Service</span></a>
+<a href="PolykeyAgent.html#db" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>db</span></a>
+<a href="PolykeyAgent.html#discovery" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>discovery</span></a>
+<a href="PolykeyAgent.html#fs" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>fs</span></a>
+<a href="PolykeyAgent.html#gestaltGraph" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a>
+<a href="PolykeyAgent.html#identitiesManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>identities<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#keyRing" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a>
+<a href="PolykeyAgent.html#logger" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a>
+<a href="PolykeyAgent.html#nodeConnectionManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#nodeGraph" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph</span></a>
+<a href="PolykeyAgent.html#nodeManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#nodePath" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Path</span></a>
+<a href="PolykeyAgent.html#notificationsManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>notifications<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#schema" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>schema</span></a>
+<a href="PolykeyAgent.html#sessionManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>session<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#sigchain" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>sigchain</span></a>
+<a href="PolykeyAgent.html#status" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>status</span></a>
+<a href="PolykeyAgent.html#taskManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#vaultManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Manager</span></a>
+<a href="PolykeyAgent.html#workerManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>worker<wbr/>Manager</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Accessors</h3>
+<div class="tsd-index-list"><a href="PolykeyAgent.html#_destroyed_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-262144"><rect fill="var(--color-icon-background)" stroke="#FF4D4D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M8.85 16L11.13 7.24H12.582L14.85 16H13.758L13.182 13.672H10.53L9.954 16H8.85ZM10.746 12.76H12.954L12.282 10.06C12.154 9.548 12.054 9.12 11.982 8.776C11.91 8.432 11.866 8.208 11.85 8.104C11.834 8.208 11.79 8.432 11.718 8.776C11.646 9.12 11.546 9.544 11.418 10.048L10.746 12.76Z" fill="var(--color-text)"></path></g></svg><span>[destroyed]</span></a>
+<a href="PolykeyAgent.html#_eventHandled_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handled]</span></a>
+<a href="PolykeyAgent.html#_eventHandlers_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handlers]</span></a>
+<a href="PolykeyAgent.html#_eventTarget_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Target]</span></a>
+<a href="PolykeyAgent.html#_handleEventError_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[handle<wbr/>Event<wbr/>Error]</span></a>
+<a href="PolykeyAgent.html#_running_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[running]</span></a>
+<a href="PolykeyAgent.html#_statusP_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status<wbr/>P]</span></a>
+<a href="PolykeyAgent.html#_status_" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status]</span></a>
+<a href="PolykeyAgent.html#agentServiceHost" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>agent<wbr/>Service<wbr/>Host</span></a>
+<a href="PolykeyAgent.html#agentServicePort" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>agent<wbr/>Service<wbr/>Port</span></a>
+<a href="PolykeyAgent.html#clientServiceHost" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>client<wbr/>Service<wbr/>Host</span></a>
+<a href="PolykeyAgent.html#clientServicePort" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>client<wbr/>Service<wbr/>Port</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading">Methods</h3>
+<div class="tsd-index-list"><a href="PolykeyAgent.html#addEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-2048"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)"></path></g></svg><span>add<wbr/>Event<wbr/>Listener</span></a>
+<a href="PolykeyAgent.html#destroy" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>destroy</span></a>
+<a href="PolykeyAgent.html#dispatchEvent" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a>
+<a href="PolykeyAgent.html#handleEventCertManagerCertChange" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Event<wbr/>Cert<wbr/>Manager<wbr/>Cert<wbr/>Change</span></a>
+<a href="PolykeyAgent.html#removeEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a>
+<a href="PolykeyAgent.html#start" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a>
+<a href="PolykeyAgent.html#stop" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a>
+<a href="PolykeyAgent.html#createPolykeyAgent" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Polykey<wbr/>Agent</span></a>
+</div></section></div></details></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Constructors</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="constructor" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="constructor.new_PolykeyAgent"><span class="tsd-kind-constructor-signature">new <wbr/>Polykey<wbr/>Agent</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="PolykeyAgent.html" class="tsd-signature-type tsd-kind-class">PolykeyAgent</a><a href="#constructor.new_PolykeyAgent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">certManager</span><span class="tsd-signature-symbol">: </span><a href="keys.CertManager.html" class="tsd-signature-type tsd-kind-class">CertManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">clientService</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ClientService</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">discovery</span><span class="tsd-signature-symbol">: </span><a href="discovery.Discovery.html" class="tsd-signature-type tsd-kind-class">Discovery</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">identitiesManager</span><span class="tsd-signature-symbol">: </span><a href="identities.IdentitiesManager.html" class="tsd-signature-type tsd-kind-class">IdentitiesManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeConnectionManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeGraph</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodePath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">notificationsManager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">schema</span><span class="tsd-signature-symbol">: </span><a href="schema.Schema.html" class="tsd-signature-type tsd-kind-class">Schema</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">sessionManager</span><span class="tsd-signature-symbol">: </span><a href="sessions.SessionManager.html" class="tsd-signature-type tsd-kind-class">SessionManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">: </span><a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">status</span><span class="tsd-signature-symbol">: </span><a href="status.Status.html" class="tsd-signature-type tsd-kind-class">Status</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultManager</span><span class="tsd-signature-symbol">: </span><a href="vaults.VaultManager.html" class="tsd-signature-type tsd-kind-class">VaultManager</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">cert<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="keys.CertManager.html" class="tsd-signature-type tsd-kind-class">CertManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">client<wbr/>Service</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ClientService</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">discovery</span><span class="tsd-signature-symbol">: </span><a href="discovery.Discovery.html" class="tsd-signature-type tsd-kind-class">Discovery</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">gestalt<wbr/>Graph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">identities<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="identities.IdentitiesManager.html" class="tsd-signature-type tsd-kind-class">IdentitiesManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Graph</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Path</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">notifications<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">schema</span><span class="tsd-signature-symbol">: </span><a href="schema.Schema.html" class="tsd-signature-type tsd-kind-class">Schema</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">session<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="sessions.SessionManager.html" class="tsd-signature-type tsd-kind-class">SessionManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">: </span><a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">status</span><span class="tsd-signature-symbol">: </span><a href="status.Status.html" class="tsd-signature-type tsd-kind-class">Status</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">vault<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="vaults.VaultManager.html" class="tsd-signature-type tsd-kind-class">VaultManager</a></h5></li></ul></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="PolykeyAgent.html" class="tsd-signature-type tsd-kind-class">PolykeyAgent</a></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.constructor</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L521">src/PolykeyAgent.ts:521</a></li></ul></aside></li></ul></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Properties</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>[init<wbr/>Lock]</span><a href="#_initLock_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">[init<wbr/>Lock]</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">RWLockWriter</span></div><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[initLock]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/CreateDestroyStartStop.d.ts:10</li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="acl" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>acl</span><a href="#acl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">:</span> <a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L486">src/PolykeyAgent.ts:486</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="certManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>cert<wbr/>Manager</span><a href="#certManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">cert<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="keys.CertManager.html" class="tsd-signature-type tsd-kind-class">CertManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L483">src/PolykeyAgent.ts:483</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="clientService" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>client<wbr/>Service</span><a href="#clientService" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">client<wbr/>Service</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">ClientService</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L498">src/PolykeyAgent.ts:498</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="db" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L482">src/PolykeyAgent.ts:482</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="discovery" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>discovery</span><a href="#discovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">discovery</span><span class="tsd-signature-symbol">:</span> <a href="discovery.Discovery.html" class="tsd-signature-type tsd-kind-class">Discovery</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L492">src/PolykeyAgent.ts:492</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="fs" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>fs</span><a href="#fs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L496">src/PolykeyAgent.ts:496</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="gestaltGraph" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>gestalt<wbr/>Graph</span><a href="#gestaltGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">gestalt<wbr/>Graph</span><span class="tsd-signature-symbol">:</span> <a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L487">src/PolykeyAgent.ts:487</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="identitiesManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>identities<wbr/>Manager</span><a href="#identitiesManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">identities<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="identities.IdentitiesManager.html" class="tsd-signature-type tsd-kind-class">IdentitiesManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L484">src/PolykeyAgent.ts:484</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="keyRing" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>key<wbr/>Ring</span><a href="#keyRing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">:</span> <a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L481">src/PolykeyAgent.ts:481</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="logger" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L497">src/PolykeyAgent.ts:497</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodeConnectionManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Connection<wbr/>Manager</span><a href="#nodeConnectionManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L490">src/PolykeyAgent.ts:490</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodeGraph" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Graph</span><a href="#nodeGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L488">src/PolykeyAgent.ts:488</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodeManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Manager</span><a href="#nodeManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L491">src/PolykeyAgent.ts:491</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodePath" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Path</span><a href="#nodePath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L478">src/PolykeyAgent.ts:478</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="notificationsManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>notifications<wbr/>Manager</span><a href="#notificationsManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">notifications<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L494">src/PolykeyAgent.ts:494</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="schema" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>schema</span><a href="#schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">schema</span><span class="tsd-signature-symbol">:</span> <a href="schema.Schema.html" class="tsd-signature-type tsd-kind-class">Schema</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L480">src/PolykeyAgent.ts:480</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="sessionManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>session<wbr/>Manager</span><a href="#sessionManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">session<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="sessions.SessionManager.html" class="tsd-signature-type tsd-kind-class">SessionManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L495">src/PolykeyAgent.ts:495</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="sigchain" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>sigchain</span><a href="#sigchain" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">sigchain</span><span class="tsd-signature-symbol">:</span> <a href="sigchain.Sigchain.html" class="tsd-signature-type tsd-kind-class">Sigchain</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L485">src/PolykeyAgent.ts:485</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="status" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>status</span><a href="#status" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">status</span><span class="tsd-signature-symbol">:</span> <a href="status.Status.html" class="tsd-signature-type tsd-kind-class">Status</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L479">src/PolykeyAgent.ts:479</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="taskManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>task<wbr/>Manager</span><a href="#taskManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L489">src/PolykeyAgent.ts:489</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="vaultManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>vault<wbr/>Manager</span><a href="#vaultManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">vault<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="vaults.VaultManager.html" class="tsd-signature-type tsd-kind-class">VaultManager</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L493">src/PolykeyAgent.ts:493</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="workerManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>worker<wbr/>Manager</span><a href="#workerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">worker<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L499">src/PolykeyAgent.ts:499</a></li></ul></aside></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Accessors</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_destroyed_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[destroyed]</span><a href="#_destroyed_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_destroyed_._destroyed_-1"><span class="tsd-signature-symbol">get</span> [destroyed]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[destroyed]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/CreateDestroyStartStop.d.ts:7</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandled_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Handled]</span><a href="#_eventHandled_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventHandled_._eventHandled_-1"><span class="tsd-signature-symbol">get</span> [eventHandled]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[eventHandled]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:7</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandlers_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Handlers]</span><a href="#_eventHandlers_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventHandlers_._eventHandlers_-1"><span class="tsd-signature-symbol">get</span> [eventHandlers]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[eventHandlers]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:6</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventTarget_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[event<wbr/>Target]</span><a href="#_eventTarget_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_eventTarget_._eventTarget_-1"><span class="tsd-signature-symbol">get</span> [eventTarget]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">EventTarget</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">EventTarget</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[eventTarget]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:5</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_handleEventError_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[handle<wbr/>Event<wbr/>Error]</span><a href="#_handleEventError_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_handleEventError_._handleEventError_-1"><span class="tsd-signature-symbol">get</span> [handleEventError]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span></h4>
+<ul class="tsd-parameters">
+<li class="tsd-parameter-signature">
+<ul class="tsd-signatures tsd-is-external">
+<li class="tsd-signature" id="_handleEventError_._handleEventError_-1.__type.__type-1"><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">evt</span>: <span class="tsd-signature-type ">EventError</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4></li></ul></li></ul><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[handleEventError]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:8</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_running_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[running]</span><a href="#_running_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_running_._running_-1"><span class="tsd-signature-symbol">get</span> [running]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[running]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/CreateDestroyStartStop.d.ts:6</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_statusP_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[status<wbr/>P]</span><a href="#_statusP_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_statusP_._statusP_-1"><span class="tsd-signature-symbol">get</span> [statusP]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[statusP]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/CreateDestroyStartStop.d.ts:9</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_status_" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>[status]</span><a href="#_status_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature" id="_status_._status_-1"><span class="tsd-signature-symbol">get</span> [status]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Status</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Status</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.[status]</p>
+<ul>
+<li>Defined in node_modules/@matrixai/async-init/dist/CreateDestroyStartStop.d.ts:8</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="agentServiceHost" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>agent<wbr/>Service<wbr/>Host</span><a href="#agentServiceHost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature" id="agentServiceHost.agentServiceHost-1"><span class="tsd-signature-symbol">get</span> agentServiceHost<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../types/network.types.Host.html" class="tsd-signature-type tsd-kind-type-alias">Host</a></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <a href="../types/network.types.Host.html" class="tsd-signature-type tsd-kind-type-alias">Host</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L599">src/PolykeyAgent.ts:599</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="agentServicePort" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>agent<wbr/>Service<wbr/>Port</span><a href="#agentServicePort" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature" id="agentServicePort.agentServicePort-1"><span class="tsd-signature-symbol">get</span> agentServicePort<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../types/network.types.Port.html" class="tsd-signature-type tsd-kind-type-alias">Port</a></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <a href="../types/network.types.Port.html" class="tsd-signature-type tsd-kind-type-alias">Port</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L604">src/PolykeyAgent.ts:604</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="clientServiceHost" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>client<wbr/>Service<wbr/>Host</span><a href="#clientServiceHost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature" id="clientServiceHost.clientServiceHost-1"><span class="tsd-signature-symbol">get</span> clientServiceHost<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Host</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Host</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L589">src/PolykeyAgent.ts:589</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="clientServicePort" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>client<wbr/>Service<wbr/>Port</span><a href="#clientServicePort" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature" id="clientServicePort.clientServicePort-1"><span class="tsd-signature-symbol">get</span> clientServicePort<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Port</span></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Port</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L594">src/PolykeyAgent.ts:594</a></li></ul></aside></li></ul></section></section>
+<section class="tsd-panel-group tsd-member-group">
+<h2>Methods</h2>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="addEventListener" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>add<wbr/>Event<wbr/>Listener</span><a href="#addEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="addEventListener.addEventListener-1"><span class="tsd-kind-call-signature">add<wbr/>Event<wbr/>Listener</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">callback</span>, <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span><a href="#addEventListener.addEventListener-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">callback</span>: <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOrEventListenerObject</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">AddEventListenerOptions</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.addEventListener</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:9</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="destroy" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>destroy</span><a href="#destroy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="destroy.destroy-1"><span class="tsd-kind-call-signature">destroy</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">password</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#destroy.destroy-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">password</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.destroy</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L796">src/PolykeyAgent.ts:796</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="dispatchEvent.dispatchEvent-1"><span class="tsd-kind-call-signature">dispatch<wbr/>Event</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span><a href="#dispatchEvent.dispatchEvent-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">event</span>: <span class="tsd-signature-type ">Event</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.dispatchEvent</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:11</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="handleEventCertManagerCertChange" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>handle<wbr/>Event<wbr/>Cert<wbr/>Manager<wbr/>Cert<wbr/>Change</span><a href="#handleEventCertManagerCertChange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="handleEventCertManagerCertChange.handleEventCertManagerCertChange-1"><span class="tsd-kind-call-signature">handle<wbr/>Event<wbr/>Cert<wbr/>Manager<wbr/>Cert<wbr/>Change</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">evt</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleEventCertManagerCertChange.handleEventCertManagerCertChange-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">evt</span>: <a href="events.EventCertManagerCertChange.html" class="tsd-signature-type tsd-kind-class">EventCertManagerCertChange</a></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L501">src/PolykeyAgent.ts:501</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited tsd-is-external">
+<li class="tsd-signature tsd-anchor-link" id="removeEventListener.removeEventListener-1"><span class="tsd-kind-call-signature">remove<wbr/>Event<wbr/>Listener</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">callback</span>, <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span><a href="#removeEventListener.removeEventListener-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type">string</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">callback</span>: <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOrEventListenerObject</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOptions</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.removeEventListener</p>
+<ul>
+<li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:10</li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="start.start-1"><span class="tsd-kind-call-signature">start</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#start.start-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">PolykeyAgentStartOptions</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">password</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">PolykeyAgentStartOptions</span><span class="tsd-signature-symbol">&gt;</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">password</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">workers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.start</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L609">src/PolykeyAgent.ts:609</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="stop.stop-1"><span class="tsd-kind-call-signature">stop</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#stop.stop-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Asynchronously stops the PolykeyAgent</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<p>Inherited from CreateDestroyStartStop.stop</p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L763">src/PolykeyAgent.ts:763</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="createPolykeyAgent" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create<wbr/>Polykey<wbr/>Agent</span><a href="#createPolykeyAgent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="createPolykeyAgent.createPolykeyAgent-1"><span class="tsd-kind-call-signature">create<wbr/>Polykey<wbr/>Agent</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="PolykeyAgent.html" class="tsd-signature-type tsd-kind-class">PolykeyAgent</a><span class="tsd-signature-symbol">&gt;</span><a href="#createPolykeyAgent.createPolykeyAgent-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Create the Polykey Agent.</p>
+<p>All optional configuration is deep-merged with defaults.</p>
+<p>If any of the optional dependencies is injected, their lifecycle will not
+be managed by <code>PolykeyAgent</code>. Furthermore, if you inject an optional
+dependency, make sure you are injecting all upstream transitive
+dependencies at the same time. For example if you inject <code>acl</code>, you must
+also inject <code>db</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>        </span><span class="tsd-kind-property">agentServiceHost</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">agentServicePort</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">client</span><span class="tsd-signature-symbol">?: </span>{ connectTimeoutTime?: number | undefined; keepAliveTimeoutTime?: number | undefined; keepAliveIntervalTime?: number | undefined; }<span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">clientServiceHost</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">clientServicePort</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">ipv6Only</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">keys</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; passwordMemLimit?: { ...; } | undefined; strictMemoryL...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">nodePath</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">?: </span>{ connectionIdleTimeoutTime?: number | undefined; connectionFindConcurrencyLimit?: number | undefined; connectionConnectTimeoutTime?: number | undefined; connectionKeepAliveTimeoutTime?: number | undefined; connectionKeepAliveIntervalTime?: number | undefined; connectionHolePunchIntervalTime?: number | undefined; rp...<span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">rpc</span><span class="tsd-signature-symbol">?: </span>{ callTimeoutTime?: number | undefined; parserBufferSize?: number | undefined; }<span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">seedNodes</span><span class="tsd-signature-symbol">?: </span>{ [x: string &amp; { readonly [brand]: &quot;NodeIdEncoded&quot;; }]: { host?: { [x: number]: string | undefined; toString?: {} | undefined; charAt?: {} | undefined; charCodeAt?: {} | undefined; concat?: {} | undefined; ... 46 more ...; readonly [brand]?: &quot;Host&quot; | undefined; } | { ...; } | undefined; port?: { ...; } | undefined; ...<span class="tsd-signature-symbol">; </span><br/><span>        </span><span class="tsd-kind-property">workers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">password</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">agentServiceHost</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">agentServicePort</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">client</span><span class="tsd-signature-symbol">?: </span>{ connectTimeoutTime?: number | undefined; keepAliveTimeoutTime?: number | undefined; keepAliveIntervalTime?: number | undefined; }<span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">clientServiceHost</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">clientServicePort</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">ipv6Only</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keys</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; passwordMemLimit?: { ...; } | undefined; strictMemoryL...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodePath</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">?: </span>{ connectionIdleTimeoutTime?: number | undefined; connectionFindConcurrencyLimit?: number | undefined; connectionConnectTimeoutTime?: number | undefined; connectionKeepAliveTimeoutTime?: number | undefined; connectionKeepAliveIntervalTime?: number | undefined; connectionHolePunchIntervalTime?: number | undefined; rp...<span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">rpc</span><span class="tsd-signature-symbol">?: </span>{ callTimeoutTime?: number | undefined; parserBufferSize?: number | undefined; }<span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">seedNodes</span><span class="tsd-signature-symbol">?: </span>{ [x: string &amp; { readonly [brand]: &quot;NodeIdEncoded&quot;; }]: { host?: { [x: number]: string | undefined; toString?: {} | undefined; charAt?: {} | undefined; charCodeAt?: {} | undefined; concat?: {} | undefined; ... 46 more ...; readonly [brand]?: &quot;Host&quot; | undefined; } | { ...; } | undefined; port?: { ...; } | undefined; ...<span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">agent<wbr/>Service<wbr/>Host</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">agent<wbr/>Service<wbr/>Port</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">client</span><span class="tsd-signature-symbol">?: </span>{ connectTimeoutTime?: number | undefined; keepAliveTimeoutTime?: number | undefined; keepAliveIntervalTime?: number | undefined; }</h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">client<wbr/>Service<wbr/>Host</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">client<wbr/>Service<wbr/>Port</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">ipv6<wbr/>Only</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">keys</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; passwordMemLimit?: { ...; } | undefined; strictMemoryL...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-symbol">(</span>{ passwordOpsLimit?: { toString?: {} | undefined; toFixed?: {} | undefined; toExponential?: {} | undefined; toPrecision?: {} | undefined; valueOf?: {} | undefined; toLocaleString?: {} | undefined; readonly [brand]?: &quot;PasswordOpsLimit&quot; | undefined; } | undefined; ... 4 more ...; certRenewLeadTime?: number | undefined...<span class="tsd-signature-symbol">)</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">node<wbr/>Path</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">?: </span>{ connectionIdleTimeoutTime?: number | undefined; connectionFindConcurrencyLimit?: number | undefined; connectionConnectTimeoutTime?: number | undefined; connectionKeepAliveTimeoutTime?: number | undefined; connectionKeepAliveIntervalTime?: number | undefined; connectionHolePunchIntervalTime?: number | undefined; rp...</h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">rpc</span><span class="tsd-signature-symbol">?: </span>{ callTimeoutTime?: number | undefined; parserBufferSize?: number | undefined; }</h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">seed<wbr/>Nodes</span><span class="tsd-signature-symbol">?: </span>{ [x: string &amp; { readonly [brand]: &quot;NodeIdEncoded&quot;; }]: { host?: { [x: number]: string | undefined; toString?: {} | undefined; charAt?: {} | undefined; charCodeAt?: {} | undefined; concat?: {} | undefined; ... 46 more ...; readonly [brand]?: &quot;Host&quot; | undefined; } | { ...; } | undefined; port?: { ...; } | undefined; ...</h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">workers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li></ul></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">password</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5></li></ul></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="PolykeyAgent.html" class="tsd-signature-type tsd-kind-class">PolykeyAgent</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/PolykeyAgent.ts#L104">src/PolykeyAgent.ts:104</a></li></ul></aside></li></ul></section></section></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-index-accordion"><summary class="tsd-accordion-summary">
+<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)" id="icon-chevronDown"></path></svg>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility">
+<h4 class="uppercase">Member Visibility</h4><form>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-private" name="private"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Private</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></form></div>
+<div class="tsd-theme-toggle">
+<h4 class="uppercase">Theme</h4><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-index-accordion tsd-page-navigation"><summary class="tsd-accordion-summary">
+<h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><use href="#icon-chevronDown"></use></svg>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<ul>
+<li><a href="#constructor" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-512"></use></svg><span>constructor</span></a></li>
+<li><a href="#_initLock_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>[init<wbr/>Lock]</span></a></li>
+<li><a href="#acl" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>acl</span></a></li>
+<li><a href="#certManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>cert<wbr/>Manager</span></a></li>
+<li><a href="#clientService" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>client<wbr/>Service</span></a></li>
+<li><a href="#db" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>db</span></a></li>
+<li><a href="#discovery" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>discovery</span></a></li>
+<li><a href="#fs" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>fs</span></a></li>
+<li><a href="#gestaltGraph" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a></li>
+<li><a href="#identitiesManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>identities<wbr/>Manager</span></a></li>
+<li><a href="#keyRing" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a></li>
+<li><a href="#logger" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a></li>
+<li><a href="#nodeConnectionManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a></li>
+<li><a href="#nodeGraph" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph</span></a></li>
+<li><a href="#nodeManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Manager</span></a></li>
+<li><a href="#nodePath" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Path</span></a></li>
+<li><a href="#notificationsManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>notifications<wbr/>Manager</span></a></li>
+<li><a href="#schema" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>schema</span></a></li>
+<li><a href="#sessionManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>session<wbr/>Manager</span></a></li>
+<li><a href="#sigchain" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>sigchain</span></a></li>
+<li><a href="#status" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>status</span></a></li>
+<li><a href="#taskManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Manager</span></a></li>
+<li><a href="#vaultManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Manager</span></a></li>
+<li><a href="#workerManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>worker<wbr/>Manager</span></a></li>
+<li><a href="#_destroyed_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[destroyed]</span></a></li>
+<li><a href="#_eventHandled_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handled]</span></a></li>
+<li><a href="#_eventHandlers_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Handlers]</span></a></li>
+<li><a href="#_eventTarget_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[event<wbr/>Target]</span></a></li>
+<li><a href="#_handleEventError_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[handle<wbr/>Event<wbr/>Error]</span></a></li>
+<li><a href="#_running_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[running]</span></a></li>
+<li><a href="#_statusP_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status<wbr/>P]</span></a></li>
+<li><a href="#_status_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status]</span></a></li>
+<li><a href="#agentServiceHost" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>agent<wbr/>Service<wbr/>Host</span></a></li>
+<li><a href="#agentServicePort" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>agent<wbr/>Service<wbr/>Port</span></a></li>
+<li><a href="#clientServiceHost" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>client<wbr/>Service<wbr/>Host</span></a></li>
+<li><a href="#clientServicePort" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>client<wbr/>Service<wbr/>Port</span></a></li>
+<li><a href="#addEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>add<wbr/>Event<wbr/>Listener</span></a></li>
+<li><a href="#destroy" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>destroy</span></a></li>
+<li><a href="#dispatchEvent" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a></li>
+<li><a href="#handleEventCertManagerCertChange" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>handle<wbr/>Event<wbr/>Cert<wbr/>Manager<wbr/>Cert<wbr/>Change</span></a></li>
+<li><a href="#removeEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a></li>
+<li><a href="#start" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a></li>
+<li><a href="#stop" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a></li>
+<li><a href="#createPolykeyAgent" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Polykey<wbr/>Agent</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>
+<ul class="tsd-small-nested-navigation">
+<li><a href="../modules/acl.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>acl</span></a></li>
+<li><a href="../modules/bootstrap.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>bootstrap</span></a></li>
+<li><a href="../modules/claims.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>claims</span></a></li>
+<li><a href="../modules/client.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>client</span></a></li>
+<li><a href="../modules/discovery.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>discovery</span></a></li>
+<li><a href="../modules/errors.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>errors</span></a></li>
+<li><a href="../modules/events.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>events</span></a></li>
+<li><a href="../modules/gestalts.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>gestalts</span></a></li>
+<li><a href="../modules/git.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>git</span></a></li>
+<li><a href="../modules/http.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>http</span></a></li>
+<li><a href="../modules/identities.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>identities</span></a></li>
+<li><a href="../modules/ids.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>ids</span></a></li>
+<li><a href="../modules/keys.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>keys</span></a></li>
+<li><a href="../modules/network.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>network</span></a></li>
+<li><a href="../modules/nodes.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>nodes</span></a></li>
+<li><a href="../modules/notifications.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>notifications</span></a></li>
+<li><a href="../modules/schema.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>schema</span></a></li>
+<li><a href="../modules/sessions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>sessions</span></a></li>
+<li><a href="../modules/sigchain.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>sigchain</span></a></li>
+<li><a href="../modules/status.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>status</span></a></li>
+<li><a href="../modules/tasks.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>tasks</span></a></li>
+<li><a href="../modules/tokens.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>tokens</span></a></li>
+<li><a href="../modules/utils.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>utils</span></a></li>
+<li><a href="../modules/validation.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>validation</span></a></li>
+<li><a href="../modules/vaults.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>vaults</span></a></li>
+<li><a href="../modules/workers.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>workers</span></a></li>
+<li><a href="ErrorPolykey.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-128"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-class)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)"></path></g></svg><span>Error<wbr/>Polykey</span></a></li>
+<li><a href="EventPolykey.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Event<wbr/>Polykey</span></a></li>
+<li><a href="PolykeyAgent.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Polykey<wbr/>Agent</span></a></li>
+<li><a href="PolykeyClient.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-128"></use></svg><span>Polykey<wbr/>Client</span></a></li>
+<li><a href="../interfaces/FileSystem.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-256"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-interface)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.51 16V15.016H11.298V8.224H9.51V7.24H14.19V8.224H12.402V15.016H14.19V16H9.51Z" fill="var(--color-text)"></path></g></svg><span>File<wbr/>System</span></a></li>
+<li><a href="../interfaces/ToString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-256"></use></svg><span>To<wbr/>String</span></a></li>
+<li><a href="../types/AbstractConstructorParameters.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4194304"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-type-alias)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.31 16V8.224H8.91V7.24H14.79V8.224H12.39V16H11.31Z" fill="var(--color-text)"></path></g></svg><span>Abstract<wbr/>Constructor<wbr/>Parameters</span></a></li>
+<li><a href="../types/Callback.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Callback</span></a></li>
+<li><a href="../types/DeepPartial.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Deep<wbr/>Partial</span></a></li>
+<li><a href="../types/DeepReadonly.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Deep<wbr/>Readonly</span></a></li>
+<li><a href="../types/FileHandle.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>File<wbr/>Handle</span></a></li>
+<li><a href="../types/FunctionProperties.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Function<wbr/>Properties</span></a></li>
+<li><a href="../types/Initial.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Initial</span></a></li>
+<li><a href="../types/InitialParameters.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Initial<wbr/>Parameters</span></a></li>
+<li><a href="../types/InverseRecord.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Inverse<wbr/>Record</span></a></li>
+<li><a href="../types/JSONValue.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>JSONValue</span></a></li>
+<li><a href="../types/NonEmptyArray.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Non<wbr/>Empty<wbr/>Array</span></a></li>
+<li><a href="../types/NonFunctionProperties.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Non<wbr/>Function<wbr/>Properties</span></a></li>
+<li><a href="../types/ObjectEmpty.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Object<wbr/>Empty</span></a></li>
+<li><a href="../types/Opaque.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Opaque</span></a></li>
+<li><a href="../types/POJO.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>POJO</span></a></li>
+<li><a href="../types/PromiseDeconstructed.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Promise<wbr/>Deconstructed</span></a></li>
+<li><a href="../types/RecordKeyFromValue.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Record<wbr/>Key<wbr/>From<wbr/>Value</span></a></li>
+<li><a href="../types/Ref.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Ref</span></a></li>
+<li><a href="../types/Timer.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Timer</span></a></li>
+<li><a href="../variables/config.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-32"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-variable)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.106 16L8.85 7.24H9.966L11.454 13.192C11.558 13.608 11.646 13.996 11.718 14.356C11.79 14.708 11.842 14.976 11.874 15.16C11.906 14.976 11.954 14.708 12.018 14.356C12.09 13.996 12.178 13.608 12.282 13.192L13.758 7.24H14.85L12.582 16H11.106Z" fill="var(--color-text)"></path></g></svg><span>config</span></a></li></ul></nav></div></div></div>
+<div class="tsd-generator">
+<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div>
+<div class="overlay"></div></body></html>
