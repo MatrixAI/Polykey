@@ -35,6 +35,11 @@ class ErrorClientServiceDestroyed<T> extends ErrorClientService<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorClientVerificationFailed<T> extends ErrorClientService<T> {
+  static description = 'ClientService is destroyed';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   ErrorClient,
   ErrorClientAuthMissing,
@@ -44,4 +49,5 @@ export {
   ErrorClientServiceRunning,
   ErrorClientServiceNotRunning,
   ErrorClientServiceDestroyed,
+  ErrorClientVerificationFailed,
 };
