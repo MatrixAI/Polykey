@@ -127,6 +127,7 @@ cat << "EOF"
     - windows
   before_script:
     - mkdir -Force "$CI_PROJECT_DIR/tmp"
+    - Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
   script:
     - .\scripts\choco-install.ps1
     - refreshenv
@@ -152,8 +153,8 @@ cat << EOF
 EOF
 cat << "EOF"
   tags:
-    - shared-macos-amd64
-  image: macos-11-xcode-12
+    - saas-macos-medium-m1
+  image: macos-12-xcode-14
   script:
     - eval "$(brew shellenv)"
     - ./scripts/brew-install.sh
