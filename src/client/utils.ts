@@ -6,8 +6,8 @@ import type KeyRing from '../keys/KeyRing';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { NodeId } from '../ids';
 import { utils as wsUtils } from '@matrixai/ws';
-import * as keysUtils from '../keys/utils';
 import * as clientErrors from './errors';
+import * as keysUtils from '../keys/utils';
 
 async function authenticate(
   sessionManager: SessionManager,

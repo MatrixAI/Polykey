@@ -1,5 +1,3 @@
-import type { TLSConfig } from '@/network/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type {
   ClaimIdEncoded,
   IdentityId,
@@ -9,10 +7,15 @@ import type {
   NodeId,
   NodeIdEncoded,
 } from '@/ids';
-import type { GestaltIdentityInfo, GestaltNodeInfo } from '@/gestalts/types';
-import type { Gestalt } from '@/gestalts/types';
+import type { TLSConfig } from '@/network/types';
+import type {
+  Gestalt,
+  GestaltIdentityInfo,
+  GestaltNodeInfo,
+} from '@/gestalts/types';
 import type { SignedClaim } from '@/claims/types';
 import type { Host } from '@/network/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -21,58 +24,58 @@ import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
-import { GestaltsActionsGetByIdentityHandler } from '@/client/handlers/gestaltsActionsGetByIdentity';
-import { GestaltsActionsSetByIdentityHandler } from '@/client/handlers/gestaltsActionsSetByIdentity';
-import { GestaltsActionsUnsetByIdentityHandler } from '@/client/handlers/gestaltsActionsUnsetByIdentity';
-import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
-import * as nodesUtils from '@/nodes/utils';
-import { encodeProviderIdentityId } from '@/ids';
+import GestaltGraph from '@/gestalts/GestaltGraph';
+import PolykeyAgent from '@/PolykeyAgent';
 import Token from '@/tokens/Token';
-import {
-  gestaltsActionsGetByIdentity,
-  gestaltsActionsGetByNode,
-  GestaltsActionsGetByNodeHandler,
-  gestaltsActionsSetByIdentity,
-  gestaltsActionsSetByNode,
-  GestaltsActionsSetByNodeHandler,
-  gestaltsActionsUnsetByIdentity,
-  gestaltsActionsUnsetByNode,
-  GestaltsActionsUnsetByNodeHandler,
-  gestaltsDiscoveryByIdentity,
-  GestaltsDiscoveryByIdentityHandler,
-  gestaltsDiscoveryByNode,
-  GestaltsDiscoveryByNodeHandler,
-  gestaltsGestaltGetByIdentity,
-  GestaltsGestaltGetByIdentityHandler,
-  gestaltsGestaltGetByNode,
-  GestaltsGestaltGetByNodeHandler,
-  gestaltsGestaltList,
-  GestaltsGestaltListHandler,
-  gestaltsGestaltTrustByIdentity,
-  GestaltsGestaltTrustByIdentityHandler,
-  gestaltsGestaltTrustByNode,
-  GestaltsGestaltTrustByNodeHandler,
-} from '@/client';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import Sigchain from '@/sigchain/Sigchain';
 import Discovery from '@/discovery/Discovery';
+import ClientService from '@/client/ClientService';
+import {
+  GestaltsActionsGetByIdentity,
+  GestaltsActionsSetByIdentity,
+  GestaltsActionsUnsetByIdentity,
+  GestaltsActionsGetByNode,
+  GestaltsActionsSetByNode,
+  GestaltsActionsUnsetByNode,
+  GestaltsDiscoveryByIdentity,
+  GestaltsDiscoveryByNode,
+  GestaltsGestaltGetByIdentity,
+  GestaltsGestaltGetByNode,
+  GestaltsGestaltList,
+  GestaltsGestaltTrustByIdentity,
+  GestaltsGestaltTrustByNode,
+} from '@/client/handlers';
+import {
+  gestaltsActionsGetByIdentity,
+  gestaltsActionsGetByNode,
+  gestaltsActionsSetByIdentity,
+  gestaltsActionsSetByNode,
+  gestaltsActionsUnsetByIdentity,
+  gestaltsActionsUnsetByNode,
+  gestaltsDiscoveryByIdentity,
+  gestaltsDiscoveryByNode,
+  gestaltsGestaltGetByIdentity,
+  gestaltsGestaltGetByNode,
+  gestaltsGestaltList,
+  gestaltsGestaltTrustByIdentity,
+  gestaltsGestaltTrustByNode,
+} from '@/client/callers';
+import { encodeProviderIdentityId } from '@/ids';
+import * as nodesUtils from '@/nodes/utils';
 import * as gestaltUtils from '@/gestalts/utils';
 import * as gestaltsErrors from '@/gestalts/errors';
-import { sleep } from '@/utils/utils';
-import PolykeyAgent from '@/PolykeyAgent';
-import ClientService from '@/client/ClientService';
 import * as networkUtils from '@/network/utils';
+import * as keysUtils from '@/keys/utils';
+import * as utils from '@/utils';
 import * as testsUtils from '../../utils';
-import TestProvider from '../../identities/TestProvider';
-import * as testUtils from '../../utils/utils';
-import * as tlsTestsUtils from '../../utils/tls';
 import * as testNodesUtils from '../../nodes/utils';
+import TestProvider from '../../identities/TestProvider';
 
 describe('gestaltsActionsByIdentity', () => {
   const logger = new Logger('gestaltsActionsByIdentity test', LogLevel.WARN, [
@@ -139,34 +142,33 @@ describe('gestaltsActionsByIdentity', () => {
   });
   test('sets/unsets/gets actions by identity', async () => {
     // Setup
-    clientService = await ClientService.createClientService({
+    clientService = new ClientService({
       tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
       manifest: {
-        gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentityHandler({
+        gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentity({
           db,
           gestaltGraph,
         }),
-        gestaltsActionsSetByIdentity: new GestaltsActionsSetByIdentityHandler({
+        gestaltsActionsSetByIdentity: new GestaltsActionsSetByIdentity({
           db,
           gestaltGraph,
         }),
-        gestaltsActionsUnsetByIdentity:
-          new GestaltsActionsUnsetByIdentityHandler({
-            db,
-            gestaltGraph,
-          }),
+        gestaltsActionsUnsetByIdentity: new GestaltsActionsUnsetByIdentity({
+          db,
+          gestaltGraph,
+        }),
       },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild('server'),
+      host: localhost,
     });
     webSocketClient = await WebSocketClient.createWebSocketClient({
       config: {
         verifyPeer: false,
       },
       host: localhost,
-      logger: logger.getChild('client'),
+      logger: logger.getChild(WebSocketClient.name),
       port: clientService.port,
     });
     const rpcClient = new RPCClient({
@@ -177,7 +179,7 @@ describe('gestaltsActionsByIdentity', () => {
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
+      logger: logger.getChild(RPCClient.name),
     });
 
     // Doing the test
@@ -244,12 +246,16 @@ describe('gestaltsActionsByNode', () => {
   let db: DB;
   let keyRing: KeyRing;
   let taskManager: TaskManager;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    gestaltsActionsGetByNode: typeof gestaltsActionsGetByNode;
+    gestaltsActionsSetByNode: typeof gestaltsActionsSetByNode;
+    gestaltsActionsUnsetByNode: typeof gestaltsActionsUnsetByNode;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -281,6 +287,45 @@ describe('gestaltsActionsByNode', () => {
       db,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsActionsGetByNode: new GestaltsActionsGetByNode({
+          db,
+          gestaltGraph,
+        }),
+        gestaltsActionsSetByNode: new GestaltsActionsSetByNode({
+          db,
+          gestaltGraph,
+        }),
+        gestaltsActionsUnsetByNode: new GestaltsActionsUnsetByNode({
+          db,
+          gestaltGraph,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsActionsGetByNode,
+        gestaltsActionsSetByNode,
+        gestaltsActionsUnsetByNode,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
@@ -296,48 +341,6 @@ describe('gestaltsActionsByNode', () => {
     });
   });
   test('sets/unsets/gets actions by node', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsActionsGetByNode: new GestaltsActionsGetByNodeHandler({
-          db,
-          gestaltGraph,
-        }),
-        gestaltsActionsSetByNode: new GestaltsActionsSetByNodeHandler({
-          db,
-          gestaltGraph,
-        }),
-        gestaltsActionsUnsetByNode: new GestaltsActionsUnsetByNodeHandler({
-          db,
-          gestaltGraph,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsActionsGetByNode,
-        gestaltsActionsSetByNode,
-        gestaltsActionsUnsetByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const nodeId = keyRing.getNodeId();
     const node: GestaltNodeInfo = {
       nodeId: nodeId,
@@ -365,7 +368,7 @@ describe('gestaltsActionsByNode', () => {
     expect(getUnsetResponse.actionsList).toHaveLength(0);
   });
 });
-describe('gestaltsDiscoverByIdentity', () => {
+describe('gestaltsDiscoveryByIdentity', () => {
   const logger = new Logger('gestaltsDiscoverByIdentity test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -380,6 +383,9 @@ describe('gestaltsDiscoverByIdentity', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsDiscoveryByIdentity: typeof gestaltsDiscoveryByIdentity;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
@@ -388,7 +394,6 @@ describe('gestaltsDiscoverByIdentity', () => {
   let nodeManager: NodeManager;
   let nodeConnectionManager: NodeConnectionManager;
   let discovery: Discovery;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -414,7 +419,7 @@ describe('gestaltsDiscoverByIdentity', () => {
       logger,
       lazy: true,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     acl = await ACL.createACL({
       db,
       logger,
@@ -474,6 +479,34 @@ describe('gestaltsDiscoverByIdentity', () => {
       taskManager,
     });
     await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsDiscoveryByIdentity: new GestaltsDiscoveryByIdentity({
+          discovery,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsDiscoveryByIdentity,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -497,37 +530,6 @@ describe('gestaltsDiscoverByIdentity', () => {
     });
   });
   test('discovers by identity', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsDiscoveryByIdentity: new GestaltsDiscoveryByIdentityHandler({
-          discovery,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsDiscoveryByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const identity: GestaltIdentityInfo = {
       identityId: 'identityId' as IdentityId,
       providerId: 'providerId' as ProviderId,
@@ -544,7 +546,7 @@ describe('gestaltsDiscoverByIdentity', () => {
     mockDiscoveryByIdentity.mockRestore();
   });
 });
-describe('gestaltsDiscoverByNode', () => {
+describe('gestaltsDiscoveryByNode', () => {
   const logger = new Logger('gestaltsDiscoverByNode test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -556,8 +558,11 @@ describe('gestaltsDiscoverByNode', () => {
   let db: DB;
   let keyRing: KeyRing;
   let taskManager: TaskManager;
-  let webSocketClient: WebSocketClient;
   let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    gestaltsDiscoveryByNode: typeof gestaltsDiscoveryByNode;
+  }>;
   let tlsConfig: TLSConfig;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -593,7 +598,7 @@ describe('gestaltsDiscoverByNode', () => {
       logger,
       lazy: true,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     acl = await ACL.createACL({
       db,
       logger,
@@ -651,6 +656,34 @@ describe('gestaltsDiscoverByNode', () => {
       taskManager,
     });
     await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsDiscoveryByNode: new GestaltsDiscoveryByNode({
+          discovery,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsDiscoveryByNode,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -674,37 +707,6 @@ describe('gestaltsDiscoverByNode', () => {
     });
   });
   test('discovers by node', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsDiscoveryByNode: new GestaltsDiscoveryByNodeHandler({
-          discovery,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsDiscoveryByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const mockDiscoveryByNode = jest
       .spyOn(Discovery.prototype, 'queueDiscoveryByNode')
       .mockResolvedValue();
@@ -737,9 +739,11 @@ describe('gestaltsGestaltGetByIdentity', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsGestaltGetByIdentity: typeof gestaltsGestaltGetByIdentity;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -771,6 +775,35 @@ describe('gestaltsGestaltGetByIdentity', () => {
       db,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsGestaltGetByIdentity: new GestaltsGestaltGetByIdentity({
+          db,
+          gestaltGraph,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsGestaltGetByIdentity,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
@@ -786,38 +819,6 @@ describe('gestaltsGestaltGetByIdentity', () => {
     });
   });
   test('gets gestalt by identity', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltGetByIdentity: new GestaltsGestaltGetByIdentityHandler({
-          db,
-          gestaltGraph,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltGetByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const nodeId = keyRing.getNodeId();
     const node: GestaltNodeInfo = {
       nodeId: nodeId,
@@ -887,9 +888,11 @@ describe('gestaltsGestaltGetByNode', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsGestaltGetByNode: typeof gestaltsGestaltGetByNode;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -921,6 +924,35 @@ describe('gestaltsGestaltGetByNode', () => {
       db,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsGestaltGetByNode: new GestaltsGestaltGetByNode({
+          db,
+          gestaltGraph,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsGestaltGetByNode,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
@@ -936,38 +968,6 @@ describe('gestaltsGestaltGetByNode', () => {
     });
   });
   test('gets gestalt by node', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltGetByNode: new GestaltsGestaltGetByNodeHandler({
-          db,
-          gestaltGraph,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltGetByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const nodeId = keyRing.getNodeId();
     const node: GestaltNodeInfo = {
       nodeId: nodeId,
@@ -1035,9 +1035,11 @@ describe('gestaltsGestaltList', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsGestaltList: typeof gestaltsGestaltList;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1069,6 +1071,35 @@ describe('gestaltsGestaltList', () => {
       db,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsGestaltList: new GestaltsGestaltList({
+          db,
+          gestaltGraph,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsGestaltList,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService.stop({ force: true });
@@ -1084,38 +1115,6 @@ describe('gestaltsGestaltList', () => {
     });
   });
   test('lists gestalts', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltList: new GestaltsGestaltListHandler({
-          db,
-          gestaltGraph,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltList,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const nodeId = keyRing.getNodeId();
     const node: GestaltNodeInfo = {
       nodeId: nodeId,
@@ -1178,6 +1177,9 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsGestaltTrustByIdentity: typeof gestaltsGestaltTrustByIdentity;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
@@ -1216,7 +1218,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
       lazy: true,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     acl = await ACL.createACL({
       db,
       logger,
@@ -1293,6 +1295,36 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       connectedIdentity,
       claim as SignedClaim<ClaimLinkIdentity>,
     );
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsGestaltTrustByIdentity: new GestaltsGestaltTrustByIdentity({
+          db,
+          gestaltGraph,
+          discovery,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsGestaltTrustByIdentity,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -1316,40 +1348,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
   });
   test('trusts an identity (already set in gestalt graph)', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByIdentity:
-          new GestaltsGestaltTrustByIdentityHandler({
-            db,
-            gestaltGraph,
-            discovery,
-          }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     testProvider.users['disconnected-user'] = {};
     await gestaltGraph.linkNodeAndIdentity(
       { nodeId: keyRing.getNodeId() },
@@ -1379,47 +1377,13 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
   });
   test('trusts an identity (new identity)', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByIdentity:
-          new GestaltsGestaltTrustByIdentityHandler({
-            db,
-            gestaltGraph,
-            discovery,
-          }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const request = {
       providerId: testProvider.id,
       identityId: connectedIdentity,
     };
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.gestaltsGestaltTrustByIdentity(request),
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
@@ -1439,92 +1403,24 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
   });
   test('cannot trust a disconnected identity', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByIdentity:
-          new GestaltsGestaltTrustByIdentityHandler({
-            db,
-            gestaltGraph,
-            discovery,
-          }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     testProvider.users['disconnected-user'] = {};
     const request = {
       providerId: testProvider.id,
       identityId: connectedIdentity,
     };
     // Should fail on first attempt - attempt to find a connected node
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.gestaltsGestaltTrustByIdentity(request),
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
     // Wait and try again - should fail again because the identity has no
     // linked nodes we can trust
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.gestaltsGestaltTrustByIdentity(request),
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
   });
   test('trust extends to entire gestalt', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByIdentity:
-          new GestaltsGestaltTrustByIdentityHandler({
-            db,
-            gestaltGraph,
-            discovery,
-          }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     await gestaltGraph.linkNodeAndIdentity(
       { nodeId: keyRing.getNodeId() },
       {
@@ -1558,40 +1454,6 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     });
   });
   test('links trusted identity to an existing node', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByIdentity:
-          new GestaltsGestaltTrustByIdentityHandler({
-            db,
-            gestaltGraph,
-            discovery,
-          }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByIdentity,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     await gestaltGraph.setNode({
       nodeId: keyRing.getNodeId(),
     });
@@ -1601,12 +1463,12 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     };
     // Should fail on first attempt - need to allow time for the identity to be
     // linked to a node via discovery
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.gestaltsGestaltTrustByIdentity(request),
       gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing,
     );
     // Wait and try again - should succeed second time
-    await sleep(2000);
+    await utils.sleep(2000);
     await rpcClient.methods.gestaltsGestaltTrustByIdentity(request);
     // Wait for both identity and node to be set in GG
     let existingTasks: number = 0;
@@ -1644,6 +1506,9 @@ describe('gestaltsGestaltTrustByNode', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let rpcClient: RPCClient<{
+    gestaltsGestaltTrustByNode: typeof gestaltsGestaltTrustByNode;
+  }>;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
@@ -1660,7 +1525,6 @@ describe('gestaltsGestaltTrustByNode', () => {
   let node: PolykeyAgent;
   let mockedRequestChainData: jest.SpyInstance;
   let nodeDataDir: string;
-
   beforeEach(async () => {
     testProvider = new TestProvider();
     dataDir = await fs.promises.mkdtemp(
@@ -1727,7 +1591,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
       lazy: true,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     acl = await ACL.createACL({
       db,
       logger,
@@ -1793,6 +1657,36 @@ describe('gestaltsGestaltTrustByNode', () => {
       taskManager,
     });
     await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNode({
+          db,
+          gestaltGraph,
+          discovery,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsGestaltTrustByNode,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -1822,39 +1716,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     mockedRequestChainData.mockRestore();
   });
   test('trusts a node (already set in gestalt graph)', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNodeHandler({
-          db,
-          gestaltGraph,
-          discovery,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     await gestaltGraph.setNode({ nodeId: nodeIdRemote });
     const request = {
       nodeIdEncoded: nodeIdEncodedRemote,
@@ -1867,39 +1728,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
   });
   test('trusts a node (new node)', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNodeHandler({
-          db,
-          gestaltGraph,
-          discovery,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const request = {
       nodeIdEncoded: nodeIdEncodedRemote,
     };
@@ -1911,39 +1739,6 @@ describe('gestaltsGestaltTrustByNode', () => {
     });
   });
   test('trust extends to entire gestalt', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNodeHandler({
-          db,
-          gestaltGraph,
-          discovery,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        gestaltsGestaltTrustByNode,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const request = {
       nodeIdEncoded: nodeIdEncodedRemote,
     };

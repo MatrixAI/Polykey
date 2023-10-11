@@ -1,7 +1,6 @@
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-  PasswordMessage,
   PublicKeyMessage,
 } from '../types';
 import type KeyRing from '../../keys/KeyRing';
@@ -12,7 +11,7 @@ class KeysPublicKey extends UnaryHandler<
   {
     keyRing: KeyRing;
   },
-  ClientRPCRequestParams<PasswordMessage>,
+  ClientRPCRequestParams,
   ClientRPCResponseResult<PublicKeyMessage>
 > {
   public handle = async (): Promise<

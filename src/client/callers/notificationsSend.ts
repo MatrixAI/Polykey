@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NotificationsSend from '../handlers/NotificationsRead';
+import type NotificationsSend from '../handlers/NotificationsSend';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NotificationsSend>;
