@@ -67,6 +67,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     remoteAddress1 = {
       host: remotePolykeyAgent1.agentServiceHost,
       port: remotePolykeyAgent1.agentServicePort,
+      scopes: ['external'],
     };
 
     // Setting up client dependencies
@@ -116,6 +117,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
@@ -155,6 +157,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
@@ -211,12 +214,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();
     await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
+      scopes: ['local'],
     });
     await expect(
       nodeConnectionManager.withConnF(randomNodeId, async () => {
@@ -236,12 +241,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();
     await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
+      scopes: ['local'],
     });
     await expect(
       nodeConnectionManager.withConnF(
@@ -267,12 +274,14 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();
     await nodeGraph.setNode(randomNodeId, {
       host: '127.0.0.1' as Host,
       port: 12321 as Port,
+      scopes: ['local'],
     });
     const abortController = new AbortController();
     const ctx = {

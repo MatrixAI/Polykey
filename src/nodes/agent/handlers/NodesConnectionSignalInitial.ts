@@ -52,6 +52,7 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     const address: NodeAddress = {
       host: remoteHost as Host,
       port: remotePort as Port,
+      scopes: ['external']
     };
     nodeConnectionManager.handleNodesConnectionSignalInitial(
       requestingNodeId,

@@ -711,6 +711,9 @@ class PolykeyAgent {
         host: optionsDefaulted.agentServiceHost,
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
+        enableMdns: true,
+        mdnsGroups: optionsDefaulted.agentMdnsGroups,
+        mdnsPort: optionsDefaulted.agentMdnsPort,
         manifest: agentServerManifest({
           acl: this.acl,
           db: this.db,

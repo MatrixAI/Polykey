@@ -73,11 +73,13 @@ async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
     host: remoteNode.agentServiceHost,
     port: remoteNode.agentServicePort,
+    scopes: ['external']
   });
   // Add local node's details to remote node
   await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
     host: localNode.agentServiceHost,
     port: localNode.agentServicePort,
+    scopes: ['external']
   });
 }
 

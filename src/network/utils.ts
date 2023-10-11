@@ -3,7 +3,7 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type { Address, Host, Hostname, Port } from './types';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { NodeId } from '../ids/types';
-import type { NodeAddress } from '../nodes/types';
+import type { NodeAddress, NodeAddressScope } from '../nodes/types';
 import type { JSONValue } from '../types';
 import type { X509Certificate } from '@peculiar/x509';
 import dns from 'dns';
@@ -25,7 +25,7 @@ import ErrorPolykey from '../ErrorPolykey';
 function isHost(host: any): host is Host {
   if (typeof host !== 'string') return false;
   const [isIPv4] = Validator.isValidIPv4String(host);
-  const [isIPv6] = Validator.isValidIPv6String(host);
+  const [isIPv6] = Validator.isValidIPv6String(host.replace(/%.*/, ''));
   return isIPv4 || isIPv6;
 }
 
@@ -447,18 +447,18 @@ async function verifyClientCertificateChain(
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
   existingAddresses: Set<string> = new Set(),
-): Promise<Array<{ host: Host; port: Port }>> {
-  const final: Array<{ host: Host; port: Port }> = [];
+): Promise<Array<{ host: Host; port: Port; scopes: Array<NodeAddressScope> }>> {
+  const final: Array<{ host: Host; port: Port; scopes: Array<NodeAddressScope> }> = [];
   for (const address of addresses) {
     if (isHost(address.host)) {
       if (existingAddresses.has(`${address.host}|${address.port}`)) continue;
-      final.push({ host: address.host, port: address.port });
+      final.push({ host: address.host, port: address.port, scopes: address.scopes });
       existingAddresses.add(`${address.host}|${address.port}`);
       continue;
     }
     const resolvedAddresses = await resolveHostname(address.host);
     for (const resolvedHost of resolvedAddresses) {
-      const newAddress = { host: resolvedHost, port: address.port };
+      const newAddress = { host: resolvedHost, port: address.port, scopes: address.scopes };
       if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
       if (existingAddresses.has(`${resolvedHost}|${address.port}`)) continue;
       final.push(newAddress);

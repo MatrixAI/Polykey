@@ -109,7 +109,11 @@ type AddressMessage = {
 
 type NodeAddressMessage = NodeIdMessage & AddressMessage;
 
-type NodesGetMessage = NodeAddressMessage & { bucketIndex: number };
+type NodesFindMessage = {
+  addresses: Array<AddressMessage>;
+};
+
+type NodesGetMessage = NodeAddressMessage &  { bucketIndex: number };
 
 type NodesAddMessage = NodeAddressMessage & {
   force?: boolean;
@@ -327,6 +331,7 @@ export type {
   NodeIdMessage,
   AddressMessage,
   NodeAddressMessage,
+  NodesFindMessage,
   NodeConnectionMessage,
   ActionsListMessage,
   SetIdentityActionMessage,

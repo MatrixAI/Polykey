@@ -209,6 +209,7 @@ describe('Discovery', () => {
     await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
       host: nodeA.agentServiceHost,
       port: nodeA.agentServicePort,
+      scopes: ['external']
     });
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());

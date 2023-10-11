@@ -230,6 +230,10 @@ class NodeConnection<M extends ClientManifest> {
     if (networkUtils.isHostWildcard(targetHost)) {
       throw new nodesErrors.ErrorNodeConnectionHostWildcard();
     }
+    // FIXME: support link-local addresses like `fe80::1cc7:8829:3d67:240d%wlp0s20f3`, QUIC currently hangs main thread when attempting a connection to this targetHost
+    if (targetHost.startsWith('fe80') || targetHost.includes('%')) {
+      throw new nodesErrors.ErrorNodeConnectionHostLinkLocal();
+    }
     let validatedNodeId: NodeId | undefined;
     let quicClient: QUICClient;
     try {

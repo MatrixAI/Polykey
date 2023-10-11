@@ -1628,6 +1628,7 @@ describe('gestaltsGestaltTrustByNode', () => {
     await nodeManager.setNode(nodeIdRemote, {
       host: node.agentServiceHost,
       port: node.agentServicePort,
+      scopes: ['external']
     });
     discovery = await Discovery.createDiscovery({
       db,

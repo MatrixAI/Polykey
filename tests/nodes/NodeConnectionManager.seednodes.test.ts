@@ -1,6 +1,6 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
-import type { NodeAddress } from '@/nodes/types';
+import type { NodeAddress, SeedNodes } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -30,9 +30,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     ),
   ]);
   const localHost = '127.0.0.1';
-  const testAddress = {
+  const testAddress: NodeAddress = {
     host: '127.0.0.1' as Host,
     port: 55555 as Port,
+    scopes: ['local'],
   };
   const password = 'password';
 
@@ -87,6 +88,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteAddress1 = {
       host: remotePolykeyAgent1.agentServiceHost,
       port: remotePolykeyAgent1.agentServicePort,
+      scopes: ['external'],
     };
 
     const nodePathB = path.join(dataDir, 'agentB');
@@ -108,6 +110,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteAddress2 = {
       host: remotePolykeyAgent2.agentServiceHost,
       port: remotePolykeyAgent2.agentServicePort,
+      scopes: ['external'],
     };
 
     // Setting up client dependencies
@@ -219,6 +222,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -231,10 +235,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
   });
   test('syncNodeGraph handles own nodeId', async () => {
     const localNodeId = keyRing.getNodeId();
-    const seedNodes = {
+    const seedNodes: SeedNodes = {
       [nodesUtils.encodeNodeId(localNodeId)]: {
         host: '127.0.0.1' as Host,
         port: 55123 as Port,
+        scopes: ['external']
       },
     };
     nodeConnectionManager = new NodeConnectionManager({
@@ -284,10 +289,11 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await nodeConnectionManager.stop();
   });
   test('syncNodeGraph handles offline seed node', async () => {
-    const seedNodes = {
+    const seedNodes: SeedNodes = {
       [nodesUtils.encodeNodeId(remoteNodeId2)]: {
         host: '127.0.0.1' as Host,
         port: 55124 as Port,
+        scopes: ['external']
       },
     };
     nodeConnectionManager = new NodeConnectionManager({
@@ -380,6 +386,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -440,6 +447,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -497,6 +505,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -555,6 +564,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
+      enableMdns: false,
     });
     await taskManager.startProcessing();
 

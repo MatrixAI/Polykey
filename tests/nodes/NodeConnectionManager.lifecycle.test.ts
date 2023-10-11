@@ -89,6 +89,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManagerPeer2.start({
       host: localHost,
+      enableMdns: false,
     });
 
     // Setting up client dependencies
@@ -114,6 +115,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     serverAddress1 = {
       host: nodeConnectionManagerPeer1.host,
       port: nodeConnectionManagerPeer1.port,
+      scopes: ['external'],
     };
   });
 
@@ -140,6 +142,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
 
     await nodeConnectionManager.stop();
@@ -154,11 +157,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
 
     await nodeConnectionManager.stop();
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     await nodeConnectionManager.stop();
   });
@@ -176,6 +181,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
 
     const acquire =
@@ -196,6 +202,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
 
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
@@ -215,6 +222,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
 
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
@@ -246,6 +254,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
@@ -273,6 +282,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
@@ -308,6 +318,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -333,6 +344,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     const waitProm = promise<void>();
     const tryConnection = () => {
@@ -366,6 +378,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -398,6 +411,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -422,11 +436,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       serverNodeId1,
-      localHost as Host,
-      nodeConnectionManagerPeer1.port,
+      [{
+        host: localHost as Host,
+        port: nodeConnectionManagerPeer1.port,
+        scopes: ['local']
+      }],
     );
     expect(result).toBeTrue();
     expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
@@ -443,11 +461,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       serverNodeId1,
-      localHost as Host,
-      12345 as Port,
+      [{
+        host: localHost as Host,
+        port: 12345 as Port,
+        scopes: ['local']
+      }],
       { timer: 100 },
     );
     expect(result).toBeFalse();
@@ -465,11 +487,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
+      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
-      localHost as Host,
-      nodeConnectionManagerPeer1.port,
+      [{
+        host: localHost as Host,
+        port: nodeConnectionManagerPeer1.port,
+        scopes: ['local']
+      }],
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();
@@ -493,9 +519,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const connectedNodes = await nodeConnectionManager.getMultiConnection(
       [serverNodeId1],
       [
-        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
       ],
       { timer: 200 },
     );
@@ -523,12 +549,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const connectedNodes = await nodeConnectionManager.getMultiConnection(
       [serverNodeId1, serverNodeId2],
       [
-        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port },
-        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port },
-        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
       ],
       { timer: 200 },
     );
@@ -557,7 +583,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     const connectedNodes = await nodeConnectionManager.getMultiConnection(
       [serverNodeId1, serverNodeId2],
-      [{ host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port }],
+      [{ host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] }],
       { timer: 200 },
     );
     expect(connectedNodes.length).toBe(1);
@@ -587,12 +613,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const connectedNodesProm = nodeConnectionManager.getMultiConnection(
       [serverNodeId1, serverNodeId2],
       [
-        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
-        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port },
-        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port },
-        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port, scopes: ['external'] },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port, scopes: ['external'] },
       ],
       { timer: 2000 },
     );

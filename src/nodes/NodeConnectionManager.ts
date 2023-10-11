@@ -9,6 +9,7 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
+  NodeAddressScope,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
@@ -37,6 +38,7 @@ import {
 } from '@matrixai/quic';
 import { running, status } from '@matrixai/async-init';
 import { RPCServer, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import { MDNS, utils as mdnsUtils } from '@matrixai/mdns';
 import NodeConnection from './NodeConnection';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
@@ -180,6 +182,8 @@ class NodeConnectionManager {
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
   protected rpcServer: RPCServer;
+
+  protected mdns: MDNS;
 
   /**
    * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
@@ -402,10 +406,15 @@ class NodeConnectionManager {
       logger: this.logger.getChild(RPCServer.name),
     });
 
+    const mdns = new MDNS({
+      logger: this.logger.getChild(MDNS.name)
+    });
+
     this.quicClientCrypto = quicClientCrypto;
     this.quicSocket = quicSocket;
     this.quicServer = quicServer;
     this.rpcServer = rpcServer;
+    this.mdns = mdns;
   }
 
   /**
@@ -429,12 +438,18 @@ class NodeConnectionManager {
     port = 0 as Port,
     reuseAddr = false,
     ipv6Only = false,
+    enableMdns = true,
+    mdnsGroups = ['224.0.0.250', 'ff02::fa17'] as Array<Host>,
+    mdnsPort = 64023 as Port,
     manifest = {},
   }: {
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
     ipv6Only?: boolean;
+    enableMdns?: boolean;
+    mdnsGroups?: Array<Host>;
+    mdnsPort?: Port;
     manifest?: ServerManifest;
   }) {
     const address = networkUtils.buildAddress(host, port);
@@ -481,6 +496,27 @@ class NodeConnectionManager {
     );
     this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
     this.rateLimiter.startRefillInterval();
+    // MDNS Start
+    if (enableMdns) {
+      const nodeId = this.keyRing.getNodeId();
+      const encodedNodeId = nodesUtils.encodeNodeId(nodeId);
+      await this.mdns.start({
+        hostname: encodedNodeId,
+        port: mdnsPort,
+        groups: mdnsGroups,
+        id: nodeId.at(0),
+      })
+      this.mdns.registerService({
+        name: encodedNodeId,
+        port: this.quicServer.port,
+        type: 'polykey',
+        protocol: 'udp',
+      });
+      this.mdns.startQuery({
+        type: 'polykey',
+        protocol: 'udp',
+      });
+    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -542,6 +578,9 @@ class NodeConnectionManager {
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
     await this.rpcServer.stop({ force: true });
+    if (this.mdns[running]) {
+      await this.mdns.stop();
+    }
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -675,7 +714,7 @@ class NodeConnectionManager {
    */
   protected getConnection(
     targetNodeId: NodeId,
-    address?: NodeAddress,
+    addresses?: Array<NodeAddress>,
     ctx?: Partial<ContextTimed>,
   );
   @timedCancellable(
@@ -685,21 +724,21 @@ class NodeConnectionManager {
   )
   protected async getConnection(
     targetNodeId: NodeId,
-    address: NodeAddress | undefined,
+    addresses: Array<NodeAddress> | undefined,
     @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
     // If the connection already exists then we need to return it.
     const existingConnection = await this.getExistingConnection(targetNodeId);
     if (existingConnection != null) return existingConnection;
 
-    // If there was no address provided then we need to find it.
-    if (address == null) {
+    // If there were no addresses provided then we need to find them.
+    if (addresses == null || addresses.length === 0) {
       // Find the node
-      address = await this.findNode(targetNodeId, undefined, ctx);
-      if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+      addresses = await this.findNodeAll(targetNodeId, undefined, ctx);
+      if (addresses.length === 0) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
     // Then we just get the connection, it should already exist.
-    return this.getConnectionWithAddress(targetNodeId, address, ctx);
+    return this.getConnectionWithAddresses(targetNodeId, addresses, ctx);
   }
 
   protected async getExistingConnection(
@@ -734,9 +773,9 @@ class NodeConnectionManager {
    * @param ctx
    * @returns ConnectionAndLock that was created or exists in the connection map
    */
-  protected getConnectionWithAddress(
+  protected getConnectionWithAddresses(
     targetNodeId: NodeId,
-    address: NodeAddress,
+    addresses: Array<NodeAddress>,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<ConnectionAndTimer>;
   @timedCancellable(
@@ -744,11 +783,14 @@ class NodeConnectionManager {
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
-  protected async getConnectionWithAddress(
+  protected async getConnectionWithAddresses(
     targetNodeId: NodeId,
-    address: NodeAddress,
+    addresses: Array<NodeAddress>,
     @context ctx: ContextTimed,
   ): Promise<ConnectionAndTimer> {
+    if (addresses.length === 0) {
+      throw new nodesErrors.ErrorNodeConnectionManagerNodeAddressRequired();
+    }
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     const existingConnection = await this.getExistingConnection(targetNodeId);
     if (existingConnection != null) return existingConnection;
@@ -760,7 +802,7 @@ class NodeConnectionManager {
         // Attempting a multi-connection for the target node
         const results = await this.establishMultiConnection(
           [targetNodeId],
-          [address],
+          addresses,
           ctx,
         );
         // Should be a single result.
@@ -792,6 +834,9 @@ class NodeConnectionManager {
     this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
     if (nodeIds.length === 0) {
       throw new nodesErrors.ErrorNodeConnectionManagerNodeIdRequired();
+    }
+    if (addresses.length === 0) {
+      throw new nodesErrors.ErrorNodeConnectionManagerNodeAddressRequired();
     }
     const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
     // 1. short circuit any existing connections
@@ -891,6 +936,7 @@ class NodeConnectionManager {
     address: {
       host: Host;
       port: Port;
+      scopes: Array<NodeAddressScope>
     },
     connectionsResults: Map<NodeIdString, ConnectionAndTimer>,
     ctx: ContextTimed,
@@ -901,7 +947,7 @@ class NodeConnectionManager {
     this.logger.debug(
       `establishing single connection for address ${address.host}:${address.port}`,
     );
-    const iceProm = this.initiateHolePunch(nodeIds, ctx);
+    const iceProm = !address.scopes?.includes('local') ? this.initiateHolePunch(nodeIds, ctx) : undefined;
     const connection =
       await NodeConnection.createNodeConnection<ManifestClientAgent>(
         {
@@ -927,7 +973,7 @@ class NodeConnectionManager {
           throw e;
         })
         .finally(async () => {
-          iceProm.cancel('Connection was established');
+          iceProm?.cancel('Connection was established');
           await iceProm;
         });
     // 2. if established then add to result map
@@ -1206,6 +1252,99 @@ class NodeConnectionManager {
   }
 
   /**
+   * Will attempt to find a connection via MDNS.
+   * @param targetNodeId Id of the node we are tying to find
+   * @param externalAddress Can be optionally provided to either concatinate the 'external' scope on a NodeAddress if the port and host match,
+   * or concat the address to the returned array if not matching NodeAddress was found.
+   */
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public findNodeLocal(
+    targetNodeId: NodeId,
+    externalAddress?: NodeAddress
+  ): Array<NodeAddress> {
+    this.logger.debug(
+      `Finding local addresses for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+    );
+
+    let concatExternal = true;
+
+    let addresses: Array<NodeAddress> = [];
+
+    // First check if we already have an existing MDNS Service
+    if (this.mdns[running]) {
+      const service = this.mdns.networkServices.get(mdnsUtils.toFqdn({ name: nodesUtils.encodeNodeId(targetNodeId), type: "polykey", protocol: "udp" }));
+      if (service != null) {
+        for (const host_ of service.hosts) {
+          let host: string;
+          switch (this.quicSocket.type) {
+            case 'ipv4':
+              if (quicUtils.isIPv4(host_)) host = host_;
+              else if (quicUtils.isIPv4MappedIPv6(host_)) host = quicUtils.fromIPv4MappedIPv6(host_);
+              else continue;
+              break;
+            case 'ipv6':
+              if (quicUtils.isIPv6(host_)) host = host_;
+              else continue;
+              break;
+            case 'ipv4&ipv6':
+              host = host_;
+              break;
+            default:
+              continue;
+          }
+          const scopes: Array<'local' | 'external'> = ['local'];
+          if (externalAddress?.host === host && externalAddress.port === service.port) {
+            scopes.push('external');
+            concatExternal = false;
+          }
+          addresses.push({
+            host: host as Host,
+            port: service.port as Port,
+            scopes
+          });
+          this.logger.debug(
+            `found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${
+              host
+            }:${service.port}`,
+          );
+        }
+      }
+    }
+
+    if (externalAddress != null && concatExternal) {
+      addresses.push(externalAddress);
+    }
+
+    return addresses;
+  }
+
+  /**
+   * Will attempt to find a connection via a Kademlia search or MDNS.
+   * The connection may be established in the process.
+   * @param targetNodeId Id of the node we are tying to find
+   * @param pingTimeoutTime timeout for any ping attempts
+   * @param ctx
+   */
+  public findNodeAll(
+    targetNodeId: NodeId,
+    pingTimeoutTime?: number,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<Array<NodeAddress>>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(true)
+  public async findNodeAll(
+    targetNodeId: NodeId,
+    pingTimeoutTime: number | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<Array<NodeAddress>> {
+    const kademliaAddress = await this.findNode(targetNodeId, pingTimeoutTime, ctx);
+    const addresses = this.findNodeLocal(targetNodeId, kademliaAddress);
+    return addresses;
+  }
+
+
+
+  /**
    * Attempts to locate a target node in the network (using Kademlia).
    * Adds all discovered, active nodes to the current node's database (up to k
    * discovered nodes).
@@ -1274,8 +1413,11 @@ class NodeConnectionManager {
       if (
         !(await this.pingNode(
           nextNodeId,
-          nextNodeAddress.address.host,
-          nextNodeAddress.address.port,
+          [{
+            host: nextNodeAddress.address.host,
+            port: nextNodeAddress.address.port,
+            scopes: ['external']
+          }],
           {
             signal: ctx.signal,
             timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
@@ -1310,8 +1452,11 @@ class NodeConnectionManager {
           nodeId.equals(targetNodeId) &&
           (await this.pingNode(
             nodeId,
-            nodeData.address.host,
-            nodeData.address.port,
+            [{
+              host: nextNodeAddress.address.host,
+              port: nextNodeAddress.address.port,
+              scopes: ['external']
+            }],
             {
               signal: ctx.signal,
               timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
@@ -1391,6 +1536,7 @@ class NodeConnectionManager {
                   address: {
                     host: result.host as Host | Hostname,
                     port: result.port as Port,
+                    scopes: ['external']
                   },
                   // Not really needed
                   // But if it's needed then we need to add the information to the proto definition
@@ -1587,14 +1733,12 @@ class NodeConnectionManager {
    * connection can be authenticated, it's certificate matches the nodeId and
    * the addresses match if provided. Otherwise, returns false.
    * @param nodeId - NodeId of the target
-   * @param host - Host of the target node
-   * @param port - Port of the target node
+   * @param addresses - Contains the Hosts and Ports of the target node
    * @param ctx
    */
   public pingNode(
     nodeId: NodeId,
-    host: Host | Hostname,
-    port: Port,
+    addresses: Array<NodeAddress>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<boolean>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -1605,17 +1749,13 @@ class NodeConnectionManager {
   )
   public async pingNode(
     nodeId: NodeId,
-    host: Host,
-    port: Port,
+    addresses: Array<NodeAddress>,
     @context ctx: ContextTimed,
   ): Promise<boolean> {
     try {
-      await this.getConnectionWithAddress(
+      await this.getConnectionWithAddresses(
         nodeId,
-        {
-          host,
-          port,
-        },
+        addresses,
         ctx,
       );
       return true;
