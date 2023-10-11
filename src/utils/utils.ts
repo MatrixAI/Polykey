@@ -151,7 +151,7 @@ function getUnixtime(date: Date = new Date()) {
  * Poll execution and use condition to accept or reject the results
  */
 async function poll<T, E = any>(
-  f: () => Promise<T>,
+  f: () => T | PromiseLike<T>,
   condition: {
     (e: E, result?: undefined): boolean;
     (e: null, result: T): boolean;
