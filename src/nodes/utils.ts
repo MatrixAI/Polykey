@@ -358,7 +358,7 @@ const codeToReason = (_type: 'read' | 'write', code: number): any => {
     case 4:
       return new rpcErrors.ErrorRPCOutputStreamError();
     case 5:
-      return new rpcErrors.ErrorRPCRemote();
+      return new rpcErrors.ErrorRPCRemote({});
     case 6:
       return new rpcErrors.ErrorRPCStreamEnded();
     case 7:

@@ -453,7 +453,25 @@ function fromError(error: any) {
   }
 }
 
-function toError(errorData: JSONValue): Error {
+const standardErrors: {
+  [key: string]: typeof Error | typeof AggregateError | typeof AbstractError;
+} = {
+  Error,
+  TypeError,
+  SyntaxError,
+  ReferenceError,
+  EvalError,
+  RangeError,
+  URIError,
+  AggregateError,
+  AbstractError,
+};
+
+function toError(
+  errorData: JSONValue,
+  clientMetadata: JSONValue,
+  top: boolean = true,
+): any {
   if (
     errorData != null &&
     typeof errorData === 'object' &&
@@ -462,11 +480,73 @@ function toError(errorData: JSONValue): Error {
     'data' in errorData &&
     typeof errorData.data === 'object'
   ) {
+    const eClassStandard = standardErrors[errorData.type];
+    if (eClassStandard != null) {
+      let e: Error;
+      switch (eClassStandard) {
+        case AbstractError:
+          e = eClassStandard.fromJSON(errorData);
+          break;
+        case AggregateError:
+          if (
+            errorData.data == null ||
+            !('errors' in errorData.data) ||
+            !Array.isArray(errorData.data.errors) ||
+            typeof errorData.message !== 'string' ||
+            !('stack' in errorData.data) ||
+            typeof errorData.data.stack !== 'string'
+          ) {
+            throw new TypeError(`cannot decode JSON to ${errorData.type}`);
+          }
+          e = new eClassStandard(
+            errorData.data.errors.map((data) =>
+              toError(data, clientMetadata, false),
+            ),
+            errorData.message,
+          );
+          e.stack = errorData.data.stack;
+          break;
+        default:
+          if (
+            errorData.data == null ||
+            typeof errorData.message !== 'string' ||
+            !('stack' in errorData.data) ||
+            typeof errorData.data.stack !== 'string'
+          ) {
+            throw new TypeError(`Cannot decode JSON to ${errorData.type}`);
+          }
+          e = new (eClassStandard as typeof Error)(errorData.message);
+          e.stack = errorData.data.stack;
+          break;
+      }
+      if (errorData.data != null && 'cause' in errorData.data) {
+        e.cause = toError(errorData.data.cause, clientMetadata, false);
+      }
+      if (top) {
+        return new networkErrors.ErrorPolykeyRemote(clientMetadata, undefined, {
+          cause: e,
+        });
+      } else {
+        return e;
+      }
+    }
     const eClass = errors[errorData.type];
-    const err = eClass.fromJSON(errorData);
-    if (eClass != null) return err;
+    if (eClass != null) {
+      const e = eClass.fromJSON(errorData);
+      if (errorData.data != null && 'cause' in errorData.data) {
+        e.cause = toError(errorData.data.cause, clientMetadata, false);
+      }
+      if (top) {
+        return new networkErrors.ErrorPolykeyRemote(clientMetadata, undefined, {
+          cause: e,
+        });
+      } else {
+        return e;
+      }
+    }
   }
-  return Error('TMP Some error, this needs to be fleshed out');
+  // Other values are returned as-is
+  return errorData;
 }
 
 export {

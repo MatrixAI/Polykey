@@ -1,8 +1,8 @@
 import type { NodeId } from '@/ids/types';
 import { IdInternal } from '@matrixai/id';
-import { errors as rpcErrors } from '@matrixai/rpc';
 import * as keysUtils from '@/keys/utils';
 import { promise } from '@/utils';
+import * as networkErrors from '@/network/errors';
 
 function generateRandomNodeId(): NodeId {
   const random = keysUtils.getRandomBytes(16).toString('hex');
@@ -13,7 +13,7 @@ const expectRemoteError = async <T>(
   promise: Promise<T>,
   error,
 ): Promise<T | undefined> => {
-  await expect(promise).rejects.toThrow(rpcErrors.ErrorRPCRemote);
+  await expect(promise).rejects.toThrow(networkErrors.ErrorPolykeyRemote);
   try {
     return await promise;
   } catch (e) {
