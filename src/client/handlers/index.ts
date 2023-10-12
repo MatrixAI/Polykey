@@ -1,71 +1,254 @@
-export * from './clientManifest';
-export * from './serverManifest';
-export * as types from './types';
-export * from './vaultsClone';
-export * from './vaultsCreate';
-export * from './vaultsDelete';
-export * from './vaultsList';
-export * from './vaultsLog';
-export * from './vaultsPermissionGet';
-export * from './vaultsPermissionSet';
-export * from './vaultsPermissionUnset';
-export * from './nodesAdd';
-export * from './nodesClaim';
-export * from './nodesFind';
-export * from './nodesGetAll';
-export * from './nodesListConnections';
-export * from './nodesPing';
-export * from './gestaltsActionsGetByIdentity';
-export * from './gestaltsActionsGetByNode';
-export * from './gestaltsActionsSetByIdentity';
-export * from './gestaltsActionsSetByNode';
-export * from './gestaltsActionsUnsetByIdentity';
-export * from './gestaltsActionsUnsetByNode';
-export * from './gestaltsDiscoveryByIdentity';
-export * from './gestaltsDiscoveryByNode';
-export * from './gestaltsGestaltGetByIdentity';
-export * from './gestaltsGestaltGetByNode';
-export * from './gestaltsGestaltList';
-export * from './gestaltsGestaltTrustByIdentity';
-export * from './gestaltsGestaltTrustByNode';
-export * from './identitiesAuthenticate';
-export * from './identitiesAuthenticatedGet';
-export * from './identitiesClaim';
-export * from './agentStatus';
-export * from './agentStop';
-export * from './agentUnlock';
-export * from './agentLockAll';
-export * from './identitiesInfoGet';
-export * from './identitiesInfoConnectedGet';
-export * from './identitiesInvite';
-export * from './identitiesProvidersList';
-export * from './identitiesTokenDelete';
-export * from './identitiesTokenGet';
-export * from './identitiesTokenPut';
-export * from './keysCertsChainGet';
-export * from './keysCertsGet';
-export * from './keysDecrypt';
-export * from './keysEncrypt';
-export * from './keysKeyPair';
-export * from './keysKeyPairRenew';
-export * from './keysKeyPairReset';
-export * from './keysPasswordChange';
-export * from './keysPublicKey';
-export * from './notificationsClear';
-export * from './notificationsRead';
-export * from './notificationsSend';
-export * from './vaultsPull';
-export * from './vaultsRename';
-export * from './vaultsScan';
-export * from './vaultsSecretsDelete';
-export * from './vaultsSecretsEdit';
-export * from './vaultsSecretsGet';
-export * from './vaultsSecretsList';
-export * from './vaultsSecretsMkdir';
-export * from './vaultsSecretsNew';
-export * from './vaultsSecretsNewDir';
-export * from './vaultsSecretsRename';
-export * from './vaultsSecretsStat';
-export * from './vaultsVersion';
-export * from '../../client/handlers/keysVerify';
-export * from '../../client/handlers/keysSign';
+import type { DB } from '@matrixai/db';
+import type Logger from '@matrixai/logger';
+import type ACL from '../../acl/ACL';
+import type KeyRing from '../../keys/KeyRing';
+import type CertManager from '../../keys/CertManager';
+import type SessionManager from '../../sessions/SessionManager';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
+import type IdentitiesManager from '../../identities/IdentitiesManager';
+import type Discovery from '../../discovery/Discovery';
+import type NotificationsManager from '../../notifications/NotificationsManager';
+import type NodeManager from '../../nodes/NodeManager';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+import type NodeGraph from '../../nodes/NodeGraph';
+import type VaultManager from '../../vaults/VaultManager';
+import type PolykeyAgent from '../../PolykeyAgent';
+import type { FileSystem } from '../../types';
+import AgentLockAll from './AgentLockAll';
+import AgentStatus from './AgentStatus';
+import AgentStop from './AgentStop';
+import AgentUnlock from './AgentUnlock';
+import GestaltsActionsGetByIdentity from './GestaltsActionsGetByIdentity';
+import GestaltsActionsGetByNode from './GestaltsActionsGetByNode';
+import GestaltsActionsSetByIdentity from './GestaltsActionsSetByIdentity';
+import GestaltsActionsSetByNode from './GestaltsActionsSetByNode';
+import GestaltsActionsUnsetByIdentity from './GestaltsActionsUnsetByIdentity';
+import GestaltsActionsUnsetByNode from './GestaltsActionsUnsetByNode';
+import GestaltsDiscoveryByIdentity from './GestaltsDiscoveryByIdentity';
+import GestaltsDiscoveryByNode from './GestaltsDiscoveryByNode';
+import GestaltsGestaltGetByIdentity from './GestaltsGestaltGetByIdentity';
+import GestaltsGestaltGetByNode from './GestaltsGestaltGetByNode';
+import GestaltsGestaltList from './GestaltsGestaltList';
+import GestaltsGestaltTrustByIdentity from './GestaltsGestaltTrustByIdentity';
+import GestaltsGestaltTrustByNode from './GestaltsGestaltTrustByNode';
+import IdentitiesAuthenticate from './IdentitiesAuthenticate';
+import IdentitiesAuthenticatedGet from './IdentitiesAuthenticatedGet';
+import IdentitiesClaim from './IdentitiesClaim';
+import IdentitiesInfoConnectedGet from './IdentitiesInfoConnectedGet';
+import IdentitiesInfoGet from './IdentitiesInfoGet';
+import IdentitiesInvite from './IdentitiesInvite';
+import IdentitiesProvidersList from './IdentitiesProvidersList';
+import IdentitiesTokenDelete from './IdentitiesTokenDelete';
+import IdentitiesTokenGet from './IdentitiesTokenGet';
+import IdentitiesTokenPut from './IdentitiesTokenPut';
+import KeysCertsChainGet from './KeysCertsChainGet';
+import KeysCertsGet from './KeysCertsGet';
+import KeysDecrypt from './KeysDecrypt';
+import KeysEncrypt from './KeysEncrypt';
+import KeysKeyPair from './KeysKeyPair';
+import KeysKeyPairRenew from './KeysKeyPairRenew';
+import KeysKeyPairReset from './KeysKeyPairReset';
+import KeysPasswordChange from './KeysPasswordChange';
+import KeysPublicKey from './KeysPublicKey';
+import KeysSign from './KeysSign';
+import KeysVerify from './KeysVerify';
+import NodesAdd from './NodesAdd';
+import NodesClaim from './NodesClaim';
+import NodesFind from './NodesFind';
+import NodesGetAll from './NodesGetAll';
+import NodesListConnections from './NodesListConnections';
+import NodesPing from './NodesPing';
+import NotificationsClear from './NotificationsClear';
+import NotificationsRead from './NotificationsRead';
+import NotificationsSend from './NotificationsSend';
+import VaultsClone from './VaultsClone';
+import VaultsCreate from './VaultsCreate';
+import VaultsDelete from './VaultsDelete';
+import VaultsList from './VaultsList';
+import VaultsLog from './VaultsLog';
+import VaultsPermissionGet from './VaultsPermissionGet';
+import VaultsPermissionSet from './VaultsPermissionSet';
+import VaultsPermissionUnset from './VaultsPermissionUnset';
+import VaultsPull from './VaultsPull';
+import VaultsRename from './VaultsRename';
+import VaultsScan from './VaultsScan';
+import VaultsSecretsDelete from './VaultsSecretsDelete';
+import VaultsSecretsEdit from './VaultsSecretsEdit';
+import VaultsSecretsGet from './VaultsSecretsGet';
+import VaultsSecretsList from './VaultsSecretsList';
+import VaultsSecretsMkdir from './VaultsSecretsMkdir';
+import VaultsSecretsNew from './VaultsSecretsNew';
+import VaultsSecretsNewDir from './VaultsSecretsNewDir';
+import VaultsSecretsRename from './VaultsSecretsRename';
+import VaultsSecretsStat from './VaultsSecretsStat';
+import VaultsVersion from './VaultsVersion';
+
+/**
+ * Server manifest factory.
+ */
+const serverManifest = (container: {
+  polykeyAgent: PolykeyAgent;
+  keyRing: KeyRing;
+  certManager: CertManager;
+  db: DB;
+  sessionManager: SessionManager;
+  gestaltGraph: GestaltGraph;
+  identitiesManager: IdentitiesManager;
+  discovery: Discovery;
+  acl: ACL;
+  notificationsManager: NotificationsManager;
+  nodeManager: NodeManager;
+  nodeConnectionManager: NodeConnectionManager;
+  nodeGraph: NodeGraph;
+  vaultManager: VaultManager;
+  fs: FileSystem;
+  logger: Logger;
+}) => {
+  return {
+    agentLockAll: new AgentLockAll(container),
+    agentStatus: new AgentStatus(container),
+    agentStop: new AgentStop(container),
+    agentUnlock: new AgentUnlock(container),
+    gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentity(container),
+    gestaltsActionsGetByNode: new GestaltsActionsGetByNode(container),
+    gestaltsActionsSetByIdentity: new GestaltsActionsSetByNode(container),
+    gestaltsActionsSetByNode: new GestaltsActionsSetByNode(container),
+    gestaltsActionsUnsetByIdentity: new GestaltsActionsUnsetByIdentity(
+      container,
+    ),
+    gestaltsActionsUnsetByNode: new GestaltsActionsUnsetByNode(container),
+    gestaltsDiscoveryByIdentity: new GestaltsDiscoveryByIdentity(container),
+    gestaltsDiscoveryByNode: new GestaltsDiscoveryByNode(container),
+    gestaltsGestaltGetByIdentity: new GestaltsGestaltGetByIdentity(container),
+    gestaltsGestaltGetByNode: new GestaltsGestaltGetByNode(container),
+    gestaltsGestaltList: new GestaltsGestaltList(container),
+    gestaltsGestaltTrustByIdentity: new GestaltsGestaltTrustByIdentity(
+      container,
+    ),
+    gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNode(container),
+    identitiesAuthenticate: new IdentitiesAuthenticate(container),
+    identitiesAuthenticatedGet: new IdentitiesAuthenticatedGet(container),
+    identitiesClaim: new IdentitiesClaim(container),
+    identitiesInfoConnectedGet: new IdentitiesInfoConnectedGet(container),
+    identitiesInfoGet: new IdentitiesInfoGet(container),
+    identitiesInvite: new IdentitiesInvite(container),
+    identitiesProvidersList: new IdentitiesProvidersList(container),
+    identitiesTokenDelete: new IdentitiesTokenDelete(container),
+    identitiesTokenGet: new IdentitiesTokenGet(container),
+    identitiesTokenPut: new IdentitiesTokenPut(container),
+    keysCertsChainGet: new KeysCertsChainGet(container),
+    keysCertsGet: new KeysCertsGet(container),
+    keysDecrypt: new KeysDecrypt(container),
+    keysEncrypt: new KeysEncrypt(container),
+    keysKeyPair: new KeysKeyPair(container),
+    keysKeyPairRenew: new KeysKeyPairRenew(container),
+    keysKeyPairReset: new KeysKeyPairReset(container),
+    keysPasswordChange: new KeysPasswordChange(container),
+    keysPublicKey: new KeysPublicKey(container),
+    keysSign: new KeysSign(container),
+    keysVerify: new KeysVerify(container),
+    nodesAdd: new NodesAdd(container),
+    nodesClaim: new NodesClaim(container),
+    nodesFind: new NodesFind(container),
+    nodesGetAll: new NodesGetAll(container),
+    nodesListConnections: new NodesListConnections(container),
+    nodesPing: new NodesPing(container),
+    notificationsClear: new NotificationsClear(container),
+    notificationsRead: new NotificationsRead(container),
+    notificationsSend: new NotificationsSend(container),
+    vaultsClone: new VaultsClone(container),
+    vaultsCreate: new VaultsCreate(container),
+    vaultsDelete: new VaultsDelete(container),
+    vaultsList: new VaultsList(container),
+    vaultsLog: new VaultsLog(container),
+    vaultsPermissionGet: new VaultsPermissionGet(container),
+    vaultsPermissionSet: new VaultsPermissionSet(container),
+    vaultsPermissionUnset: new VaultsPermissionUnset(container),
+    vaultsPull: new VaultsPull(container),
+    vaultsRename: new VaultsRename(container),
+    vaultsScan: new VaultsScan(container),
+    vaultsSecretsDelete: new VaultsSecretsDelete(container),
+    vaultsSecretsEdit: new VaultsSecretsEdit(container),
+    vaultsSecretsGet: new VaultsSecretsGet(container),
+    vaultsSecretsList: new VaultsSecretsList(container),
+    vaultsSecretsMkdir: new VaultsSecretsMkdir(container),
+    vaultsSecretsNew: new VaultsSecretsNew(container),
+    vaultsSecretsNewDir: new VaultsSecretsNewDir(container),
+    vaultsSecretsRename: new VaultsSecretsRename(container),
+    vaultsSecretsStat: new VaultsSecretsStat(container),
+    vaultsVersion: new VaultsVersion(container),
+  };
+};
+
+export default serverManifest;
+
+export {
+  AgentLockAll,
+  AgentStatus,
+  AgentStop,
+  AgentUnlock,
+  GestaltsActionsGetByIdentity,
+  GestaltsActionsGetByNode,
+  GestaltsActionsSetByIdentity,
+  GestaltsActionsSetByNode,
+  GestaltsActionsUnsetByIdentity,
+  GestaltsActionsUnsetByNode,
+  GestaltsDiscoveryByIdentity,
+  GestaltsDiscoveryByNode,
+  GestaltsGestaltGetByIdentity,
+  GestaltsGestaltGetByNode,
+  GestaltsGestaltList,
+  GestaltsGestaltTrustByIdentity,
+  GestaltsGestaltTrustByNode,
+  IdentitiesAuthenticate,
+  IdentitiesAuthenticatedGet,
+  IdentitiesClaim,
+  IdentitiesInfoConnectedGet,
+  IdentitiesInfoGet,
+  IdentitiesInvite,
+  IdentitiesProvidersList,
+  IdentitiesTokenDelete,
+  IdentitiesTokenGet,
+  IdentitiesTokenPut,
+  KeysCertsChainGet,
+  KeysCertsGet,
+  KeysDecrypt,
+  KeysEncrypt,
+  KeysKeyPair,
+  KeysKeyPairRenew,
+  KeysKeyPairReset,
+  KeysPasswordChange,
+  KeysPublicKey,
+  KeysSign,
+  KeysVerify,
+  NodesAdd,
+  NodesClaim,
+  NodesFind,
+  NodesGetAll,
+  NodesListConnections,
+  NodesPing,
+  NotificationsClear,
+  NotificationsRead,
+  NotificationsSend,
+  VaultsClone,
+  VaultsCreate,
+  VaultsDelete,
+  VaultsList,
+  VaultsLog,
+  VaultsPermissionGet,
+  VaultsPermissionSet,
+  VaultsPermissionUnset,
+  VaultsPull,
+  VaultsRename,
+  VaultsScan,
+  VaultsSecretsDelete,
+  VaultsSecretsEdit,
+  VaultsSecretsGet,
+  VaultsSecretsList,
+  VaultsSecretsMkdir,
+  VaultsSecretsNew,
+  VaultsSecretsNewDir,
+  VaultsSecretsRename,
+  VaultsSecretsStat,
+  VaultsVersion,
+};

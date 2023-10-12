@@ -3,7 +3,7 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
 } from '@/client/types';
-import type { TLSConfig } from '../../src/network/types';
+import type { TLSConfig } from '@/network/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -18,13 +18,13 @@ import {
 } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import * as timeoutMiddleware from '@/client/utils/timeoutMiddleware';
-import { promise } from '@/utils';
 import ClientService from '@/client/ClientService';
+import * as timeoutMiddleware from '@/client/timeoutMiddleware';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
+import * as utils from '@/utils';
 import * as testsUtils from '../utils';
 
 describe('timeoutMiddleware', () => {
@@ -88,7 +88,7 @@ describe('timeoutMiddleware', () => {
   });
   test('server side timeout updates', async () => {
     // Setup
-    const ctxProm = promise<ContextTimed>();
+    const ctxProm = utils.promise<ContextTimed>();
     class EchoHandler extends UnaryHandler<
       { logger: Logger },
       ClientRPCRequestParams,
@@ -104,16 +104,16 @@ describe('timeoutMiddleware', () => {
         return input;
       };
     }
-    clientService = await ClientService.createClientService({
+    clientService = new ClientService({
       tlsConfig,
+      middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      options: {
-        host: localhost,
-        middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
-      },
-      logger: logger.getChild(ClientService.name),
+      host: localhost,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
       config: {
@@ -169,17 +169,17 @@ describe('timeoutMiddleware', () => {
         return input;
       };
     }
-    clientService = await ClientService.createClientService({
+    clientService = new ClientService({
       tlsConfig,
+      middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
+      rpcCallTimeoutTime: 100,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      options: {
-        host: localhost,
-        middlewareFactory: timeoutMiddleware.timeoutMiddlewareServer,
-        rpcCallTimeoutTime: 100,
-      },
-      logger,
+      host: localhost,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
       config: {

@@ -1,4 +1,4 @@
-import type { DeepPartial, FileSystem, PromiseDeconstructed } from './types';
+import type { DeepPartial, FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { SeedNodes, NodesOptions } from './nodes/types';
@@ -11,7 +11,6 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as clientUtilsMiddleware from './client/utils/middleware';
 import { WorkerManager } from './workers';
 import KeyRing from './keys/KeyRing';
 import CertManager from './keys/CertManager';
@@ -28,7 +27,9 @@ import Sigchain from './sigchain/Sigchain';
 import Discovery from './discovery/Discovery';
 import SessionManager from './sessions/SessionManager';
 import IdentitiesManager from './identities/IdentitiesManager';
-import { providers } from './identities';
+import * as identityProviders from './identities/providers';
+import TaskManager from './tasks/TaskManager';
+import ClientService from './client/ClientService';
 import config from './config';
 import * as errors from './errors';
 import * as events from './events';
@@ -37,10 +38,9 @@ import * as keysUtils from './keys/utils';
 import * as keysEvents from './keys/events';
 import * as nodesUtils from './nodes/utils';
 import * as workersUtils from './workers/utils';
-import TaskManager from './tasks/TaskManager';
-import { serverManifest } from './client/handlers';
+import * as clientMiddleware from './client/middleware';
+import clientServerManifest from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
-import ClientService from './client/ClientService';
 
 /**
  * Optional configuration for `PolykeyAgent`.
@@ -181,7 +181,6 @@ class PolykeyAgent {
     const dbPath = path.join(statePath, config.paths.dbBase);
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
-    let pkAgentProm: PromiseDeconstructed<PolykeyAgent> | undefined;
 
     let status: Status | undefined;
     let schema: Schema | undefined;
@@ -292,9 +291,9 @@ class PolykeyAgent {
         fresh,
       });
       // Registering providers
-      const githubProvider = new providers.GithubProvider({
+      const githubProvider = new identityProviders.GithubProvider({
         clientId: config.providers['github.com'].clientId,
-        logger: logger.getChild(providers.GithubProvider.name),
+        logger: logger.getChild(identityProviders.GithubProvider.name),
       });
       identitiesManager.registerProvider(githubProvider);
       nodeGraph = await NodeGraph.createNodeGraph({
@@ -380,44 +379,20 @@ class PolykeyAgent {
       if (optionsDefaulted.keys.recoveryCode != null) {
         await sessionManager.resetKey();
       }
-      pkAgentProm = utils.promise();
-      clientService = await ClientService.createClientService({
-        manifest: serverManifest({
-          acl: acl,
-          certManager: certManager,
-          db: db,
-          discovery: discovery,
-          fs: fs,
-          gestaltGraph: gestaltGraph,
-          identitiesManager: identitiesManager,
-          keyRing: keyRing,
-          logger: logger,
-          nodeConnectionManager: nodeConnectionManager,
-          nodeGraph: nodeGraph,
-          nodeManager: nodeManager,
-          notificationsManager: notificationsManager,
-          pkAgentProm: pkAgentProm.p,
-          sessionManager: sessionManager,
-          vaultManager: vaultManager,
-        }),
+      clientService = new ClientService({
         tlsConfig,
-        options: {
-          middlewareFactory: clientUtilsMiddleware.middlewareServer(
-            sessionManager,
-            keyRing,
-          ),
-          host: optionsDefaulted.clientServiceHost,
-          port: optionsDefaulted.clientServicePort,
-          keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
-          keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
-          rpcCallTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-          rpcParserBufferSize: optionsDefaulted.rpc.parserBufferSize,
-        },
+        middlewareFactory: clientMiddleware.middlewareServer(
+          sessionManager,
+          keyRing,
+        ),
+        keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
+        keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
+        rpcCallTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
+        rpcParserBufferSize: optionsDefaulted.rpc.parserBufferSize,
         logger: logger.getChild(ClientService.name),
       });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
-      await clientService?.stop({ force: true });
       await sessionManager?.stop();
       await notificationsManager?.stop();
       await vaultManager?.stop();
@@ -457,8 +432,6 @@ class PolykeyAgent {
       fs,
       logger,
     });
-    pkAgentProm?.resolveP(pkAgent);
-
     await pkAgent.start({
       password,
       options: {
@@ -670,10 +643,26 @@ class PolykeyAgent {
       await this.identitiesManager.start({ fresh });
       // Client server
       await this.clientService.start({
-        options: {
-          host: optionsDefaulted.clientServiceHost,
-          port: optionsDefaulted.clientServicePort,
-        },
+        manifest: clientServerManifest({
+          polykeyAgent: this,
+          acl: this.acl,
+          certManager: this.certManager,
+          db: this.db,
+          discovery: this.discovery,
+          fs: this.fs,
+          gestaltGraph: this.gestaltGraph,
+          identitiesManager: this.identitiesManager,
+          keyRing: this.keyRing,
+          logger: this.logger,
+          nodeConnectionManager: this.nodeConnectionManager,
+          nodeGraph: this.nodeGraph,
+          nodeManager: this.nodeManager,
+          notificationsManager: this.notificationsManager,
+          sessionManager: this.sessionManager,
+          vaultManager: this.vaultManager,
+        }),
+        host: optionsDefaulted.clientServiceHost,
+        port: optionsDefaulted.clientServicePort,
       });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
@@ -824,7 +813,6 @@ class PolykeyAgent {
     await this.vaultManager.destroy();
     await this.discovery.destroy();
     await this.nodeGraph.destroy();
-    await this.clientService.destroy();
     await this.identitiesManager.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();

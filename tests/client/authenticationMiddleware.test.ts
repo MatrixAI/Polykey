@@ -16,13 +16,13 @@ import {
 } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
 import TaskManager from '@/tasks/TaskManager';
 import CertManager from '@/keys/CertManager';
-import { Session, SessionManager } from '@/sessions';
-import * as clientUtils from '@/client/utils';
-import * as authMiddleware from '@/client/utils/authenticationMiddleware';
 import ClientService from '@/client/ClientService';
+import { Session, SessionManager } from '@/sessions';
+import * as authMiddleware from '@/client/authenticationMiddleware';
+import * as keysUtils from '@/keys/utils';
+import * as clientUtils from '@/client/utils';
 import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../utils';
 
@@ -107,19 +107,19 @@ describe('authenticationMiddleware', () => {
         return input;
       }
     }
-    clientService = await ClientService.createClientService({
+    clientService = new ClientService({
       tlsConfig,
+      middlewareFactory: authMiddleware.authenticationMiddlewareServer(
+        sessionManager,
+        keyRing,
+      ),
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
       manifest: {
         testHandler: new EchoHandler({ logger }),
       },
-      options: {
-        host: localhost,
-        middlewareFactory: authMiddleware.authenticationMiddlewareServer(
-          sessionManager,
-          keyRing,
-        ),
-      },
-      logger: logger.getChild(ClientService.name),
+      host: localhost,
     });
     clientClient = await WebSocketClient.createWebSocketClient({
       config: {

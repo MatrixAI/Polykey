@@ -1,13 +1,13 @@
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type { TLSConfig } from '@/network/types';
 import type { FileSystem } from '@/types';
+import type { VaultId } from '@/ids';
+import type NodeManager from '@/nodes/NodeManager';
 import type {
   LogEntryMessage,
   VaultListMessage,
   VaultPermissionMessage,
-} from '@/client/handlers/types';
-import type { VaultId } from '@/ids';
-import type NodeManager from '@/nodes/NodeManager';
+} from '@/client/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -15,51 +15,53 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import VaultManager from '@/vaults/VaultManager';
+import ACL from '@/acl/ACL';
 import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
+import VaultManager from '@/vaults/VaultManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import NotificationsManager from '@/notifications/NotificationsManager';
-import ACL from '@/acl/ACL';
+import ClientService from '@/client/ClientService';
+import {
+  VaultsCreate,
+  VaultsDelete,
+  VaultsList,
+  VaultsLog,
+  VaultsPermissionGet,
+  VaultsPermissionSet,
+  VaultsPermissionUnset,
+  VaultsRename,
+  VaultsSecretsDelete,
+  VaultsSecretsEdit,
+  VaultsSecretsGet,
+  VaultsSecretsList,
+  VaultsSecretsMkdir,
+  VaultsSecretsNewDir,
+  VaultsSecretsNew,
+  VaultsSecretsRename,
+  VaultsSecretsStat,
+  VaultsVersion,
+} from '@/client/handlers';
 import {
   vaultsCreate,
-  VaultsCreateHandler,
   vaultsDelete,
-  VaultsDeleteHandler,
   vaultsList,
-  VaultsListHandler,
   vaultsLog,
-  VaultsLogHandler,
   vaultsPermissionGet,
-  VaultsPermissionGetHandler,
   vaultsPermissionSet,
-  VaultsPermissionSetHandler,
   vaultsPermissionUnset,
-  VaultsPermissionUnsetHandler,
   vaultsRename,
-  VaultsRenameHandler,
   vaultsSecretsDelete,
-  VaultsSecretsDeleteHandler,
   vaultsSecretsEdit,
-  VaultsSecretsEditHandler,
   vaultsSecretsGet,
-  VaultsSecretsGetHandler,
   vaultsSecretsList,
-  VaultsSecretsListHandler,
   vaultsSecretsMkdir,
-  VaultsSecretsMkdirHandler,
   vaultsSecretsNew,
   vaultsSecretsNewDir,
-  VaultsSecretsNewDirHandler,
-  VaultsSecretsNewHandler,
   vaultsSecretsRename,
-  VaultsSecretsRenameHandler,
   vaultsSecretsStat,
-  VaultsSecretsStatHandler,
   vaultsVersion,
-  VaultsVersionHandler,
-} from '@/client';
-import ClientService from '@/client/ClientService';
+} from '@/client/callers';
+import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
@@ -73,15 +75,12 @@ describe('vaultsClone', () => {
     ),
   ]);
   const password = 'helloWorld';
-  // Const host = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
-  // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -126,43 +125,9 @@ describe('vaultsClone', () => {
       recursive: true,
     });
   });
-  // TODO: implement this test? Pending agent migration stage 2.
-  test.todo('clones a vault'); // , async () => {
-  //     // Setup
-  //     const rpcServer = await RPCServer.createRPCServer({
-  //       manifest: {
-  //         notificationsSend: new NotificationsSendHandler({
-  //           notificationsManager,
-  //         }),
-  //       },
-  //       logger,
-  //     });
-  //     webSocketServer = await WebSocketServer.createWebSocketServer({
-  //       connectionCallback: (streamPair) =>
-  //         rpcServer.handleStream(streamPair),
-  //       host,
-  //       tlsConfig,
-  //       logger: logger.getChild('server'),
-  //     });
-  //     webSocketClient = await WebSocketClient.createWebSocketClient({
-  //       expectedNodeIds: [keyRing.getNodeId()],
-  //       host,
-  //       logger: logger.getChild('client'),
-  //       port: webSocketServer.port,
-  //     });
-  //     const rpcClient = new RPCClient({
-  //       manifest: {
-  //         notificationsSend,
-  //       },
-  //       streamFactory: () => webSocketClient.connection.newStream(),
-  //       logger: logger.getChild('clientRPC'),
-  //     });
-  //
-  //     // Doing the test
-  //
-  //   });
+  test.todo('clones a vault');
 });
-describe('vaultsCreateDeleteList', () => {
+describe('vaultsCreate and vaultsDelete and vaultsList', () => {
   const logger = new Logger('vaultsCreateDeleteList test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -173,11 +138,15 @@ describe('vaultsCreateDeleteList', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
   let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsCreate: typeof vaultsCreate;
+    vaultsDelete: typeof vaultsDelete;
+    vaultsList: typeof vaultsList;
+  }>;
   let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -210,6 +179,46 @@ describe('vaultsCreateDeleteList', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsCreate: new VaultsCreate({
+          vaultManager,
+          db,
+        }),
+        vaultsDelete: new VaultsDelete({
+          vaultManager,
+          db,
+        }),
+        vaultsList: new VaultsList({
+          vaultManager,
+          db,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsCreate,
+        vaultsDelete,
+        vaultsList,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -223,49 +232,6 @@ describe('vaultsCreateDeleteList', () => {
     });
   });
   test('creates, lists, and deletes vaults', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsCreate: new VaultsCreateHandler({
-          vaultManager,
-          db,
-        }),
-        vaultsDelete: new VaultsDeleteHandler({
-          vaultManager,
-          db,
-        }),
-        vaultsList: new VaultsListHandler({
-          vaultManager,
-          db,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsCreate,
-        vaultsDelete,
-        vaultsList,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     // Create vault
     const createResponse = await rpcClient.methods.vaultsCreate({
       vaultName: 'test-vault',
@@ -304,11 +270,13 @@ describe('vaultsLog', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsLog: typeof vaultsLog;
+  }>;
   let vaultManager: VaultManager;
-
   const vaultName = 'test-vault';
   const secret1 = { name: 'secret1', content: 'Secret-1-content' };
   const secret2 = { name: 'secret2', content: 'Secret-2-content' };
@@ -316,7 +284,6 @@ describe('vaultsLog', () => {
   let commit1Oid: string;
   let commit2Oid: string;
   let commit3Oid: string;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -364,6 +331,35 @@ describe('vaultsLog', () => {
       });
       commit3Oid = (await vault.log(undefined, 0))[0].commitId;
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsLog: new VaultsLog({
+          vaultManager,
+          db,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsLog,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -377,38 +373,6 @@ describe('vaultsLog', () => {
     });
   });
   test('should get the full log', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsLog: new VaultsLogHandler({
-          vaultManager,
-          db,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsLog,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const logStream = await rpcClient.methods.vaultsLog({
       nameOrId: vaultName,
     });
@@ -422,38 +386,6 @@ describe('vaultsLog', () => {
     expect(logMessages[0].commitId).toEqual(commit3Oid);
   });
   test('should get a part of the log', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsLog: new VaultsLogHandler({
-          vaultManager,
-          db,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsLog,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const logStream = await rpcClient.methods.vaultsLog({
       nameOrId: vaultName,
       depth: 2,
@@ -467,38 +399,6 @@ describe('vaultsLog', () => {
     expect(logMessages[0].commitId).toEqual(commit3Oid);
   });
   test('should get a specific commit', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsLog: new VaultsLogHandler({
-          vaultManager,
-          db,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsLog,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const logStream = await rpcClient.methods.vaultsLog({
       nameOrId: vaultName,
       commitId: commit2Oid,
@@ -511,7 +411,7 @@ describe('vaultsLog', () => {
     expect(logMessages[0].commitId).toEqual(commit2Oid);
   });
 });
-describe('vaultsPermissionSetUnsetGet', () => {
+describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet', () => {
   const logger = new Logger('vaultsPermissionSetUnsetGet test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -523,15 +423,19 @@ describe('vaultsPermissionSetUnsetGet', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsPermissionSet: typeof vaultsPermissionSet;
+    vaultsPermissionUnset: typeof vaultsPermissionUnset;
+    vaultsPermissionGet: typeof vaultsPermissionGet;
+  }>;
   let vaultManager: VaultManager;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let notificationsManager: NotificationsManager;
   let mockedSendNotification: jest.SpyInstance;
-
   beforeEach(async () => {
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
@@ -588,6 +492,51 @@ describe('vaultsPermissionSetUnsetGet', () => {
       notificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsPermissionSet: new VaultsPermissionSet({
+          acl,
+          db,
+          gestaltGraph,
+          notificationsManager,
+          vaultManager,
+        }),
+        vaultsPermissionGet: new VaultsPermissionGet({
+          acl,
+          db,
+          vaultManager,
+        }),
+        vaultsPermissionUnset: new VaultsPermissionUnset({
+          acl,
+          db,
+          gestaltGraph,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsPermissionSet,
+        vaultsPermissionGet,
+        vaultsPermissionUnset,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     mockedSendNotification.mockRestore();
@@ -605,54 +554,6 @@ describe('vaultsPermissionSetUnsetGet', () => {
     });
   });
   test('sets, gets, and unsets vault permissions', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsPermissionSet: new VaultsPermissionSetHandler({
-          acl,
-          db,
-          gestaltGraph,
-          notificationsManager,
-          vaultManager,
-        }),
-        vaultsPermissionGet: new VaultsPermissionGetHandler({
-          acl,
-          db,
-          vaultManager,
-        }),
-        vaultsPermissionUnset: new VaultsPermissionUnsetHandler({
-          acl,
-          db,
-          gestaltGraph,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsPermissionSet,
-        vaultsPermissionGet,
-        vaultsPermissionUnset,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     const vaultName = 'test-vault';
     await vaultManager.createVault(vaultName);
@@ -705,19 +606,16 @@ describe('vaultsPull', () => {
     ),
   ]);
   const password = 'helloWorld';
-  // Const host = '127.0.0.1';
   const nodeId = testsUtils.generateRandomNodeId();
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
-  // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let notificationsManager: NotificationsManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -733,7 +631,6 @@ describe('vaultsPull', () => {
       },
       logger,
     });
-    // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -786,57 +683,7 @@ describe('vaultsPull', () => {
       recursive: true,
     });
   });
-  test.todo('pulls from a vault'); // , async () => {
-  //   // Setup
-  //   const rpcServer = await RPCServer.createRPCServer({
-  //     manifest: {
-  //       vaultsPermissionSet: new VaultsPermissionSetHandler({
-  //         acl,
-  //         db,
-  //         gestaltGraph,
-  //         notificationsManager,
-  //         vaultManager
-  //       }),
-  //       vaultsPermissionGet: new VaultsPermissionGetHandler({
-  //         acl,
-  //         db,
-  //         vaultManager
-  //       }),
-  //       vaultsPermissionUnset: new VaultsPermissionUnsetHandler({
-  //         acl,
-  //         db,
-  //         gestaltGraph,
-  //         vaultManager
-  //       }),
-  //     },
-  //     logger,
-  //   });
-  //   webSocketServer = await WebSocketServer.createWebSocketServer({
-  //     connectionCallback: (streamPair) =>
-  //       rpcServer.handleStream(streamPair),
-  //     host,
-  //     tlsConfig,
-  //     logger: logger.getChild('server'),
-  //   });
-  //   webSocketClient = await WebSocketClient.createWebSocketClient({
-  //     expectedNodeIds: [keyRing.getNodeId()],
-  //     host,
-  //     logger: logger.getChild('client'),
-  //     port: webSocketServer.port,
-  //   });
-  //   const rpcClient = new RPCClient({
-  //     manifest: {
-  //       vaultsPermissionSet,
-  //       vaultsPermissionGet,
-  //       vaultsPermissionUnset,
-  //     },
-  //     streamFactory: () => webSocketClient.connection.newStream(),
-  //     logger: logger.getChild('clientRPC'),
-  //   });
-  //
-  //   // Doing the test
-  //
-  // });
+  test.todo('pulls from a vault');
 });
 describe('vaultsRename', () => {
   const logger = new Logger('vaultsRename test', LogLevel.WARN, [
@@ -849,11 +696,13 @@ describe('vaultsRename', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsRename: typeof vaultsRename;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -886,6 +735,35 @@ describe('vaultsRename', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsRename: new VaultsRename({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsRename,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -899,38 +777,6 @@ describe('vaultsRename', () => {
     });
   });
   test('should rename vault', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsRename: new VaultsRenameHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsRename,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const vaultId1 = await vaultManager.createVault('test-vault1');
     const vaultId1Encoded = vaultsUtils.encodeVaultId(vaultId1);
     const vaultId2 = await rpcClient.methods.vaultsRename({
@@ -949,15 +795,12 @@ describe('vaultsScan', () => {
     ),
   ]);
   const password = 'helloWorld';
-  // Const host = '127.0.0.1';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
-  // Let tlsConfig: TLSConfig;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -973,7 +816,6 @@ describe('vaultsScan', () => {
       },
       logger,
     });
-    // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -1002,52 +844,7 @@ describe('vaultsScan', () => {
       recursive: true,
     });
   });
-  test.todo('scans a vault'); // , async () => {
-  //   // Setup
-  //   const rpcServer = await RPCServer.createRPCServer({
-  //     manifest: {
-  //       vaultsRename: new VaultsRenameHandler({
-  //         db,
-  //         vaultManager,
-  //       }),
-  //     },
-  //     logger,
-  //   });
-  //   webSocketServer = await WebSocketServer.createWebSocketServer({
-  //     connectionCallback: (streamPair) =>
-  //       rpcServer.handleStream(streamPair),
-  //     host,
-  //     tlsConfig,
-  //     logger: logger.getChild('server'),
-  //   });
-  //   webSocketClient = await WebSocketClient.createWebSocketClient({
-  //     expectedNodeIds: [keyRing.getNodeId()],
-  //     host,
-  //     logger: logger.getChild('client'),
-  //     port: webSocketServer.port,
-  //   });
-  //   const rpcClient = new RPCClient({
-  //     manifest: {
-  //       vaultsRename,
-  //     },
-  //     streamFactory: () => webSocketClient.connection.newStream(),
-  //     logger: logger.getChild('clientRPC'),
-  //   });
-  //
-  //   // Doing the test
-  //   const vaultId1 = await vaultManager.createVault('test-vault1');
-  //   const vaultId1Encoded = vaultsUtils.encodeVaultId(vaultId1);
-  //   const vaultId2 = await rpcClient.methods.vaultsRename({
-  //       nameOrId: vaultId1Encoded,
-  //       newName: 'test-vault2',
-  //     },
-  //   );
-  //   expect(vaultId2.vaultIdEncoded).toEqual(
-  //     vaultId1Encoded,
-  //   );
-  //   const renamedVaultId = await vaultManager.getVaultId('test-vault2');
-  //   expect(renamedVaultId).toStrictEqual(vaultId1);
-  // });
+  test.todo('scans a vault');
 });
 describe('vaultsSecretsEdit', () => {
   const logger = new Logger('vaultsSecretsEdit test', LogLevel.WARN, [
@@ -1060,11 +857,13 @@ describe('vaultsSecretsEdit', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsEdit: typeof vaultsSecretsEdit;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1097,6 +896,35 @@ describe('vaultsSecretsEdit', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsEdit: new VaultsSecretsEdit({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsEdit,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1110,38 +938,6 @@ describe('vaultsSecretsEdit', () => {
     });
   });
   test('edits secrets', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsEdit: new VaultsSecretsEditHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsEdit,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const vaultName = 'test-vault';
     const secretName = 'test-secret';
     const vaultId = await vaultManager.createVault(vaultName);
@@ -1176,11 +972,13 @@ describe('vaultsSecretsMkdir', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsMkdir: typeof vaultsSecretsMkdir;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1213,6 +1011,35 @@ describe('vaultsSecretsMkdir', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsMkdir: new VaultsSecretsMkdir({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsMkdir,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1226,38 +1053,6 @@ describe('vaultsSecretsMkdir', () => {
     });
   });
   test('makes a directory', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsMkdir: new VaultsSecretsMkdirHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsMkdir,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const vaultName = 'test-vault';
     const vaultId = await vaultManager.createVault(vaultName);
     const dirPath = 'dir/dir1/dir2';
@@ -1274,7 +1069,7 @@ describe('vaultsSecretsMkdir', () => {
     });
   });
 });
-describe('vaultsSecretsNewDeleteGet', () => {
+describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
   Error.stackTraceLimit = 100;
   const logger = new Logger('vaultsSecretsNewDeleteGet test', LogLevel.WARN, [
     new StreamHandler(
@@ -1286,11 +1081,15 @@ describe('vaultsSecretsNewDeleteGet', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsNew: typeof vaultsSecretsNew;
+    vaultsSecretsDelete: typeof vaultsSecretsDelete;
+    vaultsSecretsGet: typeof vaultsSecretsGet;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1323,6 +1122,45 @@ describe('vaultsSecretsNewDeleteGet', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsNew: new VaultsSecretsNew({
+          db,
+          vaultManager,
+        }),
+        vaultsSecretsDelete: new VaultsSecretsDelete({
+          db,
+          vaultManager,
+        }),
+        vaultsSecretsGet: new VaultsSecretsGet({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsNew,
+        vaultsSecretsDelete,
+        vaultsSecretsGet,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1336,48 +1174,6 @@ describe('vaultsSecretsNewDeleteGet', () => {
     });
   });
   test('creates, gets, and deletes secrets', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsNew: new VaultsSecretsNewHandler({
-          db,
-          vaultManager,
-        }),
-        vaultsSecretsDelete: new VaultsSecretsDeleteHandler({
-          db,
-          vaultManager,
-        }),
-        vaultsSecretsGet: new VaultsSecretsGetHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsNew,
-        vaultsSecretsDelete,
-        vaultsSecretsGet,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     // Create secret
     const secret = 'test-secret';
     const vaultId = await vaultManager.createVault('test-vault');
@@ -1411,7 +1207,7 @@ describe('vaultsSecretsNewDeleteGet', () => {
     );
   });
 });
-describe('vaultsSecretsNewDirList', () => {
+describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
   const logger = new Logger('vaultsSecretsNewDirList test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -1423,11 +1219,14 @@ describe('vaultsSecretsNewDirList', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsNewDir: typeof vaultsSecretsNewDir;
+    vaultsSecretsList: typeof vaultsSecretsList;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1460,6 +1259,41 @@ describe('vaultsSecretsNewDirList', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsNewDir: new VaultsSecretsNewDir({
+          db,
+          fs,
+          vaultManager,
+        }),
+        vaultsSecretsList: new VaultsSecretsList({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsNewDir,
+        vaultsSecretsList,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1473,43 +1307,6 @@ describe('vaultsSecretsNewDirList', () => {
     });
   });
   test('adds and lists a directory of secrets', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsNewDir: new VaultsSecretsNewDirHandler({
-          db,
-          fs,
-          vaultManager,
-        }),
-        vaultsSecretsList: new VaultsSecretsListHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsNewDir,
-        vaultsSecretsList,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
     // Doing the test
     // Add directory of secrets
     const vaultName = 'test-vault';
@@ -1553,11 +1350,13 @@ describe('vaultsSecretsRename', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsRename: typeof vaultsSecretsRename;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1590,6 +1389,35 @@ describe('vaultsSecretsRename', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsRename: new VaultsSecretsRename({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsRename,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1603,38 +1431,6 @@ describe('vaultsSecretsRename', () => {
     });
   });
   test('renames a secret', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsRename: new VaultsSecretsRenameHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsRename,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const vaultName = 'test-vault';
     const secretName = 'test-secret';
     const vaultId = await vaultManager.createVault(vaultName);
@@ -1670,11 +1466,13 @@ describe('vaultsSecretsStat', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsStat: typeof vaultsSecretsStat;
+  }>;
   let vaultManager: VaultManager;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1707,6 +1505,35 @@ describe('vaultsSecretsStat', () => {
       notificationsManager: {} as NotificationsManager,
       logger,
     });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsStat: new VaultsSecretsStat({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsStat,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1720,38 +1547,6 @@ describe('vaultsSecretsStat', () => {
     });
   });
   test('stats a file', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsSecretsStat: new VaultsSecretsStatHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsSecretsStat,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     const vaultName = 'test-vault';
     const secretName = 'test-secret';
     const vaultId = await vaultManager.createVault(vaultName);
@@ -1782,9 +1577,12 @@ describe('vaultsVersion', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsVersion: typeof vaultsVersion;
+  }>;
   let vaultManager: VaultManager;
   let vaultId: VaultId;
   const secretVer1 = {
@@ -1796,7 +1594,6 @@ describe('vaultsVersion', () => {
     content: 'Secret-1-content-ver2',
   };
   const vaultName = 'test-vault';
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -1830,6 +1627,35 @@ describe('vaultsVersion', () => {
       logger,
     });
     vaultId = await vaultManager.createVault(vaultName);
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsVersion: new VaultsVersion({
+          db,
+          vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsVersion,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     await clientService?.stop({ force: true });
@@ -1843,38 +1669,6 @@ describe('vaultsVersion', () => {
     });
   });
   test('should switch a vault to a version', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsVersion: new VaultsVersionHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsVersion,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     // Commit some history
     const ver1Oid = await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.writeF(async (efs) => {
@@ -1902,38 +1696,6 @@ describe('vaultsVersion', () => {
     });
   });
   test('should fail to find a non existent version', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        vaultsVersion: new VaultsVersionHandler({
-          db,
-          vaultManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        vaultsVersion,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     // Revert the version
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     const version = rpcClient.methods.vaultsVersion({

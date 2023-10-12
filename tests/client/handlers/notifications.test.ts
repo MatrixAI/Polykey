@@ -1,9 +1,8 @@
-import type { Host, TLSConfig } from '@/network/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { Host, TLSConfig } from '@/network/types';
 import type { General, Notification, VaultShare } from '@/notifications/types';
-import type { VaultIdEncoded } from '@/ids/types';
+import type { VaultIdEncoded, NodeIdEncoded } from '@/ids/types';
 import type { VaultName } from '@/vaults/types';
-import type { NodeIdEncoded } from '@/ids/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -12,17 +11,7 @@ import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
-import { NotificationsClearHandler } from '@/client/handlers/notificationsClear';
-import {
-  notificationsClear,
-  notificationsRead,
-  NotificationsReadHandler,
-  notificationsSend,
-  NotificationsSendHandler,
-} from '@/client';
 import ClientService from '@/client/ClientService';
-import * as nodesUtils from '@/nodes/utils';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -30,9 +19,21 @@ import TaskManager from '@/tasks/TaskManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import {
+  NotificationsClear,
+  NotificationsRead,
+  NotificationsSend,
+} from '@/client/handlers';
+import {
+  notificationsClear,
+  notificationsRead,
+  notificationsSend,
+} from '@/client/callers';
+import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
-import * as tlsTestsUtils from '../../utils/tls';
-import * as testNodesUtils from '../../nodes/utils';
+import * as testsNodesUtils from '../../nodes/utils';
+import * as testsUtils from '../../utils';
 
 describe('notificationsClear', () => {
   const logger = new Logger('notificationsClear test', LogLevel.WARN, [
@@ -45,9 +46,12 @@ describe('notificationsClear', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsClear: typeof notificationsClear;
+  }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
@@ -56,7 +60,6 @@ describe('notificationsClear', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let mockedClearNotifications: jest.SpyInstance;
-
   beforeEach(async () => {
     mockedClearNotifications = jest
       .spyOn(NotificationsManager.prototype, 'clearNotifications')
@@ -75,7 +78,7 @@ describe('notificationsClear', () => {
       },
       logger,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -133,6 +136,35 @@ describe('notificationsClear', () => {
         keyRing,
         logger,
       });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsClear: new NotificationsClear({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsClear,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     mockedClearNotifications.mockRestore();
@@ -154,39 +186,6 @@ describe('notificationsClear', () => {
     });
   });
   test('puts/deletes/gets tokens', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsClear: new NotificationsClearHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsClear,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     await rpcClient.methods.notificationsClear({});
     expect(mockedClearNotifications.mock.calls.length).toBe(1);
   });
@@ -199,15 +198,18 @@ describe('notificationsRead', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const nodeIdSender = testNodesUtils.generateRandomNodeId();
+  const nodeIdSender = testsNodesUtils.generateRandomNodeId();
   const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
   const nodeIdReceiverEncoded = 'test';
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsRead: typeof notificationsRead;
+  }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
@@ -216,7 +218,6 @@ describe('notificationsRead', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let mockedReadNotifications: jest.SpyInstance;
-
   beforeEach(async () => {
     mockedReadNotifications = jest.spyOn(
       NotificationsManager.prototype,
@@ -236,7 +237,7 @@ describe('notificationsRead', () => {
       },
       logger,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -294,6 +295,35 @@ describe('notificationsRead', () => {
         keyRing,
         logger,
       });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsRead: new NotificationsRead({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsRead,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     mockedReadNotifications.mockRestore();
@@ -316,38 +346,6 @@ describe('notificationsRead', () => {
     });
   });
   test('reads a single notification', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([
       {
         typ: 'notification',
@@ -383,38 +381,6 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads unread notifications', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([
       {
         typ: 'notification',
@@ -467,38 +433,6 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads notifications in reverse order', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([
       {
         typ: 'notification',
@@ -551,38 +485,6 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('oldest');
   });
   test('reads gestalt invite notifications', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([
       {
         typ: 'notification',
@@ -615,38 +517,6 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads vault share notifications', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([
       {
         typ: 'notification',
@@ -692,38 +562,6 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads no notifications', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsRead: new NotificationsReadHandler({
-          db,
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsRead,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedReadNotifications.mockResolvedValueOnce([]);
     const response = await rpcClient.methods.notificationsRead({
       unread: false,
@@ -752,9 +590,12 @@ describe('notificationsSend', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsSend: typeof notificationsSend;
+  }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
@@ -763,7 +604,6 @@ describe('notificationsSend', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let mockedSendNotification: jest.SpyInstance;
-
   beforeEach(async () => {
     mockedSendNotification = jest.spyOn(
       NodeConnectionManager.prototype,
@@ -783,7 +623,7 @@ describe('notificationsSend', () => {
       },
       logger,
     });
-    tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -840,6 +680,34 @@ describe('notificationsSend', () => {
         keyRing,
         logger,
       });
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsSend: new NotificationsSend({
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsSend,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
   });
   afterEach(async () => {
     mockedSendNotification.mockRestore();
@@ -862,37 +730,6 @@ describe('notificationsSend', () => {
     });
   });
   test('sends a notification', async () => {
-    // Setup
-    clientService = await ClientService.createClientService({
-      tlsConfig,
-      manifest: {
-        notificationsSend: new NotificationsSendHandler({
-          notificationsManager,
-        }),
-      },
-      options: {
-        host: localhost,
-      },
-      logger: logger.getChild(ClientService.name),
-    });
-    webSocketClient = await WebSocketClient.createWebSocketClient({
-      config: {
-        verifyPeer: false,
-      },
-      host: localhost,
-      logger: logger.getChild('client'),
-      port: clientService.port,
-    });
-    const rpcClient = new RPCClient({
-      manifest: {
-        notificationsSend,
-      },
-      streamFactory: () => webSocketClient.connection.newStream(),
-      toError: networkUtils.toError,
-      logger: logger.getChild('clientRPC'),
-    });
-
-    // Doing the test
     mockedSendNotification.mockImplementation();
     const receiverNodeIdEncoded =
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;

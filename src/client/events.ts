@@ -12,10 +12,6 @@ class EventClientServiceStop extends EventsClientService {}
 
 class EventClientServiceStopped extends EventsClientService {}
 
-class EventClientServiceDestroy extends EventsClientService {}
-
-class EventClientServiceDestroyed extends EventsClientService {}
-
 export {
   EventsClient,
   EventsClientService,
@@ -23,6 +19,4 @@ export {
   EventClientServiceStarted,
   EventClientServiceStop,
   EventClientServiceStopped,
-  EventClientServiceDestroy,
-  EventClientServiceDestroyed,
 };
