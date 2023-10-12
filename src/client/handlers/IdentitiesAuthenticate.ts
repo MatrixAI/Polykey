@@ -3,13 +3,13 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
 } from '../types';
-import type { ProviderId } from '../../ids/index';
+import type { ProviderId } from '../../ids';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import { ServerHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import * as identitiesErrors from '../../identities/errors';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync, never } from '../../utils/index';
+import { validateSync } from '../../validation';
+import { matchSync, never } from '../../utils';
 
 class IdentitiesAuthenticate extends ServerHandler<
   {
@@ -37,7 +37,7 @@ class IdentitiesAuthenticate extends ServerHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['providerId'], () => validationUtils.parseProviderId(value)],
+          [['providerId'], () => ids.parseProviderId(value)],
           () => value,
         );
       },

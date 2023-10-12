@@ -23,7 +23,7 @@ import * as notificationsErrors from '@/notifications/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
-import * as utils from '@/utils/index';
+import * as utils from '@/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 

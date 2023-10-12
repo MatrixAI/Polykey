@@ -11,11 +11,11 @@ import type VaultManager from '../../vaults/VaultManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
-import * as validationUtils from '../../validation/utils';
+import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
-import * as vaultsErrors from '../../vaults/errors';
 
 class VaultsPermissionUnset extends UnaryHandler<
   {
@@ -50,8 +50,8 @@ class VaultsPermissionUnset extends UnaryHandler<
       } = validateSync(
         (keyPath, value) => {
           return matchSync(keyPath)(
-            [['nodeId'], () => validationUtils.parseNodeId(value)],
-            [['actions'], () => value.map(validationUtils.parseVaultAction)],
+            [['nodeId'], () => ids.parseNodeId(value)],
+            [['actions'], () => value.map(vaultsUtils.parseVaultAction)],
             () => value,
           );
         },

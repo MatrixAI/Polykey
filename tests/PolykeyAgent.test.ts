@@ -9,8 +9,8 @@ import { Status } from '@/status';
 import { Schema } from '@/schema';
 import * as errors from '@/errors';
 import config from '@/config';
-import { promise } from '@/utils/index';
-import * as keysUtils from '@/keys/utils/index';
+import { promise } from '@/utils';
+import * as keysUtils from '@/keys/utils';
 import * as keysEvents from '@/keys/events';
 
 describe('PolykeyAgent', () => {

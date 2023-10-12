@@ -8,9 +8,9 @@ import type {
 import type { NodeId } from '../../ids';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import { matchSync } from '../../utils';
 import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
 
 class NodesClaim extends UnaryHandler<
   {
@@ -32,7 +32,7 @@ class NodesClaim extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

@@ -9,10 +9,10 @@ import type { VaultName } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import type VaultManager from '../../vaults/VaultManager';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
 class VaultsPull extends UnaryHandler<
@@ -47,10 +47,7 @@ class VaultsPull extends UnaryHandler<
       } = validateSync(
         (keyPath, value) => {
           return matchSync(keyPath)(
-            [
-              ['nodeId'],
-              () => (value ? validationUtils.parseNodeId(value) : undefined),
-            ],
+            [['nodeId'], () => (value ? ids.parseNodeId(value) : undefined)],
             () => value,
           );
         },

@@ -8,6 +8,7 @@ import type {
 import type NodeGraph from '../../NodeGraph';
 import type { NodeId } from '../../../ids';
 import { ServerHandler } from '@matrixai/rpc';
+import * as ids from '../../../ids';
 import * as validation from '../../../validation';
 import * as nodesUtils from '../../utils';
 import * as utils from '../../../utils';
@@ -35,7 +36,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
     } = validation.validateSync(
       (keyPath, value) => {
         return utils.matchSync(keyPath)(
-          [['nodeId'], () => validation.utils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

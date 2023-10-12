@@ -13,7 +13,7 @@ import NodesClaimsGet from '@/nodes/agent/handlers/NodesClaimsGet';
 import { nodesClaimsGet } from '@/nodes/agent/callers';
 import KeyRing from '@/keys/KeyRing';
 import Sigchain from '@/sigchain/Sigchain';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 import * as testNodesUtils from '../../../nodes/utils';

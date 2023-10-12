@@ -11,16 +11,19 @@ import type {
   TaskIdEncoded,
   ClaimId,
   ClaimIdEncoded,
+  ProviderId,
+  IdentityId,
   ProviderIdentityId,
   ProviderIdentityIdEncoded,
-  NotificationId,
-  NotificationIdEncoded,
   GestaltId,
   GestaltIdEncoded,
   GestaltLinkId,
+  NotificationId,
+  NotificationIdEncoded,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
+import * as validationErrors from '../validation/errors';
 
 function createPermIdGenerator(): () => PermissionId {
   const generator = new IdRandom<PermissionId>({
@@ -38,6 +41,16 @@ function createNodeIdGenerator(): () => NodeId {
   return () => {
     return IdInternal.fromBuffer<NodeId>(keysUtilsRandom.getRandomBytes(32));
   };
+}
+
+function parseNodeId(data: any): NodeId {
+  data = decodeNodeId(data);
+  if (data == null) {
+    throw new validationErrors.ErrorParse(
+      'Node ID must be multibase base32hex encoded public-keys',
+    );
+  }
+  return data;
 }
 
 /**
@@ -123,6 +136,16 @@ function decodeCertId(certIdEncoded: unknown): CertId | undefined {
   return certId;
 }
 
+function parseVaultId(data: any): VaultId {
+  data = decodeVaultId(data);
+  if (data == null) {
+    throw new validationErrors.ErrorParse(
+      'Vault ID must be multibase base58btc encoded strings',
+    );
+  }
+  return data;
+}
+
 function createVaultIdGenerator(): () => VaultId {
   const generator = new IdRandom<VaultId>({
     randomSource: keysUtilsRandom.getRandomBytes,
@@ -182,6 +205,16 @@ function decodeTaskId(taskIdEncoded: unknown): TaskId | undefined {
   return taskId;
 }
 
+function parseClaimId(data: any): ClaimId {
+  data = decodeClaimId(data);
+  if (data == null) {
+    throw new validationErrors.ErrorParse(
+      'Claim ID must be multibase base32hex encoded strings',
+    );
+  }
+  return data;
+}
+
 /**
  * Generator for `ClaimId`
  * Make sure the `nodeId` is set to this node's own `NodeId`
@@ -208,6 +241,30 @@ function decodeClaimId(claimIdEncoded: unknown): ClaimId | undefined {
     return;
   }
   return claimId;
+}
+
+function parseProviderId(data: any): ProviderId {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Provider ID must be a string');
+  }
+  if (data.length < 1) {
+    throw new validationErrors.ErrorParse(
+      'Provider ID length must be greater than 0',
+    );
+  }
+  return data as ProviderId;
+}
+
+function parseIdentityId(data: any): IdentityId {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Provider ID must be a string');
+  }
+  if (data.length < 1) {
+    throw new validationErrors.ErrorParse(
+      'Identity ID length must be greater than 0',
+    );
+  }
+  return data as IdentityId;
 }
 
 function encodeProviderIdentityId(
@@ -237,6 +294,25 @@ function decodeProviderIdentityId(
     return;
   }
   return providerIdentityId as ProviderIdentityId;
+}
+
+function parseGestaltId(data: any): GestaltId {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Gestalt ID must be string');
+  }
+  const nodeId = decodeNodeId(data);
+  if (nodeId != null) {
+    return ['node', nodeId];
+  }
+  const match = (data as string).match(/^(.+):(.+)$/);
+  if (match == null) {
+    throw new validationErrors.ErrorParse(
+      'Gestalt ID must be either a Node ID or `Provider ID:Identity ID`',
+    );
+  }
+  const providerId = parseProviderId(match[1]);
+  const identityId = parseIdentityId(match[2]);
+  return ['identity', [providerId, identityId]];
 }
 
 function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
@@ -350,6 +426,7 @@ function decodeNotificationId(
 export {
   createPermIdGenerator,
   createNodeIdGenerator,
+  parseNodeId,
   encodeNodeId,
   decodeNodeId,
   encodeNodeIdString,
@@ -358,16 +435,21 @@ export {
   encodeCertId,
   decodeCertId,
   createVaultIdGenerator,
+  parseVaultId,
   encodeVaultId,
   decodeVaultId,
   createTaskIdGenerator,
   encodeTaskId,
   decodeTaskId,
+  parseClaimId,
   createClaimIdGenerator,
   encodeClaimId,
   decodeClaimId,
+  parseProviderId,
+  parseIdentityId,
   encodeProviderIdentityId,
   decodeProviderIdentityId,
+  parseGestaltId,
   encodeGestaltId,
   encodeGestaltNodeId,
   encodeGestaltIdentityId,

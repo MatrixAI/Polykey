@@ -9,10 +9,11 @@ import type { Host, Hostname, Port } from '../../network/types';
 import type { NodeAddress } from '../../nodes/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
-import { matchSync } from '../../utils/index';
-import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
+import * as ids from '../../ids';
+import * as networkUtils from '../../network/utils';
 import * as nodeErrors from '../../nodes/errors';
+import { matchSync } from '../../utils';
+import { validateSync } from '../../validation';
 
 class NodesAdd extends UnaryHandler<
   {
@@ -37,9 +38,9 @@ class NodesAdd extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
-          [['host'], () => validationUtils.parseHostOrHostname(value)],
-          [['port'], () => validationUtils.parsePort(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
+          [['host'], () => networkUtils.parseHostOrHostname(value)],
+          [['port'], () => networkUtils.parsePort(value)],
           () => value,
         );
       },

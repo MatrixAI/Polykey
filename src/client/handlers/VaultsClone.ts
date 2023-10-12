@@ -8,9 +8,9 @@ import type {
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
-import * as validationUtils from '../../validation/utils';
 
 class VaultsClone extends UnaryHandler<
   {
@@ -31,7 +31,7 @@ class VaultsClone extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

@@ -20,7 +20,7 @@ import type {
   GestaltActions,
 } from '@/gestalts/types';
 import type { GestaltIdEncoded } from '@/ids/types';
-import type { GestaltGraph } from '../../src/gestalts/index';
+import type { GestaltGraph } from '../../src/gestalts';
 import fc from 'fast-check';
 import * as ids from '@/ids';
 import { gestaltActions } from '@/gestalts/types';
@@ -28,7 +28,7 @@ import Token from '@/tokens/Token';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
-import { never } from '@/utils/index';
+import { never } from '@/utils';
 import * as testsIdsUtils from '../ids/utils';
 import * as testsClaimsUtils from '../claims/utils';
 

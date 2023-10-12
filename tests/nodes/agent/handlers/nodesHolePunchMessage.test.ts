@@ -22,7 +22,7 @@ import NodeManager from '@/nodes/NodeManager';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 

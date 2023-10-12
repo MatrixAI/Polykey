@@ -14,7 +14,7 @@ import * as keysUtils from '../keys/utils';
 import Token from '../tokens/Token';
 import * as validationErrors from '../validation/errors';
 import * as utils from '../utils';
-import * as ids from '../ids/index';
+import * as ids from '../ids';
 import { vaultActions } from '../vaults/types';
 import { never } from '../utils';
 

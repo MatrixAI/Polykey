@@ -16,7 +16,7 @@ import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import * as utils from '@/utils/index';
+import * as utils from '@/utils';
 import * as nodeTestUtils from '../nodes/utils';
 
 describe('VaultInternal', () => {

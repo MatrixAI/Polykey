@@ -6,11 +6,11 @@ import type {
   TokenMessage,
 } from '../types';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { IdentityId, ProviderId } from '../../ids/index';
+import type { IdentityId, ProviderId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class IdentitiesTokenGet extends UnaryHandler<
   {
@@ -33,8 +33,8 @@ class IdentitiesTokenGet extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['providerId'], () => validationUtils.parseProviderId(value)],
-          [['identityId'], () => validationUtils.parseIdentityId(value)],
+          [['providerId'], () => ids.parseProviderId(value)],
+          [['identityId'], () => ids.parseIdentityId(value)],
           () => value,
         );
       },

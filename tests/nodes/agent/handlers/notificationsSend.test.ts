@@ -22,7 +22,7 @@ import ACL from '@/acl/ACL';
 import { Token } from '@/tokens';
 import * as notificationsErrors from '@/notifications/errors';
 import * as validationErrors from '@/validation/errors';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';

@@ -13,6 +13,7 @@ import type { NodeId } from '../../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils';
 import * as agentErrors from '../errors';
+import * as ids from '../../../ids';
 import * as nodesUtils from '../../utils';
 import * as validation from '../../../validation';
 import * as utils from '../../../utils';
@@ -47,11 +48,7 @@ class NodesHolePunchMessageSend extends UnaryHandler<
     } = validation.validateSync(
       (keyPath, value) => {
         return utils.matchSync(keyPath)(
-          [
-            ['targetId'],
-            ['sourceId'],
-            () => validation.utils.parseNodeId(value),
-          ],
+          [['targetId'], ['sourceId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

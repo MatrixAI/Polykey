@@ -9,7 +9,6 @@ import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
-import * as validation from '../../../validation';
 import * as nodesUtils from '../../utils';
 import * as vaultsUtils from '../../../vaults/utils';
 import * as vaultsErrors from '../../../vaults/errors';
@@ -44,7 +43,7 @@ class VaultsGitPackGet extends RawHandler<{
       utils.never();
     }
     const nameOrId = params.nameOrId;
-    const actionType = validation.utils.parseVaultAction(params.vaultAction);
+    const actionType = vaultsUtils.parseVaultAction(params.vaultAction);
     const [vaultIdFromName, permissions] = await db.withTransactionF(
       async (tran) => {
         const vaultIdFromName = await vaultManager.getVaultId(
