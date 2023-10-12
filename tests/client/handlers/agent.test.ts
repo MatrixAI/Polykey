@@ -8,12 +8,13 @@ import { running } from '@matrixai/async-init';
 import { RPCClient, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
+import CertManager from '@/keys/CertManager';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Status from '@/status/Status';
-import CertManager from '@/keys/CertManager';
 import ClientService from '@/client/ClientService';
-import { Session, SessionManager } from '@/sessions';
+import Session from '@/sessions/Session';
+import SessionManager from '@/sessions/SessionManager';
 import config from '@/config';
 import {
   AgentLockAll,
