@@ -111,7 +111,7 @@ const serverManifest = (container: {
     agentUnlock: new AgentUnlock(container),
     gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentity(container),
     gestaltsActionsGetByNode: new GestaltsActionsGetByNode(container),
-    gestaltsActionsSetByIdentity: new GestaltsActionsSetByNode(container),
+    gestaltsActionsSetByIdentity: new GestaltsActionsSetByIdentity(container),
     gestaltsActionsSetByNode: new GestaltsActionsSetByNode(container),
     gestaltsActionsUnsetByIdentity: new GestaltsActionsUnsetByIdentity(
       container,
