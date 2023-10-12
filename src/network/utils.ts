@@ -14,6 +14,8 @@ import { utils as quicUtils } from '@matrixai/quic';
 import { AbstractError } from '@matrixai/errors';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import * as validationUtils from '../validation/utils';
+import * as validationErrors from '../validation/errors';
 import * as errors from '../errors';
 import ErrorPolykey from '../ErrorPolykey';
 
@@ -50,6 +52,62 @@ function isPort(port: any, connect: boolean = false): port is Port {
   if (port < 0 || port > 65535) return false;
   if (connect && port === 0) return false;
   return true;
+}
+
+function parseHost(data: any): Host {
+  if (!isHost(data)) {
+    throw new validationErrors.ErrorParse(
+      'Host must be an IPv4 or IPv6 address',
+    );
+  }
+  return data;
+}
+
+function parseHostname(data: any): Hostname {
+  if (!isHostname(data)) {
+    throw new validationErrors.ErrorParse(
+      'Hostname must follow RFC 1123 standard',
+    );
+  }
+  return data;
+}
+
+function parseHostOrHostname(data: any): Host | Hostname {
+  if (!isHost(data) && !isHostname(data)) {
+    throw new validationErrors.ErrorParse(
+      'Host must be IPv4 or IPv6 address or hostname',
+    );
+  }
+  return data;
+}
+
+/**
+ * Parses number into a Port
+ * Data can be a string-number
+ */
+function parsePort(data: any, connect: boolean = false): Port {
+  if (typeof data === 'string') {
+    try {
+      data = validationUtils.parseInteger(data);
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        e.message = 'Port must be a number';
+      }
+      throw e;
+    }
+  }
+  if (!isPort(data, connect)) {
+    if (!connect) {
+      throw new validationErrors.ErrorParse(
+        'Port must be a number between 0 and 65535 inclusive',
+      );
+    } else {
+      throw new validationErrors.ErrorParse(
+        'Port must be a number between 1 and 65535 inclusive',
+      );
+    }
+  }
+  return data;
 }
 
 /**
@@ -571,6 +629,10 @@ export {
   isHostWildcard,
   isHostname,
   isPort,
+  parseHost,
+  parseHostname,
+  parsePort,
+  parseHostOrHostname,
   buildAddress,
   parseAddress,
   isDNSError,

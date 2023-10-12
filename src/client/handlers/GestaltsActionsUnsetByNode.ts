@@ -6,11 +6,12 @@ import type {
 } from '../types';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { NodeId } from '../../ids/index';
+import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import * as gestaltsUtils from '../../gestalts/utils';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class GestaltsActionsUnsetByNode extends UnaryHandler<
   {
@@ -28,8 +29,8 @@ class GestaltsActionsUnsetByNode extends UnaryHandler<
       validateSync(
         (keyPath, value) => {
           return matchSync(keyPath)(
-            [['nodeId'], () => validationUtils.parseNodeId(value)],
-            [['action'], () => validationUtils.parseGestaltAction(value)],
+            [['nodeId'], () => ids.parseNodeId(value)],
+            [['action'], () => gestaltsUtils.parseGestaltAction(value)],
             () => value,
           );
         },

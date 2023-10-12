@@ -21,10 +21,7 @@ import type KeyRing from '../keys/KeyRing';
 import type { ClaimId, ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { TaskHandler, TaskHandlerId } from '../tasks/types';
-import type {
-  ClaimLinkIdentity,
-  ClaimLinkNode,
-} from '../claims/payloads/index';
+import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import {
@@ -40,7 +37,7 @@ import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import { never } from '../utils';
 import Token from '../tokens/Token';
-import { decodeClaimId } from '../ids/index';
+import { decodeClaimId } from '../ids';
 
 /**
  * This is the reason used to cancel duplicate tasks for vertices

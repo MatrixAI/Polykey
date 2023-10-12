@@ -3,12 +3,12 @@ import type {
   ClientRPCResponseResult,
   IdentityMessage,
 } from '../types';
-import type { IdentityId, ProviderId } from '../../ids/index';
+import type { IdentityId, ProviderId } from '../../ids';
 import type Discovery from '../../discovery/Discovery';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class GestaltsDiscoveryByIdentity extends UnaryHandler<
   {
@@ -27,8 +27,8 @@ class GestaltsDiscoveryByIdentity extends UnaryHandler<
     }: { providerId: ProviderId; identityId: IdentityId } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['providerId'], () => validationUtils.parseProviderId(value)],
-          [['identityId'], () => validationUtils.parseIdentityId(value)],
+          [['providerId'], () => ids.parseProviderId(value)],
+          [['identityId'], () => ids.parseIdentityId(value)],
           () => value,
         );
       },

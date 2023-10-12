@@ -12,10 +12,10 @@ import type NotificationsManager from '../../notifications/NotificationsManager'
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
 class VaultsPermissionSet extends UnaryHandler<
@@ -53,8 +53,8 @@ class VaultsPermissionSet extends UnaryHandler<
       } = validateSync(
         (keyPath, value) => {
           return matchSync(keyPath)(
-            [['nodeId'], () => validationUtils.parseNodeId(value)],
-            [['actions'], () => value.map(validationUtils.parseVaultAction)],
+            [['nodeId'], () => ids.parseNodeId(value)],
+            [['actions'], () => value.map(vaultsUtils.parseVaultAction)],
             () => value,
           );
         },

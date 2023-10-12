@@ -7,10 +7,10 @@ import type {
 import type { NodeId } from '../../ids';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
+import * as nodesErrors from '../../nodes/errors';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
-import * as validationUtils from '../../validation/utils';
-import * as nodesErrors from '../../nodes/errors';
 
 class NodesFind extends UnaryHandler<
   {
@@ -31,7 +31,7 @@ class NodesFind extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

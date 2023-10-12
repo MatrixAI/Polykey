@@ -13,6 +13,7 @@ import type { ClaimLinkNode, ClaimLinkIdentity } from '../claims/payloads';
 import { IdInternal } from '@matrixai/id';
 import { gestaltActions } from './types';
 import * as ids from '../ids';
+import * as validationErrors from '../validation/errors';
 
 function toGestaltKey(gestaltId: GestaltId): GestaltKey {
   switch (gestaltId[0]) {
@@ -89,6 +90,15 @@ function fromGestaltIdentityKey(
 function isGestaltAction(action: any): action is GestaltAction {
   if (typeof action !== 'string') return false;
   return (gestaltActions as Readonly<Array<string>>).includes(action);
+}
+
+function parseGestaltAction(data: any): GestaltAction {
+  if (!isGestaltAction(data)) {
+    throw new validationErrors.ErrorParse(
+      'Gestalt action must be `notify` or `scan`',
+    );
+  }
+  return data;
 }
 
 function fromGestaltNodeInfoJSON(
@@ -170,6 +180,7 @@ export {
   toGestaltIdentityKey,
   fromGestaltIdentityKey,
   isGestaltAction,
+  parseGestaltAction,
   fromGestaltNodeInfoJSON,
   fromGestaltLinkJSON,
   checkLinkNodeMatches,

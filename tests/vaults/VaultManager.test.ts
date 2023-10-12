@@ -28,7 +28,7 @@ import NodeGraph from '@/nodes/NodeGraph';
 import * as vaultsUtils from '@/vaults/utils';
 import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';

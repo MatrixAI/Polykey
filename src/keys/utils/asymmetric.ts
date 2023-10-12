@@ -14,6 +14,7 @@ import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
 import { IdInternal } from '@matrixai/id';
 import { getRandomBytes } from './random';
+import * as validationErrors from '../../validation/errors';
 import * as utils from '../../utils';
 
 /**
@@ -561,6 +562,38 @@ function validatePublicKey(publicKey: Buffer): publicKey is PublicKey {
   return sodium.crypto_core_ed25519_is_valid_point(publicKey);
 }
 
+/**
+ * Parses buffer source into a public key
+ */
+function parsePublicKey(data: any): PublicKey {
+  if (!utils.isBufferSource(data)) {
+    throw new validationErrors.ErrorParse('Public key must be a BufferSource');
+  }
+  const publicKey = publicKeyFromData(data);
+  if (publicKey == null) {
+    throw new validationErrors.ErrorParse(
+      'Public key is not a valid Ed25519 public key',
+    );
+  }
+  return publicKey;
+}
+
+/**
+ * Parses buffer source into a private key
+ */
+function parsePrivateKey(data: any): PrivateKey {
+  if (!utils.isBufferSource(data)) {
+    throw new validationErrors.ErrorParse('Private key must be a BufferSource');
+  }
+  const privateKey = privateKeyFromData(data);
+  if (privateKey == null) {
+    throw new validationErrors.ErrorParse(
+      'Private key is not a valid Ed25519 private key',
+    );
+  }
+  return privateKey;
+}
+
 export {
   makeKeyPair,
   publicKeyFromData,
@@ -580,4 +613,6 @@ export {
   encapsulateWithPublicKey,
   decapsulateWithPrivateKey,
   validatePublicKey,
+  parsePublicKey,
+  parsePrivateKey,
 };

@@ -1,15 +1,18 @@
-import type { NodeBucket, NodeBucketIndex, NodeId } from './types';
+import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
 import type { CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import lexi from 'lexicographic-integer';
 import { utils as quicUtils } from '@matrixai/quic';
 import { errors as rpcErrors } from '@matrixai/rpc';
+import lexi from 'lexicographic-integer';
 import * as nodesErrors from './errors';
+import * as ids from '../ids';
 import * as keysUtils from '../keys/utils';
-import { encodeNodeId, decodeNodeId } from '../ids';
-import { bytes2BigInt, never } from '../utils';
+import * as networkUtils from '../network/utils';
+import * as validationErrors from '../validation/errors';
+import config from '../config';
+import * as utils from '../utils';
 
 const sepBuffer = dbUtils.sep;
 
@@ -206,7 +209,7 @@ function parseLastUpdatedBucketDbKey(keyPath: KeyPath): {
  */
 function nodeDistance(nodeId1: NodeId, nodeId2: NodeId): bigint {
   const distance = nodeId1.map((byte, i) => byte ^ nodeId2[i]);
-  return bytes2BigInt(distance);
+  return utils.bytes2BigInt(distance);
 }
 
 function bucketSortByDistance(
@@ -376,18 +379,83 @@ function parseRemoteCertsChain(remoteCertChain: Array<Uint8Array>) {
     const cert = keysUtils.certFromPEM(
       quicUtils.derToPEM(der) as CertificatePEM,
     );
-    if (cert == null) never();
+    if (cert == null) utils.never();
     return cert;
   });
   const nodeId = keysUtils.certNodeId(certChain[0]);
-  if (nodeId == null) never();
+  if (nodeId == null) utils.never();
   return { nodeId, certChain };
+}
+
+function parseNetwork(data: any): SeedNodes {
+  if (typeof data !== 'string' || !(data in config.network)) {
+    throw new validationErrors.ErrorParse(
+      `Network must be one of ${Object.keys(config.network).join(', ')}`,
+    );
+  }
+  return config.network[data];
+}
+
+/**
+ * Seed nodes expected to be of form 'nodeId1@host:port;nodeId2@host:port;...'
+ * By default, any specified seed nodes (in CLI option, or environment variable)
+ * will overwrite the default nodes in src/config.ts.
+ * Special flag `<defaults>` indicates that the default seed
+ * nodes should be added to the starting seed nodes instead of being overwritten
+ */
+function parseSeedNodes(data: any): [SeedNodes, boolean] {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'Seed nodes must be of format `nodeId@host:port;...`',
+    );
+  }
+  const seedNodes: SeedNodes = {};
+  // Determines whether the defaults flag is set or not
+  let defaults = false;
+  // If explicitly set to an empty string, then no seed nodes and no defaults
+  if (data === '') return [seedNodes, defaults];
+  for (const seedNodeString of data.split(';')) {
+    // Empty string will occur if there's an extraneous ';' (e.g. at end of env)
+    if (seedNodeString === '') continue;
+    if (seedNodeString === '<defaults>') {
+      defaults = true;
+      continue;
+    }
+    let seedNodeUrl: URL;
+    try {
+      const seedNodeStringProtocol = /^pk:\/\//.test(seedNodeString)
+        ? seedNodeString
+        : `pk://${seedNodeString}`;
+      seedNodeUrl = new URL(seedNodeStringProtocol);
+    } catch (e) {
+      throw new validationErrors.ErrorParse(
+        'Seed nodes must be of format `nodeId@host:port;...`',
+      );
+    }
+    const nodeIdEncoded = seedNodeUrl.username;
+    // Remove square braces for IPv6
+    const nodeHostOrHostname = seedNodeUrl.hostname.replace(/[\[\]]/g, '');
+    const nodePort = seedNodeUrl.port;
+    try {
+      ids.parseNodeId(nodeIdEncoded);
+      seedNodes[nodeIdEncoded] = {
+        host: networkUtils.parseHostOrHostname(nodeHostOrHostname),
+        port: networkUtils.parsePort(nodePort),
+      };
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        throw new validationErrors.ErrorParse(
+          'Seed nodes must be of format `nodeId@host:port;...`',
+        );
+      }
+      throw e;
+    }
+  }
+  return [seedNodes, defaults];
 }
 
 export {
   sepBuffer,
-  encodeNodeId,
-  decodeNodeId,
   bucketIndex,
   bucketKey,
   bucketsDbKey,
@@ -409,4 +477,8 @@ export {
   reasonToCode,
   codeToReason,
   parseRemoteCertsChain,
+  parseNetwork,
+  parseSeedNodes,
 };
+
+export { encodeNodeId, decodeNodeId } from '../ids';

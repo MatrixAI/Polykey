@@ -31,10 +31,9 @@ import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
 import * as vaultsEvents from './events';
 import { tagLast } from './types';
-import * as validationUtils from '../validation/utils';
-import * as utils from '../utils';
+import * as ids from '../ids';
 import * as nodesUtils from '../nodes/utils';
-import { never } from '../utils/utils';
+import * as utils from '../utils';
 
 type RemoteInfo = {
   remoteNode: NodeIdEncoded;
@@ -781,18 +780,18 @@ class VaultInternal {
       action: vaultAction,
     });
     const result = vaultsGitInfoGetStream.meta?.result;
-    if (result == null || !utils.isObject(result)) never();
+    if (result == null || !utils.isObject(result)) utils.never();
     if (!('vaultName' in result) || typeof result.vaultName != 'string') {
-      never();
+      utils.never();
     }
     if (
       !('vaultIdEncoded' in result) ||
       typeof result.vaultIdEncoded != 'string'
     ) {
-      never();
+      utils.never();
     }
     const vaultName = result.vaultName;
-    const remoteVaultId = validationUtils.parseVaultId(result.vaultIdEncoded);
+    const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
 
     // Collect the response buffers from the GET request
     const infoResponse: Uint8Array[] = [];
@@ -842,7 +841,7 @@ class VaultInternal {
             statusMessage: 'OK',
           };
         } else {
-          never();
+          utils.never();
         }
       },
       vaultName,
@@ -1078,7 +1077,7 @@ class VaultInternal {
           }
           break;
         default: {
-          never();
+          utils.never();
         }
       }
     }

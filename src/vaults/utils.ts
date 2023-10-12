@@ -4,7 +4,7 @@ import type { NodeId } from '../ids/types';
 import path from 'path';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
-import { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';
+import * as validationErrors from '../validation/errors';
 
 /**
  * Vault history is designed for linear-history
@@ -54,6 +54,15 @@ function isVaultAction(action: any): action is VaultAction {
   return (vaultActions as Readonly<Array<string>>).includes(action);
 }
 
+function parseVaultAction(data: any): VaultAction {
+  if (!isVaultAction(data)) {
+    throw new validationErrors.ErrorParse(
+      'Vault action must be `clone` or `pull`',
+    );
+  }
+  return data;
+}
+
 async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   const bucket = ref.slice(0, 2);
   const shortref = ref.slice(2);
@@ -70,13 +79,13 @@ export {
   refs,
   canonicalBranch,
   canonicalBranchRef,
-  createVaultIdGenerator,
-  encodeVaultId,
-  decodeVaultId,
   validateRef,
   validateCommitId,
   commitAuthor,
   isVaultAction,
+  parseVaultAction,
   readdirRecursively,
   deleteObject,
 };
+
+export { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';

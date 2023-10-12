@@ -6,12 +6,12 @@ import type {
   NodeIdMessage,
 } from '../types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { NodeId } from '../../ids/index';
+import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class GestaltsGestaltGetByNode extends UnaryHandler<
   {
@@ -28,7 +28,7 @@ class GestaltsGestaltGetByNode extends UnaryHandler<
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

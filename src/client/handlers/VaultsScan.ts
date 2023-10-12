@@ -7,8 +7,8 @@ import type {
 import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
 import { ServerHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
 class VaultsScan extends ServerHandler<
@@ -33,7 +33,7 @@ class VaultsScan extends ServerHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

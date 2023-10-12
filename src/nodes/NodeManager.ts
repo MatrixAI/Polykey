@@ -23,7 +23,7 @@ import type { ContextTimed } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { Host, Port } from '../network/types';
 import type { SignedTokenEncoded } from '../tokens/types';
-import type { ClaimLinkNode } from '../claims/payloads/index';
+import type { ClaimLinkNode } from '../claims/payloads';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,

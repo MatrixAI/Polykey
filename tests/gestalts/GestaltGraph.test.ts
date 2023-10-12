@@ -5,7 +5,7 @@ import type { Key } from '@/keys/types';
 import type {
   ClaimLinkNode,
   ClaimLinkIdentity,
-} from '../../src/claims/payloads/index';
+} from '../../src/claims/payloads';
 import type {
   GestaltIdentityInfo,
   GestaltInfo,
@@ -35,7 +35,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testsGestaltsUtils from './utils';
 import * as testsIdentitiesUtils from '../identities/utils';
 import * as testsKeysUtils from '../keys/utils';
-import * as ids from '../../src/ids/index';
+import * as ids from '../../src/ids';
 import * as testsIdsUtils from '../ids/utils';
 import 'ix/add/asynciterable-operators/toarray';
 

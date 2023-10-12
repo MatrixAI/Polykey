@@ -7,8 +7,8 @@ import type { NodeId } from '../../ids';
 import type { General } from '../../notifications/types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as ids from '../../ids';
 import { validateSync } from '../../validation';
-import * as validationUtils from '../../validation/utils';
 import { matchSync } from '../../utils';
 
 class NotificationsSend extends UnaryHandler<
@@ -29,7 +29,7 @@ class NotificationsSend extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

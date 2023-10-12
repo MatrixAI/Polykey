@@ -44,8 +44,8 @@ import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import manifestClientAgent from './agent/callers';
+import * as ids from '../ids';
 import * as keysUtils from '../keys/utils';
-import * as validationUtils from '../validation/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import config from '../config';
@@ -1474,11 +1474,11 @@ class NodeConnectionManager {
     // First check if we already have an existing ID -> address record
     // If we're relaying then we trust our own node graph records over
     // what was provided in the message
-    const sourceNode = validationUtils.parseNodeId(message.srcIdEncoded);
+    const sourceNode = ids.parseNodeId(message.srcIdEncoded);
     await this.sendSignalingMessage(
-      validationUtils.parseNodeId(message.dstIdEncoded),
+      ids.parseNodeId(message.dstIdEncoded),
       sourceNode,
-      validationUtils.parseNodeId(message.dstIdEncoded),
+      ids.parseNodeId(message.dstIdEncoded),
       sourceAddress,
       ctx,
     );

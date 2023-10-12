@@ -11,7 +11,7 @@ import type {
   ProviderIdentityClaimId,
 } from '@/identities/types';
 import type { SignedClaim } from '@/claims/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads/index';
+import type { ClaimLinkIdentity } from '@/claims/payloads';
 import { Provider } from '@/identities';
 import * as identitiesUtils from '@/identities/utils';
 import * as identitiesErrors from '@/identities/errors';

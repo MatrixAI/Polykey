@@ -4,13 +4,13 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
 } from '../types';
-import type { NodeId } from '../../ids/index';
+import type { NodeId } from '../../ids';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type ACL from '../../acl/ACL';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class IdentitiesInvite extends UnaryHandler<
   {
@@ -32,7 +32,7 @@ class IdentitiesInvite extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['nodeId'], () => validationUtils.parseNodeId(value)],
+          [['nodeId'], () => ids.parseNodeId(value)],
           () => value,
         );
       },

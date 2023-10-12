@@ -4,13 +4,14 @@ import type {
   ClientRPCResponseResult,
   SetIdentityActionMessage,
 } from '../types';
-import type { IdentityId, ProviderId } from '../../ids/index';
+import type { IdentityId, ProviderId } from '../../ids';
 import type { GestaltAction } from '../../gestalts/types';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
+import * as gestaltsUtils from '../../gestalts/utils';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class GestaltsActionsUnsetByIdentity extends UnaryHandler<
   {
@@ -35,9 +36,9 @@ class GestaltsActionsUnsetByIdentity extends UnaryHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['action'], () => validationUtils.parseGestaltAction(value)],
-          [['providerId'], () => validationUtils.parseProviderId(value)],
-          [['identityId'], () => validationUtils.parseIdentityId(value)],
+          [['action'], () => gestaltsUtils.parseGestaltAction(value)],
+          [['providerId'], () => ids.parseProviderId(value)],
+          [['identityId'], () => ids.parseIdentityId(value)],
           () => value,
         );
       },

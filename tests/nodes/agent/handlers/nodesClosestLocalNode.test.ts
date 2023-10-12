@@ -12,7 +12,7 @@ import * as nodesUtils from '@/nodes/utils';
 import { nodesClosestLocalNodesGet } from '@/nodes/agent/callers';
 import NodesClosestLocalNodesGet from '@/nodes/agent/handlers/NodesClosestLocalNodesGet';
 import NodeGraph from '@/nodes/NodeGraph';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as testNodesUtils from '../../../nodes/utils';
 import * as tlsTestsUtils from '../../../utils/tls';

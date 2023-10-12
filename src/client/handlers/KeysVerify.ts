@@ -7,8 +7,8 @@ import type {
 import type KeyRing from '../../keys/KeyRing';
 import type { PublicKey, Signature } from '../../keys/types';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as keysUtils from '../../keys/utils/index';
-import { never } from '../../utils/index';
+import * as keysUtils from '../../keys/utils';
+import { never } from '../../utils';
 import * as keysErrors from '../../keys/errors';
 
 class KeysVerify extends UnaryHandler<

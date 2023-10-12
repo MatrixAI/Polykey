@@ -4,15 +4,15 @@ import type {
   IdentityInfoMessage,
   ProviderSearchMessage,
 } from '../types';
-import type { IdentityId, ProviderId } from '../../ids/index';
+import type { IdentityId, ProviderId } from '../../ids';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityData } from '../../identities/types';
 import { ServerHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation/index';
-import * as validationUtils from '../../validation/utils';
-import { matchSync } from '../../utils/index';
+import * as ids from '../../ids';
 import * as identitiesErrors from '../../identities/errors';
 import * as identitiesUtils from '../../identities/utils';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 
 class IdentitiesInfoGet extends ServerHandler<
   {
@@ -38,8 +38,8 @@ class IdentitiesInfoGet extends ServerHandler<
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
-          [['providerIds'], () => value.map(validationUtils.parseProviderId)],
-          [['identityId'], () => validationUtils.parseIdentityId(value)],
+          [['providerIds'], () => value.map(ids.parseProviderId)],
+          [['identityId'], () => ids.parseIdentityId(value)],
           () => value,
         );
       },

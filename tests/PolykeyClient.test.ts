@@ -7,10 +7,10 @@ import { WebSocketClient } from '@matrixai/ws';
 import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
-import * as keysUtils from '@/keys/utils/index';
 import * as clientUtils from '@/client/utils';
+import * as keysUtils from '@/keys/utils';
 import * as errors from '@/errors';
-import * as testUtils from './utils/utils';
+import * as testUtils from './utils';
 
 describe('PolykeyClient', () => {
   const password = 'password';

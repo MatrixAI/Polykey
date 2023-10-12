@@ -3,7 +3,7 @@ import type { Host } from '@/network/types';
 import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
-import type { NodeId } from '../../src/ids/index';
+import type { NodeId } from '../../src/ids';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -29,7 +29,7 @@ import * as keysUtils from '@/keys/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { encodeProviderIdentityId } from '../../src/ids/index';
+import { encodeProviderIdentityId } from '../../src/ids';
 import 'ix/add/asynciterable-operators/toarray';
 import { createTLSConfig } from '../utils/tls';
 

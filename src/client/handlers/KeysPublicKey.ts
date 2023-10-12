@@ -5,7 +5,7 @@ import type {
 } from '../types';
 import type KeyRing from '../../keys/KeyRing';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as keysUtils from '../../keys/utils/index';
+import * as keysUtils from '../../keys/utils';
 
 class KeysPublicKey extends UnaryHandler<
   {

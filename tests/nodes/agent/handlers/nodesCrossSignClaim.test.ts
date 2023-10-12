@@ -19,7 +19,7 @@ import ACL from '@/acl/ACL';
 import NodeManager from '@/nodes/NodeManager';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import TaskManager from '@/tasks/TaskManager';
-import * as keysUtils from '@/keys/utils/index';
+import * as keysUtils from '@/keys/utils';
 import * as claimsUtils from '@/claims/utils';
 import { Token } from '@/tokens';
 import * as nodesUtils from '@/nodes/utils';
