@@ -1070,7 +1070,6 @@ describe('vaultsSecretsMkdir', () => {
   });
 });
 describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
-  Error.stackTraceLimit = 100;
   const logger = new Logger('vaultsSecretsNewDeleteGet test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,

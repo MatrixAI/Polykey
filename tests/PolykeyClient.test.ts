@@ -8,6 +8,9 @@ import { PolykeyClient, PolykeyAgent } from '@';
 import { Session } from '@/sessions';
 import config from '@/config';
 import * as keysUtils from '@/keys/utils/index';
+import * as clientUtils from '@/client/utils';
+import * as errors from '@/errors';
+import * as testUtils from './utils/utils';
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -75,5 +78,38 @@ describe('PolykeyClient', () => {
     await pkClient.destroy();
     expect(await session.readToken()).toBeUndefined();
     await webSocketClient.destroy({ force: true });
+  });
+  test('end to end with authentication logic', async () => {
+    const webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: true,
+        verifyCallback: async (certs) => {
+          await clientUtils.verifyServerCertificateChain(
+            [pkAgent.keyRing.getNodeId()],
+            certs,
+          );
+        },
+      },
+      host: pkAgent.clientServiceHost,
+      port: pkAgent.clientServicePort,
+      logger: logger.getChild(WebSocketClient.name),
+    });
+    const pkClient = await PolykeyClient.createPolykeyClient({
+      streamFactory: () => webSocketClient.connection.newStream(),
+      nodePath,
+      fs,
+      logger: logger.getChild(PolykeyClient.name),
+      fresh: true,
+    });
+
+    const callP = pkClient.rpcClientClient.methods.agentStatus({});
+    await expect(callP).rejects.toThrow(errors.ErrorPolykeyRemote);
+    await testUtils.expectRemoteError(callP, errors.ErrorClientAuthMissing);
+    // Correct auth runs without error
+    await pkClient.rpcClientClient.methods.agentStatus({
+      metadata: {
+        authorization: clientUtils.encodeAuthFromPassword(password),
+      },
+    });
   });
 });
