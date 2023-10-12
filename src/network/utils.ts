@@ -15,6 +15,7 @@ import { AbstractError } from '@matrixai/errors';
 import * as networkErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import * as errors from '../errors';
+import ErrorPolykey from '../ErrorPolykey';
 
 /**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
@@ -523,9 +524,17 @@ function toError(
         e.cause = toError(errorData.data.cause, clientMetadata, false);
       }
       if (top) {
-        return new networkErrors.ErrorPolykeyRemote(clientMetadata, undefined, {
-          cause: e,
-        });
+        const remoteError = new networkErrors.ErrorPolykeyRemote(
+          clientMetadata,
+          undefined,
+          {
+            cause: e,
+          },
+        );
+        if (remoteError.cause instanceof ErrorPolykey) {
+          remoteError.exitCode = remoteError.cause.exitCode;
+        }
+        return remoteError;
       } else {
         return e;
       }
@@ -537,9 +546,17 @@ function toError(
         e.cause = toError(errorData.data.cause, clientMetadata, false);
       }
       if (top) {
-        return new networkErrors.ErrorPolykeyRemote(clientMetadata, undefined, {
-          cause: e,
-        });
+        const remoteError = new networkErrors.ErrorPolykeyRemote(
+          clientMetadata,
+          undefined,
+          {
+            cause: e,
+          },
+        );
+        if (remoteError.cause instanceof ErrorPolykey) {
+          remoteError.exitCode = remoteError.cause.exitCode;
+        }
+        return remoteError;
       } else {
         return e;
       }
