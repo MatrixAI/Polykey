@@ -43,14 +43,37 @@ function createNodeIdGenerator(): () => NodeId {
   };
 }
 
-function parseNodeId(data: any): NodeId {
-  data = decodeNodeId(data);
-  if (data == null) {
+function isNodeId(nodeId: any): nodeId is NodeId {
+  if (!(nodeId instanceof IdInternal)) {
+    return false;
+  }
+  if (nodeId.length !== 32) {
+    return false;
+  }
+  return true;
+}
+
+function assertNodeId(nodeId: unknown): asserts nodeId is NodeId {
+  if (!(nodeId instanceof IdInternal)) {
+    throw new validationErrors.ErrorParse('must be instance of Id');
+  }
+  if (nodeId.length !== 32) {
+    throw new validationErrors.ErrorParse('must be 32 bytes long');
+  }
+}
+
+function generateNodeId(nodeId: NodeId): NodeIdEncoded {
+  return encodeNodeId(nodeId);
+}
+
+function parseNodeId(nodeIdEncoded: unknown): NodeId {
+  const nodeId = decodeNodeId(nodeIdEncoded);
+  if (nodeId == null) {
     throw new validationErrors.ErrorParse(
       'Node ID must be multibase base32hex encoded public-keys',
     );
   }
-  return data;
+  return nodeId;
 }
 
 /**
@@ -426,6 +449,9 @@ function decodeNotificationId(
 export {
   createPermIdGenerator,
   createNodeIdGenerator,
+  isNodeId,
+  assertNodeId,
+  generateNodeId,
   parseNodeId,
   encodeNodeId,
   decodeNodeId,

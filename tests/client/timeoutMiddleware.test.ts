@@ -56,18 +56,15 @@ describe('timeoutMiddleware', () => {
       password,
       keysPath,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
     certManager = await CertManager.createCertManager({
       db,
       keyRing,
       taskManager,
-      options: {},
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);

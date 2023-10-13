@@ -75,11 +75,9 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       password,
       keysPath,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -113,10 +111,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-        connectionIdleTimeoutTime: 100,
-      },
+      connectionConnectTimeoutTime: 1000,
+      connectionIdleTimeoutTime: 100,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
@@ -155,9 +151,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionIdleTimeoutTime: 1000,
-      },
+      connectionIdleTimeoutTime: 1000,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
@@ -212,9 +206,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionIdleTimeoutTime: 1000,
-      },
+      connectionIdleTimeoutTime: 1000,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
@@ -253,10 +245,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionIdleTimeoutTime: 5000,
-        connectionConnectTimeoutTime: 200,
-      },
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
@@ -280,10 +270,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionIdleTimeoutTime: 5000,
-        connectionConnectTimeoutTime: 200,
-      },
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
@@ -313,10 +301,8 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
       nodeGraph,
       tlsConfig,
       seedNodes: undefined,
-      options: {
-        connectionIdleTimeoutTime: 5000,
-        connectionConnectTimeoutTime: 200,
-      },
+      connectionIdleTimeoutTime: 5000,
+      connectionConnectTimeoutTime: 200,
     });
     await nodeConnectionManager.start({
       host: localHost as Host,

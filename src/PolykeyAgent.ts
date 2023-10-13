@@ -1,8 +1,8 @@
 import type { DeepPartial, FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
-import type { SeedNodes, NodesOptions } from './nodes/types';
-import type { Key, KeysOptions } from './keys/types';
+import type { SeedNodes } from './nodes/types';
+import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -54,26 +54,30 @@ type PolykeyAgentOptions = {
   seedNodes: SeedNodes;
   workers: number;
   ipv6Only: boolean;
-  keys: KeysOptions;
-  rpc: {
-    callTimeoutTime: number;
-    parserBufferSize: number;
+  keys: {
+    passwordOpsLimit: PasswordOpsLimit;
+    passwordMemLimit: PasswordMemLimit;
+    strictMemoryLock: boolean;
+    certDuration: number;
+    certRenewLeadTime: number;
+    recoveryCode: string;
   };
   client: {
-    connectTimeoutTime: number;
     keepAliveTimeoutTime: number;
     keepAliveIntervalTime: number;
+    rpcCallTimeoutTime: number;
+    rpcParserBufferSize: number;
   };
-  nodes: NodesOptions;
-};
-
-type PolykeyAgentStartOptions = {
-  clientServiceHost: string;
-  clientServicePort: number;
-  agentServiceHost: string;
-  agentServicePort: number;
-  ipv6Only: boolean;
-  workers: number;
+  nodes: {
+    connectionIdleTimeoutTime: number;
+    connectionFindConcurrencyLimit: number;
+    connectionConnectTimeoutTime: number;
+    connectionKeepAliveTimeoutTime: number;
+    connectionKeepAliveIntervalTime: number;
+    connectionHolePunchIntervalTime: number;
+    rpcCallTimeoutTime: number;
+    rpcParserBufferSize: number;
+  };
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -113,9 +117,9 @@ class PolykeyAgent {
   }: {
     password: string;
     options?: DeepPartial<PolykeyAgentOptions>;
+    fresh?: boolean;
     fs?: FileSystem;
     logger?: Logger;
-    fresh?: boolean;
   }): Promise<PolykeyAgent> {
     logger.info(`Creating ${this.name}`);
     const umask = 0o077;
@@ -131,18 +135,18 @@ class PolykeyAgent {
       workers: config.defaultsUser.workers,
       ipv6Only: config.defaultsUser.ipv6Only,
       keys: {
+        passwordOpsLimit: config.defaultsUser.passwordOpsLimit,
+        passwordMemLimit: config.defaultsUser.passwordMemLimit,
+        strictMemoryLock: config.defaultsUser.strictMemoryLock,
         certDuration: config.defaultsUser.certDuration,
         certRenewLeadTime: config.defaultsUser.certRenewLeadTime,
       },
-      rpc: {
-        callTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
-        parserBufferSize: config.defaultsSystem.rpcParserBufferSize,
-      },
       client: {
-        connectTimoutTime: config.defaultsSystem.clientConnectTimeoutTime,
         keepAliveTimeoutTime: config.defaultsSystem.clientKeepAliveTimeoutTime,
         keepAliveIntervalTime:
           config.defaultsSystem.clientKeepAliveIntervalTime,
+        rpcCallTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
+        rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
       },
       nodes: {
         connectionIdleTimeoutTime:
@@ -158,7 +162,7 @@ class PolykeyAgent {
         connectionHolePunchIntervalTime:
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       },
-    });
+    }) as PolykeyAgentOptions;
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
     if (optionsDefaulted.nodePath == null) {
@@ -181,7 +185,6 @@ class PolykeyAgent {
     const dbPath = path.join(statePath, config.paths.dbBase);
     const keysPath = path.join(statePath, config.paths.keysBase);
     const vaultsPath = path.join(statePath, config.paths.vaultsBase);
-
     let status: Status | undefined;
     let schema: Schema | undefined;
     let keyRing: KeyRing | undefined;
@@ -217,7 +220,9 @@ class PolykeyAgent {
       });
       keyRing = await KeyRing.createKeyRing({
         keysPath,
-        options: optionsDefaulted.keys,
+        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
         fs,
         fresh,
         password,
@@ -256,7 +261,8 @@ class PolykeyAgent {
         db,
         keyRing,
         taskManager,
-        options: optionsDefaulted.keys,
+        certDuration: optionsDefaulted.keys.certDuration,
+        certRenewLeadTime: optionsDefaulted.keys.certRenewLeadTime,
         logger: logger.getChild(CertManager.name),
         fresh,
       });
@@ -310,7 +316,20 @@ class PolykeyAgent {
         nodeGraph,
         tlsConfig,
         seedNodes: optionsDefaulted.seedNodes,
-        options: optionsDefaulted.nodes,
+        connectionFindConcurrencyLimit:
+          optionsDefaulted.nodes.connectionFindConcurrencyLimit,
+        connectionIdleTimeoutTime:
+          optionsDefaulted.nodes.connectionIdleTimeoutTime,
+        connectionConnectTimeoutTime:
+          optionsDefaulted.nodes.connectionConnectTimeoutTime,
+        connectionKeepAliveTimeoutTime:
+          optionsDefaulted.nodes.connectionKeepAliveTimeoutTime,
+        connectionKeepAliveIntervalTime:
+          optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
+        connectionHolePunchIntervalTime:
+          optionsDefaulted.nodes.connectionHolePunchIntervalTime,
+        rpcParserBufferSize: optionsDefaulted.nodes.rpcParserBufferSize,
+        rpcCallTimeoutTime: optionsDefaulted.nodes.rpcCallTimeoutTime,
         logger: logger.getChild(NodeConnectionManager.name),
       });
       nodeManager = new NodeManager({
@@ -387,8 +406,8 @@ class PolykeyAgent {
         ),
         keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
         keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
-        rpcCallTimeoutTime: optionsDefaulted.rpc.callTimeoutTime,
-        rpcParserBufferSize: optionsDefaulted.rpc.parserBufferSize,
+        rpcCallTimeoutTime: optionsDefaulted.client.rpcCallTimeoutTime,
+        rpcParserBufferSize: optionsDefaulted.client.rpcParserBufferSize,
         logger: logger.getChild(ClientService.name),
       });
     } catch (e) {
@@ -585,7 +604,14 @@ class PolykeyAgent {
     fresh = false,
   }: {
     password: string;
-    options?: Partial<PolykeyAgentStartOptions>;
+    options?: Partial<{
+      clientServiceHost: string;
+      clientServicePort: number;
+      agentServiceHost: string;
+      agentServicePort: number;
+      ipv6Only: boolean;
+      workers: number;
+    }>;
     workers?: number;
     fresh?: boolean;
   }) {

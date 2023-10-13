@@ -65,11 +65,9 @@ describe('nodesHolePunchMessage', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     const dbPath = path.join(dataDir, 'db');
@@ -114,10 +112,8 @@ describe('nodesHolePunchMessage', () => {
       tlsConfig: tlsConfigClient,
       keyRing,
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

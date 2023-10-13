@@ -115,12 +115,10 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -186,9 +184,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -245,9 +241,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -300,9 +294,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -357,9 +349,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -419,9 +409,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -478,9 +466,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });
@@ -538,9 +524,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       tlsConfig,
       seedNodes,
     });

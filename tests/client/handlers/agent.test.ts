@@ -68,11 +68,9 @@ describe('agentLockAll', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -248,11 +246,9 @@ describe('agentStop', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -361,11 +357,9 @@ describe('agentUnlock', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });

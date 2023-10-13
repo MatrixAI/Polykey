@@ -329,11 +329,9 @@ describe('IdentitiesManager', () => {
       const keyRing = await KeyRing.createKeyRing({
         password: 'password',
         keysPath: path.join(dataDir, 'keys'),
-        options: {
-          strictMemoryLock: false,
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-        },
+        strictMemoryLock: false,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
         logger,
         fresh: true,
       });

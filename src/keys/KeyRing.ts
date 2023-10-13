@@ -12,7 +12,6 @@ import type {
   RecoveryCodeLocked,
   PasswordOpsLimit,
   PasswordMemLimit,
-  KeyRingOptions,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
@@ -28,7 +27,6 @@ import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as keysEvents from './events';
 import { bufferLock, bufferUnlock } from './utils/memory';
-import * as utils from '../utils/utils';
 
 interface KeyRing extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -46,35 +44,48 @@ interface KeyRing extends CreateDestroyStartStop {}
 class KeyRing {
   public static async createKeyRing({
     keysPath,
-    password,
-    options = {},
+    passwordOpsLimit,
+    passwordMemLimit,
+    strictMemoryLock = true,
     workerManager,
     fs = require('fs'),
     logger = new Logger(this.name),
-    fresh,
+    ...startOptions
   }: {
     keysPath: string;
     password: string;
-    options?: Partial<KeyRingOptions>;
+    passwordOpsLimit?: PasswordOpsLimit;
+    passwordMemLimit?: PasswordMemLimit;
+    strictMemoryLock?: boolean;
     workerManager?: PolykeyWorkerManagerInterface;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  }): Promise<KeyRing> {
+  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
+    | {}
+    | {
+        recoveryCode: RecoveryCode;
+      }
+    | {
+        privateKey: PrivateKey;
+      }
+    | {
+        privateKeyPath: string;
+      }
+  )): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
-    const optionsDefaulted = utils.mergeObjects(options, {
-      strictMemoryLock: true,
-    }) as KeyRingOptions;
     const keyRing = new this({
       keysPath,
+      passwordOpsLimit,
+      passwordMemLimit,
+      strictMemoryLock,
       workerManager,
-      options: optionsDefaulted,
       fs,
       logger,
     });
     // Spreading defaulted options to start to provide the keys overrides
-    await keyRing.start({ password, fresh, ...optionsDefaulted });
+    await keyRing.start(startOptions);
     logger.info(`Created ${this.name}`);
     return keyRing;
   }
@@ -102,13 +113,17 @@ class KeyRing {
   public constructor({
     keysPath,
     workerManager,
-    options,
+    passwordOpsLimit,
+    passwordMemLimit,
+    strictMemoryLock,
     fs,
     logger,
   }: {
     keysPath: string;
     workerManager?: PolykeyWorkerManagerInterface;
-    options: KeyRingOptions;
+    passwordOpsLimit?: PasswordOpsLimit;
+    passwordMemLimit?: PasswordMemLimit;
+    strictMemoryLock: boolean;
     fs: FileSystem;
     logger: Logger;
   }) {
@@ -116,9 +131,9 @@ class KeyRing {
     this.keysPath = keysPath;
     this.workerManager = workerManager;
     this.fs = fs;
-    this.passwordOpsLimit = options.passwordOpsLimit;
-    this.passwordMemLimit = options.passwordMemLimit;
-    this.strictMemoryLock = options.strictMemoryLock;
+    this.passwordOpsLimit = passwordOpsLimit;
+    this.passwordMemLimit = passwordMemLimit;
+    this.strictMemoryLock = strictMemoryLock;
     this.publicKeyPath = path.join(keysPath, 'public.jwk');
     this.privateKeyPath = path.join(keysPath, 'private.jwk');
     this.dbKeyPath = path.join(keysPath, 'db.jwk');

@@ -61,11 +61,9 @@ describe('nodesAdd', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -89,10 +87,8 @@ describe('nodesAdd', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -270,11 +266,9 @@ describe('nodesClaim', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -303,10 +297,8 @@ describe('nodesClaim', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -441,11 +433,9 @@ describe('nodesFind', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -469,10 +459,8 @@ describe('nodesFind', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     await nodeConnectionManager.start({ host: localhost as Host });
@@ -572,11 +560,9 @@ describe('nodesPing', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -605,10 +591,8 @@ describe('nodesPing', () => {
       nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
