@@ -4,6 +4,7 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { RPCClient } from '@matrixai/rpc';
+import { WebSocketClient } from '@matrixai/ws';
 import { middleware as rpcMiddleware } from '@matrixai/rpc';
 import * as clientMiddleware from './client/middleware';
 import { Session } from './sessions';
@@ -56,6 +57,7 @@ class PolykeyClient {
     }
     await utils.mkdirExists(fs, nodePath);
     const sessionTokenPath = path.join(nodePath, config.paths.tokenBase);
+    const webSocketClient = new WebSocketClient();
     const session = await Session.createSession({
       sessionTokenPath,
       logger: logger.getChild(Session.name),
@@ -75,6 +77,7 @@ class PolykeyClient {
     const pkClient = new this({
       nodePath,
       rpcClientClient: rpcClientClient,
+      webSocketClient,
       session,
       fs,
       logger,
@@ -87,6 +90,7 @@ class PolykeyClient {
   public readonly nodePath: string;
   public readonly session: Session;
   public readonly rpcClientClient: RPCClient<typeof clientClientManifest>;
+  public readonly webSocketClient: WebSocketClient;
 
   protected fs: FileSystem;
   protected logger: Logger;
@@ -94,12 +98,14 @@ class PolykeyClient {
   constructor({
     nodePath,
     rpcClientClient,
+    webSocketClient,
     session,
     fs,
     logger,
   }: {
     nodePath: string;
     rpcClientClient: RPCClient<typeof clientClientManifest>;
+    webSocketClient: WebSocketClient;
     session: Session;
     fs: FileSystem;
     logger: Logger;
@@ -108,6 +114,7 @@ class PolykeyClient {
     this.nodePath = nodePath;
     this.session = session;
     this.rpcClientClient = rpcClientClient;
+    this.webSocketClient = webSocketClient;
     this.fs = fs;
   }
 
