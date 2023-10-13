@@ -528,7 +528,7 @@ const standardErrors: {
 
 function toError(
   errorData: JSONValue,
-  clientMetadata: JSONValue,
+  clientMetadata: Record<string, JSONValue>,
   top: boolean = true,
 ): any {
   if (
@@ -583,7 +583,13 @@ function toError(
       }
       if (top) {
         const remoteError = new networkErrors.ErrorPolykeyRemote(
-          clientMetadata,
+          {
+            localHost: clientMetadata.localHost,
+            localPort: clientMetadata.localPort,
+            remoteHost: clientMetadata.remoteHost,
+            remotePort: clientMetadata.remotePort,
+            command: clientMetadata.command,
+          },
           undefined,
           {
             cause: e,
@@ -605,7 +611,13 @@ function toError(
       }
       if (top) {
         const remoteError = new networkErrors.ErrorPolykeyRemote(
-          clientMetadata,
+          {
+            localHost: clientMetadata.localHost,
+            localPort: clientMetadata.localPort,
+            remoteHost: clientMetadata.remoteHost,
+            remotePort: clientMetadata.remotePort,
+            command: clientMetadata.command,
+          },
           undefined,
           {
             cause: e,
