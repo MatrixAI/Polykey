@@ -225,11 +225,24 @@ async function generateCertificate({
         extendedKeyUsageFlags.timeStamping,
         extendedKeyUsageFlags.ocspSigning,
       ]),
-      new x509.SubjectAlternativeNameExtension({
-        dns: [subjectNodeIdEncoded],
-        url: [`pk://${subjectNodeIdEncoded}`],
-        ip: ['127.0.0.1', '::1'],
-      }),
+      new x509.SubjectAlternativeNameExtension([
+        {
+          type: 'dns',
+          value: subjectNodeIdEncoded,
+        },
+        {
+          type: 'url',
+          value: `pk://${subjectNodeIdEncoded}`,
+        },
+        {
+          type: 'ip',
+          value: '127.0.0.1',
+        },
+        {
+          type: 'ip',
+          value: '::1',
+        },
+      ]),
       await x509.SubjectKeyIdentifierExtension.create(subjectPublicCryptoKey),
       new PolykeyVersionExtension(config.sourceVersion),
     ] as Array<x509.Extension>,
