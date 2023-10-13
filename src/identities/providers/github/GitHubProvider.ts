@@ -315,6 +315,15 @@ class GitHubProvider extends Provider {
             { cause: e },
           );
         }
+        const error = data?.errors?.at?.(0);
+        if (error != null) {
+          throw new identitiesErrors.ErrorProviderCall(
+            `Provider response body contains an error: ${error.message}`,
+            {
+              data: error
+            }
+          );
+        }
         const foundIdentityData: any[] = data?.data?.user?.[identityGroup]?.nodes ?? [];
         for (const identityData of foundIdentityData) {
           identityData.providerId = this.id;
