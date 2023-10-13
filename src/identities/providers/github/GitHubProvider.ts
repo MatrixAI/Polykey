@@ -266,48 +266,6 @@ class GitHubProvider extends Provider {
     };
   }
 
-  public async fetchAllFollowing(
-    authIdentityId: IdentityId,
-    token: ProviderToken,
-  ): Promise<any[]> {
-    let following = [];
-    let page = 1;
-    while (true) {
-      const request = this.createRequest(
-        `${this.apiUrl}/user/following?per_page=100&page=${page}`,
-        { method: 'GET' },
-        token,
-      );
-      const response = await fetch(request);
-      const data = await response.json();
-      following = following.concat(data);
-      if (data.length < 100) break;
-      page++;
-    }
-    return following;
-  }
-
-  public async fetchAllFollowers(
-    authIdentityId: IdentityId,
-    token: ProviderToken,
-  ): Promise<any[]> {
-    let followers = [];
-    let page = 1;
-    while (true) {
-      const request = this.createRequest(
-        `${this.apiUrl}/user/followers?per_page=100&page=${page}`,
-        { method: 'GET' },
-        token,
-      );
-      const response = await fetch(request);
-      const data = await response.json();
-      followers = followers.concat(data);
-      if (data.length < 100) break;
-      page++;
-    }
-    return followers;
-  }
-
   /**
    * Gets connected IdentityData from following and follower connections.
    */
@@ -323,78 +281,17 @@ class GitHubProvider extends Provider {
     }
     providerToken = await this.checkToken(providerToken, authIdentityId);
 
-    const getRateLimit = async (token: ProviderToken) => {
-      const rateLimitRequest = this.createRequest(
-        `${this.apiUrl}/rate_limit`,
-        {
-          method: 'GET',
-        },
-        token,
-      );
-      const rateLimitResponse = await fetch(rateLimitRequest);
-      return await rateLimitResponse.json();
-    };
-
-    const initialRateLimit = await getRateLimit(providerToken);
-    let rateLimit = initialRateLimit.resources.core.remaining;
-
-    const getUserInfo = async (token: ProviderToken) => {
-      const userInfoRequest = this.createRequest(
-        `${this.apiUrl}/user`,
-        { method: 'GET' },
-        token,
-      );
-      const userInfoResponse = await fetch(userInfoRequest);
-      return await userInfoResponse.json();
-    };
-
-    const userInfo = await getUserInfo(providerToken);
-    rateLimit--;
-
-    const totalConnections = userInfo.followers + userInfo.following;
-
-    const canUsePromiseAll = rateLimit > totalConnections;
-
-    if (canUsePromiseAll) {
-      const allFollowing = await this.fetchAllFollowing(
-        authIdentityId,
-        providerToken,
-      );
-      const allFollowers = await this.fetchAllFollowers(
-        authIdentityId,
-        providerToken,
-      );
-
-      const followingPromises = allFollowing.map((user) =>
-        this.getIdentityData(authIdentityId, user.login),
-      );
-      const followerPromises = allFollowers.map((user) =>
-        this.getIdentityData(authIdentityId, user.login),
-      );
-
-      const allIdentityData = await Promise.all([
-        ...followingPromises,
-        ...followerPromises,
-      ]);
-
-      for (const identityData of allIdentityData) {
-        if (
-          identityData &&
-          identitiesUtils.matchIdentityData(identityData, searchTerms)
-        ) {
-          yield identityData;
-        }
-      }
-    } else {
-      let pageNum = 1;
+    const foundIdentityIds: Set<IdentityId> = new Set();
+    for (const identityGroup of ['followers', 'following'] as const) {
+      let cursor: string | undefined;
       while (true) {
-        if (rateLimit <= 0) {
-          break;
-        }
         const request = this.createRequest(
-          `${this.apiUrl}/user/following?per_page=100&page=${pageNum}`,
+          `${this.apiUrl}/graphql`,
           {
-            method: 'GET',
+            method: 'POST',
+            body: JSON.stringify({
+              query: this.getConnectedIdentityDatasRequestBody(authIdentityId, identityGroup, cursor)
+            })
           },
           providerToken,
         );
@@ -418,77 +315,48 @@ class GitHubProvider extends Provider {
             { cause: e },
           );
         }
-        for (const item of data) {
-          const identityData = await this.getIdentityData(
-            authIdentityId,
-            item.login,
-          );
-          if (
-            identityData &&
-            identitiesUtils.matchIdentityData(identityData, searchTerms)
-          ) {
+        const foundIdentityData: any[] = data?.data?.user?.[identityGroup]?.nodes ?? [];
+        for (const identityData of foundIdentityData) {
+          identityData.providerId = this.id;
+          if (!foundIdentityIds.has(identityData.identityId) && identitiesUtils.matchIdentityData(identityData, searchTerms)) {
+            foundIdentityIds.add(identityData.identityId);
             yield identityData;
           }
         }
-        rateLimit--;
-        if (data.length === 0) {
+        if (foundIdentityData.length === 0) {
           break;
         } else {
-          pageNum = pageNum + 1;
-        }
-      }
-      pageNum = 1;
-      while (true) {
-        if (rateLimit <= 0) {
-          break;
-        }
-        const request = this.createRequest(
-          `${this.apiUrl}/user/followers?per_page=100&page=${pageNum}`,
-          {
-            method: 'GET',
-          },
-          providerToken,
-        );
-        const response = await fetch(request);
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new identitiesErrors.ErrorProviderUnauthenticated(
-              `Invalid access token`,
-            );
-          }
-          throw new identitiesErrors.ErrorProviderCall(
-            `Provider responded with ${response.status} ${response.statusText}`,
-          );
-        }
-        let data;
-        try {
-          data = await response.json();
-        } catch (e) {
-          throw new identitiesErrors.ErrorProviderCall(
-            `Provider response body is not valid JSON`,
-            { cause: e },
-          );
-        }
-        for (const item of data) {
-          const identityData = await this.getIdentityData(
-            authIdentityId,
-            item.login,
-          );
-          if (
-            identityData &&
-            identitiesUtils.matchIdentityData(identityData, searchTerms)
-          ) {
-            yield identityData;
-          }
-        }
-        rateLimit--;
-        if (data.length === 0) {
-          break;
-        } else {
-          pageNum = pageNum + 1;
+          const endCursor: string | undefined = data?.data?.user?.followers?.pageInfo.endCursor;
+          if (endCursor == null) break;
+          cursor = endCursor;
         }
       }
     }
+  }
+
+  protected getConnectedIdentityDatasRequestBody(
+    authIdentityId: IdentityId,
+    identityGroup: 'following' | 'followers',
+    cursor?: string
+  ): string {
+    const query = `query {
+      user(login: "${authIdentityId}") {
+        ${identityGroup}(first: 100${cursor == null ? '' : `, after: "${cursor}"`}) {
+          nodes {
+            identityId: login
+            name
+            email
+            url
+          }
+          pageInfo {
+            endCursor
+            startCursor
+          }
+          totalCount
+        }
+      }
+    }`;
+    return query;
   }
 
   /**
