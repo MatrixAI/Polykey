@@ -282,16 +282,14 @@ class GitHubProvider extends Provider {
     providerToken = await this.checkToken(providerToken, authIdentityId);
 
     const foundIdentityIds: Set<IdentityId> = new Set();
-    for (const identityGroup of ['followers', 'following'] as const) {
+    for (const identityGroup of ['following', 'followers'] as const) {
       let cursor: string | undefined;
       while (true) {
         const request = this.createRequest(
           `${this.apiUrl}/graphql`,
           {
             method: 'POST',
-            body: JSON.stringify({
-              query: this.getConnectedIdentityDatasRequestBody(authIdentityId, identityGroup, cursor)
-            })
+            body: this.getConnectedIdentityDatasRequestBody(authIdentityId, identityGroup, cursor)
           },
           providerToken,
         );
@@ -365,7 +363,7 @@ class GitHubProvider extends Provider {
         }
       }
     }`;
-    return query;
+    return JSON.stringify({ query });
   }
 
   /**
