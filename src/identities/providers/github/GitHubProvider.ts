@@ -42,7 +42,7 @@ class GitHubProvider extends Provider {
   }
 
   public async *authenticate(
-    timeout: number = 120000,
+    timeout: number = Infinity,
   ): AsyncGenerator<ProviderAuthenticateRequest, IdentityId> {
     const params = new URLSearchParams();
     params.set('client_id', this.clientId);
