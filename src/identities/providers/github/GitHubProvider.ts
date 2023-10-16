@@ -30,9 +30,9 @@ class GitHubProvider extends Provider {
   protected logger: Logger;
 
   public constructor({
-    clientId,
-    logger,
-  }: {
+                       clientId,
+                       logger,
+                     }: {
     clientId: string;
     logger?: Logger;
   }) {
@@ -42,7 +42,7 @@ class GitHubProvider extends Provider {
   }
 
   public async *authenticate(
-    timeout: number = 1000000,
+    timeout: number = 120000,
   ): AsyncGenerator<ProviderAuthenticateRequest, IdentityId> {
     const params = new URLSearchParams();
     params.set('client_id', this.clientId);
