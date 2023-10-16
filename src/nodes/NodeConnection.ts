@@ -68,7 +68,7 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventNodeConnectionError = (
     evt: nodesEvents.EventNodeConnectionError,
   ): void => {
-    this.logger.warn(`NodeConnection error caused by ${evt.detail.message}`);
+    this.logger.debug(`NodeConnection error caused by ${evt.detail.message}`);
     this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
   };
 
@@ -81,7 +81,7 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventNodeConnectionClose = async (
     _evt: nodesEvents.EventNodeConnectionClose,
   ): Promise<void> => {
-    this.logger.warn(`close event triggering NodeConnection.destroy`);
+    this.logger.debug(`close event triggering NodeConnection.destroy`);
     // This will trigger the destruction of this NodeConnection.
     if (this[status] !== 'destroying') {
       await this.destroy({ force: true });
@@ -111,9 +111,12 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventQUICError = (
     evt: quicEvents.EventQUICConnectionError,
   ): void => {
-    const err = new nodesErrors.ErrorNodeConnectionInternalError(undefined, {
-      cause: evt.detail,
-    });
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      evt.detail.message,
+      {
+        cause: evt.detail,
+      },
+    );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
     );
