@@ -816,7 +816,7 @@ class NodeConnectionManager {
         connectionsResults,
         { timer: ctx.timer, signal },
       ).finally(() => {
-        if (connectionsResults.size === resolvedAddresses.length) {
+        if (connectionsResults.size === nodeIds.length) {
           // We have found all nodes, clean up remaining connections
           abortController.abort(cleanUpReason);
         }
@@ -825,7 +825,7 @@ class NodeConnectionManager {
     // We race the connections with timeout
     try {
       this.logger.debug(`awaiting connections`);
-      await Promise.race([Promise.all(connProms)]);
+      await Promise.allSettled(connProms);
       this.logger.debug(`awaiting connections resolved`);
     } finally {
       // Cleaning up
@@ -1554,21 +1554,22 @@ class NodeConnectionManager {
    * The main use-case is to connect to multiple seed nodes on the same hostname.
    * @param nodeIds
    * @param addresses
-   * @param limit
    * @param ctx
    */
   public getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    limit?: number,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<Array<NodeId>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(true)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
   public async getMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    limit: number | undefined,
     @context ctx: ContextTimed,
   ): Promise<Array<NodeId>> {
     const locks: Array<LockRequest<Lock>> = nodeIds.map((nodeId) => {

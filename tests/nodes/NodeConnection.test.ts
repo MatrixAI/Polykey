@@ -4,10 +4,10 @@ import type { RPCStream } from '@matrixai/rpc';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
-import { ErrorContextsTimedTimeOut } from '@matrixai/contexts/dist/errors';
 import { RPCServer } from '@matrixai/rpc';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesEvents from '@/nodes/events';
+import * as nodesErrors from '@/nodes/errors';
 import * as keysUtils from '@/keys/utils';
 import NodeConnection from '@/nodes/NodeConnection';
 import { promise } from '@/utils';
@@ -164,8 +164,7 @@ describe(`${NodeConnection.name}`, () => {
       { timer: 100 },
     ).then(extractNodeConnection);
     await expect(nodeConnectionProm).rejects.toThrow(
-      // QuicErrors.ErrorQUICClientCreateTimeOut, // FIXME: this is not throwing the right error
-      ErrorContextsTimedTimeOut,
+      nodesErrors.ErrorNodeConnectionTimeout,
     );
   });
   test('connection drops out (socket stops responding)', async () => {

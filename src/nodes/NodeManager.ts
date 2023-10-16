@@ -1221,23 +1221,29 @@ class NodeManager {
       )}`,
     );
     // Establishing connections to the seed nodes
-    const connections = await this.nodeConnectionManager.getMultiConnection(
-      seedNodes,
-      filteredAddresses,
-      pingTimeoutTime,
-      { signal: ctx.signal },
-    );
+    let connections: Array<NodeId>;
+    try {
+      connections = await this.nodeConnectionManager.getMultiConnection(
+        seedNodes,
+        filteredAddresses,
+        { signal: ctx.signal },
+      );
+    } catch (e) {
+      if (
+        e instanceof nodesErrors.ErrorNodeConnectionManagerMultiConnectionFailed
+      ) {
+        // Not explicitly a failure but we do want to stop here
+        this.logger.warn(
+          'Failed to connect to any seed nodes when syncing node graph',
+        );
+        return;
+      }
+      throw e;
+    }
     logger.debug(`Multi-connection established for`);
     connections.forEach((nodeId) => {
       logger.debug(`${nodesUtils.encodeNodeId(nodeId)}`);
     });
-    if (connections.length === 0) {
-      // Not explicitly a failure but we do want to stop here
-      this.logger.warn(
-        'Failed to connect to any seed nodes when syncing node graph',
-      );
-      return;
-    }
     // Using a map to avoid duplicates
     const closestNodesAll: Map<NodeId, NodeData> = new Map();
     const localNodeId = this.keyRing.getNodeId();

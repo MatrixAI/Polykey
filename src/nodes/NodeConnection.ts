@@ -16,9 +16,14 @@ import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { status } from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventAll } from '@matrixai/events';
-import { QUICClient, events as quicEvents } from '@matrixai/quic';
+import {
+  QUICClient,
+  events as quicEvents,
+  errors as quicErrors,
+} from '@matrixai/quic';
 import { RPCClient } from '@matrixai/rpc';
 import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import { errors as contextErrors } from '@matrixai/contexts';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as networkUtils from '../network/utils';
@@ -68,7 +73,7 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventNodeConnectionError = (
     evt: nodesEvents.EventNodeConnectionError,
   ): void => {
-    this.logger.warn(`NodeConnection error caused by ${evt.detail.message}`);
+    this.logger.debug(`NodeConnection error caused by ${evt.detail.message}`);
     this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
   };
 
@@ -81,7 +86,7 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventNodeConnectionClose = async (
     _evt: nodesEvents.EventNodeConnectionClose,
   ): Promise<void> => {
-    this.logger.warn(`close event triggering NodeConnection.destroy`);
+    this.logger.debug(`close event triggering NodeConnection.destroy`);
     // This will trigger the destruction of this NodeConnection.
     if (this[status] !== 'destroying') {
       await this.destroy({ force: true });
@@ -111,9 +116,12 @@ class NodeConnection<M extends ClientManifest> {
   protected handleEventQUICError = (
     evt: quicEvents.EventQUICConnectionError,
   ): void => {
-    const err = new nodesErrors.ErrorNodeConnectionInternalError(undefined, {
-      cause: evt.detail,
-    });
+    const err = new nodesErrors.ErrorNodeConnectionInternalError(
+      evt.detail.message,
+      {
+        cause: evt.detail,
+      },
+    );
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionError({ detail: err }),
     );
@@ -223,40 +231,56 @@ class NodeConnection<M extends ClientManifest> {
       throw new nodesErrors.ErrorNodeConnectionHostWildcard();
     }
     let validatedNodeId: NodeId | undefined;
-    const quicClient = await QUICClient.createQUICClient(
-      {
-        host: targetHost,
-        port: targetPort,
-        socket: quicSocket,
-        config: {
-          keepAliveIntervalTime: connectionKeepAliveIntervalTime,
-          maxIdleTimeout: connectionKeepAliveTimeoutTime,
-          verifyPeer: true,
-          verifyCallback: async (certPEMs) => {
-            const result = await networkUtils.verifyServerCertificateChain(
-              targetNodeIds,
-              certPEMs,
-            );
-            if (result.result === 'success') {
-              validatedNodeId = result.nodeId;
-              return;
-            } else {
-              return result.value;
-            }
+    let quicClient: QUICClient;
+    try {
+      quicClient = await QUICClient.createQUICClient(
+        {
+          host: targetHost,
+          port: targetPort,
+          socket: quicSocket,
+          config: {
+            keepAliveIntervalTime: connectionKeepAliveIntervalTime,
+            maxIdleTimeout: connectionKeepAliveTimeoutTime,
+            verifyPeer: true,
+            verifyCallback: async (certPEMs) => {
+              const result = await networkUtils.verifyServerCertificateChain(
+                targetNodeIds,
+                certPEMs,
+              );
+              if (result.result === 'success') {
+                validatedNodeId = result.nodeId;
+                return;
+              } else {
+                return result.value;
+              }
+            },
+            ca: undefined,
+            key: tlsConfig.keyPrivatePem,
+            cert: tlsConfig.certChainPem,
           },
-          ca: undefined,
-          key: tlsConfig.keyPrivatePem,
-          cert: tlsConfig.certChainPem,
+          crypto: {
+            ops: crypto,
+          },
+          reasonToCode: nodesUtils.reasonToCode,
+          codeToReason: nodesUtils.codeToReason,
+          logger: logger.getChild(QUICClient.name),
         },
-        crypto: {
-          ops: crypto,
-        },
-        reasonToCode: nodesUtils.reasonToCode,
-        codeToReason: nodesUtils.codeToReason,
-        logger: logger.getChild(QUICClient.name),
-      },
-      ctx,
-    );
+        ctx,
+      );
+    } catch (e) {
+      if (
+        e instanceof contextErrors.ErrorContextsTimedTimeOut ||
+        e instanceof quicErrors.ErrorQUICClientCreateTimeout ||
+        e instanceof quicErrors.ErrorQUICConnectionStartTimeout ||
+        e instanceof quicErrors.ErrorQUICConnectionIdleTimeout
+      ) {
+        throw new nodesErrors.ErrorNodeConnectionTimeout(
+          `Timed out after ${ctx.timer.delay}ms`,
+          { cause: e },
+        );
+      }
+      throw e;
+    }
     const quicConnection = quicClient.connection;
     // FIXME: right now I'm not sure it's possible for streams to be emitted while setting up here.
     //  If we get any while setting up they need to be re-emitted after set up. Otherwise cleaned up.
