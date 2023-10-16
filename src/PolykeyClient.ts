@@ -4,8 +4,8 @@ import path from 'path';
 import Logger from '@matrixai/logger';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { RPCClient } from '@matrixai/rpc';
-import { WebSocketClient } from '@matrixai/ws';
 import { middleware as rpcMiddleware } from '@matrixai/rpc';
+import { WebSocketClient } from "@matrixai/ws";
 import * as clientMiddleware from './client/middleware';
 import { Session } from './sessions';
 import * as utils from './utils';
@@ -35,20 +35,21 @@ interface PolykeyClient extends CreateDestroyStartStop {}
 )
 class PolykeyClient {
   static async createPolykeyClient({
-    nodePath = config.defaultsUser.nodePath,
-    streamFactory,
-    streamKeepAliveTimeoutTime,
-    parserBufferByteLimit,
-    fs = require('fs'),
-    logger = new Logger(this.name),
-    fresh = false,
-  }: {
+                                     nodePath = config.defaultsUser.nodePath,
+                                     streamFactory,
+                                     streamKeepAliveTimeoutTime,
+                                     parserBufferByteLimit,
+                                     fs = require('fs'),
+                                     logger = new Logger(this.name),
+                                     fresh = false,
+                                   }: {
     nodePath?: string;
     streamFactory: StreamFactory;
     streamKeepAliveTimeoutTime?: number;
     parserBufferByteLimit?: number;
     fs?: FileSystem;
     logger?: Logger;
+    ws?: WebSocketClient
     fresh?: boolean;
   }): Promise<PolykeyClient> {
     logger.info(`Creating ${this.name}`);
@@ -57,12 +58,12 @@ class PolykeyClient {
     }
     await utils.mkdirExists(fs, nodePath);
     const sessionTokenPath = path.join(nodePath, config.paths.tokenBase);
-    const webSocketClient = new WebSocketClient();
     const session = await Session.createSession({
       sessionTokenPath,
       logger: logger.getChild(Session.name),
       fresh,
     });
+    const ws: WebSocketClient = new WebSocketClient();
     const rpcClientClient = new RPCClient({
       manifest: clientClientManifest,
       streamFactory,
@@ -77,7 +78,6 @@ class PolykeyClient {
     const pkClient = new this({
       nodePath,
       rpcClientClient: rpcClientClient,
-      webSocketClient,
       session,
       fs,
       logger,
@@ -90,31 +90,29 @@ class PolykeyClient {
   public readonly nodePath: string;
   public readonly session: Session;
   public readonly rpcClientClient: RPCClient<typeof clientClientManifest>;
-  public readonly webSocketClient: WebSocketClient;
 
+  protected ws: WebSocketClient;
   protected fs: FileSystem;
   protected logger: Logger;
 
   constructor({
-    nodePath,
-    rpcClientClient,
-    webSocketClient,
-    session,
-    fs,
-    logger,
-  }: {
+                nodePath,
+                rpcClientClient,
+                session,
+                fs,
+                logger,
+              }: {
     nodePath: string;
     rpcClientClient: RPCClient<typeof clientClientManifest>;
-    webSocketClient: WebSocketClient;
     session: Session;
     fs: FileSystem;
     logger: Logger;
   }) {
+    this.ws = new WebSocketClient();
     this.logger = logger;
     this.nodePath = nodePath;
     this.session = session;
     this.rpcClientClient = rpcClientClient;
-    this.webSocketClient = webSocketClient;
     this.fs = fs;
   }
 
