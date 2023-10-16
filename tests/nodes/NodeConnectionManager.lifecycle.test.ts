@@ -27,14 +27,18 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   let dataDir: string;
 
-  let serverTlsConfig: TLSConfig;
+  let serverTlsConfig1: TLSConfig;
+  let serverTlsConfig2: TLSConfig;
   let clientTlsConfig: TLSConfig;
-  let serverNodeId: NodeId;
+  let serverNodeId1: NodeId;
+  let serverNodeId2: NodeId;
   let clientNodeId: NodeId;
-  let serverNodeIdEncoded: NodeIdEncoded;
+  let serverNodeIdEncoded1: NodeIdEncoded;
+  let serverNodeIdEncoded2: NodeIdEncoded;
   let keyRingPeer: KeyRing;
-  let nodeConnectionManagerPeer: NodeConnectionManager;
-  let serverAddress: NodeAddress;
+  let nodeConnectionManagerPeer1: NodeConnectionManager;
+  let nodeConnectionManagerPeer2: NodeConnectionManager;
+  let serverAddress1: NodeAddress;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -47,12 +51,16 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPathPeer = path.join(dataDir, 'keysPeer');
-    const serverKeyPair = keysUtils.generateKeyPair();
+    const serverKeyPair1 = keysUtils.generateKeyPair();
+    const serverKeyPair2 = keysUtils.generateKeyPair();
     const clientKeyPair = keysUtils.generateKeyPair();
-    serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
+    serverNodeId1 = keysUtils.publicKeyToNodeId(serverKeyPair1.publicKey);
+    serverNodeId2 = keysUtils.publicKeyToNodeId(serverKeyPair2.publicKey);
     clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
-    serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
-    serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
+    serverNodeIdEncoded1 = nodesUtils.encodeNodeId(serverNodeId1);
+    serverNodeIdEncoded2 = nodesUtils.encodeNodeId(serverNodeId2);
+    serverTlsConfig1 = await tlsUtils.createTLSConfig(serverKeyPair1);
+    serverTlsConfig2 = await tlsUtils.createTLSConfig(serverKeyPair2);
     clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
     keyRingPeer = await KeyRing.createKeyRing({
       password,
@@ -64,14 +72,24 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         strictMemoryLock: false,
       },
     });
-    nodeConnectionManagerPeer = new NodeConnectionManager({
+    nodeConnectionManagerPeer1 = new NodeConnectionManager({
       keyRing: keyRingPeer,
-      logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
+      logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       nodeGraph: {} as NodeGraph,
-      tlsConfig: serverTlsConfig,
+      tlsConfig: serverTlsConfig1,
       seedNodes: undefined,
     });
-    await nodeConnectionManagerPeer.start({
+    await nodeConnectionManagerPeer1.start({
+      host: localHost,
+    });
+    nodeConnectionManagerPeer2 = new NodeConnectionManager({
+      keyRing: keyRingPeer,
+      logger: logger.getChild(`${NodeConnectionManager.name}Peer2`),
+      nodeGraph: {} as NodeGraph,
+      tlsConfig: serverTlsConfig2,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManagerPeer2.start({
       host: localHost,
     });
 
@@ -97,9 +115,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger,
     });
-    serverAddress = {
-      host: nodeConnectionManagerPeer.host,
-      port: nodeConnectionManagerPeer.port,
+    serverAddress1 = {
+      host: nodeConnectionManagerPeer1.host,
+      port: nodeConnectionManagerPeer1.port,
     };
   });
 
@@ -112,7 +130,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await keyRing.stop();
     await keyRing.destroy();
 
-    await nodeConnectionManagerPeer.stop();
+    await nodeConnectionManagerPeer1.stop();
+    await nodeConnectionManagerPeer2.stop();
   });
 
   test('NodeConnectionManager readiness', async () => {
@@ -150,7 +169,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   // FIXME: holding process open for a time. connectionKeepAliveIntervalTime holds the process open, failing to clean up?
   test('acquireConnection should create connection', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
@@ -165,14 +184,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     });
 
-    const acquire = await nodeConnectionManager.acquireConnection(serverNodeId);
+    const acquire =
+      await nodeConnectionManager.acquireConnection(serverNodeId1);
     const [release] = await acquire();
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     await release();
     await nodeConnectionManager.stop();
   });
   test('withConnF should create connection', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -184,14 +204,14 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     });
 
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
-      expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
+      expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     });
 
     await nodeConnectionManager.stop();
   });
   test('should list active connections', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -203,26 +223,26 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     });
 
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
-      expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
+      expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     });
 
     const connectionsList = nodeConnectionManager.listConnections();
     expect(connectionsList).toHaveLength(1);
     expect(nodesUtils.encodeNodeId(connectionsList[0].nodeId)).toEqual(
-      serverNodeIdEncoded,
+      serverNodeIdEncoded1,
     );
     expect(connectionsList[0].address.host).toEqual(
-      nodeConnectionManagerPeer.host,
+      nodeConnectionManagerPeer1.host,
     );
     expect(connectionsList[0].address.port).toEqual(
-      nodeConnectionManagerPeer.port,
+      nodeConnectionManagerPeer1.port,
     );
 
     await nodeConnectionManager.stop();
   });
   test('withConnG should create connection', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -237,7 +257,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const connectionMap = nodeConnectionManager.connections;
 
     const gen = nodeConnectionManager.withConnG(
-      serverNodeId,
+      serverNodeId1,
       async function* (): AsyncGenerator {
         expect(connectionMap.size).toBeGreaterThanOrEqual(1);
       },
@@ -284,7 +304,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.stop();
   });
   test('connection should persist', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -295,21 +315,21 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
     });
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     expect(nodeConnectionManager.listConnections()).toHaveLength(1);
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
     });
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
     await nodeConnectionManager.stop();
   });
   test('should create 1 connection with concurrent creates', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -322,7 +342,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     const waitProm = promise<void>();
     const tryConnection = () => {
-      return nodeConnectionManager.withConnF(serverNodeId, async () => {
+      return nodeConnectionManager.withConnF(serverNodeId1, async () => {
         // Do nothing
         await waitProm.p;
       });
@@ -336,13 +356,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     ]);
     waitProm.resolveP();
     await tryProm;
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
     await nodeConnectionManager.stop();
   });
   test('should destroy a connection', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -353,28 +373,28 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
     });
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
     // @ts-ignore: Kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
     const connection = connectionMap.get(
-      serverNodeId.toString() as NodeIdString,
+      serverNodeId1.toString() as NodeIdString,
     );
     await connection!.connection.destroy({ force: true });
 
     // Waiting for connection to clean up from map
     await sleep(100);
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeFalse();
     expect(nodeConnectionManager.listConnections()).toHaveLength(0);
 
     await nodeConnectionManager.stop();
   });
   test('stopping should destroy all connections', async () => {
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -385,10 +405,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
+    await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
     });
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
     expect(nodeConnectionManager.listConnections()).toHaveLength(1);
 
     // @ts-ignore: Kidnap protected property
@@ -410,12 +430,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     });
     const result = await nodeConnectionManager.pingNode(
-      serverNodeId,
+      serverNodeId1,
       localHost as Host,
-      nodeConnectionManagerPeer.port,
+      nodeConnectionManagerPeer1.port,
     );
     expect(result).toBeTrue();
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeTrue();
 
     await nodeConnectionManager.stop();
   });
@@ -431,13 +451,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       host: localHost,
     });
     const result = await nodeConnectionManager.pingNode(
-      serverNodeId,
+      serverNodeId1,
       localHost as Host,
       12345 as Port,
       { timer: 100 },
     );
     expect(result).toBeFalse();
-    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeFalse();
+    expect(nodeConnectionManager.hasConnection(serverNodeId1)).toBeFalse();
 
     await nodeConnectionManager.stop();
   });
@@ -455,23 +475,151 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,
       localHost as Host,
-      nodeConnectionManagerPeer.port,
+      nodeConnectionManagerPeer1.port,
     );
     expect(result).toBeFalse();
     expect(nodeConnectionManager.hasConnection(clientNodeId)).toBeFalse();
 
     await nodeConnectionManager.stop();
   });
-  // TODO: tests for multi connections, needs custom verification
-  test.todo(
-    'use multi-connection to connect to one node with multiple addresses',
-  );
-  test.todo(
-    'use multi-connection to connect to multiple nodes with multiple addresses',
-  );
-  test.todo(
-    'use multi-connection to connect to multiple nodes with single address',
-  );
+  test('use multi-connection to connect to one node with multiple addresses', async () => {
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
+    await nodeGraph.setNode(serverNodeId2, serverAddress1);
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      tlsConfig: clientTlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+
+    const connectedNodes = await nodeConnectionManager.getMultiConnection(
+      [serverNodeId1],
+      [
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
+      ],
+      { timer: 200 },
+    );
+    expect(connectedNodes.length).toBe(1);
+    expect(nodesUtils.encodeNodeId(connectedNodes[0])).toBe(
+      serverNodeIdEncoded1,
+    );
+
+    await nodeConnectionManager.stop();
+  });
+  test('use multi-connection to connect to multiple nodes with multiple addresses', async () => {
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
+    await nodeGraph.setNode(serverNodeId2, serverAddress1);
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      tlsConfig: clientTlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+
+    const connectedNodes = await nodeConnectionManager.getMultiConnection(
+      [serverNodeId1, serverNodeId2],
+      [
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port },
+      ],
+      { timer: 200 },
+    );
+    expect(connectedNodes.length).toBe(2);
+    const connectedIdStrings = connectedNodes.map((v) =>
+      nodesUtils.encodeNodeId(v),
+    );
+    expect(connectedIdStrings).toContain(serverNodeIdEncoded1);
+    expect(connectedIdStrings).toContain(serverNodeIdEncoded2);
+
+    await nodeConnectionManager.stop();
+  });
+  test('use multi-connection to connect to multiple nodes with single address', async () => {
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
+    await nodeGraph.setNode(serverNodeId2, serverAddress1);
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      tlsConfig: clientTlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+
+    const connectedNodes = await nodeConnectionManager.getMultiConnection(
+      [serverNodeId1, serverNodeId2],
+      [{ host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port }],
+      { timer: 200 },
+    );
+    expect(connectedNodes.length).toBe(1);
+    const connectedIdStrings = connectedNodes.map((v) =>
+      nodesUtils.encodeNodeId(v),
+    );
+    expect(connectedIdStrings).toContain(serverNodeIdEncoded1);
+    expect(connectedIdStrings).not.toContain(serverNodeIdEncoded2);
+
+    await nodeConnectionManager.stop();
+  });
   test.todo('multi-connection respects locking');
-  test.todo('multi-connection ends early when all nodes are connected to');
+  test('multi-connection ends early when all nodes are connected to', async () => {
+    await nodeGraph.setNode(serverNodeId1, serverAddress1);
+    await nodeGraph.setNode(serverNodeId2, serverAddress1);
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      tlsConfig: clientTlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+    });
+
+    const connectedNodesProm = nodeConnectionManager.getMultiConnection(
+      [serverNodeId1, serverNodeId2],
+      [
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer1.port },
+        { host: '127.0.0.1' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.2' as Host, port: nodeConnectionManagerPeer2.port },
+        { host: '127.0.0.3' as Host, port: nodeConnectionManagerPeer2.port },
+      ],
+      { timer: 2000 },
+    );
+    const result = await Promise.race([
+      sleep(1000).then(() => false),
+      connectedNodesProm,
+    ]);
+
+    if (result === false || result === true) {
+      // Wait for everything to settle
+      await connectedNodesProm.catch(() => {});
+      throw Error(
+        'connectedNodesProm did not resolve early after connecting to all nodeIds',
+      );
+    }
+
+    expect(result.length).toBe(2);
+    const connectedIdStrings = result.map((v) => nodesUtils.encodeNodeId(v));
+    expect(connectedIdStrings).toContain(serverNodeIdEncoded1);
+    expect(connectedIdStrings).toContain(serverNodeIdEncoded2);
+
+    await nodeConnectionManager.stop();
+  });
 });
