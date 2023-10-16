@@ -825,7 +825,7 @@ class NodeConnectionManager {
     // We race the connections with timeout
     try {
       this.logger.debug(`awaiting connections`);
-      await Promise.race([Promise.all(connProms)]);
+      await Promise.allSettled(connProms);
       this.logger.debug(`awaiting connections resolved`);
     } finally {
       // Cleaning up

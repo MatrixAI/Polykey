@@ -233,6 +233,117 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  test('syncNodeGraph handles own nodeId', async () => {
+    const localNodeId = keyRing.getNodeId();
+    const seedNodes = {
+      [nodesUtils.encodeNodeId(localNodeId)]: {
+        host: '127.0.0.1' as Host,
+        port: 55123 as Port,
+      },
+    };
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      options: {
+        connectionConnectTimeoutTime: 1000,
+      },
+      tlsConfig,
+      seedNodes,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      connectionConnectTimeoutTime: 1000,
+      logger,
+    });
+    await nodeManager.start();
+    // Add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
+
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+      port: 55123 as Port,
+    });
+    await taskManager.startProcessing();
+
+    // Completes without error
+    await nodeManager.syncNodeGraph(true, 2000);
+
+    await nodeConnectionManager.stop();
+  });
+  test('syncNodeGraph handles offline seed node', async () => {
+    const seedNodes = {
+      [nodesUtils.encodeNodeId(remoteNodeId2)]: {
+        host: '127.0.0.1' as Host,
+        port: 55124 as Port,
+      },
+    };
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      options: {
+        connectionConnectTimeoutTime: 1000,
+      },
+      tlsConfig,
+      seedNodes,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      connectionConnectTimeoutTime: 1000,
+      logger,
+    });
+    await nodeManager.start();
+    // Add seed nodes to the nodeGraph
+    const setNodeProms = new Array<Promise<void>>();
+    for (const nodeIdEncoded in seedNodes) {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+      if (nodeId == null) utils.never();
+      const setNodeProm = nodeManager.setNode(
+        nodeId,
+        seedNodes[nodeIdEncoded],
+        true,
+        true,
+      );
+      setNodeProms.push(setNodeProm);
+    }
+    await Promise.all(setNodeProms);
+
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+      port: 55123 as Port,
+    });
+    await taskManager.startProcessing();
+
+    // Completes without error
+    await nodeManager.syncNodeGraph(true, 2000);
+
+    await nodeConnectionManager.stop();
+  });
   test('should call refreshBucket when syncing nodeGraph', async () => {
     const seedNodes = {
       [remoteNodeIdEncoded1]: remoteAddress1,
