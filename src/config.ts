@@ -9,11 +9,11 @@ import { version } from '../package.json';
  * Extracted here to enforce types properly.
  */
 const testnet: Record<string, NodeAddress> = {
-  vg9a9e957878s2qgtbdmu2atvli8ms7muukb1dk4dpbm4llkki3h0: {
+  v7v9ptvcdbdf8p4upok3prpmu3938ns8v4g45dib7sm5hqvvehv70: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
   },
-  vh9oqtvct10eaiv3cl4ebm0ko33sl0qqpvb59vud8cngfvqs4p4ng: {
+  v270ktdd3cs3mp1r3q3dkmick92bn927mii9or4sgroeogd1peqb0: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
   },
