@@ -1,7 +1,5 @@
 import type { Host, TLSConfig } from '@/network/types';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { NodeAddress } from '@/nodes/types';
-import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
+import type { NodeId, NodeIdEncoded } from '@/ids';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -18,7 +16,7 @@ import { promise } from '@/utils';
 import config  from '@/config';
 import * as tlsUtils from '../utils/tls';
 
-describe(`${NodeConnectionManager.name} lifecycle test`, () => {
+describe(`${NodeConnectionManager.name} MDNS test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -38,7 +36,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let keyRingPeer: KeyRing;
   let mdnsPeer: MDNS;
   let nodeConnectionManagerPeer: NodeConnectionManager;
-  let serverAddress: NodeAddress;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -110,11 +107,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger,
     });
-    serverAddress = {
-      host: nodeConnectionManagerPeer.host,
-      port: nodeConnectionManagerPeer.port,
-      scopes: ['local']
-    };
     mdns = new MDNS({
       logger: logger.getChild(MDNS.name),
     });
@@ -138,7 +130,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManagerPeer.stop();
   });
 
-  test('finds node (contacts remote node)', async () => {
+  test('should find local node without seedNodes', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
@@ -146,7 +138,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
-      connectionConnectTimeoutTime: 1000,
     });
 
     const serviceProm = promise();
@@ -159,16 +150,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.start({
       host: localHost,
     });
-
-    // Mocking pinging to always return true
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation(
-      () => new PromiseCancellable((resolve) => resolve(true)),
-    );
-    logger.info('DOING TEST');
 
     await serviceProm.p;
 
@@ -180,42 +161,34 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  test('withConnF should create connection', async () => {
+  test('acquireConnection should create local connection without seednodes', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       mdns,
+      logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
+      connectionConnectTimeoutTime: 1000,
     });
 
-    const serviceProm = promise();
+    const { p: serviceP, resolveP: resolveServiceP  } = promise();
     mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
       if (evt.detail.name === serverNodeIdEncoded) {
-        serviceProm.resolveP();
+        resolveServiceP();
       }
     });
 
-    // TODO: ipv6 only connection still fails
-    // currently, it only succeeds when it finds the ipv4Mappedipv6 address
     await nodeConnectionManager.start({
       host: localHost,
     });
 
-    await serviceProm.p;
-
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
-      expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
-    });
-
-    // @ts-ignore: Kidnap protected property
-    const connectionMap = nodeConnectionManager.connections;
-    const connection = connectionMap.get(
-      serverNodeId.toString() as NodeIdString,
-    );
-    await connection!.connection.destroy({ force: true });
-
+    await serviceP;
+    const acquire =
+      await nodeConnectionManager.acquireConnection(serverNodeId);
+    const [release] = await acquire();
+    expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
+    await release();
     await nodeConnectionManager.stop();
   });
 });
