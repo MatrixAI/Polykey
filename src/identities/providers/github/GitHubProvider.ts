@@ -280,7 +280,6 @@ class GitHubProvider extends Provider {
       );
     }
     providerToken = await this.checkToken(providerToken, authIdentityId);
-
     const foundIdentityIds: Set<IdentityId> = new Set();
     for (const identityGroup of ['following', 'followers'] as const) {
       let cursor: string | undefined;
@@ -289,7 +288,7 @@ class GitHubProvider extends Provider {
           `${this.apiUrl}/graphql`,
           {
             method: 'POST',
-            body: this.getConnectedIdentityDatasRequestBody(authIdentityId, identityGroup, cursor)
+            body: this.getConnectedIdentityDatasGraphQLBody(authIdentityId, identityGroup, cursor)
           },
           providerToken,
         );
@@ -322,7 +321,10 @@ class GitHubProvider extends Provider {
             }
           );
         }
-        const foundIdentityData: any[] = data?.data?.user?.[identityGroup]?.nodes ?? [];
+        // FollowerConnection and FollowingConnection always exists on User
+        const foundIdentityGroupData = data.data.user[identityGroup];
+        // Array<User> always exists on FollowerConnection and FollowingConnection
+        const foundIdentityData: IdentityData[] = foundIdentityGroupData.nodes;
         for (const identityData of foundIdentityData) {
           identityData.providerId = this.id;
           if (!foundIdentityIds.has(identityData.identityId) && identitiesUtils.matchIdentityData(identityData, searchTerms)) {
@@ -333,7 +335,8 @@ class GitHubProvider extends Provider {
         if (foundIdentityData.length === 0) {
           break;
         } else {
-          const endCursor: string | undefined = data?.data?.user?.followers?.pageInfo.endCursor;
+          // endCursor may be nullish if this is the last page
+          const endCursor: string | null = foundIdentityGroupData.pageInfo.endCursor;
           if (endCursor == null) break;
           cursor = endCursor;
         }
@@ -341,7 +344,22 @@ class GitHubProvider extends Provider {
     }
   }
 
-  protected getConnectedIdentityDatasRequestBody(
+  /**
+   * Returns a string suitable for use as the request body to the GitHub GraphQL endpoint.
+   * This is used to construct a query that returns either the `followers` or the `following` of a user.
+   *
+   * Schemas Used:
+   * - https://docs.github.com/en/graphql/reference/queries#user
+   * - https://docs.github.com/en/graphql/reference/objects#user
+   * - https://docs.github.com/en/graphql/reference/objects#followerconnection
+   *
+   * @param authIdentityId - The GitHub authentication token to use when getting user data
+   * @param identityGroup - Specify whether the GraphQL query requests the `followers` or the `following` of a user
+   * @param cursor - cursor for pagination,
+   * this can be retrieved from `.data.user[identityGroup].pageinfo.endCursor`
+   * of the JSON body on a response for a request made with the return value of this method as the body.
+   */
+  protected getConnectedIdentityDatasGraphQLBody(
     authIdentityId: IdentityId,
     identityGroup: 'following' | 'followers',
     cursor?: string
