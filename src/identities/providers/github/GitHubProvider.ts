@@ -280,100 +280,108 @@ class GitHubProvider extends Provider {
       );
     }
     providerToken = await this.checkToken(providerToken, authIdentityId);
-    let pageNum = 1;
-    while (true) {
-      const request = this.createRequest(
-        `${this.apiUrl}/user/following?per_page=100&page=${pageNum}`,
-        {
-          method: 'GET',
-        },
-        providerToken,
-      );
-      const response = await fetch(request);
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new identitiesErrors.ErrorProviderUnauthenticated(
-            `Invalid access token`,
+    const foundIdentityIds: Set<IdentityId> = new Set();
+    for (const identityGroup of ['following', 'followers'] as const) {
+      let cursor: string | undefined;
+      while (true) {
+        const request = this.createRequest(
+          `${this.apiUrl}/graphql`,
+          {
+            method: 'POST',
+            body: this.getConnectedIdentityDatasGraphQLBody(authIdentityId, identityGroup, cursor)
+          },
+          providerToken,
+        );
+        const response = await fetch(request);
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new identitiesErrors.ErrorProviderUnauthenticated(
+              `Invalid access token`,
+            );
+          }
+          throw new identitiesErrors.ErrorProviderCall(
+            `Provider responded with ${response.status} ${response.statusText}`,
           );
         }
-        throw new identitiesErrors.ErrorProviderCall(
-          `Provider responded with ${response.status} ${response.statusText}`,
-        );
-      }
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        throw new identitiesErrors.ErrorProviderCall(
-          `Provider response body is not valid JSON`,
-          { cause: e },
-        );
-      }
-      for (const item of data) {
-        const identityData = await this.getIdentityData(
-          authIdentityId,
-          item.login,
-        );
-        if (
-          identityData &&
-          identitiesUtils.matchIdentityData(identityData, searchTerms)
-        ) {
-          yield identityData;
-        }
-      }
-      if (data.length === 0) {
-        break;
-      } else {
-        pageNum = pageNum + 1;
-      }
-    }
-    pageNum = 1;
-    while (true) {
-      const request = this.createRequest(
-        `${this.apiUrl}/user/followers?per_page=100&page=${pageNum}`,
-        {
-          method: 'GET',
-        },
-        providerToken,
-      );
-      const response = await fetch(request);
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new identitiesErrors.ErrorProviderUnauthenticated(
-            `Invalid access token`,
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          throw new identitiesErrors.ErrorProviderCall(
+            `Provider response body is not valid JSON`,
+            { cause: e },
           );
         }
-        throw new identitiesErrors.ErrorProviderCall(
-          `Provider responded with ${response.status} ${response.statusText}`,
-        );
-      }
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        throw new identitiesErrors.ErrorProviderCall(
-          `Provider response body is not valid JSON`,
-          { cause: e },
-        );
-      }
-      for (const item of data) {
-        const identityData = await this.getIdentityData(
-          authIdentityId,
-          item.login,
-        );
-        if (
-          identityData &&
-          identitiesUtils.matchIdentityData(identityData, searchTerms)
-        ) {
-          yield identityData;
+        const error = data?.errors?.at?.(0);
+        if (error != null) {
+          throw new identitiesErrors.ErrorProviderCall(
+            `Provider response body contains an error: ${error.message}`,
+            {
+              data: error
+            }
+          );
+        }
+        // FollowerConnection and FollowingConnection always exists on User
+        const foundIdentityGroupData = data.data.user[identityGroup];
+        // Array<User> always exists on FollowerConnection and FollowingConnection
+        const foundIdentityData: IdentityData[] = foundIdentityGroupData.nodes;
+        for (const identityData of foundIdentityData) {
+          identityData.providerId = this.id;
+          if (!foundIdentityIds.has(identityData.identityId) && identitiesUtils.matchIdentityData(identityData, searchTerms)) {
+            foundIdentityIds.add(identityData.identityId);
+            yield identityData;
+          }
+        }
+        if (foundIdentityData.length === 0) {
+          break;
+        } else {
+          // endCursor may be nullish if this is the last page
+          const endCursor: string | null = foundIdentityGroupData.pageInfo.endCursor;
+          if (endCursor == null) break;
+          cursor = endCursor;
         }
       }
-      if (data.length === 0) {
-        break;
-      } else {
-        pageNum = pageNum + 1;
-      }
     }
+  }
+
+  /**
+   * Returns a string suitable for use as the request body to the GitHub GraphQL endpoint.
+   * This is used to construct a query that returns either the `followers` or the `following` of a user.
+   *
+   * Schemas Used:
+   * - https://docs.github.com/en/graphql/reference/queries#user
+   * - https://docs.github.com/en/graphql/reference/objects#user
+   * - https://docs.github.com/en/graphql/reference/objects#followerconnection
+   *
+   * @param authIdentityId - The GitHub authentication token to use when getting user data
+   * @param identityGroup - Specify whether the GraphQL query requests the `followers` or the `following` of a user
+   * @param cursor - cursor for pagination,
+   * this can be retrieved from `.data.user[identityGroup].pageinfo.endCursor`
+   * of the JSON body on a response for a request made with the return value of this method as the body.
+   */
+  protected getConnectedIdentityDatasGraphQLBody(
+    authIdentityId: IdentityId,
+    identityGroup: 'following' | 'followers',
+    cursor?: string
+  ): string {
+    const query = `query {
+      user(login: "${authIdentityId}") {
+        ${identityGroup}(first: 100${cursor == null ? '' : `, after: "${cursor}"`}) {
+          nodes {
+            identityId: login
+            name
+            email
+            url
+          }
+          pageInfo {
+            endCursor
+            startCursor
+          }
+          totalCount
+        }
+      }
+    }`;
+    return JSON.stringify({ query });
   }
 
   /**
