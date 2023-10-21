@@ -10,7 +10,6 @@ import type {
   NodeId,
   NodeIdString,
   SeedNodes,
-  NodesOptions,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { Key, CertificatePEM } from '../keys/types';
@@ -265,32 +264,36 @@ class NodeConnectionManager {
     nodeGraph,
     tlsConfig,
     seedNodes = {},
-    options = {},
+    connectionFindConcurrencyLimit = config.defaultsSystem
+      .nodesConnectionFindConcurrencyLimit,
+    connectionIdleTimeoutTime = config.defaultsSystem
+      .nodesConnectionIdleTimeoutTime,
+    connectionConnectTimeoutTime = config.defaultsSystem
+      .nodesConnectionConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime = config.defaultsSystem
+      .nodesConnectionKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime = config.defaultsSystem
+      .nodesConnectionKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime = config.defaultsSystem
+      .nodesConnectionHolePunchIntervalTime,
+    rpcParserBufferSize = config.defaultsSystem.rpcParserBufferSize,
+    rpcCallTimeoutTime = config.defaultsSystem.rpcCallTimeoutTime,
     logger,
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
-    options?: Partial<NodesOptions>;
+    connectionFindConcurrencyLimit?: number;
+    connectionIdleTimeoutTime?: number;
+    connectionConnectTimeoutTime?: number;
+    connectionKeepAliveTimeoutTime?: number;
+    connectionKeepAliveIntervalTime?: number;
+    connectionHolePunchIntervalTime?: number;
+    rpcParserBufferSize?: number;
+    rpcCallTimeoutTime?: number;
     logger?: Logger;
   }) {
-    const optionsDefaulted = utils.mergeObjects(options, {
-      connectionFindConcurrencyLimit:
-        config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
-      connectionIdleTimeoutTime:
-        config.defaultsSystem.nodesConnectionIdleTimeoutTime,
-      connectionConnectTimeoutTime:
-        config.defaultsSystem.clientConnectTimeoutTime,
-      connectionKeepAliveTimeoutTime:
-        config.defaultsSystem.clientKeepAliveTimeoutTime,
-      connectionKeepAliveIntervalTime:
-        config.defaultsSystem.clientKeepAliveIntervalTime,
-      connectionHolePunchIntervalTime:
-        config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
-      rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
-      rpcCallTimeoutTime: config.defaultsSystem.rpcCallTimeoutTime,
-    });
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
     this.nodeGraph = nodeGraph;
@@ -300,19 +303,14 @@ class NodeConnectionManager {
     this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
       return k !== nodeIdEncodedOwn;
     }) as SeedNodes;
-    this.connectionFindConcurrencyLimit =
-      optionsDefaulted.connectionFindConcurrencyLimit;
-    this.connectionIdleTimeoutTime = optionsDefaulted.connectionIdleTimeoutTime;
-    this.connectionConnectTimeoutTime =
-      optionsDefaulted.connectionConnectTimeoutTime;
-    this.connectionKeepAliveTimeoutTime =
-      optionsDefaulted.connectionKeepAliveTimeoutTime;
-    this.connectionKeepAliveIntervalTime =
-      optionsDefaulted.connectionKeepAliveIntervalTime;
-    this.connectionHolePunchIntervalTime =
-      optionsDefaulted.connectionHolePunchIntervalTime;
-    this.rpcParserBufferSize = optionsDefaulted.rpcParserBufferSize;
-    this.rpcCallTimeoutTime = optionsDefaulted.rpcCallTimeoutTime;
+    this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
+    this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
+    this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
+    this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
+    this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
+    this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
+    this.rpcParserBufferSize = rpcParserBufferSize;
+    this.rpcCallTimeoutTime = rpcCallTimeoutTime;
     // Note that all buffers allocated for crypto operations is using
     // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
     // is not shared. Also, all node buffers satisfy the `ArrayBuffer` interface.
@@ -355,8 +353,8 @@ class NodeConnectionManager {
     // procedures.
     const quicServer = new QUICServer({
       config: {
-        maxIdleTimeout: optionsDefaulted.connectionKeepAliveTimeoutTime,
-        keepAliveIntervalTime: optionsDefaulted.connectionKeepAliveIntervalTime,
+        maxIdleTimeout: connectionKeepAliveTimeoutTime,
+        keepAliveIntervalTime: connectionKeepAliveIntervalTime,
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
@@ -366,7 +364,7 @@ class NodeConnectionManager {
       socket: quicSocket,
       reasonToCode: nodesUtils.reasonToCode,
       codeToReason: nodesUtils.codeToReason,
-      minIdleTimeout: optionsDefaulted.connectionConnectTimeoutTime,
+      minIdleTimeout: connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
     // Setting up RPCServer

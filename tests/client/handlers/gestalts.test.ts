@@ -108,11 +108,9 @@ describe('gestaltsActionsByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -269,11 +267,9 @@ describe('gestaltsActionsByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -407,11 +403,9 @@ describe('gestaltsDiscoveryByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -586,11 +580,9 @@ describe('gestaltsDiscoveryByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -757,11 +749,9 @@ describe('gestaltsGestaltGetByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -906,11 +896,9 @@ describe('gestaltsGestaltGetByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -1053,11 +1041,9 @@ describe('gestaltsGestaltList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -1206,11 +1192,9 @@ describe('gestaltsGestaltTrustByIdentity', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({
@@ -1579,11 +1563,9 @@ describe('gestaltsGestaltTrustByNode', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     taskManager = await TaskManager.createTaskManager({

@@ -1,7 +1,9 @@
 import type {
   PasswordHash,
   PasswordSalt,
+  PasswordOpsLimitChoice,
   PasswordOpsLimit,
+  PasswordMemLimitChoice,
   PasswordMemLimit,
 } from '../types';
 import sodium from 'sodium-native';
@@ -11,13 +13,7 @@ import * as keysErrors from '../errors';
 /**
  * Use the `min` limit during testing to improve performance.
  */
-const passwordOpsLimits: {
-  min: PasswordOpsLimit;
-  max: PasswordOpsLimit;
-  interactive: PasswordOpsLimit;
-  moderate: PasswordOpsLimit;
-  sensitive: PasswordOpsLimit;
-} = {
+const passwordOpsLimits: Record<PasswordOpsLimitChoice, PasswordOpsLimit> = {
   min: sodium.crypto_pwhash_OPSLIMIT_MIN,
   max: sodium.crypto_pwhash_OPSLIMIT_MAX,
   interactive: sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
@@ -28,13 +24,7 @@ const passwordOpsLimits: {
 /**
  * Use the `min` limit during testing to improve performance.
  */
-const passwordMemLimits: {
-  min: PasswordMemLimit;
-  max: PasswordMemLimit;
-  interactive: PasswordMemLimit;
-  moderate: PasswordMemLimit;
-  sensitive: PasswordMemLimit;
-} = {
+const passwordMemLimits: Record<PasswordMemLimitChoice, PasswordMemLimit> = {
   min: sodium.crypto_pwhash_MEMLIMIT_MIN,
   max: sodium.crypto_pwhash_MEMLIMIT_MAX,
   interactive: sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,

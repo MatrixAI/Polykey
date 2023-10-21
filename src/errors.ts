@@ -41,6 +41,16 @@ class ErrorPolykeyClientDestroyed<T> extends ErrorPolykey<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorPolykeyClientCreateTimeout<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyClient create timeout';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorPolykeyClientNodeIdInvalid<T> extends ErrorPolykey<T> {
+  static description = 'PolykeyClient failed parsing encoded node ID';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   sysexits,
   ErrorPolykey,
@@ -52,6 +62,8 @@ export {
   ErrorPolykeyClientRunning,
   ErrorPolykeyClientNotRunning,
   ErrorPolykeyClientDestroyed,
+  ErrorPolykeyClientCreateTimeout,
+  ErrorPolykeyClientNodeIdInvalid,
 };
 
 /**

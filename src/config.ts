@@ -1,5 +1,6 @@
-import type { Host, Port } from './network/types';
+import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
 import type { NodeAddress } from './nodes/types';
+import type { Host, Port } from './network/types';
 import { getDefaultNodePath } from './utils';
 // @ts-ignore package.json is outside rootDir
 import { version } from '../package.json';
@@ -253,6 +254,33 @@ const config = {
    */
   defaultsUser: {
     nodePath: getDefaultNodePath(),
+    /**
+     * Ops limit for password hashing.
+     *
+     * This is the moderate choice: 0.7 seconds on 2.8 Ghz Intel Core i7.
+     * This can only be set when a new password is set.
+     * If this changes, the password hash for the same password will change.
+     */
+    passwordOpsLimit: 3 as PasswordOpsLimit,
+    /**
+     * Memory limit for password hashing.
+     *
+     * This is the moderate choice: requiring at least 512 MiB of memory.
+     * This can only be set when a new password is set.
+     * If this changes, the password hash for the same password will change.
+     */
+    passwordMemLimit: 268435456 as PasswordMemLimit,
+    /**
+     * Locking sensitive memory from being swapped to disk.
+     *
+     * Locks the memory used for keys and password hashes to prevent swapping.
+     * On some systems, this can also prevent the memory being included during
+     * core dumps.
+     *
+     * This should be disabled during testing, as only a limited amount of
+     * memory is allowed to be locked.
+     */
+    strictMemoryLock: true,
     certDuration: 31536000,
     certRenewLeadTime: 86400,
     /**

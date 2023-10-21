@@ -1,6 +1,6 @@
 import type { X509Certificate } from '@peculiar/x509';
 import type { NodeId } from '../ids/types';
-import type { Opaque, InverseRecord, ObjectEmpty } from '../types';
+import type { Opaque, InverseRecord } from '../types';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
@@ -213,7 +213,21 @@ type PasswordHash = Opaque<'PasswordHash', Buffer>;
 
 type PasswordSalt = Opaque<'PasswordSalt', Buffer>;
 
+type PasswordOpsLimitChoice =
+  | 'min'
+  | 'max'
+  | 'interactive'
+  | 'moderate'
+  | 'sensitive';
+
 type PasswordOpsLimit = Opaque<'PasswordOpsLimit', number>;
+
+type PasswordMemLimitChoice =
+  | 'min'
+  | 'max'
+  | 'interactive'
+  | 'moderate'
+  | 'sensitive';
 
 type PasswordMemLimit = Opaque<'PasswordMemLimit', number>;
 
@@ -262,39 +276,6 @@ type CertManagerChangeData = {
   recoveryCode?: RecoveryCode;
 };
 
-/**
- * Used by the PolykeyAgent for it's top level options
- */
-type KeysOptions = KeyRingOptions & CertManagerOptions;
-
-/**
- * Options for the KeyRing
- */
-type KeyRingOptions = {
-  passwordOpsLimit?: PasswordOpsLimit;
-  passwordMemLimit?: PasswordMemLimit;
-  strictMemoryLock: boolean;
-} & (
-  | ObjectEmpty
-  | {
-      recoveryCode: RecoveryCode;
-    }
-  | {
-      privateKey: PrivateKey;
-    }
-  | {
-      privateKeyPath: string;
-    }
-);
-
-/**
- * Options for the CertManager
- */
-type CertManagerOptions = {
-  certDuration: number;
-  certRenewLeadTime: number;
-};
-
 export type {
   BufferLocked,
   Key,
@@ -322,7 +303,9 @@ export type {
   MAC,
   PasswordHash,
   PasswordSalt,
+  PasswordOpsLimitChoice,
   PasswordOpsLimit,
+  PasswordMemLimitChoice,
   PasswordMemLimit,
   RecoveryCode,
   RecoveryCodeLocked,
@@ -331,9 +314,6 @@ export type {
   CertificatePEM,
   CertificatePEMChain,
   CertManagerChangeData,
-  KeysOptions,
-  KeyRingOptions,
-  CertManagerOptions,
 };
 
 export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';

@@ -89,11 +89,9 @@ describe('vaultsClone', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     // TlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -155,11 +153,9 @@ describe('vaultsCreate and vaultsDelete and vaultsList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -292,11 +288,9 @@ describe('vaultsLog', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -447,11 +441,9 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -624,11 +616,9 @@ describe('vaultsPull', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     const dbPath = path.join(dataDir, 'db');
@@ -711,11 +701,9 @@ describe('vaultsRename', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -809,11 +797,9 @@ describe('vaultsScan', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     const dbPath = path.join(dataDir, 'db');
@@ -872,11 +858,9 @@ describe('vaultsSecretsEdit', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -987,11 +971,9 @@ describe('vaultsSecretsMkdir', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1097,11 +1079,9 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1234,11 +1214,9 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1364,11 +1342,9 @@ describe('vaultsSecretsRename', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1480,11 +1456,9 @@ describe('vaultsSecretsStat', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
@@ -1601,11 +1575,9 @@ describe('vaultsVersion', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);

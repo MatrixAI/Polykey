@@ -70,11 +70,9 @@ describe('notificationsSend', () => {
     senderKeyRing = await KeyRing.createKeyRing({
       keysPath: senderKeysPath,
       password,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     senderNodeId = senderKeyRing.getNodeId();
@@ -84,11 +82,9 @@ describe('notificationsSend', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     const dbPath = path.join(dataDir, 'db');
@@ -127,10 +123,8 @@ describe('notificationsSend', () => {
       tlsConfig: tlsConfigClient,
       keyRing,
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 2000,
-        connectionIdleTimeoutTime: 2000,
-      },
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTime: 2000,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

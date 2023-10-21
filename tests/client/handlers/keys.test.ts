@@ -86,11 +86,9 @@ describe('keysCertsChainGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -200,11 +198,9 @@ describe('keysCertsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -305,11 +301,9 @@ describe('keysEncrypt and keysDecrypt', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -406,11 +400,9 @@ describe('keysKeyPair', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -768,11 +760,9 @@ describe('keysPasswordChange', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -864,11 +854,9 @@ describe('keysPublicKey', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -963,11 +951,9 @@ describe('keysSign and keysVerify', () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     identitiesManager = await IdentitiesManager.createIdentitiesManager({

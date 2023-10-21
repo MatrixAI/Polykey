@@ -28,9 +28,7 @@ describe('bootstrap/utils', () => {
     const password = 'password';
     const recoveryCode = await bootstrapUtils.bootstrapState({
       password,
-      options: {
-        nodePath,
-      },
+      nodePath,
       fs,
       logger,
     });
@@ -56,9 +54,7 @@ describe('bootstrap/utils', () => {
     const password = 'password';
     const recoveryCode = await bootstrapUtils.bootstrapState({
       password,
-      options: {
-        nodePath,
-      },
+      nodePath,
       fs,
       logger,
     });
@@ -91,9 +87,7 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        options: {
-          nodePath: nodePath1,
-        },
+        nodePath: nodePath1,
         fs,
         logger,
       }),
@@ -109,9 +103,7 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        options: {
-          nodePath: nodePath2,
-        },
+        nodePath: nodePath2,
         fs,
         logger,
       }),
@@ -123,9 +115,7 @@ describe('bootstrap/utils', () => {
     await expect(
       bootstrapUtils.bootstrapState({
         password,
-        options: {
-          nodePath: nodePath3,
-        },
+        nodePath: nodePath3,
         fs,
         logger,
       }),
@@ -137,17 +127,13 @@ describe('bootstrap/utils', () => {
     const [result1, result2] = await Promise.allSettled([
       bootstrapUtils.bootstrapState({
         password,
-        options: {
-          nodePath,
-        },
+        nodePath,
         fs,
         logger,
       }),
       bootstrapUtils.bootstrapState({
         password,
-        options: {
-          nodePath,
-        },
+        nodePath,
         fs,
         logger,
       }),

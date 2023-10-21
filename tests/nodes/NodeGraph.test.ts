@@ -40,11 +40,9 @@ describe(`${NodeGraph.name} test`, () => {
       password,
       keysPath,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     dbKey = keysUtils.generateKey();
     dbPath = `${dataDir}/db`;

@@ -51,11 +51,9 @@ describe('nodesClaimsGet', () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     const dbPath = path.join(dataDir, 'db');

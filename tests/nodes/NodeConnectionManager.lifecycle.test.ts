@@ -65,12 +65,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     keyRingPeer = await KeyRing.createKeyRing({
       password,
       keysPath: keysPathPeer,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     nodeConnectionManagerPeer1 = new NodeConnectionManager({
       keyRing: keyRingPeer,
@@ -98,12 +96,10 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     keyRing = await KeyRing.createKeyRing({
       password,
       keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -173,9 +169,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      connectionConnectTimeoutTime: 1000,
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,

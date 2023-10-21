@@ -1,5 +1,11 @@
-import type { DeepPartial, FileSystem } from '../types';
-import type { RecoveryCode, Key, KeysOptions } from '../keys/types';
+import type { FileSystem } from '../types';
+import type {
+  RecoveryCode,
+  Key,
+  PrivateKey,
+  PasswordOpsLimit,
+  PasswordMemLimit,
+} from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
@@ -23,26 +29,34 @@ import config from '../config';
 import * as utils from '../utils';
 import * as errors from '../errors';
 
-type BootstrapOptions = {
-  nodePath: string;
-  keys: KeysOptions;
-};
-
 /**
  * Bootstraps the Node Path
  */
 async function bootstrapState({
   // Required parameters
   password,
-  // Optional configuration
-  options = {},
+  nodePath = config.defaultsUser.nodePath,
+  recoveryCode,
+  privateKey,
+  privateKeyPath,
+  passwordOpsLimit,
+  passwordMemLimit,
+  strictMemoryLock = false,
+  certDuration = config.defaultsUser.certDuration,
   fresh = false,
   // Optional dependencies
   fs = require('fs'),
   logger = new Logger(bootstrapState.name),
 }: {
   password: string;
-  options?: DeepPartial<BootstrapOptions>;
+  nodePath?: string;
+  recoveryCode?: RecoveryCode;
+  privateKey?: PrivateKey;
+  privateKeyPath?: string;
+  passwordOpsLimit?: PasswordOpsLimit;
+  passwordMemLimit?: PasswordMemLimit;
+  strictMemoryLock?: boolean;
+  certDuration?: number;
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
@@ -50,30 +64,15 @@ async function bootstrapState({
   const umask = 0o077;
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);
-  const optionsDefaulted = utils.mergeObjects(options, {
-    nodePath: config.defaultsUser.nodePath,
-    keys: {
-      certDuration: config.defaultsUser.certDuration,
-    },
-  });
-  logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
-  if (optionsDefaulted.nodePath == null) {
+  logger.info(`Setting node path to ${nodePath}`);
+  if (nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
-  await utils.mkdirExists(fs, optionsDefaulted.nodePath);
+  await utils.mkdirExists(fs, nodePath);
   // Setup node path and sub paths
-  const statusPath = path.join(
-    optionsDefaulted.nodePath,
-    config.paths.statusBase,
-  );
-  const statusLockPath = path.join(
-    optionsDefaulted.nodePath,
-    config.paths.statusLockBase,
-  );
-  const statePath = path.join(
-    optionsDefaulted.nodePath,
-    config.paths.stateBase,
-  );
+  const statusPath = path.join(nodePath, config.paths.statusBase);
+  const statusLockPath = path.join(nodePath, config.paths.statusLockBase);
+  const statePath = path.join(nodePath, config.paths.stateBase);
   const dbPath = path.join(statePath, config.paths.dbBase);
   const keysPath = path.join(statePath, config.paths.keysBase);
   const vaultsPath = path.join(statePath, config.paths.vaultsBase);
@@ -87,7 +86,7 @@ async function bootstrapState({
     await status.start({ pid: process.pid });
     if (!fresh) {
       // Check the if number of directory entries is greater than 1 due to status.json and status.lock
-      if ((await fs.promises.readdir(optionsDefaulted.nodePath)).length > 2) {
+      if ((await fs.promises.readdir(nodePath)).length > 2) {
         throw new bootstrapErrors.ErrorBootstrapExistingState();
       }
     }
@@ -104,7 +103,12 @@ async function bootstrapState({
     const keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: optionsDefaulted.keys,
+      recoveryCode,
+      privateKey,
+      privateKeyPath,
+      passwordOpsLimit,
+      passwordMemLimit,
+      strictMemoryLock,
       fs,
       logger: logger.getChild(KeyRing.name),
       fresh,
@@ -141,7 +145,7 @@ async function bootstrapState({
       keyRing,
       db,
       taskManager,
-      options: optionsDefaulted.keys,
+      certDuration,
       fresh,
       logger,
     });
@@ -235,5 +239,3 @@ async function bootstrapState({
 }
 
 export { bootstrapState };
-
-export type { BootstrapOptions };

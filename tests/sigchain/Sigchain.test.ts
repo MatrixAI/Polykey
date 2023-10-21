@@ -35,12 +35,10 @@ describe(Sigchain.name, () => {
     keyRing = await KeyRing.createKeyRing({
       keysPath,
       password,
-      options: {
-        privateKey,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      privateKey,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
     });
     dbPath = `${dataDir}/db`;
