@@ -338,6 +338,21 @@ function parseGestaltId(data: any): GestaltId {
   return ['identity', [providerId, identityId]];
 }
 
+function parseGestaltIdentityId(data: any): ['identity', ProviderIdentityId] {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse('Gestalt identity ID must be string');
+  }
+  const match = (data as string).match(/^(.+):(.+)$/);
+  if (match == null) {
+    throw new validationErrors.ErrorParse(
+      'Gestalt identity ID must be `Provider ID:Identity ID`',
+    );
+  }
+  const providerId = parseProviderId(match[1]);
+  const identityId = parseIdentityId(match[2]);
+  return ['identity', [providerId, identityId]];
+}
+
 function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
   switch (gestaltId[0]) {
     case 'node':
@@ -476,6 +491,7 @@ export {
   encodeProviderIdentityId,
   decodeProviderIdentityId,
   parseGestaltId,
+  parseGestaltIdentityId,
   encodeGestaltId,
   encodeGestaltNodeId,
   encodeGestaltIdentityId,
