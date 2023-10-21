@@ -288,7 +288,11 @@ class GitHubProvider extends Provider {
           `${this.apiUrl}/graphql`,
           {
             method: 'POST',
-            body: this.getConnectedIdentityDatasGraphQLBody(authIdentityId, identityGroup, cursor)
+            body: this.getConnectedIdentityDatasGraphQLBody(
+              authIdentityId,
+              identityGroup,
+              cursor,
+            ),
           },
           providerToken,
         );
@@ -317,8 +321,8 @@ class GitHubProvider extends Provider {
           throw new identitiesErrors.ErrorProviderCall(
             `Provider response body contains an error: ${error.message}`,
             {
-              data: error
-            }
+              data: error,
+            },
           );
         }
         // FollowerConnection and FollowingConnection always exists on User
@@ -327,7 +331,10 @@ class GitHubProvider extends Provider {
         const foundIdentityData: IdentityData[] = foundIdentityGroupData.nodes;
         for (const identityData of foundIdentityData) {
           identityData.providerId = this.id;
-          if (!foundIdentityIds.has(identityData.identityId) && identitiesUtils.matchIdentityData(identityData, searchTerms)) {
+          if (
+            !foundIdentityIds.has(identityData.identityId) &&
+            identitiesUtils.matchIdentityData(identityData, searchTerms)
+          ) {
             foundIdentityIds.add(identityData.identityId);
             yield identityData;
           }
@@ -335,8 +342,9 @@ class GitHubProvider extends Provider {
         if (foundIdentityData.length === 0) {
           break;
         } else {
-          // endCursor may be nullish if this is the last page
-          const endCursor: string | null = foundIdentityGroupData.pageInfo.endCursor;
+          // EndCursor may be nullish if this is the last page
+          const endCursor: string | null =
+            foundIdentityGroupData.pageInfo.endCursor;
           if (endCursor == null) break;
           cursor = endCursor;
         }
@@ -362,11 +370,13 @@ class GitHubProvider extends Provider {
   protected getConnectedIdentityDatasGraphQLBody(
     authIdentityId: IdentityId,
     identityGroup: 'following' | 'followers',
-    cursor?: string
+    cursor?: string,
   ): string {
     const query = `query {
       user(login: "${authIdentityId}") {
-        ${identityGroup}(first: 100${cursor == null ? '' : `, after: "${cursor}"`}) {
+        ${identityGroup}(first: 100${
+          cursor == null ? '' : `, after: "${cursor}"`
+        }) {
           nodes {
             identityId: login
             name
