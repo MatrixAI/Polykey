@@ -257,7 +257,7 @@ const config = {
      * The default values of `224.0.0.250` and `ff02::fa17` have been selected due to
      * the resemblance of `fa17` to the latin word `fait`, and `250` being the decimal representation of that.
      */
-    agentMdnsGroups: ['224.0.0.250', 'ff02::fa17'],
+    mdnsGroups: ['224.0.0.250', 'ff02::fa17'],
     /**
      * The port that the MDNS stack will operate on.
      *
@@ -266,7 +266,7 @@ const config = {
      * The default value has been selected as the decimal decimal representation of `fa17`,
      * which resembles the latin word `fait`.
      */
-    agentMdnsPort: 64023,
+    mdnsPort: 64023,
   },
   /**
    * Default user configuration.

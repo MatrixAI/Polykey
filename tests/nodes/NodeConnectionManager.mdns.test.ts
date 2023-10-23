@@ -72,8 +72,8 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
     await mdnsPeer.start({
       id: serverNodeId.at(0),
       hostname: serverNodeIdEncoded,
-      groups: config.defaultsSystem.agentMdnsGroups,
-      port: config.defaultsSystem.agentMdnsPort
+      groups: config.defaultsSystem.mdnsGroups,
+      port: config.defaultsSystem.mdnsPort
     })
     nodeConnectionManagerPeer = new NodeConnectionManager({
       keyRing: keyRingPeer,
@@ -113,8 +113,8 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
     await mdns.start({
       id: clientNodeId.at(0),
       hostname: clientNodeIdEncoded,
-      groups: config.defaultsSystem.agentMdnsGroups,
-      port: config.defaultsSystem.agentMdnsPort
+      groups: config.defaultsSystem.mdnsGroups,
+      port: config.defaultsSystem.mdnsPort
     })
   });
 

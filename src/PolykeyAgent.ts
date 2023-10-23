@@ -173,8 +173,8 @@ class PolykeyAgent {
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       },
       mdns: {
-        groups: config.defaultsSystem.agentMdnsGroups,
-        port: config.defaultsSystem.agentMdnsPort,
+        groups: config.defaultsSystem.mdnsGroups,
+        port: config.defaultsSystem.mdnsPort,
       }
     });
     // This can only happen if the caller didn't specify the node path and the
