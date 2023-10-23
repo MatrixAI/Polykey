@@ -1,22 +1,22 @@
-import type { Host, Port, TLSConfig } from '@/network/types';
+import type { Host, TLSConfig } from '@/network/types';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
+import { MDNS, events as mdnsEvents } from '@matrixai/mdns';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
+import NodeConnection from '@/nodes/NodeConnection';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import { promise, sleep } from '@/utils';
-import * as nodesErrors from '@/nodes/errors';
-import NodeConnection from '@/nodes/NodeConnection';
+import { promise } from '@/utils';
+import config  from '@/config';
 import * as tlsUtils from '../utils/tls';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { events as mdnsEvents } from '@matrixai/mdns';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
@@ -34,7 +34,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let serverNodeId: NodeId;
   let clientNodeId: NodeId;
   let serverNodeIdEncoded: NodeIdEncoded;
+  let clientNodeIdEncoded: NodeIdEncoded;
   let keyRingPeer: KeyRing;
+  let mdnsPeer: MDNS;
   let nodeConnectionManagerPeer: NodeConnectionManager;
   let serverAddress: NodeAddress;
 
@@ -42,6 +44,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let db: DB;
   let nodeGraph: NodeGraph;
 
+  let mdns: MDNS;
   let nodeConnectionManager: NodeConnectionManager;
 
   beforeEach(async () => {
@@ -52,31 +55,39 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     keyRingPeer = await KeyRing.createKeyRing({
       password,
       keysPath: keysPathPeer,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
     });
     const serverKeyPair = keyRingPeer.keyPair;
     const clientKeyPair = keysUtils.generateKeyPair();
     serverNodeId = keysUtils.publicKeyToNodeId(serverKeyPair.publicKey);
     clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
     serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
+    clientNodeIdEncoded = nodesUtils.encodeNodeId(clientNodeId);
     serverTlsConfig = await tlsUtils.createTLSConfig(serverKeyPair);
     clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
 
+    mdnsPeer = new MDNS({
+      logger: logger.getChild(`${MDNS.name}Peer`),
+    });
+    await mdnsPeer.start({
+      id: serverNodeId.at(0),
+      hostname: serverNodeIdEncoded,
+      groups: config.defaultsSystem.agentMdnsGroups,
+      port: config.defaultsSystem.agentMdnsPort
+    })
     nodeConnectionManagerPeer = new NodeConnectionManager({
       keyRing: keyRingPeer,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
       nodeGraph: {} as NodeGraph,
       tlsConfig: serverTlsConfig,
       seedNodes: undefined,
+      mdns: mdnsPeer
     });
     await nodeConnectionManagerPeer.start({
       host: localHost,
-      enableMdns: true
     });
 
     // Setting up client dependencies
@@ -85,11 +96,9 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       password,
       keysPath,
       logger,
-      options: {
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-      },
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
     });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
@@ -106,6 +115,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       port: nodeConnectionManagerPeer.port,
       scopes: ['local']
     };
+    mdns = new MDNS({
+      logger: logger.getChild(MDNS.name),
+    });
+    await mdns.start({
+      id: clientNodeId.at(0),
+      hostname: clientNodeIdEncoded,
+      groups: config.defaultsSystem.agentMdnsGroups,
+      port: config.defaultsSystem.agentMdnsPort
+    })
   });
 
   afterEach(async () => {
@@ -124,17 +142,15 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       nodeGraph,
-      options: {
-        connectionConnectTimeoutTime: 1000,
-      },
+      mdns,
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
+      connectionConnectTimeoutTime: 1000,
     });
 
     const serviceProm = promise();
-    // @ts-ignore: protected property
-    nodeConnectionManager.mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
+    mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
       if (evt.detail.name === serverNodeIdEncoded) {
         serviceProm.resolveP();
       }
@@ -142,7 +158,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: true
     });
 
     // Mocking pinging to always return true
@@ -170,13 +185,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
+      mdns,
       tlsConfig: clientTlsConfig,
       seedNodes: undefined,
     });
 
     const serviceProm = promise();
-    // @ts-ignore: protected property
-    nodeConnectionManager.mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
+    mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
       if (evt.detail.name === serverNodeIdEncoded) {
         serviceProm.resolveP();
       }
@@ -186,7 +201,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     // currently, it only succeeds when it finds the ipv4Mappedipv6 address
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: true
     });
 
     await serviceProm.p;

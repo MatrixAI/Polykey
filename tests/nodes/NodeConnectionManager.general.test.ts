@@ -220,7 +220,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -251,7 +250,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -293,7 +291,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -327,7 +324,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
     // Mocking pinging to always return true
@@ -397,7 +393,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 

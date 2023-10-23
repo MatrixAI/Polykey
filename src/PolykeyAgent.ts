@@ -7,6 +7,7 @@ import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import { MDNS } from '@matrixai/mdns';
 import {
   CreateDestroyStartStop,
   ready,
@@ -82,6 +83,10 @@ type PolykeyAgentOptions = {
     connectionHolePunchIntervalTime: number;
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
+  };
+  mdns: {
+    groups: Array<string>;
+    port: number;
   };
 };
 
@@ -167,6 +172,10 @@ class PolykeyAgent {
         connectionHolePunchIntervalTime:
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       },
+      mdns: {
+        groups: config.defaultsSystem.agentMdnsGroups,
+        port: config.defaultsSystem.agentMdnsPort,
+      }
     });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
@@ -201,6 +210,7 @@ class PolykeyAgent {
     let gestaltGraph: GestaltGraph | undefined;
     let identitiesManager: IdentitiesManager | undefined;
     let nodeGraph: NodeGraph | undefined;
+    let mdns: MDNS | undefined;
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
     let discovery: Discovery | undefined;
@@ -316,6 +326,15 @@ class PolykeyAgent {
         keyRing,
         logger: logger.getChild(NodeGraph.name),
       });
+      mdns = new MDNS({
+        logger: logger.getChild(MDNS.name)
+      });
+      await mdns.start({
+        id: keyRing.getNodeId().toBuffer().readUint16BE(),
+        hostname: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        groups: optionsDefaulted.mdns.groups,
+        port: optionsDefaulted.mdns.port,
+      })
       // Remove your own node ID if provided as a seed node
       const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
@@ -323,6 +342,7 @@ class PolykeyAgent {
         keyRing,
         nodeGraph,
         tlsConfig,
+        mdns,
         seedNodes: optionsDefaulted.seedNodes,
         connectionFindConcurrencyLimit:
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
@@ -426,6 +446,7 @@ class PolykeyAgent {
       await discovery?.stop();
       await identitiesManager?.stop();
       await gestaltGraph?.stop();
+      await mdns?.stop();
       await acl?.stop();
       await sigchain?.stop();
       await certManager?.stop();
@@ -448,6 +469,7 @@ class PolykeyAgent {
       acl,
       gestaltGraph,
       nodeGraph,
+      mdns,
       taskManager,
       nodeConnectionManager,
       nodeManager,
@@ -486,6 +508,7 @@ class PolykeyAgent {
   public readonly acl: ACL;
   public readonly gestaltGraph: GestaltGraph;
   public readonly nodeGraph: NodeGraph;
+  public readonly mdns: MDNS;
   public readonly taskManager: TaskManager;
   public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
@@ -530,6 +553,7 @@ class PolykeyAgent {
     acl,
     gestaltGraph,
     nodeGraph,
+    mdns,
     taskManager,
     nodeConnectionManager,
     nodeManager,
@@ -552,6 +576,7 @@ class PolykeyAgent {
     acl: ACL;
     gestaltGraph: GestaltGraph;
     nodeGraph: NodeGraph;
+    mdns: MDNS;
     taskManager: TaskManager;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
@@ -576,6 +601,7 @@ class PolykeyAgent {
     this.gestaltGraph = gestaltGraph;
     this.discovery = discovery;
     this.nodeGraph = nodeGraph;
+    this.mdns = mdns;
     this.taskManager = taskManager;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
@@ -706,14 +732,17 @@ class PolykeyAgent {
         host: optionsDefaulted.clientServiceHost,
         port: optionsDefaulted.clientServicePort,
       });
+      await this.mdns.start({
+        id: this.keyRing.getNodeId().toBuffer().readUint16BE(),
+        hostname: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        groups: optionsDefaulted.mdns.groups,
+        port: optionsDefaulted.mdns.port,
+      })
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
         host: optionsDefaulted.agentServiceHost,
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
-        enableMdns: true,
-        mdnsGroups: optionsDefaulted.agentMdnsGroups,
-        mdnsPort: optionsDefaulted.agentMdnsPort,
         manifest: agentServerManifest({
           acl: this.acl,
           db: this.db,
@@ -771,6 +800,7 @@ class PolykeyAgent {
       await this.vaultManager?.stop();
       await this.discovery?.stop();
       await this.nodeGraph?.stop();
+      await this.mdns?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
       await this.clientService.stop({ force: true });
@@ -813,6 +843,7 @@ class PolykeyAgent {
     await this.clientService.stop({ force: true });
     await this.identitiesManager.stop();
     await this.gestaltGraph.stop();
+    await this.mdns.stop();
     await this.acl.stop();
     await this.sigchain.stop();
     await this.certManager.stop();

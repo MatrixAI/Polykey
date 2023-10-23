@@ -89,7 +89,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManagerPeer2.start({
       host: localHost,
-      enableMdns: false,
     });
 
     // Setting up client dependencies
@@ -142,7 +141,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
 
     await nodeConnectionManager.stop();
@@ -157,13 +155,11 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
 
     await nodeConnectionManager.stop();
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     await nodeConnectionManager.stop();
   });
@@ -181,7 +177,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
 
     const acquire =
@@ -202,7 +197,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
 
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
@@ -222,7 +216,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
 
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
@@ -254,7 +247,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
@@ -282,7 +274,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     // @ts-ignore: kidnap protected property
     const connectionMap = nodeConnectionManager.connections;
@@ -318,7 +309,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -344,7 +334,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     const waitProm = promise<void>();
     const tryConnection = () => {
@@ -378,7 +367,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -411,7 +399,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     await nodeConnectionManager.withConnF(serverNodeId1, async () => {
       // Do nothing
@@ -436,7 +423,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       serverNodeId1,
@@ -461,7 +447,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       serverNodeId1,
@@ -487,7 +472,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost,
-      enableMdns: false,
     });
     const result = await nodeConnectionManager.pingNode(
       clientNodeId,

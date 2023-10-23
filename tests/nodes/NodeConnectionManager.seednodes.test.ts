@@ -222,7 +222,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -386,7 +385,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -447,7 +445,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -505,7 +502,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 
@@ -564,7 +560,6 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     await Promise.all(setNodeProms);
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
     await taskManager.startProcessing();
 

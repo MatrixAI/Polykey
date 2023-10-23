@@ -117,7 +117,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
@@ -157,7 +156,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
 
     await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
@@ -214,7 +212,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();
@@ -241,7 +238,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();
@@ -274,7 +270,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     });
     await nodeConnectionManager.start({
       host: localHost as Host,
-      enableMdns: false,
     });
 
     const randomNodeId = generateRandomNodeId();

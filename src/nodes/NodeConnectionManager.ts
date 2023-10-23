@@ -159,6 +159,7 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected nodeGraph: NodeGraph;
+  protected mdns: MDNS | undefined;
   protected tlsConfig: TLSConfig;
   protected seedNodes: SeedNodes;
 
@@ -182,8 +183,6 @@ class NodeConnectionManager {
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
   protected rpcServer: RPCServer;
-
-  protected mdns: MDNS;
 
   /**
    * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
@@ -290,6 +289,7 @@ class NodeConnectionManager {
   public constructor({
     keyRing,
     nodeGraph,
+    mdns,
     tlsConfig,
     seedNodes = {},
     connectionFindConcurrencyLimit = config.defaultsSystem
@@ -310,6 +310,7 @@ class NodeConnectionManager {
   }: {
     keyRing: KeyRing;
     nodeGraph: NodeGraph;
+    mdns?: MDNS;
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
     connectionFindConcurrencyLimit?: number;
@@ -406,10 +407,6 @@ class NodeConnectionManager {
       logger: this.logger.getChild(RPCServer.name),
     });
 
-    const mdns = new MDNS({
-      logger: this.logger.getChild(MDNS.name)
-    });
-
     this.quicClientCrypto = quicClientCrypto;
     this.quicSocket = quicSocket;
     this.quicServer = quicServer;
@@ -438,18 +435,12 @@ class NodeConnectionManager {
     port = 0 as Port,
     reuseAddr = false,
     ipv6Only = false,
-    enableMdns = true,
-    mdnsGroups = ['224.0.0.250', 'ff02::fa17'] as Array<Host>,
-    mdnsPort = 64023 as Port,
     manifest = {},
   }: {
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
     ipv6Only?: boolean;
-    enableMdns?: boolean;
-    mdnsGroups?: Array<Host>;
-    mdnsPort?: Port;
     manifest?: ServerManifest;
   }) {
     const address = networkUtils.buildAddress(host, port);
@@ -497,17 +488,9 @@ class NodeConnectionManager {
     this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
     this.rateLimiter.startRefillInterval();
     // MDNS Start
-    if (enableMdns) {
-      const nodeId = this.keyRing.getNodeId();
-      const encodedNodeId = nodesUtils.encodeNodeId(nodeId);
-      await this.mdns.start({
-        hostname: encodedNodeId,
-        port: mdnsPort,
-        groups: mdnsGroups,
-        id: nodeId.at(0),
-      })
+    if (this.mdns != null) {
       this.mdns.registerService({
-        name: encodedNodeId,
+        name: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
         port: this.quicServer.port,
         type: 'polykey',
         protocol: 'udp',
@@ -578,9 +561,6 @@ class NodeConnectionManager {
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
     await this.rpcServer.stop({ force: true });
-    if (this.mdns[running]) {
-      await this.mdns.stop();
-    }
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -1271,7 +1251,7 @@ class NodeConnectionManager {
     let addresses: Array<NodeAddress> = [];
 
     // First check if we already have an existing MDNS Service
-    if (this.mdns[running]) {
+    if (this.mdns != null) {
       const service = this.mdns.networkServices.get(mdnsUtils.toFqdn({ name: nodesUtils.encodeNodeId(targetNodeId), type: "polykey", protocol: "udp" }));
       if (service != null) {
         for (const host_ of service.hosts) {
