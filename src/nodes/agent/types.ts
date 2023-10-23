@@ -45,10 +45,17 @@ type AddressMessage = {
 
 type NodeAddressMessage = NodeIdMessage & AddressMessage;
 
-type HolePunchRelayMessage = {
-  srcIdEncoded: NodeIdEncoded;
-  dstIdEncoded: NodeIdEncoded;
-  address?: AddressMessage;
+type HolePunchRequestMessage = {
+  sourceNodeIdEncoded: NodeIdEncoded;
+  targetNodeIdEncoded: NodeIdEncoded;
+  address: AddressMessage;
+  requestSignature: string;
+  relaySignature: string;
+};
+
+type HolePunchSignalMessage = {
+  targetNodeIdEncoded: NodeIdEncoded;
+  signature: string;
 };
 
 type SignedNotificationEncoded = {
@@ -72,7 +79,8 @@ export type {
   NodeIdMessage,
   AddressMessage,
   NodeAddressMessage,
-  HolePunchRelayMessage,
+  HolePunchRequestMessage,
+  HolePunchSignalMessage,
   SignedNotificationEncoded,
   VaultInfo,
   VaultsScanMessage,

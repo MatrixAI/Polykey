@@ -10,8 +10,9 @@ import type NotificationsManager from '../../../notifications/NotificationsManag
 import type VaultManager from '../../../vaults/VaultManager';
 import NodesClaimsGet from './NodesClaimsGet';
 import NodesClosestLocalNodesGet from './NodesClosestLocalNodesGet';
+import NodesConnectionSignalFinal from './NodesConnectionSignalFinal';
+import NodesConnectionSignalInitial from './NodesConnectionSignalInitial';
 import NodesCrossSignClaim from './NodesCrossSignClaim';
-import NodesHolePunchMessageSend from './NodesHolePunchMessageSend';
 import NotificationsSend from './NotificationsSend';
 import VaultsGitInfoGet from './VaultsGitInfoGet';
 import VaultsGitPackGet from './VaultsGitPackGet';
@@ -35,8 +36,9 @@ const manifestServer = (container: {
   return {
     nodesClaimsGet: new NodesClaimsGet(container),
     nodesClosestLocalNodesGet: new NodesClosestLocalNodesGet(container),
+    nodesConnectionSignalFinal: new NodesConnectionSignalFinal(container),
+    nodesConnectionSignalInitial: new NodesConnectionSignalInitial(container),
     nodesCrossSignClaim: new NodesCrossSignClaim(container),
-    nodesHolePunchMessageSend: new NodesHolePunchMessageSend(container),
     notificationsSend: new NotificationsSend(container),
     vaultsGitInfoGet: new VaultsGitInfoGet(container),
     vaultsGitPackGet: new VaultsGitPackGet(container),
@@ -49,8 +51,9 @@ export default manifestServer;
 export {
   NodesClaimsGet,
   NodesClosestLocalNodesGet,
+  NodesConnectionSignalFinal,
+  NodesConnectionSignalInitial,
   NodesCrossSignClaim,
-  NodesHolePunchMessageSend,
   NotificationsSend,
   VaultsGitInfoGet,
   VaultsGitPackGet,

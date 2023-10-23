@@ -1,5 +1,6 @@
 import sysexits from './sysexits';
 import ErrorPolykey from '../ErrorPolykey';
+export * from './ratelimiter/errors';
 
 class ErrorUtils<T> extends ErrorPolykey<T> {}
 

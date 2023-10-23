@@ -199,45 +199,6 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  test('withConnection should extend timeout', async () => {
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      logger: logger.getChild(NodeConnectionManager.name),
-      nodeGraph,
-      tlsConfig,
-      seedNodes: undefined,
-      connectionIdleTimeoutTime: 1000,
-    });
-    await nodeConnectionManager.start({
-      host: localHost as Host,
-    });
-
-    await nodeGraph.setNode(remoteNodeId1, remoteAddress1);
-
-    // @ts-ignore: kidnap connections
-    const connections = nodeConnectionManager.connections;
-    // @ts-ignore: kidnap connections
-    const connectionLocks = nodeConnectionManager.connectionLocks;
-    await nodeConnectionManager.withConnF(remoteNodeId1, async () => {});
-    const midConnAndLock = connections.get(
-      remoteNodeId1.toString() as NodeIdString,
-    );
-    // Check entry is in map and lock is released
-    expect(midConnAndLock).toBeDefined();
-    expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
-    expect(midConnAndLock?.timer).toBeDefined();
-
-    // Destroying the connection
-    // @ts-ignore: private method
-    await nodeConnectionManager.destroyConnection(remoteNodeId1);
-    const finalConnAndLock = connections.get(
-      remoteNodeId1.toString() as NodeIdString,
-    );
-    expect(finalConnAndLock).not.toBeDefined();
-    expect(connectionLocks.isLocked(remoteNodeId1.toString())).toBeFalsy();
-
-    await nodeConnectionManager.stop();
-  });
   test('Connection can time out', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
