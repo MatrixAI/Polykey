@@ -142,21 +142,12 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       seedNodes: undefined,
     });
 
-    const serviceProm = promise();
-    mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
-      if (evt.detail.name === serverNodeIdEncoded) {
-        serviceProm.resolveP();
-      }
-    });
-
     await nodeConnectionManager.start({
       host: localHost,
     });
 
-    await serviceProm.p;
-
     // Expect no error thrown
-    const foundAddresses = nodeConnectionManager.findNodeLocal(serverNodeId);
+    const foundAddresses = await nodeConnectionManager.findNodeLocal(serverNodeId);
 
     expect(foundAddresses).toBeArray();
     expect(foundAddresses).toIncludeAllPartialMembers([{ port: nodeConnectionManagerPeer.port, scopes: ['local'] }])
@@ -174,18 +165,10 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       connectionConnectTimeoutTime: 1000,
     });
 
-    const { p: serviceP, resolveP: resolveServiceP  } = promise();
-    mdns.addEventListener(mdnsEvents.EventMDNSService.name, (evt: mdnsEvents.EventMDNSService) => {
-      if (evt.detail.name === serverNodeIdEncoded) {
-        resolveServiceP();
-      }
-    });
-
     await nodeConnectionManager.start({
       host: localHost,
     });
 
-    await serviceP;
     const acquire =
       await nodeConnectionManager.acquireConnection(serverNodeId);
     const [release] = await acquire();
