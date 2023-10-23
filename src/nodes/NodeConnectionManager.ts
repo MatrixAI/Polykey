@@ -771,16 +771,44 @@ class NodeConnectionManager {
     const existingConnection = await this.getExistingConnection(targetNodeId);
     if (existingConnection != null) return existingConnection;
     const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
+    let timeoutDivisions = 0;
+    const addressGroups: { local: Array<NodeAddress>, external: Array<NodeAddress> } = { local: [], external: [] };
+    for (const address of addresses) {
+      let scope = address.scopes.includes('local') ? 'local' : 'external';
+      // If this is the first time an addressGroup has had an address added, the timeout divisions must be incremented.
+      if (addressGroups[scope].length === 0) {
+        timeoutDivisions++;
+      }
+      addressGroups[scope].push(address);
+    }
     this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
     return await this.connectionLocks
       .withF([targetNodeIdString, Lock, ctx], async () => {
         this.logger.debug(`acquired lock for ${targetNodeIdEncoded}`);
-        // Attempting a multi-connection for the target node
-        const results = await this.establishMultiConnection(
-          [targetNodeId],
-          addresses,
-          ctx,
-        );
+        // Attempting a multi-connection for the target node using local addresses
+        const timeout = ctx.timer.getTimeout() / timeoutDivisions;
+        let results: Map<NodeIdString, ConnectionAndTimer> | undefined;
+        if (addressGroups.local.length !== 0) {
+          results = await this.establishMultiConnection(
+            [targetNodeId],
+            addressGroups.local,
+            {
+              signal: ctx.signal,
+              timer: timeout
+            },
+          );
+        }
+        // If there are no results from the attempted local connections, attempt a multi-connection for the target node using external addresses
+        if (results == null || results.size === 0) {
+          results = await this.establishMultiConnection(
+            [targetNodeId],
+            addressGroups.external,
+            {
+              signal: ctx.signal,
+              timer: timeout
+            },
+          );
+        }
         // Should be a single result.
         for (const [, connAndTimer] of results) {
           return connAndTimer;
@@ -801,10 +829,20 @@ class NodeConnectionManager {
    * @param ctx
    * @protected
    */
+  protected establishMultiConnection(
+    nodeIds: Array<NodeId>,
+    addresses: Array<NodeAddress>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<Map<NodeIdString, ConnectionAndTimer>>;
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
   protected async establishMultiConnection(
     nodeIds: Array<NodeId>,
     addresses: Array<NodeAddress>,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
     const nodesEncoded = nodeIds.map((v) => nodesUtils.encodeNodeId(v));
     this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
