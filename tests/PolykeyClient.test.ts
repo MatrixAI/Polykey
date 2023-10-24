@@ -130,7 +130,7 @@ describe(PolykeyClient.name, () => {
       await session.writeToken('abc' as SessionToken);
       await pkClient.stop();
       expect(await session.readToken()).toBeDefined();
-      await pkClient.destroy({ force: true });
+      await pkClient.destroy();
       expect(await session.readToken()).toBeUndefined();
     });
     test('connect to agent client service', async () => {
