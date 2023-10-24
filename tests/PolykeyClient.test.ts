@@ -155,6 +155,34 @@ describe(PolykeyClient.name, () => {
       expect(remoteCertPem).toEqual(agentCertPem);
       await pkClient.stop();
     });
+    test('reconnect to agent client service', async () => {
+      const pkClient = await PolykeyClient.createPolykeyClient({
+        nodeId: pkAgent.keyRing.getNodeId(),
+        port: pkAgent.clientServicePort,
+        host: pkAgent.clientServiceHost,
+        options: {
+          nodePath: nodePath,
+        },
+        fs,
+        logger: logger.getChild(PolykeyClient.name),
+        fresh: true,
+      });
+      await pkClient.stop();
+      await pkClient.start({
+        nodeId: pkAgent.keyRing.getNodeId(),
+        port: pkAgent.clientServicePort,
+        host: pkAgent.clientServiceHost,
+      });
+      expect(pkClient.host).toBe(pkAgent.clientServiceHost);
+      expect(pkClient.port).toBe(pkAgent.clientServicePort);
+      const connectionMeta = pkClient.webSocketClient.connection.meta();
+      expect(connectionMeta.remoteCertsChain).toHaveLength(1);
+      const remoteCert = connectionMeta.remoteCertsChain[0];
+      const remoteCertPem = webSocketUtils.derToPEM(remoteCert);
+      const agentCertPem = await pkAgent.certManager.getCurrentCertPEM();
+      expect(remoteCertPem).toEqual(agentCertPem);
+      await pkClient.stop();
+    });
     test('authenticated RPC request to agent client service', async () => {
       const pkClient = await PolykeyClient.createPolykeyClient({
         nodeId: pkAgent.keyRing.getNodeId(),
