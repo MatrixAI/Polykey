@@ -1,5 +1,5 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { NodeId, NodeIdEncoded } from '@/ids';
+import type { NodeId } from '@/ids';
 import type { NodeAddress, NodeBucket } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
@@ -16,10 +16,11 @@ import KeyRing from '@/keys/KeyRing';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeGraph from '@/nodes/NodeGraph';
+import * as nodesErrors from '@/nodes/errors';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
-import NodeManager from '@/nodes/NodeManager';
 import PolykeyAgent from '@/PolykeyAgent';
+import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
 import * as tlsTestUtils from '../utils/tls';
 
@@ -73,11 +74,13 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   };
 
   let dataDir: string;
+  let nodePathA: string;
+  let nodePathB: string;
 
-  let remotePolykeyAgent: PolykeyAgent;
-  let serverAddress: NodeAddress;
-  let serverNodeId: NodeId;
-  let serverNodeIdEncoded: NodeIdEncoded;
+  let remotePolykeyAgentA: PolykeyAgent;
+  let serverAddressA: NodeAddress;
+  let serverNodeIdA: NodeId;
+  let remotePolykeyAgentB: PolykeyAgent;
 
   let keyRing: KeyRing;
   let db: DB;
@@ -86,22 +89,30 @@ describe(`${NodeConnectionManager.name} general test`, () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
-  let nodeManager: NodeManager;
 
   let nodeConnectionManager: NodeConnectionManager;
-  // Default stream handler, just drop the stream
+
+  // Mocking the relay send
+  let mockedHolePunchReverse: jest.SpyInstance<PromiseCancellable<void>>;
+  let mockedPingNode: jest.SpyInstance<PromiseCancellable<boolean>>;
 
   beforeEach(async () => {
+    mockedHolePunchReverse = jest.spyOn(
+      NodeConnectionManager.prototype,
+      'holePunch',
+    );
+    mockedPingNode = jest.spyOn(NodeConnectionManager.prototype, 'pingNode');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
 
     // Setting up remote node
-    const nodePath = path.join(dataDir, 'agentA');
-    remotePolykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    nodePathA = path.join(dataDir, 'agentA');
+    nodePathB = path.join(dataDir, 'agentB');
+    remotePolykeyAgentA = await PolykeyAgent.createPolykeyAgent({
       password,
       options: {
-        nodePath,
+        nodePath: nodePathA,
         agentServiceHost: localHost,
         clientServiceHost: localHost,
         keys: {
@@ -112,8 +123,25 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       },
       logger: logger.getChild('AgentA'),
     });
-    serverNodeId = remotePolykeyAgent.keyRing.getNodeId();
-    serverNodeIdEncoded = nodesUtils.encodeNodeId(serverNodeId);
+    serverNodeIdA = remotePolykeyAgentA.keyRing.getNodeId();
+    serverAddressA = {
+      host: remotePolykeyAgentA.agentServiceHost as Host,
+      port: remotePolykeyAgentA.agentServicePort as Port,
+    };
+    remotePolykeyAgentB = await PolykeyAgent.createPolykeyAgent({
+      password,
+      options: {
+        nodePath: nodePathB,
+        agentServiceHost: localHost,
+        clientServiceHost: localHost,
+        keys: {
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+        },
+      },
+      logger: logger.getChild('AgentB'),
+    });
 
     // Setting up client dependencies
     const keysPath = path.join(dataDir, 'keys');
@@ -154,17 +182,14 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       db,
       logger,
     });
-    serverAddress = {
-      host: remotePolykeyAgent.agentServiceHost,
-      port: remotePolykeyAgent.agentServicePort,
-    };
   });
 
   afterEach(async () => {
     logger.info('AFTER EACH');
+    mockedHolePunchReverse.mockRestore();
+    mockedPingNode.mockRestore();
     await taskManager.stopProcessing();
     await taskManager.stopTasks();
-    await nodeManager?.stop();
     await nodeConnectionManager?.stop();
     await sigchain.stop();
     await sigchain.destroy();
@@ -180,7 +205,8 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     await keyRing.destroy();
     await taskManager.stop();
 
-    await remotePolykeyAgent.stop();
+    await remotePolykeyAgentA?.stop();
+    await remotePolykeyAgentB?.stop();
   });
 
   test('finds node (local)', async () => {
@@ -191,17 +217,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       tlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -231,17 +246,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       tlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -256,14 +260,14 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     );
     logger.info('DOING TEST');
 
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeIdA, serverAddressA);
     // Adding node information to remote node
     const nodeId = testNodesUtils.generateRandomNodeId();
     const nodeAddress: NodeAddress = {
       host: localHost as Host,
       port: 11111 as Port,
     };
-    await remotePolykeyAgent.nodeGraph.setNode(nodeId, nodeAddress);
+    await remotePolykeyAgentA.nodeGraph.setNode(nodeId, nodeAddress);
 
     // Expect no error thrown
     const findNodePromise = nodeConnectionManager.findNode(nodeId);
@@ -282,17 +286,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       tlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -306,7 +299,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       () => new PromiseCancellable((resolve) => resolve(true)),
     );
 
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeIdA, serverAddressA);
     // Adding node information to remote node
     const nodeId = testNodesUtils.generateRandomNodeId();
 
@@ -326,17 +319,6 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       tlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
@@ -350,20 +332,20 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       () => new PromiseCancellable((resolve) => resolve(true)),
     );
 
-    await nodeGraph.setNode(serverNodeId, serverAddress);
+    await nodeGraph.setNode(serverNodeIdA, serverAddressA);
 
     // Now generate and add 20 nodes that will be close to this node ID
     const addedClosestNodes: NodeBucket = [];
     for (let i = 1; i < 101; i += 5) {
       const closeNodeId = testNodesUtils.generateNodeIdForBucket(
-        serverNodeId,
+        serverNodeIdA,
         i,
       );
       const nodeAddress = {
         host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
-      await remotePolykeyAgent.nodeGraph.setNode(closeNodeId, nodeAddress);
+      await remotePolykeyAgentA.nodeGraph.setNode(closeNodeId, nodeAddress);
       addedClosestNodes.push([
         closeNodeId,
         {
@@ -379,23 +361,23 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         host: `${i}.${i}.${i}.${i}`,
         port: i,
       } as NodeAddress;
-      await remotePolykeyAgent.nodeGraph.setNode(farNodeId, nodeAddress);
+      await remotePolykeyAgentA.nodeGraph.setNode(farNodeId, nodeAddress);
     }
 
     // Get the closest nodes to the target node
     const closest = await nodeConnectionManager.getRemoteNodeClosestNodes(
-      serverNodeId,
-      serverNodeId,
+      serverNodeIdA,
+      serverNodeIdA,
     );
     // Sort the received nodes on distance such that we can check its equality
     // with addedClosestNodes
-    nodesUtils.bucketSortByDistance(closest, serverNodeId);
+    nodesUtils.bucketSortByDistance(closest, serverNodeIdA);
     expect(closest.length).toBe(20);
     expect(closest).toEqual(addedClosestNodes);
 
     await nodeConnectionManager.stop();
   });
-  test('sendHolePunchMessage', async () => {
+  test('holePunchSignalRequest with no target node', async () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       logger: logger.getChild(NodeConnectionManager.name),
@@ -405,133 +387,276 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       tlsConfig,
       seedNodes: undefined,
     });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-    await nodeConnectionManager.start({
-      host: localHost as Host,
-    });
-    await taskManager.startProcessing();
-    // Mocking pinging to always return true
-    const mockedPingNode = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'pingNode',
-    );
-    mockedPingNode.mockImplementation(
-      () => new PromiseCancellable((resolve) => resolve(true)),
-    );
-
-    await nodeGraph.setNode(serverNodeId, serverAddress);
-
-    // Now generate and add 20 nodes that will be close to this node ID
-    const addedClosestNodes: NodeBucket = [];
-    for (let i = 1; i < 101; i += 5) {
-      const closeNodeId = testNodesUtils.generateNodeIdForBucket(
-        serverNodeId,
-        i,
-      );
-      const nodeAddress = {
-        host: (i + '.' + i + '.' + i + '.' + i) as Host,
-        port: i as Port,
-      };
-      await remotePolykeyAgent.nodeGraph.setNode(closeNodeId, nodeAddress);
-      addedClosestNodes.push([
-        closeNodeId,
-        {
-          address: nodeAddress,
-          lastUpdated: 0,
-        },
-      ]);
-    }
-    // Now create and add 10 more nodes that are far away from this node
-    for (let i = 1; i <= 10; i++) {
-      const farNodeId = nodeIdGenerator(i);
-      const nodeAddress = {
-        host: `${i}.${i}.${i}.${i}`,
-        port: i,
-      } as NodeAddress;
-      await remotePolykeyAgent.nodeGraph.setNode(farNodeId, nodeAddress);
-    }
-
-    // Get the closest nodes to the target node
-    const closest = await nodeConnectionManager.getRemoteNodeClosestNodes(
-      serverNodeId,
-      serverNodeId,
-    );
-    // Sort the received nodes on distance such that we can check its equality
-    // with addedClosestNodes
-    nodesUtils.bucketSortByDistance(closest, serverNodeId);
-    expect(closest.length).toBe(20);
-    expect(closest).toEqual(addedClosestNodes);
-
-    await nodeConnectionManager.stop();
-  });
-  test('relayHolePunchMessage', async () => {
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      logger: logger.getChild(NodeConnectionManager.name),
-      nodeGraph,
-      connectionKeepAliveTimeoutTime: 10000,
-      connectionKeepAliveIntervalTime: 1000,
-      tlsConfig,
-      seedNodes: undefined,
-    });
-    nodeManager = new NodeManager({
-      db,
-      gestaltGraph,
-      keyRing,
-      nodeConnectionManager,
-      nodeGraph,
-      sigchain,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
     await nodeConnectionManager.start({
       host: localHost as Host,
     });
     await taskManager.startProcessing();
 
-    // Mocking the relay send
-    const mockedHolePunchReverse = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'holePunchReverse',
-    );
     mockedHolePunchReverse.mockImplementation(() => {
       return new PromiseCancellable<void>((res) => {
         res();
       });
     });
 
+    await nodeGraph.setNode(serverNodeIdA, serverAddressA);
+
+    const targetNodeId = testNodesUtils.generateRandomNodeId();
+    const relayNodeId = remotePolykeyAgentA.keyRing.getNodeId();
+
+    await expect(
+      nodeConnectionManager.connectionSignalInitial(targetNodeId, relayNodeId),
+    ).rejects.toThrow();
+    await nodeConnectionManager.stop();
+  });
+  test('holePunchSignalRequest with target node', async () => {
+    // Establish connection between remote A and B
+    expect(
+      await remotePolykeyAgentA.nodeConnectionManager.pingNode(
+        remotePolykeyAgentB.keyRing.getNodeId(),
+        remotePolykeyAgentB.agentServiceHost,
+        remotePolykeyAgentB.agentServicePort,
+      ),
+    ).toBeTrue();
+
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      connectionKeepAliveTimeoutTime: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+    });
+    await taskManager.startProcessing();
+
+    mockedHolePunchReverse.mockImplementation(() => {
+      return new PromiseCancellable<void>((res) => {
+        res();
+      });
+    });
+
+    const serverNodeId = remotePolykeyAgentA.keyRing.getNodeId();
+    const serverAddress = {
+      host: remotePolykeyAgentA.agentServiceHost as Host,
+      port: remotePolykeyAgentA.agentServicePort as Port,
+    };
     await nodeGraph.setNode(serverNodeId, serverAddress);
 
-    const srcNodeId = testNodesUtils.generateRandomNodeId();
-    const srcNodeIdEncoded = nodesUtils.encodeNodeId(srcNodeId);
+    const targetNodeId = remotePolykeyAgentB.keyRing.getNodeId();
+    const relayNodeId = remotePolykeyAgentA.keyRing.getNodeId();
 
-    await nodeConnectionManager.relaySignalingMessage(
-      {
-        srcIdEncoded: srcNodeIdEncoded,
-        dstIdEncoded: serverNodeIdEncoded,
-        address: {
-          host: '127.0.0.2',
-          port: 22222,
-        },
-      },
-      {
-        host: '127.0.0.3' as Host,
-        port: 33333 as Port,
-      },
+    await nodeConnectionManager.connectionSignalInitial(
+      targetNodeId,
+      relayNodeId,
+    );
+    // Await the FAF signalling to finish.
+    const signalMapA =
+      // @ts-ignore: kidnap protected property
+      remotePolykeyAgentA.nodeConnectionManager.activeSignalFinalPs;
+    for (const p of signalMapA) {
+      await p;
+    }
+    const punchMapB =
+      // @ts-ignore: kidnap protected property
+      remotePolykeyAgentB.nodeConnectionManager.activeHolePunchPs;
+    for await (const [, p] of punchMapB) {
+      await p;
+    }
+    expect(mockedHolePunchReverse).toHaveBeenCalled();
+    await nodeConnectionManager.stop();
+  });
+  test('holePunchSignalRequest is nonblocking', async () => {
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      connectionKeepAliveTimeoutTime: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+    });
+    await taskManager.startProcessing();
+
+    const { p: waitP, resolveP: waitResolveP } = utils.promise<void>();
+    mockedHolePunchReverse.mockImplementation(() => {
+      return new PromiseCancellable<void>(async (res) => {
+        await waitP;
+        res();
+      });
+    });
+
+    const serverNodeId = remotePolykeyAgentA.keyRing.getNodeId();
+    const serverAddress = {
+      host: remotePolykeyAgentA.agentServiceHost,
+      port: remotePolykeyAgentA.agentServicePort,
+    };
+    await nodeGraph.setNode(serverNodeId, serverAddress);
+    // Establish connection between remote A and B
+    expect(
+      await remotePolykeyAgentA.nodeConnectionManager.pingNode(
+        remotePolykeyAgentB.keyRing.getNodeId(),
+        remotePolykeyAgentB.agentServiceHost,
+        remotePolykeyAgentB.agentServicePort,
+      ),
+    ).toBeTrue();
+
+    const targetNodeId = remotePolykeyAgentB.keyRing.getNodeId();
+    const relayNodeId = remotePolykeyAgentA.keyRing.getNodeId();
+    // Creating 5 concurrent attempts
+    const holePunchSignalRequests = [1, 2, 3, 4, 5].map(() =>
+      nodeConnectionManager.connectionSignalInitial(targetNodeId, relayNodeId),
+    );
+    // All should resolve immediately and not block
+    await Promise.all(holePunchSignalRequests);
+
+    // Await the FAF signalling to finish.
+    const signalMapA =
+      // @ts-ignore: kidnap protected property
+      remotePolykeyAgentA.nodeConnectionManager.activeSignalFinalPs;
+    for (const p of signalMapA) {
+      await p;
+    }
+    // Only one attempt is being made
+    const punchMapB =
+      // @ts-ignore: kidnap protected property
+      remotePolykeyAgentB.nodeConnectionManager.activeHolePunchPs;
+    expect(punchMapB.size).toBe(1);
+    // Allow the attempt to complete
+    waitResolveP();
+    for await (const [, p] of punchMapB) {
+      await p;
+    }
+    // Only attempted once
+    expect(mockedHolePunchReverse).toHaveBeenCalledTimes(1);
+    await nodeConnectionManager.stop();
+  });
+  test('holePunchRequest single target with multiple ports is rate limited', async () => {
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      connectionKeepAliveTimeoutTime: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+    });
+    await taskManager.startProcessing();
+
+    const { p: waitP, resolveP: waitResolveP } = utils.promise<void>();
+    mockedHolePunchReverse.mockImplementation(() => {
+      return new PromiseCancellable<void>(async (res) => {
+        await waitP;
+        res();
+      });
+    });
+
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55550 as Port,
+    );
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55551 as Port,
+    );
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55552 as Port,
+    );
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55553 as Port,
+    );
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55554 as Port,
+    );
+    nodeConnectionManager.handleNodesConnectionSignalFinal(
+      '127.0.0.1' as Host,
+      55555 as Port,
     );
 
-    expect(mockedHolePunchReverse).toHaveBeenCalled();
+    // @ts-ignore: protected property
+    expect(nodeConnectionManager.activeHolePunchPs.size).toBe(6);
+    // @ts-ignore: protected property
+    expect(nodeConnectionManager.activeHolePunchAddresses.size).toBe(1);
+    waitResolveP();
+    // @ts-ignore: protected property
+    for await (const [, p] of nodeConnectionManager.activeHolePunchPs) {
+      await p;
+    }
+
+    // Only attempted once
+    expect(mockedHolePunchReverse).toHaveBeenCalledTimes(6);
+    await nodeConnectionManager.stop();
+  });
+  test('holePunchSignalRequest rejects excessive requests', async () => {
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      connectionKeepAliveTimeoutTime: 10000,
+      connectionKeepAliveIntervalTime: 1000,
+      tlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+    });
+    await taskManager.startProcessing();
+
+    mockedHolePunchReverse.mockImplementation(() => {
+      return new PromiseCancellable<void>(async (res) => {
+        res();
+      });
+    });
+
+    expect(
+      await nodeConnectionManager.pingNode(
+        remotePolykeyAgentB.keyRing.getNodeId(),
+        remotePolykeyAgentB.agentServiceHost,
+        remotePolykeyAgentB.agentServicePort,
+      ),
+    ).toBeTrue();
+    const keyPair = keysUtils.generateKeyPair();
+    const sourceNodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+    const targetNodeId = remotePolykeyAgentB.keyRing.getNodeId();
+    const data = Buffer.concat([sourceNodeId, targetNodeId]);
+    const signature = keysUtils.signWithPrivateKey(keyPair, data);
+    expect(() => {
+      for (let i = 0; i < 30; i++) {
+        nodeConnectionManager.handleNodesConnectionSignalInitial(
+          sourceNodeId,
+          targetNodeId,
+          {
+            host: '127.0.0.1' as Host,
+            port: 55555 as Port,
+          },
+          signature.toString('base64url'),
+        );
+      }
+    }).toThrow(nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded);
+
+    const signalMapA =
+      // @ts-ignore: kidnap protected property
+      nodeConnectionManager.activeSignalFinalPs;
+    for (const p of signalMapA.values()) {
+      await p;
+    }
+    const punchMapB =
+      // @ts-ignore: kidnap protected property
+      remotePolykeyAgentB.nodeConnectionManager.activeHolePunchPs;
+    for (const [, p] of punchMapB) {
+      await p;
+    }
 
     await nodeConnectionManager.stop();
   });

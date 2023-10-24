@@ -1,7 +1,6 @@
 import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ClientCryptoOps, QUICConnection } from '@matrixai/quic';
 import type NodeGraph from './NodeGraph';
 import type {
@@ -21,15 +20,15 @@ import type {
   TLSConfig,
 } from '../network/types';
 import type { ServerManifest } from '@matrixai/rpc';
-import type { HolePunchRelayMessage } from './agent/types';
 import Logger from '@matrixai/logger';
 import { withF } from '@matrixai/resources';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
-import { Lock, LockBox } from '@matrixai/async-locks';
+import { Lock, LockBox, Semaphore } from '@matrixai/async-locks';
 import { Timer } from '@matrixai/timer';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { AbstractEvent, EventAll } from '@matrixai/events';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import {
   QUICSocket,
   QUICServer,
@@ -43,11 +42,11 @@ import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import manifestClientAgent from './agent/callers';
-import * as ids from '../ids';
 import * as keysUtils from '../keys/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import config from '../config';
+import RateLimiter from '../utils/ratelimiter/RateLimiter';
 
 type ManifestClientAgent = typeof manifestClientAgent;
 
@@ -129,6 +128,31 @@ class NodeConnectionManager {
    * Default timeout for RPC handlers
    */
   public readonly rpcCallTimeoutTime: number;
+  /**
+   * Used to track active hole punching attempts.
+   * Attempts are mapped by a string of `${host}:${port}`.
+   * This is used to coalesce attempts to a target host and port.
+   * Used to cancel and await punch attempts when stopping to prevent orphaned promises.
+   */
+  protected activeHolePunchPs = new Map<string, PromiseCancellable<void>>();
+  /**
+   *  Used to rate limit hole punch attempts per IP Address.
+   *  We use a semaphore to track the number of active hole punch attempts to that address.
+   *  We Use a semaphore here to allow a limit of 3 attempts per host.
+   *  To allow concurrent attempts to the same host while limiting the number of different ports.
+   *  This is mainly used to limit requests to a single target host.
+   */
+  protected activeHolePunchAddresses = new Map<string, Semaphore>();
+  /**
+   * Used track the active `nodesConnectionSignalFinal` attempts and prevent orphaned promises.
+   * Used to cancel and await the active `nodesConnectionSignalFinal` when stopping.
+   */
+  protected activeSignalFinalPs = new Set<PromiseCancellable<void>>();
+  /**
+   * Used to limit signalling requests on a per-requester basis.
+   * This is mainly used to limit a single source node making too many requests through a relay.
+   */
+  protected rateLimiter = new RateLimiter(60000, 20, 10, 1);
 
   protected logger: Logger;
   protected keyRing: KeyRing;
@@ -456,11 +480,13 @@ class NodeConnectionManager {
       this.handleEventQUICServerConnection,
     );
     this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
+    this.rateLimiter.startRefillInterval();
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
     this.logger.info(`Stop ${this.constructor.name}`);
+    this.rateLimiter.stop();
 
     this.removeEventListener(
       nodesEvents.EventNodeConnectionManagerError.name,
@@ -503,6 +529,16 @@ class NodeConnectionManager {
       destroyProms.push(destroyProm);
     }
     await Promise.all(destroyProms);
+    const signallingProms: Array<PromiseCancellable<void>> = [];
+    for (const [, activePunch] of this.activeHolePunchPs) {
+      signallingProms.push(activePunch);
+      activePunch.cancel();
+    }
+    for (const activeSignal of this.activeSignalFinalPs) {
+      signallingProms.push(activeSignal);
+      activeSignal.cancel();
+    }
+    await Promise.allSettled(signallingProms);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
     await this.rpcServer.stop({ force: true });
@@ -904,12 +940,7 @@ class NodeConnectionManager {
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
-      // FIXME: only here to see if this condition happens.
-      //  this NEEDS to be removed, but I want to know if this branch happens at all.
-      throw Error(
-        'TMP IMP, This should be exceedingly rare, lets see if it happens',
-      );
-      // Return;
+      return;
     }
     // Final setup
     const newConnAndTimer = this.addConnection(nodeId, connection);
@@ -1068,24 +1099,27 @@ class NodeConnectionManager {
    * Open up a port in the NAT by sending packets to the target address.
    * The packets will be sent in an exponential backoff dialing pattern and contain random data.
    *
+   * This is only ever done used in the reverse direction to open up the nat for the connection to establish from the
+   * forward direction.
+   *
    * This can't know it succeeded, it will continue until timed out or cancelled.
    *
    * @param host host of the target client.
    * @param port port of the target client.
    * @param ctx
    */
-  public async holePunchReverse(
+  public holePunch(
     host: Host,
     port: Port,
-    ctx?: Partial<ContextTimed>,
-  ): Promise<void>;
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
-  public async holePunchReverse(
+  public async holePunch(
     host: Host,
     port: Port,
     @context ctx: ContextTimed,
@@ -1378,106 +1412,149 @@ class NodeConnectionManager {
   }
 
   /**
-   * Performs an RPC request to send a hole-punch message to the target. Used to
-   * initially establish the NodeConnection from source to target.
+   * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
    *
-   * @param relayNodeId node ID of the relay node (i.e. the seed node)
-   * @param sourceNodeId node ID of the current node (i.e. the sender)
-   * @param targetNodeId node ID of the target node to hole punch
-   * @param address
-   * @param ctx
+   * Will validate the message, and initiate hole punching in the background and return immediately.
+   * Attempts to the same host and port are coalesced.
+   * Attempts to the same host are limited by a semaphore.
+   * Active attempts are tracked inside of the `activeHolePunchPs` set and are cancelled and awaited when the
+   * `NodeConnectionManager` stops.
    */
-  public sendSignalingMessage(
-    relayNodeId: NodeId,
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public handleNodesConnectionSignalFinal(host: Host, port: Port) {
+    const id = `${host}:${port}`;
+    if (this.activeHolePunchPs.has(id)) return;
+    // Checking for resource semaphore
+    let semaphore: Semaphore | undefined =
+      this.activeHolePunchAddresses.get(host);
+    if (semaphore == null) {
+      semaphore = new Semaphore(3);
+      this.activeHolePunchAddresses.set(host, semaphore);
+    }
+    const holePunchAttempt = new PromiseCancellable<void>(
+      async (res, rej, signal) => {
+        await semaphore!.withF(async () => {
+          this.holePunch(host, port, { signal })
+            .finally(() => {
+              this.activeHolePunchPs.delete(id);
+              if (semaphore!.count === 0) {
+                this.activeHolePunchAddresses.delete(host);
+              }
+            })
+            .then(res, rej);
+        });
+      },
+    );
+    this.activeHolePunchPs.set(id, holePunchAttempt);
+  }
+
+  /**
+   * This is used by the `NodesConnectionSignalInitial` to initiate a relay request.
+   * Requests can only be relayed to nodes this node is currently connected to.
+   *
+   * Requests made by the same node are rate limited, when the limit has been exceeded the request
+   * throws an `ErrorNodeConnectionManagerRequestRateExceeded` error.
+   *
+   * Active relay attempts are tracked in `activeSignalFinalPs` and are cancelled and awaited when the
+   * `NodeConnectionManager` stops.
+   *
+   * @param sourceNodeId - NodeId of the node making the request. Used for rate limiting.
+   * @param targetNodeId - NodeId of the node that needs to initiate hole punching.
+   * @param address - Address the target needs to punch to.
+   * @param requestSignature - `base64url` encoded signature
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public handleNodesConnectionSignalInitial(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
-    address?: NodeAddress,
-    ctx?: Partial<ContextTimed>,
+    address: NodeAddress,
+    requestSignature: string,
+  ) {
+    // Need to get the connection details of the requester and add it to the message.
+    // Then send the message to the target.
+    // This would only function with existing connections
+    if (!this.hasConnection(targetNodeId)) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    // Do other checks.
+    const sourceNodeIdString = sourceNodeId.toString();
+    if (!this.rateLimiter.consume(sourceNodeIdString)) {
+      throw new nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded();
+    }
+    // Generating relay signature, data is just `<sourceNodeId><targetNodeId><Address><requestSignature>` concatenated
+    const data = Buffer.concat([
+      sourceNodeId,
+      targetNodeId,
+      Buffer.from(JSON.stringify(address), 'utf-8'),
+      Buffer.from(requestSignature, 'base64url'),
+    ]);
+    const relaySignature = keysUtils.signWithPrivateKey(
+      this.keyRing.keyPair,
+      data,
+    );
+    const connProm = this.withConnF(targetNodeId, async (conn) => {
+      const client = conn.getClient();
+      await client.methods.nodesConnectionSignalFinal({
+        sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
+        targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+        address,
+        requestSignature: requestSignature,
+        relaySignature: relaySignature.toString('base64url'),
+      });
+    }).finally(() => {
+      this.activeSignalFinalPs.delete(connProm);
+    });
+    this.activeSignalFinalPs.add(connProm);
+  }
+
+  /**
+   * Will make a connection to the signalling node and make a nodesConnectionSignalInitial` request.
+   *
+   * If the signalling node does not have an existing connection to the target then this will throw.
+   * If verification of the request fails then this will throw, but this shouldn't happen.
+   * The request contains a signature generated from `<sourceNodeId><targetNodeId>`.
+   *
+   *
+   *
+   * @param targetNodeId - NodeId of the node that needs to signal back.
+   * @param signallingNodeId - NodeId of the signalling node.
+   * @param ctx
+   */
+  public connectionSignalInitial(
+    targetNodeId: NodeId,
+    signallingNodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
-  public async sendSignalingMessage(
-    relayNodeId: NodeId,
-    sourceNodeId: NodeId,
+  public async connectionSignalInitial(
     targetNodeId: NodeId,
-    address: NodeAddress | undefined,
+    signallingNodeId: NodeId,
     @context ctx: ContextTimed,
   ): Promise<void> {
-    if (
-      this.keyRing.getNodeId().equals(relayNodeId) ||
-      this.keyRing.getNodeId().equals(targetNodeId)
-    ) {
-      // Logging and silently dropping operation
-      this.logger.debug(
-        'Attempted to send signaling message to our own NodeId',
-      );
-      return;
-    }
-    const rlyNode = nodesUtils.encodeNodeId(relayNodeId);
-    const srcNode = nodesUtils.encodeNodeId(sourceNodeId);
-    const tgtNode = nodesUtils.encodeNodeId(targetNodeId);
-    const addressString =
-      address != null ? `, address: ${address.host}:${address.port}` : '';
-    this.logger.debug(
-      `sendSignalingMessage sending Signaling message relay: ${rlyNode}, source: ${srcNode}, target: ${tgtNode}${addressString}`,
-    );
-    // Send message and ignore any error
     await this.withConnF(
-      relayNodeId,
-      async (connection) => {
-        const client = connection.getClient();
-        await client.methods.nodesHolePunchMessageSend(
+      signallingNodeId,
+      async (conn) => {
+        const client = conn.getClient();
+        const sourceNodeId = this.keyRing.getNodeId();
+        // Data is just `<sourceNodeId><targetNodeId>` concatenated
+        const data = Buffer.concat([sourceNodeId, targetNodeId]);
+        const signature = keysUtils.signWithPrivateKey(
+          this.keyRing.keyPair,
+          data,
+        );
+        await client.methods.nodesConnectionSignalInitial(
           {
-            srcIdEncoded: srcNode,
-            dstIdEncoded: tgtNode,
-            address,
+            targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+            signature: signature.toString('base64url'),
           },
           ctx,
         );
       },
-      ctx,
-    ).catch(() => {});
-  }
-
-  /**
-   * Forwards a received hole punch message on to the target.
-   * If not known, the node ID -> address mapping is attempted to be discovered
-   * through Kademlia (note, however, this is currently only called by a 'broker'
-   * node).
-   * @param message the original relay message (assumed to be created in
-   * nodeConnection.start())
-   * @param sourceAddress
-   * @param ctx
-   */
-  public relaySignalingMessage(
-    message: HolePunchRelayMessage,
-    sourceAddress: NodeAddress,
-    ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTimeoutTime,
-  )
-  public async relaySignalingMessage(
-    message: HolePunchRelayMessage,
-    sourceAddress: NodeAddress,
-    @context ctx: ContextTimed,
-  ): Promise<void> {
-    // First check if we already have an existing ID -> address record
-    // If we're relaying then we trust our own node graph records over
-    // what was provided in the message
-    const sourceNode = ids.parseNodeId(message.srcIdEncoded);
-    await this.sendSignalingMessage(
-      ids.parseNodeId(message.dstIdEncoded),
-      sourceNode,
-      ids.parseNodeId(message.dstIdEncoded),
-      sourceAddress,
       ctx,
     );
   }
@@ -1641,8 +1718,8 @@ class NodeConnectionManager {
    * This is pretty simple, it will contact all known seed nodes and get them to
    * relay a punch signal message.
    *
-   * Note: Avoid using a large set of target nodes, It could trigger a large
-   * amount of pings to a single target.
+   * This doesn't care if the requests fail or succeed, so any errors or results are ignored.
+   *
    */
   protected initiateHolePunch(
     targetNodeIds: Array<NodeId>,
@@ -1657,15 +1734,10 @@ class NodeConnectionManager {
     const allProms: Array<Promise<Array<void>>> = [];
     for (const targetNodeId of targetNodeIds) {
       if (!this.isSeedNode(targetNodeId)) {
+        // Ask seed nodes to signal hole punching for target
         const holePunchProms = seedNodes.map((seedNodeId) => {
           return (
-            this.sendSignalingMessage(
-              seedNodeId,
-              this.keyRing.getNodeId(),
-              targetNodeId,
-              undefined,
-              ctx,
-            )
+            this.connectionSignalInitial(targetNodeId, seedNodeId, ctx)
               // Ignore results
               .then(
                 () => {},

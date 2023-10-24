@@ -1,8 +1,6 @@
 import ErrorPolykey from '../ErrorPolykey';
 import sysexits from '../utils/sysexits';
 
-// TODO: Some errors may need to be removed here, TBD in stage 2 agent migration
-
 class ErrorNodes<T> extends ErrorPolykey<T> {}
 
 class ErrorNodeManager<T> extends ErrorNodes<T> {}
@@ -137,6 +135,20 @@ class ErrorNodeConnectionManagerMultiConnectionFailed<
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorNodeConnectionManagerConnectionNotFound<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description = 'No existing connection was found for target NodeId';
+  exitCode = sysexits.TEMPFAIL;
+}
+
+class ErrorNodeConnectionManagerRequestRateExceeded<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description = 'Rate limit exceeded while making request';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
     'Failed to ping the node when attempting to authenticate';
@@ -175,6 +187,8 @@ export {
   ErrorNodeConnectionManagerInternalError,
   ErrorNodeConnectionManagerNodeIdRequired,
   ErrorNodeConnectionManagerMultiConnectionFailed,
+  ErrorNodeConnectionManagerConnectionNotFound,
+  ErrorNodeConnectionManagerRequestRateExceeded,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
 };
