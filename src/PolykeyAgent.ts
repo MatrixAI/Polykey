@@ -496,7 +496,6 @@ class PolykeyAgent {
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly clientService: ClientService;
-  public readonly privateKeyPath: string;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   protected handleEventCertManagerCertChange = async (
