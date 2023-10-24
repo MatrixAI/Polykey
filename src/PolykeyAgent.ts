@@ -1,8 +1,8 @@
-import type { DeepPartial, FileSystem } from './types';
+import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { Key, PasswordOpsLimit, PasswordMemLimit, PrivateKey } from "./keys/types";
+import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -61,9 +61,12 @@ type PolykeyAgentOptions = {
     certDuration: number;
     certRenewLeadTime: number;
     recoveryCode: string;
-    privateKeyPath: string;
-    privateKey: PrivateKey;
-  };
+  } & (
+    | ObjectEmpty
+    | { recoveryCode: string }
+    | { privateKey: Buffer }
+    | { privateKeyPath: string }
+  );
   client: {
     keepAliveTimeoutTime: number;
     keepAliveIntervalTime: number;
@@ -164,7 +167,7 @@ class PolykeyAgent {
         connectionHolePunchIntervalTime:
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       },
-    }) as PolykeyAgentOptions;
+    });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
     if (optionsDefaulted.nodePath == null) {
@@ -222,13 +225,16 @@ class PolykeyAgent {
       });
       keyRing = await KeyRing.createKeyRing({
         keysPath,
-        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
-        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
-        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
         fs,
         fresh,
         password,
         logger: logger.getChild(KeyRing.name),
+        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+        privateKey: optionsDefaulted.keys.privateKey,
+        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
+        recoveryCode: optionsDefaulted.keys.recoveryCode,
+        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
       });
       db = await DB.createDB({
         dbPath,
@@ -490,6 +496,7 @@ class PolykeyAgent {
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly clientService: ClientService;
+  public readonly privateKeyPath: string;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   protected handleEventCertManagerCertChange = async (
@@ -606,13 +613,18 @@ class PolykeyAgent {
     fresh = false,
   }: {
     password: string;
-    options?: Partial<{
+    options?: DeepPartial<{
       clientServiceHost: string;
       clientServicePort: number;
       agentServiceHost: string;
       agentServicePort: number;
       ipv6Only: boolean;
       workers: number;
+      keys:
+        | ObjectEmpty
+        | { recoveryCode: string }
+        | { privateKey: Buffer }
+        | { privateKeyPath: string };
     }>;
     workers?: number;
     fresh?: boolean;
@@ -638,6 +650,9 @@ class PolykeyAgent {
       await this.keyRing.start({
         password,
         fresh,
+        recoveryCode: optionsDefaulted.keys?.recoveryCode,
+        privateKey: optionsDefaulted.keys?.privateKey,
+        privateKeyPath: optionsDefaulted.keys?.privateKeyPath,
       });
       await this.db.start({
         crypto: {
