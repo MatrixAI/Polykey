@@ -650,6 +650,10 @@ class PolykeyAgent {
         | { recoveryCode: string }
         | { privateKey: Buffer }
         | { privateKeyPath: string };
+      mdns: {
+        groups: Array<string>;
+        port: number;
+      };
     }>;
     workers?: number;
     fresh?: boolean;
@@ -663,6 +667,10 @@ class PolykeyAgent {
         agentServicePort: config.defaultsUser.agentServicePort,
         workers: config.defaultsUser.workers,
         ipv6Only: config.defaultsUser.ipv6Only,
+        mdns: {
+          groups: config.defaultsSystem.mdnsGroups,
+          port: config.defaultsSystem.mdnsPort,
+        }
       });
       // Register event handlers
       this.certManager.addEventListener(
