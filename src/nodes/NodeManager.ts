@@ -1192,11 +1192,10 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<void> {
     const logger = this.logger.getChild('syncNodeGraph');
-    logger.info('Syncing nodeGraph');
-    // Getting the seed node connection information
+    logger.info('Synchronizing NodeGraph');
     const seedNodes = this.nodeConnectionManager.getSeedNodes();
     if (seedNodes.length === 0) {
-      logger.debug(`No seed nodes provided, skipping discovery`);
+      logger.info('Seed nodes list is empty, skipping synchronization');
       return;
     }
     const addresses = await Promise.all(
