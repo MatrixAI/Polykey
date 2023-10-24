@@ -2,11 +2,7 @@ import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type {
-  Key,
-  PasswordOpsLimit,
-  PasswordMemLimit,
-} from './keys/types';
+import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
