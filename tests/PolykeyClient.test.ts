@@ -130,7 +130,7 @@ describe(PolykeyClient.name, () => {
       await session.writeToken('abc' as SessionToken);
       await pkClient.stop();
       expect(await session.readToken()).toBeDefined();
-      await pkClient.destroy({ force: true });
+      await pkClient.destroy();
       expect(await session.readToken()).toBeUndefined();
     });
     test('connect to agent client service', async () => {
@@ -144,6 +144,34 @@ describe(PolykeyClient.name, () => {
         fs,
         logger: logger.getChild(PolykeyClient.name),
         fresh: true,
+      });
+      expect(pkClient.host).toBe(pkAgent.clientServiceHost);
+      expect(pkClient.port).toBe(pkAgent.clientServicePort);
+      const connectionMeta = pkClient.webSocketClient.connection.meta();
+      expect(connectionMeta.remoteCertsChain).toHaveLength(1);
+      const remoteCert = connectionMeta.remoteCertsChain[0];
+      const remoteCertPem = webSocketUtils.derToPEM(remoteCert);
+      const agentCertPem = await pkAgent.certManager.getCurrentCertPEM();
+      expect(remoteCertPem).toEqual(agentCertPem);
+      await pkClient.stop();
+    });
+    test('reconnect to agent client service', async () => {
+      const pkClient = await PolykeyClient.createPolykeyClient({
+        nodeId: pkAgent.keyRing.getNodeId(),
+        port: pkAgent.clientServicePort,
+        host: pkAgent.clientServiceHost,
+        options: {
+          nodePath: nodePath,
+        },
+        fs,
+        logger: logger.getChild(PolykeyClient.name),
+        fresh: true,
+      });
+      await pkClient.stop();
+      await pkClient.start({
+        nodeId: pkAgent.keyRing.getNodeId(),
+        port: pkAgent.clientServicePort,
+        host: pkAgent.clientServiceHost,
       });
       expect(pkClient.host).toBe(pkAgent.clientServiceHost);
       expect(pkClient.port).toBe(pkAgent.clientServicePort);
