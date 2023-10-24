@@ -1,4 +1,4 @@
-import type { DeepPartial, FileSystem } from './types';
+import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
@@ -6,7 +6,6 @@ import type {
   Key,
   PasswordOpsLimit,
   PasswordMemLimit,
-  PrivateKey,
 } from './keys/types';
 import path from 'path';
 import process from 'process';
@@ -66,8 +65,8 @@ type PolykeyAgentOptions = {
     certDuration: number;
     certRenewLeadTime: number;
     recoveryCode: string;
-    privateKeyPath: string;
     privateKey: Buffer;
+    privateKeyPath: string;
   };
   client: {
     keepAliveTimeoutTime: number;
@@ -85,7 +84,12 @@ type PolykeyAgentOptions = {
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
   };
-};
+} & (
+  | ObjectEmpty
+  | { recoveryCode: string }
+  | { privateKey: Buffer }
+  | { privateKeyPath: string }
+);
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -495,6 +499,7 @@ class PolykeyAgent {
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly clientService: ClientService;
+  public readonly privateKeyPath: string;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
 
   protected handleEventCertManagerCertChange = async (
@@ -611,13 +616,18 @@ class PolykeyAgent {
     fresh = false,
   }: {
     password: string;
-    options?: Partial<{
+    options?: DeepPartial<{
       clientServiceHost: string;
       clientServicePort: number;
       agentServiceHost: string;
       agentServicePort: number;
       ipv6Only: boolean;
       workers: number;
+      keys: {
+        recoveryCode: string;
+        privateKey: Buffer;
+        privateKeyPath: string;
+      };
     }>;
     workers?: number;
     fresh?: boolean;
@@ -643,6 +653,9 @@ class PolykeyAgent {
       await this.keyRing.start({
         password,
         fresh,
+        recoveryCode: optionsDefaulted.keys.recoveryCode,
+        privateKey: optionsDefaulted.keys.privateKey,
+        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
       });
       await this.db.start({
         crypto: {
