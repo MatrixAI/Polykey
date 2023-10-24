@@ -61,9 +61,12 @@ type PolykeyAgentOptions = {
     certDuration: number;
     certRenewLeadTime: number;
     recoveryCode: string;
-    privateKey: Buffer;
-    privateKeyPath: string;
-  };
+  } & (
+    | ObjectEmpty
+    | { recoveryCode: string }
+    | { privateKey: Buffer }
+    | { privateKeyPath: string }
+  );
   client: {
     keepAliveTimeoutTime: number;
     keepAliveIntervalTime: number;
@@ -80,12 +83,7 @@ type PolykeyAgentOptions = {
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
   };
-} & (
-  | ObjectEmpty
-  | { recoveryCode: string }
-  | { privateKey: Buffer }
-  | { privateKeyPath: string }
-);
+};
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -169,7 +167,7 @@ class PolykeyAgent {
         connectionHolePunchIntervalTime:
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
       },
-    }) as PolykeyAgentOptions;
+    });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
     if (optionsDefaulted.nodePath == null) {
@@ -227,13 +225,16 @@ class PolykeyAgent {
       });
       keyRing = await KeyRing.createKeyRing({
         keysPath,
-        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
-        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
-        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
         fs,
         fresh,
         password,
         logger: logger.getChild(KeyRing.name),
+        passwordMemLimit: optionsDefaulted.keys.passwordMemLimit,
+        passwordOpsLimit: optionsDefaulted.keys.passwordOpsLimit,
+        privateKey: optionsDefaulted.keys.privateKey,
+        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
+        recoveryCode: optionsDefaulted.keys.recoveryCode,
+        strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
       });
       db = await DB.createDB({
         dbPath,
@@ -619,11 +620,11 @@ class PolykeyAgent {
       agentServicePort: number;
       ipv6Only: boolean;
       workers: number;
-      keys: {
-        recoveryCode: string;
-        privateKey: Buffer;
-        privateKeyPath: string;
-      };
+      keys:
+        | ObjectEmpty
+        | { recoveryCode: string }
+        | { privateKey: Buffer }
+        | { privateKeyPath: string };
     }>;
     workers?: number;
     fresh?: boolean;
@@ -649,9 +650,9 @@ class PolykeyAgent {
       await this.keyRing.start({
         password,
         fresh,
-        recoveryCode: optionsDefaulted.keys.recoveryCode,
-        privateKey: optionsDefaulted.keys.privateKey,
-        privateKeyPath: optionsDefaulted.keys.privateKeyPath,
+        recoveryCode: optionsDefaulted.keys?.recoveryCode,
+        privateKey: optionsDefaulted.keys?.privateKey,
+        privateKeyPath: optionsDefaulted.keys?.privateKeyPath,
       });
       await this.db.start({
         crypto: {
