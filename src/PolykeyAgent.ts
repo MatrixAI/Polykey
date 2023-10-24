@@ -628,16 +628,16 @@ class PolykeyAgent {
     workers?: number;
     fresh?: boolean;
   }) {
-    const optionsDefaulted = utils.mergeObjects(options, {
-      clientServiceHost: config.defaultsUser.clientServiceHost,
-      clientServicePort: config.defaultsUser.clientServicePort,
-      agentServiceHost: config.defaultsUser.agentServiceHost,
-      agentServicePort: config.defaultsUser.agentServicePort,
-      workers: config.defaultsUser.workers,
-      ipv6Only: config.defaultsUser.ipv6Only,
-    });
     try {
       this.logger.info(`Starting ${this.constructor.name}`);
+      const optionsDefaulted = utils.mergeObjects(options, {
+        clientServiceHost: config.defaultsUser.clientServiceHost,
+        clientServicePort: config.defaultsUser.clientServicePort,
+        agentServiceHost: config.defaultsUser.agentServiceHost,
+        agentServicePort: config.defaultsUser.agentServicePort,
+        workers: config.defaultsUser.workers,
+        ipv6Only: config.defaultsUser.ipv6Only,
+      });
       // Register event handlers
       this.certManager.addEventListener(
         keysEvents.EventCertManagerCertChange.name,
