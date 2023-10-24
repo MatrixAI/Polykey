@@ -2,7 +2,7 @@ import type { DeepPartial, FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { SeedNodes } from './nodes/types';
-import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
+import type { Key, PasswordOpsLimit, PasswordMemLimit, PrivateKey } from "./keys/types";
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -61,6 +61,8 @@ type PolykeyAgentOptions = {
     certDuration: number;
     certRenewLeadTime: number;
     recoveryCode: string;
+    privateKeyPath: string;
+    privateKey: PrivateKey;
   };
   client: {
     keepAliveTimeoutTime: number;
