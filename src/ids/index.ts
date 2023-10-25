@@ -338,7 +338,7 @@ function parseGestaltId(data: any): GestaltId {
   return ['identity', [providerId, identityId]];
 }
 
-function parseGestaltIdentityId(data: any): ProviderIdentityId {
+function parseGestaltIdentityId(data: any): ['identity', ProviderIdentityId] {
   if (typeof data !== 'string') {
     throw new validationErrors.ErrorParse('Gestalt identity ID must be string');
   }
@@ -350,7 +350,7 @@ function parseGestaltIdentityId(data: any): ProviderIdentityId {
   }
   const providerId = parseProviderId(match[1]);
   const identityId = parseIdentityId(match[2]);
-  return [providerId, identityId];
+  return ['identity', [providerId, identityId]];
 }
 
 function encodeGestaltId(gestaltId: GestaltId): GestaltIdEncoded {
