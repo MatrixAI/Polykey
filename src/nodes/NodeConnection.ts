@@ -364,7 +364,7 @@ class NodeConnection<M extends ClientManifest> {
     return nodeConnection;
   }
 
-  static async createNodeConnectionReverse<M extends ClientManifest>({
+  static createNodeConnectionReverse<M extends ClientManifest>({
     certChain,
     nodeId,
     quicConnection,
@@ -376,7 +376,7 @@ class NodeConnection<M extends ClientManifest> {
     quicConnection: QUICConnection;
     manifest: M;
     logger?: Logger;
-  }): Promise<NodeConnection<M>> {
+  }): NodeConnection<M> {
     logger.info(`Creating ${this.name}`);
     // Creating RPCClient
     const rpcClient = new RPCClient<M>({
@@ -489,7 +489,7 @@ class NodeConnection<M extends ClientManifest> {
             isApp: true,
             errorCode: 1,
             reason: Buffer.from('NodeConnection is forcing destruction'),
-            force: true,
+            force,
           }
         : {},
     );
