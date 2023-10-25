@@ -73,8 +73,9 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       id: serverNodeId.at(0),
       hostname: serverNodeIdEncoded,
       groups: config.defaultsSystem.mdnsGroups,
-      port: config.defaultsSystem.mdnsPort
-    })
+      // This is different so that we do not conflict with the MDNS stack on other Polykey agents when running these tests
+      port: 64022,
+    });
     nodeConnectionManagerPeer = new NodeConnectionManager({
       keyRing: keyRingPeer,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
@@ -114,8 +115,9 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       id: clientNodeId.at(0),
       hostname: clientNodeIdEncoded,
       groups: config.defaultsSystem.mdnsGroups,
-      port: config.defaultsSystem.mdnsPort
-    })
+      // This is different so that we do not conflict with the MDNS stack on other Polykey agents when running these tests
+      port: 64022,
+    });
   });
 
   afterEach(async () => {
