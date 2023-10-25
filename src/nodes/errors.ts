@@ -72,7 +72,8 @@ class ErrorNodeConnectionHostWildcard<T> extends ErrorNodeConnection<T> {
 }
 
 class ErrorNodeConnectionHostLinkLocal<T> extends ErrorNodeConnection<T> {
-  static description = 'A link-local IPv6 address was provided for the target host, attempts to connect will fail due to being unsupported';
+  static description =
+    'A link-local IPv6 address was provided for the target host, attempts to connect will fail due to being unsupported';
   exitCode = sysexits.USAGE;
 }
 

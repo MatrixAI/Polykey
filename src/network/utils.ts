@@ -448,17 +448,29 @@ async function resolveHostnames(
   addresses: Array<NodeAddress>,
   existingAddresses: Set<string> = new Set(),
 ): Promise<Array<{ host: Host; port: Port; scopes: Array<NodeAddressScope> }>> {
-  const final: Array<{ host: Host; port: Port; scopes: Array<NodeAddressScope> }> = [];
+  const final: Array<{
+    host: Host;
+    port: Port;
+    scopes: Array<NodeAddressScope>;
+  }> = [];
   for (const address of addresses) {
     if (isHost(address.host)) {
       if (existingAddresses.has(`${address.host}|${address.port}`)) continue;
-      final.push({ host: address.host, port: address.port, scopes: address.scopes });
+      final.push({
+        host: address.host,
+        port: address.port,
+        scopes: address.scopes,
+      });
       existingAddresses.add(`${address.host}|${address.port}`);
       continue;
     }
     const resolvedAddresses = await resolveHostname(address.host);
     for (const resolvedHost of resolvedAddresses) {
-      const newAddress = { host: resolvedHost, port: address.port, scopes: address.scopes };
+      const newAddress = {
+        host: resolvedHost,
+        port: address.port,
+        scopes: address.scopes,
+      };
       if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
       if (existingAddresses.has(`${resolvedHost}|${address.port}`)) continue;
       final.push(newAddress);

@@ -40,7 +40,9 @@ class NodesFind extends UnaryHandler<
       },
     );
     const addresses = await nodeConnectionManager.findNodeAll(nodeId);
-    if (addresses.length === 0) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    if (addresses.length === 0) {
+      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    }
 
     return { addresses };
   };

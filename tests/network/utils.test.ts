@@ -12,8 +12,12 @@ describe('utils', () => {
     expect(networkUtils.isHost('::1234:5678')).toBeTrue();
     expect(networkUtils.isHost('2001:db8::1234:5678')).toBeTrue();
     expect(networkUtils.isHost('2001:db8:1::ab9:C0A8:102')).toBeTrue();
-    expect(networkUtils.isHost('2001:db8:3333:4444:5555:6666:7777:8888')).toBeTrue();
-    expect(networkUtils.isHost('2001:0db8:0001:0000:0000:0ab9:C0A8:0102')).toBeTrue();
+    expect(
+      networkUtils.isHost('2001:db8:3333:4444:5555:6666:7777:8888'),
+    ).toBeTrue();
+    expect(
+      networkUtils.isHost('2001:0db8:0001:0000:0000:0ab9:C0A8:0102'),
+    ).toBeTrue();
     // Link-Local
     expect(networkUtils.isHost('fe80::210:5aff:feaa:20a2%eth0')).toBeTrue();
   });

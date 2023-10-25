@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
-import { MDNS, events as mdnsEvents } from '@matrixai/mdns';
+import { MDNS } from '@matrixai/mdns';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -12,8 +12,7 @@ import NodeConnection from '@/nodes/NodeConnection';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
-import { promise } from '@/utils';
-import config  from '@/config';
+import config from '@/config';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} MDNS test`, () => {
@@ -82,7 +81,7 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       nodeGraph: {} as NodeGraph,
       tlsConfig: serverTlsConfig,
       seedNodes: undefined,
-      mdns: mdnsPeer
+      mdns: mdnsPeer,
     });
     await nodeConnectionManagerPeer.start({
       host: localHost,
@@ -147,10 +146,13 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
     });
 
     // Expect no error thrown
-    const foundAddresses = await nodeConnectionManager.findNodeLocal(serverNodeId);
+    const foundAddresses =
+      await nodeConnectionManager.findNodeLocal(serverNodeId);
 
     expect(foundAddresses).toBeArray();
-    expect(foundAddresses).toIncludeAllPartialMembers([{ port: nodeConnectionManagerPeer.port, scopes: ['local'] }])
+    expect(foundAddresses).toIncludeAllPartialMembers([
+      { port: nodeConnectionManagerPeer.port, scopes: ['local'] },
+    ]);
 
     await nodeConnectionManager.stop();
   });
@@ -169,8 +171,7 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
       host: localHost,
     });
 
-    const acquire =
-      await nodeConnectionManager.acquireConnection(serverNodeId);
+    const acquire = await nodeConnectionManager.acquireConnection(serverNodeId);
     const [release] = await acquire();
     expect(nodeConnectionManager.hasConnection(serverNodeId)).toBeTrue();
     await release();

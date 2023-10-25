@@ -13,12 +13,12 @@ const testnet: Record<string, NodeAddress> = {
   v7v9ptvcdbdf8p4upok3prpmu3938ns8v4g45dib7sm5hqvvehv70: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
-    scopes: ['external']
+    scopes: ['external'],
   },
   v270ktdd3cs3mp1r3q3dkmick92bn927mii9or4sgroeogd1peqb0: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
-    scopes: ['external']
+    scopes: ['external'],
   },
 };
 

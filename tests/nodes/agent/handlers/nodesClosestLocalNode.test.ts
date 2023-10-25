@@ -176,7 +176,7 @@ describe('nodesClosestLocalNode', () => {
       await nodeGraph.setNode(nodeId, {
         host: 'localhost' as Host,
         port: 55555 as Port,
-        scopes: ['local']
+        scopes: ['local'],
       });
       nodes.push(nodesUtils.encodeNodeId(nodeId));
     }

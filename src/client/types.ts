@@ -113,7 +113,7 @@ type NodesFindMessage = {
   addresses: Array<AddressMessage>;
 };
 
-type NodesGetMessage = NodeAddressMessage &  { bucketIndex: number };
+type NodesGetMessage = NodeAddressMessage & { bucketIndex: number };
 
 type NodesAddMessage = NodeAddressMessage & {
   force?: boolean;

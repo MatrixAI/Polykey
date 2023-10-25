@@ -420,7 +420,7 @@ describe('nodesFind', () => {
       .mockResolvedValue({
         host: '127.0.0.1' as Host,
         port: 11111 as Port,
-        scopes: ['local']
+        scopes: ['local'],
       });
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),

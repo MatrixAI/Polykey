@@ -175,7 +175,7 @@ class PolykeyAgent {
       mdns: {
         groups: config.defaultsSystem.mdnsGroups,
         port: config.defaultsSystem.mdnsPort,
-      }
+      },
     });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
@@ -327,14 +327,14 @@ class PolykeyAgent {
         logger: logger.getChild(NodeGraph.name),
       });
       mdns = new MDNS({
-        logger: logger.getChild(MDNS.name)
+        logger: logger.getChild(MDNS.name),
       });
       await mdns.start({
         id: keyRing.getNodeId().toBuffer().readUint16BE(),
         hostname: nodesUtils.encodeNodeId(keyRing.getNodeId()),
         groups: optionsDefaulted.mdns.groups,
         port: optionsDefaulted.mdns.port,
-      })
+      });
       // Remove your own node ID if provided as a seed node
       const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
@@ -670,7 +670,7 @@ class PolykeyAgent {
         mdns: {
           groups: config.defaultsSystem.mdnsGroups,
           port: config.defaultsSystem.mdnsPort,
-        }
+        },
       });
       // Register event handlers
       this.certManager.addEventListener(
@@ -745,7 +745,7 @@ class PolykeyAgent {
         hostname: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
         groups: optionsDefaulted.mdns.groups,
         port: optionsDefaulted.mdns.port,
-      })
+      });
       await this.nodeManager.start();
       await this.nodeConnectionManager.start({
         host: optionsDefaulted.agentServiceHost,

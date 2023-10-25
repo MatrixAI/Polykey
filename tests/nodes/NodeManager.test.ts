@@ -168,7 +168,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.setNode(nodeId, {
       host: '' as Host,
       port: 11111 as Port,
-      scopes: ['external']
+      scopes: ['external'],
     });
 
     const nodeData = (await nodeGraph.getNode(nodeId))!;
@@ -179,7 +179,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.setNode(nodeId, {
       host: '' as Host,
       port: 22222 as Port,
-      scopes: ['external']
+      scopes: ['external'],
     });
 
     const newNodeData = (await nodeGraph.getNode(nodeId))!;
@@ -400,7 +400,11 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = { host: localHost as Host, port: port as Port, scopes: ['external'] };
+    const address: NodeAddress = {
+      host: localHost as Host,
+      port: port as Port,
+      scopes: ['external'],
+    };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
@@ -435,7 +439,11 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = { host: localHost as Host, port: port as Port, scopes: ['external'] };
+    const address: NodeAddress = {
+      host: localHost as Host,
+      port: port as Port,
+      scopes: ['external'],
+    };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
@@ -477,7 +485,11 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
 
     const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = { host: localHost as Host, port: port as Port, scopes: ['external'] };
+    const address: NodeAddress = {
+      host: localHost as Host,
+      port: port as Port,
+      scopes: ['external'],
+    };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
       const newNode = testNodesUtils.generateNodeIdForBucket(nodeId, 100, i);

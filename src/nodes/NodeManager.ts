@@ -141,8 +141,19 @@ class NodeManager {
       );
       never();
     }
-    if (await this.pingNode(nodeId, [{ host, port, scopes: ['external'] }], { signal: ctx.signal })) {
-      await this.setNode(nodeId, { host, port, scopes: ['external'] }, false, false, 2000, ctx);
+    if (
+      await this.pingNode(nodeId, [{ host, port, scopes: ['external'] }], {
+        signal: ctx.signal,
+      })
+    ) {
+      await this.setNode(
+        nodeId,
+        { host, port, scopes: ['external'] },
+        false,
+        false,
+        2000,
+        ctx,
+      );
     }
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
@@ -210,7 +221,7 @@ class NodeManager {
       {
         host: e.detail.remoteHost,
         port: e.detail.remotePort,
-        scopes: ['external']
+        scopes: ['external'],
       },
       false,
       false,

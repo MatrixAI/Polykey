@@ -238,7 +238,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       [nodesUtils.encodeNodeId(localNodeId)]: {
         host: '127.0.0.1' as Host,
         port: 55123 as Port,
-        scopes: ['external']
+        scopes: ['external'],
       },
     };
     nodeConnectionManager = new NodeConnectionManager({
@@ -292,7 +292,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       [nodesUtils.encodeNodeId(remoteNodeId2)]: {
         host: '127.0.0.1' as Host,
         port: 55124 as Port,
-        scopes: ['external']
+        scopes: ['external'],
       },
     };
     nodeConnectionManager = new NodeConnectionManager({
