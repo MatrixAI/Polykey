@@ -420,6 +420,7 @@ describe('nodesFind', () => {
       .mockResolvedValue({
         host: '127.0.0.1' as Host,
         port: 11111 as Port,
+        scopes: ['local'],
       });
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -516,8 +517,9 @@ describe('nodesFind', () => {
       nodeIdEncoded:
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
     });
-    expect(response.host).toBe('127.0.0.1');
-    expect(response.port).toBe(11111);
+    const address = response.addresses.at(0);
+    expect(address?.host).toBe('127.0.0.1');
+    expect(address?.port).toBe(11111);
   });
   test('cannot find an invalid node', async () => {
     await testsUtils.expectRemoteError(

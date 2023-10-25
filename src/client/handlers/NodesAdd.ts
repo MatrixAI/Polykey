@@ -53,7 +53,9 @@ class NodesAdd extends UnaryHandler<
     // Pinging to authenticate the node
     if (
       (input.ping ?? false) &&
-      !(await nodeManager.pingNode(nodeId, { host, port }))
+      !(await nodeManager.pingNode(nodeId, [
+        { host, port, scopes: ['external'] },
+      ]))
     ) {
       throw new nodeErrors.ErrorNodePingFailed(
         'Failed to authenticate target node',

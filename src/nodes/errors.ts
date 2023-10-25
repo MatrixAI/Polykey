@@ -71,6 +71,12 @@ class ErrorNodeConnectionHostWildcard<T> extends ErrorNodeConnection<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeConnectionHostLinkLocal<T> extends ErrorNodeConnection<T> {
+  static description =
+    'A link-local IPv6 address was provided for the target host, attempts to connect will fail due to being unsupported';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeConnectionSameNodeId<T> extends ErrorNodeConnection<T> {
   static description =
     'Provided NodeId is the same as this agent, attempts to connect is improper usage';
@@ -127,6 +133,14 @@ class ErrorNodeConnectionManagerNodeIdRequired<
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeConnectionManagerNodeAddressRequired<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description =
+    'No NodeAddress was provided for establishing a multi connection';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeConnectionManagerMultiConnectionFailed<
   T,
 > extends ErrorNodeConnectionManager<T> {
@@ -178,6 +192,7 @@ export {
   ErrorNodeConnectionMultiConnectionFailed,
   ErrorNodeConnectionHostWildcard,
   ErrorNodeConnectionSameNodeId,
+  ErrorNodeConnectionHostLinkLocal,
   ErrorNodeConnectionInternalError,
   ErrorNodeConnectionTransportUnknownError,
   ErrorNodeConnectionTransportGenericError,
@@ -186,6 +201,7 @@ export {
   ErrorNodeConnectionManagerStopping,
   ErrorNodeConnectionManagerInternalError,
   ErrorNodeConnectionManagerNodeIdRequired,
+  ErrorNodeConnectionManagerNodeAddressRequired,
   ErrorNodeConnectionManagerMultiConnectionFailed,
   ErrorNodeConnectionManagerConnectionNotFound,
   ErrorNodeConnectionManagerRequestRateExceeded,

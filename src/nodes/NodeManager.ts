@@ -141,8 +141,19 @@ class NodeManager {
       );
       never();
     }
-    if (await this.pingNode(nodeId, { host, port }, { signal: ctx.signal })) {
-      await this.setNode(nodeId, { host, port }, false, false, 2000, ctx);
+    if (
+      await this.pingNode(nodeId, [{ host, port, scopes: ['external'] }], {
+        signal: ctx.signal,
+      })
+    ) {
+      await this.setNode(
+        nodeId,
+        { host, port, scopes: ['external'] },
+        false,
+        false,
+        2000,
+        ctx,
+      );
     }
   };
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
@@ -210,6 +221,7 @@ class NodeManager {
       {
         host: e.detail.remoteHost,
         port: e.detail.remotePort,
+        scopes: ['external'],
       },
       false,
       false,
@@ -329,12 +341,12 @@ class NodeManager {
    * Determines whether a node in the Polykey network is online.
    * @return true if online, false if offline
    * @param nodeId - NodeId of the node we're pinging
-   * @param address - Optional Host and Port we want to ping
+   * @param addresses - Optional Host and Port we want to ping
    * @param ctx
    */
   public pingNode(
     nodeId: NodeId,
-    address?: NodeAddress,
+    addresses?: Array<NodeAddress>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<boolean>;
   @timedCancellable(
@@ -343,25 +355,24 @@ class NodeManager {
   )
   public async pingNode(
     nodeId: NodeId,
-    address: NodeAddress | undefined,
+    addresses: Array<NodeAddress> | undefined,
     @context ctx: ContextTimed,
   ): Promise<boolean> {
     // We need to attempt a connection using the proxies
     // For now we will just do a forward connect + relay message
-    const targetAddress =
-      address ??
-      (await this.nodeConnectionManager.findNode(
+    const targetAddresses =
+      addresses ??
+      (await this.nodeConnectionManager.findNodeAll(
         nodeId,
         this.connectionConnectTimeoutTime,
         ctx,
       ));
-    if (targetAddress == null) {
+    if (targetAddresses == null) {
       return false;
     }
     return await this.nodeConnectionManager.pingNode(
       nodeId,
-      targetAddress.host,
-      targetAddress.port,
+      targetAddresses,
       ctx,
     );
   }
@@ -864,7 +875,7 @@ class NodeManager {
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
           if (nodeAddress == null) never();
-          if (await this.pingNode(nodeId, nodeAddress, pingCtx)) {
+          if (await this.pingNode(nodeId, [nodeAddress], pingCtx)) {
             // Succeeded so update
             await this.setNode(
               nodeId,

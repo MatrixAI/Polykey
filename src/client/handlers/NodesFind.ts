@@ -1,8 +1,8 @@
 import type {
-  AddressMessage,
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NodeIdMessage,
+  NodesFindMessage,
 } from '../types';
 import type { NodeId } from '../../ids';
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
@@ -17,11 +17,11 @@ class NodesFind extends UnaryHandler<
     nodeConnectionManager: NodeConnectionManager;
   },
   ClientRPCRequestParams<NodeIdMessage>,
-  ClientRPCResponseResult<AddressMessage>
+  ClientRPCResponseResult<NodesFindMessage>
 > {
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
-  ): Promise<ClientRPCResponseResult<AddressMessage>> => {
+  ): Promise<ClientRPCResponseResult<NodesFindMessage>> => {
     const { nodeConnectionManager } = this.container;
 
     const {
@@ -39,13 +39,12 @@ class NodesFind extends UnaryHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
-    const address = await nodeConnectionManager.findNode(nodeId);
-    if (address == null) throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    const addresses = await nodeConnectionManager.findNodeAll(nodeId);
+    if (addresses.length === 0) {
+      throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
+    }
 
-    return {
-      host: address.host,
-      port: address.port,
-    };
+    return { addresses };
   };
 }
 

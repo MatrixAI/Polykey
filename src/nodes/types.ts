@@ -6,9 +6,12 @@ import type { Host, Hostname, Port } from '../network/types';
  */
 type NodeGraphSpace = '0' | '1';
 
+type NodeAddressScope = 'local' | 'external';
+
 type NodeAddress = {
   host: Host | Hostname;
   port: Port;
+  scopes: Array<NodeAddressScope>;
 };
 
 type NodeBucketIndex = number;
@@ -30,6 +33,7 @@ export type {
   NodeId,
   NodeIdString,
   NodeIdEncoded,
+  NodeAddressScope,
   NodeAddress,
   SeedNodes,
   NodeBucketIndex,

@@ -517,10 +517,12 @@ describe('VaultManager', () => {
       await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
         host: remoteKeynode2.agentServiceHost,
         port: remoteKeynode2.agentServicePort,
+        scopes: ['external'],
       });
       await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
         host: remoteKeynode1.agentServiceHost,
         port: remoteKeynode1.agentServicePort,
+        scopes: ['external'],
       });
 
       await remoteKeynode1.gestaltGraph.setNode({
@@ -579,10 +581,12 @@ describe('VaultManager', () => {
       await nodeGraph.setNode(remoteKeynode1Id, {
         host: remoteKeynode1.agentServiceHost,
         port: remoteKeynode1.agentServicePort,
+        scopes: ['external'],
       });
       await nodeGraph.setNode(remoteKeynode2Id, {
         host: remoteKeynode2.agentServiceHost,
         port: remoteKeynode2.agentServicePort,
+        scopes: ['external'],
       });
     });
     afterEach(async () => {
@@ -1384,6 +1388,7 @@ describe('VaultManager', () => {
         await nodeGraph.setNode(targetNodeId, {
           host: remoteKeynode1.agentServiceHost,
           port: remoteKeynode1.agentServicePort,
+          scopes: ['external'],
         });
 
         await remoteKeynode1.gestaltGraph.setNode({

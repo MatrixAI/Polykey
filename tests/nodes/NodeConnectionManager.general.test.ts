@@ -127,6 +127,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     serverAddressA = {
       host: remotePolykeyAgentA.agentServiceHost as Host,
       port: remotePolykeyAgentA.agentServicePort as Port,
+      scopes: ['external'],
     };
     remotePolykeyAgentB = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -227,6 +228,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeAddress: NodeAddress = {
       host: localHost as Host,
       port: 11111 as Port,
+      scopes: ['external'],
     };
     await nodeGraph.setNode(nodeId, nodeAddress);
     // Expect no error thrown
@@ -266,6 +268,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeAddress: NodeAddress = {
       host: localHost as Host,
       port: 11111 as Port,
+      scopes: ['external'],
     };
     await remotePolykeyAgentA.nodeGraph.setNode(nodeId, nodeAddress);
 
@@ -305,7 +308,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
 
     // Expect no error thrown
     const findNodePromise = nodeConnectionManager.findNode(nodeId);
-    await expect(findNodePromise).resolves.toBeUndefined();
+    await expect(findNodePromise).resolves.toBe(undefined);
 
     await nodeConnectionManager.stop();
   });
@@ -341,9 +344,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
         serverNodeIdA,
         i,
       );
-      const nodeAddress = {
+      const nodeAddress: NodeAddress = {
         host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
+        scopes: ['external'],
       };
       await remotePolykeyAgentA.nodeGraph.setNode(closeNodeId, nodeAddress);
       addedClosestNodes.push([
@@ -413,8 +417,13 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     expect(
       await remotePolykeyAgentA.nodeConnectionManager.pingNode(
         remotePolykeyAgentB.keyRing.getNodeId(),
-        remotePolykeyAgentB.agentServiceHost,
-        remotePolykeyAgentB.agentServicePort,
+        [
+          {
+            host: remotePolykeyAgentB.agentServiceHost,
+            port: remotePolykeyAgentB.agentServicePort,
+            scopes: ['external'],
+          },
+        ],
       ),
     ).toBeTrue();
 
@@ -439,9 +448,10 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
 
     const serverNodeId = remotePolykeyAgentA.keyRing.getNodeId();
-    const serverAddress = {
+    const serverAddress: NodeAddress = {
       host: remotePolykeyAgentA.agentServiceHost as Host,
       port: remotePolykeyAgentA.agentServicePort as Port,
+      scopes: ['external'],
     };
     await nodeGraph.setNode(serverNodeId, serverAddress);
 
@@ -492,17 +502,23 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     });
 
     const serverNodeId = remotePolykeyAgentA.keyRing.getNodeId();
-    const serverAddress = {
+    const serverAddress: NodeAddress = {
       host: remotePolykeyAgentA.agentServiceHost,
       port: remotePolykeyAgentA.agentServicePort,
+      scopes: ['external'],
     };
     await nodeGraph.setNode(serverNodeId, serverAddress);
     // Establish connection between remote A and B
     expect(
       await remotePolykeyAgentA.nodeConnectionManager.pingNode(
         remotePolykeyAgentB.keyRing.getNodeId(),
-        remotePolykeyAgentB.agentServiceHost,
-        remotePolykeyAgentB.agentServicePort,
+        [
+          {
+            host: remotePolykeyAgentB.agentServiceHost,
+            port: remotePolykeyAgentB.agentServicePort,
+            scopes: ['external'],
+          },
+        ],
       ),
     ).toBeTrue();
 
@@ -622,8 +638,13 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     expect(
       await nodeConnectionManager.pingNode(
         remotePolykeyAgentB.keyRing.getNodeId(),
-        remotePolykeyAgentB.agentServiceHost,
-        remotePolykeyAgentB.agentServicePort,
+        [
+          {
+            host: remotePolykeyAgentB.agentServiceHost,
+            port: remotePolykeyAgentB.agentServicePort,
+            scopes: ['external'],
+          },
+        ],
       ),
     ).toBeTrue();
     const keyPair = keysUtils.generateKeyPair();
@@ -639,6 +660,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           {
             host: '127.0.0.1' as Host,
             port: 55555 as Port,
+            scopes: ['external'],
           },
           signature.toString('base64url'),
         );

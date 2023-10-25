@@ -13,10 +13,12 @@ const testnet: Record<string, NodeAddress> = {
   v7v9ptvcdbdf8p4upok3prpmu3938ns8v4g45dib7sm5hqvvehv70: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
+    scopes: ['external'],
   },
   v270ktdd3cs3mp1r3q3dkmick92bn927mii9or4sgroeogd1peqb0: {
     host: 'testnet.polykey.com' as Host,
     port: 1314 as Port,
+    scopes: ['external'],
   },
 };
 
@@ -246,6 +248,25 @@ const config = {
      * Interval for hole punching reverse node connections.
      */
     nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
+    /**
+     * Multicast group addresses that the MDNS stack will operate on.
+     *
+     * These values are well-known, and hence must not be changed by the user.
+     *
+     * The default values of these groups must start with either `224.0` (IPv4) or `ff02` (IPv6).
+     * The default values of `224.0.0.250` and `ff02::fa17` have been selected due to
+     * the resemblance of `fa17` to the latin word `fait`, and `250` being the decimal representation of that.
+     */
+    mdnsGroups: ['224.0.0.250', 'ff02::fa17'],
+    /**
+     * The port that the MDNS stack will operate on.
+     *
+     * This is well-known, and hence must not be changed by the user.
+     *
+     * The default value has been selected as the decimal decimal representation of `fa17`,
+     * which resembles the latin word `fait`.
+     */
+    mdnsPort: 64023,
   },
   /**
    * Default user configuration.
