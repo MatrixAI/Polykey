@@ -127,8 +127,10 @@ describe(`${NodeConnectionManager.name} MDNS test`, () => {
     await db.destroy();
     await keyRing.stop();
     await keyRing.destroy();
+    await mdns.stop();
 
     await nodeConnectionManagerPeer.stop();
+    await mdnsPeer.stop();
   });
 
   test('should find local node without seedNodes', async () => {
