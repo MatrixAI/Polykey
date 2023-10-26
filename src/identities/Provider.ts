@@ -58,21 +58,25 @@ abstract class Provider {
    * If the refresh token exists, and is still valid, then it will attempt to
    * refresh the token.
    * If you pass in identityId, expect that the new token will be persisted.
+   * If either `providerToken.accessTokenExpiresIn` or `providerToken.refreshTokenExpiresIn` is set to 0,
+   * their related tokens will be treated as never-expiring.
    */
   public async checkToken(
     providerToken: ProviderToken,
     identityId?: IdentityId,
   ): Promise<ProviderToken> {
     const now = Math.floor(Date.now() / 1000);
+    // This will mean that if accessTokenExpiresIn = 0, the token never expires
     if (
       providerToken.accessTokenExpiresIn &&
       providerToken.accessTokenExpiresIn >= now
     ) {
-      if (!providerToken.refreshToken) {
+      if (providerToken.refreshToken == null) {
         throw new identitiesErrors.ErrorProviderUnauthenticated(
           'Access token expired',
         );
       }
+      // This will mean that refreshTokenExpiresIn = 0 does not throw
       if (
         providerToken.refreshTokenExpiresIn &&
         providerToken.refreshTokenExpiresIn >= now

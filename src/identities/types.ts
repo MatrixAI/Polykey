@@ -33,6 +33,9 @@ type IdentitySignedClaim = {
 
 /**
  * Authentication tokens to the identity provider
+ *
+ * If `accessTokenExpiresIn` is set to 0, the `accessToken` will never expire.
+ * If `refreshTokenExpiresIn` is set to 0, the `refreshToken` will never expire.
  */
 type ProviderToken = {
   accessToken: string;

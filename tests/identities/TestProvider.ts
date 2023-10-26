@@ -63,7 +63,8 @@ class TestProvider extends Provider {
   }
 
   public async refreshToken(): Promise<ProviderToken> {
-    throw new identitiesErrors.ErrorProviderUnimplemented();
+    // Always gives back the abc123 token
+    return { accessToken: 'abc123' };
   }
 
   public async getAuthIdentityIds(): Promise<Array<IdentityId>> {
