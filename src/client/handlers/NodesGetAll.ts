@@ -26,25 +26,18 @@ class NodesGetAll extends ServerHandler<
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { nodeGraph, keyRing } = this.container;
-    for await (const bucket of nodeGraph.getBuckets()) {
-      let index;
-      for (const id of Object.keys(bucket)) {
-        const encodedId = nodesUtils.encodeNodeId(
-          IdInternal.fromString<NodeId>(id),
-        );
+    for await (const [index, bucket] of nodeGraph.getBuckets()) {
+      for (const [id, info] of bucket) {
+        const encodedId = nodesUtils.encodeNodeId(id);
         // For every node in every bucket, add it to our message
-        if (!index) {
-          index = nodesUtils.bucketIndex(
-            keyRing.getNodeId(),
-            IdInternal.fromString<NodeId>(id),
-          );
+        if (ctx.signal.aborted) {
+          throw ctx.signal.reason;
         }
-        if (ctx.signal.aborted) throw ctx.signal.reason;
         yield {
           bucketIndex: index,
           nodeIdEncoded: encodedId,
-          host: bucket[id].address.host,
-          port: bucket[id].address.port,
+          host: info.address.host,
+          port: info.address.port,
         };
       }
     }
