@@ -4,9 +4,7 @@ import type {
   NodesGetMessage,
 } from '../types';
 import type KeyRing from '../../keys/KeyRing';
-import type { NodeId } from '../../ids';
 import type NodeGraph from '../../nodes/NodeGraph';
-import { IdInternal } from '@matrixai/id';
 import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
 
@@ -25,7 +23,7 @@ class NodesGetAll extends ServerHandler<
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { nodeGraph, keyRing } = this.container;
+    const { nodeGraph } = this.container;
     for await (const [index, bucket] of nodeGraph.getBuckets()) {
       for (const [id, info] of bucket) {
         const encodedId = nodesUtils.encodeNodeId(id);
