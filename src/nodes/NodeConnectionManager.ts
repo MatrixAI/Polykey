@@ -50,7 +50,6 @@ import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import config from '../config';
 import RateLimiter from '../utils/ratelimiter/RateLimiter';
-import { sleep } from '../utils';
 
 type ManifestClientAgent = typeof manifestClientAgent;
 
@@ -223,13 +222,31 @@ class NodeConnectionManager {
     }
   };
 
-  protected handleEventNodeConnectionStream = async (
-    e: nodesEvents.EventNodeConnectionStream,
-  ) => {
-    // TODO: respect locking...
-    const stream = e.detail;
-    this.rpcServer.handleStream(stream);
-  };
+  protected handleEventNodeConnectionStreamFactory(nodeId: NodeId) {
+    return (e: nodesEvents.EventNodeConnectionStream) => {
+      const stream = e.detail;
+      this.rpcServer.handleStream(stream);
+      const nodeIdString = nodeId.toString() as NodeIdString;
+      const connectionAndTimer = this.connections.get(nodeIdString);
+      if (connectionAndTimer != null) {
+        connectionAndTimer.usageCount += 1;
+        connectionAndTimer.timer?.cancel();
+        connectionAndTimer.timer = null;
+        void stream.closedP.finally(() => {
+          connectionAndTimer.usageCount -= 1;
+          if (connectionAndTimer.usageCount <= 0 && !this.isSeedNode(nodeId)) {
+            this.logger.debug(
+              `creating TTL for ${nodesUtils.encodeNodeId(nodeId)}`,
+            );
+            connectionAndTimer.timer = new Timer({
+              handler: async () => await this.destroyConnection(nodeId),
+              delay: this.connectionIdleTimeoutTime,
+            });
+          }
+        });
+      }
+    };
+  }
 
   /**
    * Redispatches `QUICSOcket` or `QUICServer` error events as `NodeConnectionManager` error events.
@@ -1067,11 +1084,6 @@ class NodeConnectionManager {
           }:${quicConnection.remotePort}]`,
         ),
       });
-    // Temp handling for events
-    nodeConnectionNew.addEventListener(
-      nodesEvents.EventNodeConnectionStream.name,
-      this.handleEventNodeConnectionStream,
-    );
     // Check if the connection already exists under that nodeId and reject the connection if so
     if (this.connections.has(nodeIdString)) {
       // We need to decide which one to reject, for this we compare the connection IDs.
@@ -1083,7 +1095,6 @@ class NodeConnectionManager {
         // Keep existing
         // clean up new connection in the background
         void (async () => {
-          await sleep(100);
           this.drainingConnections.add(nodeConnectionNew);
           await nodeConnectionNew.destroy({ force: false });
           this.drainingConnections.delete(nodeConnectionNew);
@@ -1096,7 +1107,6 @@ class NodeConnectionManager {
         this.addConnection(nodeId, nodeConnectionNew);
         // Clean up existing connection in the background
         void (async () => {
-          await sleep(100);
           const nodeConnection = existingConnAndTimer.connection;
           this.drainingConnections.add(nodeConnection);
           await nodeConnection.destroy({ force: false });
@@ -1106,7 +1116,6 @@ class NodeConnectionManager {
         if (existingConnAndTimer.timer != null) {
           existingConnAndTimer.timer.cancel();
         }
-        // Updating the connection map
       }
     } else {
       // Add the new connection into the map
@@ -1126,9 +1135,11 @@ class NodeConnectionManager {
     // Check if exists in map, this should never happen but better safe than sorry.
     if (this.connections.has(nodeIdString)) utils.never();
     // Setting up events
+    const handleEventNodeConnectionStream =
+      this.handleEventNodeConnectionStreamFactory(nodeId);
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionStream.name,
-      this.handleEventNodeConnectionStream,
+      handleEventNodeConnectionStream,
     );
     nodeConnection.addEventListener(EventAll.name, this.handleEventAll);
     nodeConnection.addEventListener(
@@ -1142,7 +1153,7 @@ class NodeConnectionManager {
         await this.destroyConnection(nodeId);
         nodeConnection.removeEventListener(
           nodesEvents.EventNodeConnectionStream.name,
-          this.handleEventNodeConnectionStream,
+          handleEventNodeConnectionStream,
         );
         nodeConnection.removeEventListener(EventAll.name, this.handleEventAll);
       },
