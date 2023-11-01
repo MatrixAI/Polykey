@@ -26,6 +26,7 @@ import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import { errors as contextErrors } from '@matrixai/contexts';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
+import { ConnectionErrorReason, ConnectionErrorCode } from './types';
 import * as networkUtils from '../network/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
@@ -487,8 +488,8 @@ class NodeConnection<M extends ClientManifest> {
       force
         ? {
             isApp: true,
-            errorCode: 1,
-            reason: Buffer.from('NodeConnection is forcing destruction'),
+            errorCode: ConnectionErrorCode.ForceClose,
+            reason: Buffer.from(ConnectionErrorReason.ForceClose),
             force,
           }
         : {},
