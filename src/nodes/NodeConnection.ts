@@ -313,7 +313,11 @@ class NodeConnection<M extends ClientManifest> {
       connection.getRemoteCertsChain(),
     );
 
-    const newLogger = logger.getParent() ?? new Logger(this.name);
+    const newLogger = (logger.getParent() ?? new Logger(this.name)).getChild(
+      `${this.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+        quicConnection.remoteHost
+      }:${quicConnection.remotePort}]`,
+    );
     const nodeConnection = new this<M>({
       validatedNodeId,
       nodeId,
@@ -326,11 +330,7 @@ class NodeConnection<M extends ClientManifest> {
       quicClient,
       quicConnection,
       rpcClient,
-      logger: newLogger.getChild(
-        `${this.name} [${nodesUtils.encodeNodeId(nodeId)}@${
-          quicConnection.remoteHost
-        }:${quicConnection.remotePort}]`,
-      ),
+      logger: newLogger,
     });
     // TODO: remove this later based on testing
     quicConnection.removeEventListener(
@@ -361,7 +361,7 @@ class NodeConnection<M extends ClientManifest> {
       nodeConnection.handleEventQUICClientDestroyed,
     );
     quicClient.addEventListener(EventAll.name, nodeConnection.handleEventAll);
-    logger.info(`Created ${this.name}`);
+    newLogger.info(`Created ${this.name}`);
     return nodeConnection;
   }
 
