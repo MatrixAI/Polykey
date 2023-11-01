@@ -1,10 +1,10 @@
 import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
+import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
 import type { ContextTimed } from '@matrixai/contexts';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
 import type { JSONValue } from '../../../types';
-import type { JSONRPCRequest } from '@matrixai/rpc';
 import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
@@ -28,7 +28,7 @@ class VaultsGitInfoGet extends RawHandler<{
     _cancel,
     meta: Record<string, JSONValue> | undefined,
     _ctx: ContextTimed, // TODO: use
-  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> => {
+  ): Promise<[JSONObject, ReadableStream<Uint8Array>]> => {
     const { db, vaultManager, acl } = this.container;
     const [headerMessage, inputStream] = input;
     await inputStream.cancel();

@@ -1,30 +1,25 @@
+import type { JSONObject, JSONRPCParams, JSONRPCResult } from '@matrixai/rpc';
 import type { SignedTokenEncoded } from '../../tokens/types';
 import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
-import type { JSONValue, ObjectEmpty } from '../../types';
+import type { JSONValue } from '../../types';
 
-// Prevent overwriting the metadata type with `Omit<>`
-type AgentRPCRequestParams<T extends Record<string, JSONValue> = ObjectEmpty> =
-  {
-    metadata?: {
-      [Key: string]: JSONValue;
-    } & Partial<{
-      authorization: string;
-      timeout: number;
-    }>;
-  } & Omit<T, 'metadata'>;
+type AgentRPCRequestParams<T extends JSONObject = JSONObject> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{
+    authorization: string;
+  }>;
+} & JSONRPCParams<T>;
 
-// Prevent overwriting the metadata type with `Omit<>`
-type AgentRPCResponseResult<T extends Record<string, JSONValue> = ObjectEmpty> =
-  {
-    metadata?: {
-      [Key: string]: JSONValue;
-    } & Partial<{
-      authorization: string;
-      timeout: number;
-    }>;
-  } & Omit<T, 'metadata'>;
+type AgentRPCResponseResult<T extends JSONObject = JSONObject> = {
+  metadata?: {
+    [Key: string]: JSONValue;
+  } & Partial<{
+    authorization: string;
+  }>;
+} & JSONRPCResult<T>;
 
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
