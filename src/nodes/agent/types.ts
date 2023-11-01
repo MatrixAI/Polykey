@@ -3,23 +3,12 @@ import type { SignedTokenEncoded } from '../../tokens/types';
 import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
-import type { JSONValue } from '../../types';
 
-type AgentRPCRequestParams<T extends JSONObject = JSONObject> = {
-  metadata?: {
-    [Key: string]: JSONValue;
-  } & Partial<{
-    authorization: string;
-  }>;
-} & JSONRPCParams<T>;
+type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
+  JSONRPCParams<T>;
 
-type AgentRPCResponseResult<T extends JSONObject = JSONObject> = {
-  metadata?: {
-    [Key: string]: JSONValue;
-  } & Partial<{
-    authorization: string;
-  }>;
-} & JSONRPCResult<T>;
+type AgentRPCResponseResult<T extends JSONObject = JSONObject> =
+  JSONRPCResult<T>;
 
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
