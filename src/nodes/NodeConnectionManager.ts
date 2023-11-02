@@ -1632,8 +1632,8 @@ class NodeConnectionManager {
             nodeId,
             [
               {
-                host: nextNodeAddress.address.host,
-                port: nextNodeAddress.address.port,
+                host: nodeData.address.host,
+                port: nodeData.address.port,
                 scopes: ['external'],
               },
             ],
