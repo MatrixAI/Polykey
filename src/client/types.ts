@@ -1,9 +1,4 @@
-import type {
-  JSONObject,
-  JSONValue,
-  JSONRPCParams,
-  JSONRPCResult,
-} from '@matrixai/rpc';
+import type { JSONObject, JSONRPCResponseResult } from '@matrixai/rpc';
 import type {
   GestaltIdEncoded,
   IdentityId,
@@ -22,23 +17,21 @@ import type {
 import type { Notification } from '../notifications/types';
 import type { ProviderToken } from '../identities/types';
 
-// Prevent overwriting the metadata type with `Omit<>`
-type ClientRPCRequestParams<T extends JSONObject = JSONObject> = {
-  metadata?: {
-    [Key: string]: JSONValue;
-  } & Partial<{
-    authorization: string;
-  }>;
-} & JSONRPCParams<T>;
+type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
+  JSONRPCResponseResult<
+    T,
+    Partial<{
+      authorization: string;
+    }>
+  >;
 
-// Prevent overwriting the metadata type with `Omit<>`
-type ClientRPCResponseResult<T extends JSONObject = JSONObject> = {
-  metadata?: {
-    [Key: string]: JSONValue;
-  } & Partial<{
-    authorization: string;
-  }>;
-} & JSONRPCResult<T>;
+type ClientRPCResponseResult<T extends JSONObject = JSONObject> =
+  JSONRPCResponseResult<
+    T,
+    Partial<{
+      authorization: string;
+    }>
+  >;
 
 type StatusResultMessage = {
   pid: number;

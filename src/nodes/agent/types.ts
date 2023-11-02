@@ -1,14 +1,18 @@
-import type { JSONObject, JSONRPCParams, JSONRPCResult } from '@matrixai/rpc';
+import type {
+  JSONObject,
+  JSONRPCRequestParams,
+  JSONRPCResponseResult,
+} from '@matrixai/rpc';
 import type { SignedTokenEncoded } from '../../tokens/types';
 import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
-  JSONRPCParams<T>;
+  JSONRPCRequestParams<T>;
 
 type AgentRPCResponseResult<T extends JSONObject = JSONObject> =
-  JSONRPCResult<T>;
+  JSONRPCResponseResult<T>;
 
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;

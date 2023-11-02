@@ -7,7 +7,10 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
 import type { Session } from '../sessions';
 import type SessionManager from '../sessions/SessionManager';
 import type KeyRing from '../keys/KeyRing';
-import type { JSONRPCError, JSONRPCResponseError } from '@matrixai/rpc';
+import type {
+  JSONRPCResponseError,
+  JSONRPCResponseFailed,
+} from '@matrixai/rpc';
 import { TransformStream } from 'stream/web';
 import { authenticate, decodeAuth } from './utils';
 import { sysexits } from '../errors';
@@ -43,12 +46,12 @@ function authenticationMiddlewareServer(
               );
             } catch (e) {
               controller.error(e);
-              const rpcError: JSONRPCError = {
+              const rpcError: JSONRPCResponseError = {
                 code: e.exitCode ?? sysexits.UNKNOWN,
                 message: e.description ?? '',
                 data: networkUtils.fromError(e),
               };
-              const rpcErrorMessage: JSONRPCResponseError = {
+              const rpcErrorMessage: JSONRPCResponseFailed = {
                 jsonrpc: '2.0',
                 error: rpcError,
                 id: null,
