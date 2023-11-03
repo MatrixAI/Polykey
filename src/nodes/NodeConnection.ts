@@ -26,6 +26,7 @@ import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import { errors as contextErrors } from '@matrixai/contexts';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
+import { ConnectionErrorReason, ConnectionErrorCode } from './types';
 import * as networkUtils from '../network/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
@@ -312,7 +313,11 @@ class NodeConnection<M extends ClientManifest> {
       connection.getRemoteCertsChain(),
     );
 
-    const newLogger = logger.getParent() ?? new Logger(this.name);
+    const newLogger = (logger.getParent() ?? new Logger(this.name)).getChild(
+      `${this.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+        quicConnection.remoteHost
+      }:${quicConnection.remotePort}]`,
+    );
     const nodeConnection = new this<M>({
       validatedNodeId,
       nodeId,
@@ -325,11 +330,7 @@ class NodeConnection<M extends ClientManifest> {
       quicClient,
       quicConnection,
       rpcClient,
-      logger: newLogger.getChild(
-        `${this.name} [${nodesUtils.encodeNodeId(nodeId)}@${
-          quicConnection.remoteHost
-        }:${quicConnection.remotePort}]`,
-      ),
+      logger: newLogger,
     });
     // TODO: remove this later based on testing
     quicConnection.removeEventListener(
@@ -360,11 +361,11 @@ class NodeConnection<M extends ClientManifest> {
       nodeConnection.handleEventQUICClientDestroyed,
     );
     quicClient.addEventListener(EventAll.name, nodeConnection.handleEventAll);
-    logger.info(`Created ${this.name}`);
+    newLogger.info(`Created ${this.name}`);
     return nodeConnection;
   }
 
-  static async createNodeConnectionReverse<M extends ClientManifest>({
+  static createNodeConnectionReverse<M extends ClientManifest>({
     certChain,
     nodeId,
     quicConnection,
@@ -376,7 +377,7 @@ class NodeConnection<M extends ClientManifest> {
     quicConnection: QUICConnection;
     manifest: M;
     logger?: Logger;
-  }): Promise<NodeConnection<M>> {
+  }): NodeConnection<M> {
     logger.info(`Creating ${this.name}`);
     // Creating RPCClient
     const rpcClient = new RPCClient<M>({
@@ -487,9 +488,9 @@ class NodeConnection<M extends ClientManifest> {
       force
         ? {
             isApp: true,
-            errorCode: 1,
-            reason: Buffer.from('NodeConnection is forcing destruction'),
-            force: true,
+            errorCode: ConnectionErrorCode.ForceClose,
+            reason: Buffer.from(ConnectionErrorReason.ForceClose),
+            force,
           }
         : {},
     );

@@ -354,15 +354,14 @@ describe(`${NodeConnection.name}`, () => {
         const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
           quicConnection.getRemoteCertsChain(),
         );
-        const nodeConnection = await NodeConnection.createNodeConnectionReverse(
-          {
-            nodeId,
-            certChain,
-            manifest: {},
-            quicConnection,
-            logger,
-          },
-        ).then(extractNodeConnection);
+        const nodeConnection = NodeConnection.createNodeConnectionReverse({
+          nodeId,
+          certChain,
+          manifest: {},
+          quicConnection,
+          logger,
+        });
+        extractNodeConnection(nodeConnection);
         nodeConnectionReverseProm.resolveP(nodeConnection);
       },
       { once: true },
@@ -399,15 +398,14 @@ describe(`${NodeConnection.name}`, () => {
         const { nodeId, certChain } = nodesUtils.parseRemoteCertsChain(
           quicConnection.getRemoteCertsChain(),
         );
-        const nodeConnection = await NodeConnection.createNodeConnectionReverse(
-          {
-            nodeId,
-            certChain,
-            manifest: {},
-            quicConnection,
-            logger,
-          },
-        ).then(extractNodeConnection);
+        const nodeConnection = NodeConnection.createNodeConnectionReverse({
+          nodeId,
+          certChain,
+          manifest: {},
+          quicConnection,
+          logger,
+        });
+        extractNodeConnection(nodeConnection);
         nodeConnection.addEventListener(
           nodesEvents.EventNodeConnectionStream.name,
           (e: nodesEvents.EventNodeConnectionStream) => {

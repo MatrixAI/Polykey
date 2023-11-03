@@ -186,13 +186,7 @@ class NodeManager {
                   nodeId,
                 )}`,
               );
-              return this.nodeConnectionManager.withConnF(
-                nodeId,
-                async () => {
-                  // Do nothing, we just want to establish a connection
-                },
-                ctx,
-              );
+              return this.pingNode(nodeId, undefined, ctx);
             }
           }),
         );
@@ -400,7 +394,7 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    return this.nodeConnectionManager.withConnF(
+    return await this.nodeConnectionManager.withConnF(
       targetNodeId,
       async (connection) => {
         const claims: Record<ClaimId, SignedClaim> = {};

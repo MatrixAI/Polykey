@@ -1,11 +1,13 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
+import type { ObjectEmpty } from '@';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { DB } from '@matrixai/db';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
+import { UnaryHandler } from '@matrixai/rpc';
 import KeyRing from '@/keys/KeyRing';
 import NodeGraph from '@/nodes/NodeGraph';
 import * as nodesUtils from '@/nodes/utils';
@@ -17,6 +19,12 @@ import NodeConnection from '@/nodes/NodeConnection';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
+  class Echo extends UnaryHandler<ObjectEmpty, string, string> {
+    public handle = async (input: string): Promise<string> => {
+      return input;
+    };
+  }
+
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -35,12 +43,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   let clientNodeId: NodeId;
   let serverNodeIdEncoded1: NodeIdEncoded;
   let serverNodeIdEncoded2: NodeIdEncoded;
-  let keyRingPeer: KeyRing;
+  let keyRingPeer1: KeyRing;
+  let keyRingPeer2: KeyRing;
   let nodeConnectionManagerPeer1: NodeConnectionManager;
   let nodeConnectionManagerPeer2: NodeConnectionManager;
   let serverAddress1: NodeAddress;
 
-  let keyRing: KeyRing;
+  let keyRingClient: KeyRing;
   let db: DB;
   let nodeGraph: NodeGraph;
 
@@ -50,10 +59,36 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPathPeer = path.join(dataDir, 'keysPeer');
-    const serverKeyPair1 = keysUtils.generateKeyPair();
-    const serverKeyPair2 = keysUtils.generateKeyPair();
-    const clientKeyPair = keysUtils.generateKeyPair();
+    const keysPathPeer1 = path.join(dataDir, 'keysPeer1');
+    const keysPathPeer2 = path.join(dataDir, 'keysPeer2');
+    keyRingPeer1 = await KeyRing.createKeyRing({
+      password,
+      keysPath: keysPathPeer1,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    keyRingPeer2 = await KeyRing.createKeyRing({
+      password,
+      keysPath: keysPathPeer2,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    const keysPath = path.join(dataDir, 'keys');
+    keyRingClient = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    const serverKeyPair1 = keyRingPeer1.keyPair;
+    const serverKeyPair2 = keyRingPeer2.keyPair;
+    const clientKeyPair = keyRingClient.keyPair;
     serverNodeId1 = keysUtils.publicKeyToNodeId(serverKeyPair1.publicKey);
     serverNodeId2 = keysUtils.publicKeyToNodeId(serverKeyPair2.publicKey);
     clientNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
@@ -62,16 +97,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     serverTlsConfig1 = await tlsUtils.createTLSConfig(serverKeyPair1);
     serverTlsConfig2 = await tlsUtils.createTLSConfig(serverKeyPair2);
     clientTlsConfig = await tlsUtils.createTLSConfig(clientKeyPair);
-    keyRingPeer = await KeyRing.createKeyRing({
-      password,
-      keysPath: keysPathPeer,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-      logger,
-    });
     nodeConnectionManagerPeer1 = new NodeConnectionManager({
-      keyRing: keyRingPeer,
+      keyRing: keyRingPeer1,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       nodeGraph: {} as NodeGraph,
       tlsConfig: serverTlsConfig1,
@@ -79,9 +106,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManagerPeer1.start({
       host: localHost,
+      manifest: {
+        echo: new Echo({}),
+      },
     });
     nodeConnectionManagerPeer2 = new NodeConnectionManager({
-      keyRing: keyRingPeer,
+      keyRing: keyRingPeer2,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer2`),
       nodeGraph: {} as NodeGraph,
       tlsConfig: serverTlsConfig2,
@@ -89,18 +119,12 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     await nodeConnectionManagerPeer2.start({
       host: localHost,
+      manifest: {
+        echo: new Echo({}),
+      },
     });
 
     // Setting up client dependencies
-    const keysPath = path.join(dataDir, 'keys');
-    keyRing = await KeyRing.createKeyRing({
-      password,
-      keysPath,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-      logger,
-    });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
@@ -108,7 +132,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     });
     nodeGraph = await NodeGraph.createNodeGraph({
       db,
-      keyRing,
+      keyRing: keyRingClient,
       logger,
     });
     serverAddress1 = {
@@ -124,8 +148,8 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.destroy();
     await db.stop();
     await db.destroy();
-    await keyRing.stop();
-    await keyRing.destroy();
+    await keyRingClient.stop();
+    await keyRingClient.destroy();
 
     await nodeConnectionManagerPeer1.stop();
     await nodeConnectionManagerPeer2.stop();
@@ -133,7 +157,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
   test('NodeConnectionManager readiness', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -147,7 +171,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('NodeConnectionManager consecutive start stops', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -168,7 +192,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('acquireConnection should create connection', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       nodeGraph,
       connectionConnectTimeoutTime: 1000,
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
@@ -189,7 +213,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('withConnF should create connection', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -205,10 +229,62 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  // TODO: work in progress testing
+  test('concurrent connections should result in only 1 connection', async () => {
+    // A connection is concurrently established in the forward and reverse
+    // direction, we only want one connection to exist afterwards.
+
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing: keyRingClient,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      tlsConfig: clientTlsConfig,
+      seedNodes: undefined,
+    });
+    await nodeConnectionManager.start({
+      host: localHost,
+      manifest: {
+        echo: new Echo({}),
+      },
+    });
+    const clientAddress: NodeAddress = {
+      host: nodeConnectionManager.host,
+      port: nodeConnectionManager.port,
+      scopes: ['external'],
+    };
+
+    const forwardConnectP = nodeConnectionManager.getMultiConnection(
+      [serverNodeId1],
+      [serverAddress1],
+    );
+    const reverseConnectP = nodeConnectionManagerPeer1.getMultiConnection(
+      [clientNodeId],
+      [clientAddress],
+    );
+
+    await Promise.all([forwardConnectP, reverseConnectP]);
+    const promA = nodeConnectionManager.withConnF(
+      serverNodeId1,
+      async (connection) => {
+        await connection.getClient().unaryCaller('echo', 'hello');
+      },
+    );
+    const promB = nodeConnectionManagerPeer1.withConnF(
+      clientNodeId,
+      async (connection) => {
+        await connection.getClient().unaryCaller('echo', 'hello');
+      },
+    );
+
+    // Should not throw any errors
+    await Promise.all([promA, promB]);
+
+    await nodeConnectionManager.stop();
+  });
   test('should list active connections', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -239,7 +315,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('withConnG should create connection', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -266,7 +342,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should fail to create connection to offline node', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -301,7 +377,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('connection should persist', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -326,7 +402,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('should create 1 connection with concurrent creates', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -359,7 +435,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('should destroy a connection', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -391,7 +467,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   test('stopping should destroy all connections', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -415,7 +491,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should ping node with address', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -438,7 +514,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should fail to ping non existent node', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -465,7 +541,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
   });
   test('should fail to ping node if NodeId does not match', async () => {
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -490,7 +566,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     await nodeGraph.setNode(serverNodeId2, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -532,7 +608,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     await nodeGraph.setNode(serverNodeId2, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -591,7 +667,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     await nodeGraph.setNode(serverNodeId2, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,
@@ -626,7 +702,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     await nodeGraph.setNode(serverNodeId2, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
+      keyRing: keyRingClient,
       logger: logger.getChild(NodeConnectionManager.name),
       nodeGraph,
       tlsConfig: clientTlsConfig,

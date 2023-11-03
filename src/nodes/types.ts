@@ -29,6 +29,14 @@ type NodeData = {
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
+enum ConnectionErrorCode {
+  ForceClose = 1,
+}
+
+enum ConnectionErrorReason {
+  ForceClose = 'NodeConnection is forcing destruction',
+}
+
 export type {
   NodeId,
   NodeIdString,
@@ -42,3 +50,5 @@ export type {
   NodeData,
   NodeGraphSpace,
 };
+
+export { ConnectionErrorCode, ConnectionErrorReason };

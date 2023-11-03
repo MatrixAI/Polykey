@@ -3,7 +3,7 @@ import type { CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import { utils as quicUtils } from '@matrixai/quic';
+import { utils as quicUtils, errors as quicErrors } from '@matrixai/quic';
 import { errors as rpcErrors } from '@matrixai/rpc';
 import lexi from 'lexicographic-integer';
 import * as nodesErrors from './errors';
@@ -301,7 +301,9 @@ function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
     e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
-    e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed
+    e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed ||
+    e instanceof quicErrors.ErrorQUICConnectionPeer ||
+    e instanceof quicErrors.ErrorQUICConnectionLocal
   );
 }
 

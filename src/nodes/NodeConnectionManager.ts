@@ -181,6 +181,14 @@ class NodeConnectionManager {
    */
   protected connections: Map<NodeIdString, ConnectionAndTimer> = new Map();
 
+  /**
+   * Tracks `NodeConnection`s that are still running but not part of the connection map.
+   * These are doppelganger connections created by concurrent connection creation
+   * between two nodes. These will be cleaned up after all their streams end.
+   */
+  protected drainingConnections: Set<NodeConnection<ManifestClientAgent>> =
+    new Set();
+
   protected connectionLocks: LockBox<Lock> = new LockBox();
 
   protected rpcServer: RPCServer;
@@ -208,17 +216,59 @@ class NodeConnectionManager {
   protected handleEventNodeConnectionManagerClose = async (
     _evt: nodesEvents.EventNodeConnectionManagerClose,
   ) => {
-    this.logger.warn(`close event triggering NodeConnectionManager.stop`);
+    this.logger.debug(`close event triggering NodeConnectionManager.stop`);
     if (this[running] && this[status] !== 'stopping') {
       await this.stop();
     }
   };
 
-  protected handleEventNodeConnectionStream = async (
-    e: nodesEvents.EventNodeConnectionStream,
+  protected handleEventNodeConnectionStream = (
+    evt: nodesEvents.EventNodeConnectionStream,
   ) => {
-    const stream = e.detail;
+    if (evt.target == null) utils.never('target should be defined here');
+    const nodeConnection = evt.target as NodeConnection<any>;
+    const nodeId = nodeConnection.validatedNodeId as NodeId;
+    const nodeIdString = nodeId.toString() as NodeIdString;
+    const stream = evt.detail;
     this.rpcServer.handleStream(stream);
+    const connectionAndTimer = this.connections.get(nodeIdString);
+    if (connectionAndTimer != null) {
+      connectionAndTimer.usageCount += 1;
+      connectionAndTimer.timer?.cancel();
+      connectionAndTimer.timer = null;
+      void stream.closedP.finally(() => {
+        connectionAndTimer.usageCount -= 1;
+        if (connectionAndTimer.usageCount <= 0 && !this.isSeedNode(nodeId)) {
+          this.logger.debug(
+            `creating TTL for ${nodesUtils.encodeNodeId(nodeId)}`,
+          );
+          connectionAndTimer.timer = new Timer({
+            handler: async () => await this.destroyConnection(nodeId, false),
+            delay: this.connectionIdleTimeoutTime,
+          });
+        }
+      });
+    }
+  };
+
+  protected handleEventNodeConnectionDestroyed = async (
+    evt: nodesEvents.EventNodeConnectionDestroyed,
+  ) => {
+    if (evt.target == null) utils.never('target should be defined here');
+    const nodeConnection = evt.target as NodeConnection<any>;
+    const nodeId = nodeConnection.validatedNodeId as NodeId;
+    const nodeIdString = nodeId.toString() as NodeIdString;
+    // To avoid deadlock only in the case where this is called
+    // we want to check for destroying connection and read lock
+    // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
+    // Already locked so already destroying
+    if (this.connectionLocks.isLocked(nodeIdString)) return;
+    await this.destroyConnection(nodeId, true);
+    nodeConnection.removeEventListener(
+      nodesEvents.EventNodeConnectionStream.name,
+      this.handleEventNodeConnectionStream,
+    );
+    nodeConnection.removeEventListener(EventAll.name, this.handleEventAll);
   };
 
   /**
@@ -271,10 +321,10 @@ class NodeConnectionManager {
    * peer initated connections that needs to be handled and added to the
    * connectio map.
    */
-  protected handleEventQUICServerConnection = async (
+  protected handleEventQUICServerConnection = (
     evt: quicEvents.EventQUICServerConnection,
   ) => {
-    await this.handleConnectionReverse(evt.detail);
+    this.handleConnectionReverse(evt.detail);
   };
 
   /**
@@ -541,7 +591,13 @@ class NodeConnectionManager {
       // It exists so we want to destroy it
       const destroyProm = this.destroyConnection(
         IdInternal.fromString<NodeId>(nodeId),
+        true,
       );
+      destroyProms.push(destroyProm);
+    }
+    for (const drainingConnection of this.drainingConnections) {
+      const destroyProm = drainingConnection.destroy({ force: true });
+      drainingConnection.quicConnection.destroyStreams();
       destroyProms.push(destroyProm);
     }
     await Promise.all(destroyProms);
@@ -593,12 +649,7 @@ class NodeConnectionManager {
       connectionAndTimer.timer = null;
       // Return tuple of [ResourceRelease, Resource]
       return [
-        async (e) => {
-          if (nodesUtils.isConnectionError(e)) {
-            this.logger.debug(`acquiring errored with ${e?.message}`);
-            // Error with connection, shutting connection down
-            await this.destroyConnection(targetNodeId);
-          }
+        async () => {
           // Decrement usage count and set up TTL if needed.
           // We're only setting up TTLs for non-seed nodes.
           connectionAndTimer.usageCount -= 1;
@@ -610,7 +661,8 @@ class NodeConnectionManager {
               `creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`,
             );
             connectionAndTimer.timer = new Timer({
-              handler: async () => await this.destroyConnection(targetNodeId),
+              handler: async () =>
+                await this.destroyConnection(targetNodeId, false),
               delay: this.connectionIdleTimeoutTime,
             });
           }
@@ -693,7 +745,7 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     addresses?: Array<NodeAddress>,
     ctx?: Partial<ContextTimed>,
-  );
+  ): PromiseCancellable<ConnectionAndTimer>;
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
@@ -1005,6 +1057,7 @@ class NodeConnectionManager {
       this.logger.debug(
         `single connection already existed, cleaning up ${address.host}:${address.port}`,
       );
+      throw Error('haha error go brrrr');
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
@@ -1022,11 +1075,21 @@ class NodeConnectionManager {
   }
 
   /**
-   * This will take a `QUICConnection` emitted by the `QUICServer` and handle adding it to the connection map
-   * This will also set up some event handling for the connection.
+   * This will take a `QUICConnection` emitted by the `QUICServer` and handle adding it to the connection map.
+   * If a connection already exists within the connection map for that node ID.
+   * The `STONITH` mechanism is used to select one connection to keep.
+   * The connection with the 'lower' `connectionIdShared` is kept while the
+   * other is destroyed.
+   * Depending on the decision, the existing connection may be swapped out for
+   * the new one.
+   * If there are any streams active on the duplicate connection then they are
+   * allowed to gracefully end before the connection is fully destroyed.
+   * The duplicate connection is tracked in a map and cleans up when it is done
+   * draining. These duplicate connections are forced to close when the NCM is
+   * stopped.
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  protected async handleConnectionReverse(quicConnection: QUICConnection) {
+  protected handleConnectionReverse(quicConnection: QUICConnection) {
     // Checking NodeId
     // No specific error here, validation is handled by the QUICServer
     const certChain = quicConnection.getRemoteCertsChain().map((der) => {
@@ -1040,39 +1103,92 @@ class NodeConnectionManager {
     const nodeId = keysUtils.certNodeId(certChain[0]);
     if (nodeId == null) utils.never();
     const nodeIdString = nodeId.toString() as NodeIdString;
-    // TODO: A connection can fail while awaiting lock. We should abort early in this case.
-    return await this.connectionLocks.withF(
-      [nodeIdString, Lock],
-      async (): Promise<void> => {
-        // Check if the connection already exists under that nodeId and reject the connection if so
-        if (this.connections.has(nodeIdString)) {
-          // Reject and return early.
-          await quicConnection.stop({
-            isApp: true,
-            errorCode: 42, // TODO: use an actual code
-            reason: Buffer.from('Connection already exists, forcing close'),
-            force: true,
+    const nodeConnectionNew =
+      NodeConnection.createNodeConnectionReverse<ManifestClientAgent>({
+        nodeId,
+        certChain,
+        manifest: manifestClientAgent,
+        quicConnection: quicConnection,
+        logger: this.logger.getChild(
+          `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+            quicConnection.remoteHost
+          }:${quicConnection.remotePort}]`,
+        ),
+      });
+    // Check if the connection already exists under that nodeId and reject the connection if so
+    if (this.connections.has(nodeIdString)) {
+      // We need to decide which one to reject, for this we compare the connection IDs.
+      const existingConnAndTimer = this.connections.get(nodeIdString)!;
+      const existingConnection = existingConnAndTimer.connection.quicConnection;
+      const existingId = Buffer.from(existingConnection.connectionIdShared);
+      const newId = Buffer.from(quicConnection.connectionIdShared);
+      if (existingId.compare(newId) <= 0) {
+        // Keep existing
+        this.logger.debug(
+          'handling duplicate connection, keeping existing connection',
+        );
+        // Temp handling for events
+        const handleEventNodeConnectionStreamTemp = (
+          evt: nodesEvents.EventNodeConnectionStream,
+        ) => {
+          const stream = evt.detail;
+          this.rpcServer.handleStream(stream);
+        };
+        nodeConnectionNew.addEventListener(
+          nodesEvents.EventNodeConnectionStream.name,
+          handleEventNodeConnectionStreamTemp,
+        );
+        // Clean up new connection in the background
+        this.drainingConnections.add(nodeConnectionNew);
+        void utils
+          .sleep(100)
+          .then(async () => nodeConnectionNew.destroy({ force: false }))
+          .finally(() => {
+            nodeConnectionNew.removeEventListener(
+              nodesEvents.EventNodeConnectionStream.name,
+              handleEventNodeConnectionStreamTemp,
+            );
+            this.drainingConnections.delete(nodeConnectionNew);
           });
-          return;
+        return;
+      } else {
+        // Keeping new
+        this.logger.debug(
+          'handling duplicate connection, keeping new connection',
+        );
+        const nodeConnectionOld = existingConnAndTimer.connection;
+        // Swap out the existing connection with the new one
+        nodeConnectionOld.removeEventListener(
+          EventAll.name,
+          this.handleEventAll,
+        );
+        nodeConnectionOld.removeEventListener(
+          nodesEvents.EventNodeConnectionDestroyed.name,
+          this.handleEventNodeConnectionDestroyed,
+        );
+        this.connections.delete(nodeIdString);
+        this.addConnection(nodeId, nodeConnectionNew);
+        // Clean up existing connection in the background
+        this.drainingConnections.add(nodeConnectionOld);
+        void utils
+          .sleep(100)
+          .then(async () => nodeConnectionOld.destroy({ force: false }))
+          .finally(() => {
+            nodeConnectionOld.removeEventListener(
+              nodesEvents.EventNodeConnectionStream.name,
+              this.handleEventNodeConnectionStream,
+            );
+            this.drainingConnections.delete(nodeConnectionOld);
+          });
+        // Destroying TTL timer
+        if (existingConnAndTimer.timer != null) {
+          existingConnAndTimer.timer.cancel();
         }
-        const nodeConnection =
-          await NodeConnection.createNodeConnectionReverse<ManifestClientAgent>(
-            {
-              nodeId,
-              certChain,
-              manifest: manifestClientAgent,
-              quicConnection: quicConnection,
-              logger: this.logger.getChild(
-                `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
-                  quicConnection.remoteHost
-                }:${quicConnection.remotePort}]`,
-              ),
-            },
-          );
-        // Final setup
-        this.addConnection(nodeId, nodeConnection);
-      },
-    );
+      }
+    } else {
+      // Add the new connection into the map
+      this.addConnection(nodeId, nodeConnectionNew);
+    }
   }
 
   /**
@@ -1094,19 +1210,7 @@ class NodeConnectionManager {
     nodeConnection.addEventListener(EventAll.name, this.handleEventAll);
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionDestroyed.name,
-      async () => {
-        // To avoid deadlock only in the case where this is called
-        // we want to check for destroying connection and read lock
-        // If the connection is calling destroyCallback then it SHOULD exist in the connection map.
-        // Already locked so already destroying
-        if (this.connectionLocks.isLocked(nodeIdString)) return;
-        await this.destroyConnection(nodeId);
-        nodeConnection.removeEventListener(
-          nodesEvents.EventNodeConnectionStream.name,
-          this.handleEventNodeConnectionStream,
-        );
-        nodeConnection.removeEventListener(EventAll.name, this.handleEventAll);
-      },
+      this.handleEventNodeConnectionDestroyed,
       { once: true },
     );
 
@@ -1114,7 +1218,7 @@ class NodeConnectionManager {
     // We don't create a TTL for seed nodes.
     const timeToLiveTimer = !this.isSeedNode(nodeId)
       ? new Timer({
-          handler: async () => await this.destroyConnection(nodeId),
+          handler: async () => await this.destroyConnection(nodeId, false),
           delay: this.connectionIdleTimeoutTime,
         })
       : null;
@@ -1141,8 +1245,12 @@ class NodeConnectionManager {
   /**
    * Removes the connection from the connection man and destroys it.
    * @param targetNodeId Id of node we are destroying connection to
+   * @param force
    */
-  protected async destroyConnection(targetNodeId: NodeId): Promise<void> {
+  protected async destroyConnection(
+    targetNodeId: NodeId,
+    force: boolean,
+  ): Promise<void> {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     return await this.connectionLocks.withF(
       [targetNodeIdString, Lock],
@@ -1154,7 +1262,7 @@ class NodeConnectionManager {
             targetNodeId,
           )}`,
         );
-        await connAndTimer.connection.destroy({ force: true });
+        await connAndTimer.connection.destroy({ force });
         // Destroying TTL timer
         if (connAndTimer.timer != null) connAndTimer.timer.cancel();
         // Updating the connection map
@@ -1524,8 +1632,8 @@ class NodeConnectionManager {
             nodeId,
             [
               {
-                host: nextNodeAddress.address.host,
-                port: nextNodeAddress.address.port,
+                host: nodeData.address.host,
+                port: nodeData.address.port,
                 scopes: ['external'],
               },
             ],
