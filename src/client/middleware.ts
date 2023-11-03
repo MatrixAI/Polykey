@@ -8,7 +8,6 @@ import type {
 import type SessionManager from '../sessions/SessionManager';
 import type KeyRing from '../keys/KeyRing';
 import * as authenticationMiddlewareUtils from './authenticationMiddleware';
-import * as timeoutMiddlewareUtils from './timeoutMiddleware';
 
 function middlewareServer(
   sessionManager: SessionManager,
@@ -26,24 +25,15 @@ function middlewareServer(
     );
   return (ctx, cancel, meta) => {
     const authMiddleware = authMiddlewareFactory(ctx, cancel, meta);
-    const timeoutMiddleware = timeoutMiddlewareUtils.timeoutMiddlewareServer(
-      ctx,
-      cancel,
-      meta,
-    );
     // Order is auth -> timeout
     return {
       forward: {
         writable: authMiddleware.forward.writable,
-        readable: authMiddleware.forward.readable.pipeThrough(
-          timeoutMiddleware.forward,
-        ),
+        readable: authMiddleware.forward.readable,
       },
       reverse: {
-        writable: timeoutMiddleware.reverse.writable,
-        readable: timeoutMiddleware.reverse.readable.pipeThrough(
-          authMiddleware.reverse,
-        ),
+        writable: authMiddleware.reverse.writable,
+        readable: authMiddleware.reverse.readable,
       },
     };
   };
@@ -61,24 +51,15 @@ function middlewareClient(
     authenticationMiddlewareUtils.authenticationMiddlewareClient(session);
   return (ctx, cancel, meta) => {
     const authMiddleware = authMiddlewareFactory(ctx, cancel, meta);
-    const timeoutMiddleware = timeoutMiddlewareUtils.timeoutMiddlewareClient(
-      ctx,
-      cancel,
-      meta,
-    );
     // Order is timeout -> auth
     return {
       forward: {
-        writable: timeoutMiddleware.forward.writable,
-        readable: timeoutMiddleware.forward.readable.pipeThrough(
-          authMiddleware.forward,
-        ),
+        writable: authMiddleware.forward.writable,
+        readable: authMiddleware.forward.readable,
       },
       reverse: {
         writable: authMiddleware.reverse.writable,
-        readable: authMiddleware.reverse.readable.pipeThrough(
-          timeoutMiddleware.reverse,
-        ),
+        readable: authMiddleware.reverse.readable,
       },
     };
   };

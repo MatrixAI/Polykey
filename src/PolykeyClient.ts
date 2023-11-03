@@ -297,7 +297,7 @@ class PolykeyClient {
         optionsDefaulted.rpcParserBufferSize,
       ),
       toError: networkUtils.toError,
-      streamKeepAliveTimeoutTime: optionsDefaulted.rpcCallTimeoutTime,
+      timeoutTime: optionsDefaulted.rpcCallTimeoutTime,
       logger: this.logger.getChild(RPCClient.name),
     });
     this._nodeId = nodeId_;

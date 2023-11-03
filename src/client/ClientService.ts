@@ -83,7 +83,7 @@ class ClientService {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.rpcServer = new RPCServer({
       idGen,
-      handlerTimeoutTime: rpcCallTimeoutTime,
+      timeoutTime: rpcCallTimeoutTime,
       middlewareFactory: rpcMiddleware.defaultServerMiddlewareWrapper(
         middlewareFactory,
         rpcParserBufferSize,

@@ -20,6 +20,7 @@ class IdentitiesAuthenticate extends ServerHandler<
   }>,
   ClientRPCResponseResult<AuthProcessMessage>
 > {
+  public timeout = 120000; // 2 Minutes
   public async *handle(
     input: ClientRPCRequestParams<{
       providerId: string;

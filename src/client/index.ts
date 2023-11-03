@@ -5,6 +5,5 @@ export * as handlers from './handlers';
 export * as utils from './utils';
 export * as middleware from './middleware';
 export * as authenticationMiddleware from './authenticationMiddleware';
-export * as timeoutMiddleWare from './timeoutMiddleware';
 export * as errors from './errors';
 export * as types from './types';

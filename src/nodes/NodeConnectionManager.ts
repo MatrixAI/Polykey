@@ -454,7 +454,7 @@ class NodeConnectionManager {
         this.rpcParserBufferSize,
       ),
       fromError: networkUtils.fromError,
-      handlerTimeoutTime: this.rpcCallTimeoutTime,
+      timeoutTime: this.rpcCallTimeoutTime,
       logger: this.logger.getChild(RPCServer.name),
     });
 

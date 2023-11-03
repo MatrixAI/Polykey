@@ -1,10 +1,9 @@
 import type { DB } from '@matrixai/db';
+import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
 import type { PassThrough } from 'readable-stream';
 import type { VaultName } from '../../../vaults/types';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
-import type { JSONValue } from '../../../types';
-import type { JSONRPCRequest } from '@matrixai/rpc';
 import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
@@ -26,7 +25,7 @@ class VaultsGitPackGet extends RawHandler<{
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     _cancel,
     meta,
-  ): Promise<[JSONValue, ReadableStream<Uint8Array>]> => {
+  ): Promise<[JSONObject, ReadableStream<Uint8Array>]> => {
     const { vaultManager, acl, db } = this.container;
     const [headerMessage, inputStream] = input;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
@@ -103,7 +102,7 @@ class VaultsGitPackGet extends RawHandler<{
         sideBand.destroy(e);
       },
     });
-    return [null, outputStream];
+    return [{}, outputStream];
   };
 }
 
