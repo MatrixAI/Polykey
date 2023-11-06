@@ -229,7 +229,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
 
     await nodeConnectionManager.stop();
   });
-  // TODO: work in progress testing
   test('concurrent connections should result in only 1 connection', async () => {
     // A connection is concurrently established in the forward and reverse
     // direction, we only want one connection to exist afterwards.

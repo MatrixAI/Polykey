@@ -246,6 +246,8 @@ class PolykeyAgent {
         recoveryCode: optionsDefaulted.keys.recoveryCode,
         strictMemoryLock: optionsDefaulted.keys.strictMemoryLock,
       });
+      console.log(keyRing.recoveryCode);
+      console.log(nodesUtils.encodeNodeId(keyRing.getNodeId()));
       db = await DB.createDB({
         dbPath,
         crypto: {
@@ -368,6 +370,7 @@ class PolykeyAgent {
         nodeConnectionManager,
         taskManager,
         gestaltGraph,
+        refreshBucketDelay: 60000,
         logger: logger.getChild(NodeManager.name),
       });
       await nodeManager.start();
