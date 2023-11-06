@@ -2,6 +2,10 @@ import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeAddress } from '@/nodes/types';
 import type { NodeId, NodeIdEncoded, NodeIdString } from '@/ids';
 import type { ObjectEmpty } from '@';
+import type {
+  JSONRPCRequestParams,
+  JSONRPCResponseResult,
+} from '@matrixai/rpc';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -19,8 +23,14 @@ import NodeConnection from '@/nodes/NodeConnection';
 import * as tlsUtils from '../utils/tls';
 
 describe(`${NodeConnectionManager.name} lifecycle test`, () => {
-  class Echo extends UnaryHandler<ObjectEmpty, string, string> {
-    public handle = async (input: string): Promise<string> => {
+  class Echo extends UnaryHandler<
+    ObjectEmpty,
+    JSONRPCRequestParams,
+    JSONRPCResponseResult
+  > {
+    public handle = async (
+      input: JSONRPCRequestParams,
+    ): Promise<JSONRPCResponseResult> => {
       return input;
     };
   }
@@ -266,13 +276,13 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const promA = nodeConnectionManager.withConnF(
       serverNodeId1,
       async (connection) => {
-        await connection.getClient().unaryCaller('echo', 'hello');
+        await connection.getClient().unaryCaller('echo', { value: 'hello' });
       },
     );
     const promB = nodeConnectionManagerPeer1.withConnF(
       clientNodeId,
       async (connection) => {
-        await connection.getClient().unaryCaller('echo', 'hello');
+        await connection.getClient().unaryCaller('echo', { value: 'hello' });
       },
     );
 
