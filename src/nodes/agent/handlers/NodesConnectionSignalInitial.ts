@@ -2,6 +2,7 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   HolePunchSignalMessage,
+  AddressMessage,
 } from '../types';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type { Host, Port } from '../../../network/types';
@@ -19,13 +20,13 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     nodeConnectionManager: NodeConnectionManager;
   },
   AgentRPCRequestParams<HolePunchSignalMessage>,
-  AgentRPCResponseResult
+  AgentRPCResponseResult<AddressMessage>
 > {
   public handle = async (
     input: AgentRPCRequestParams<HolePunchSignalMessage>,
     _cancel,
     meta: Record<string, JSONValue> | undefined,
-  ): Promise<AgentRPCResponseResult> => {
+  ): Promise<AgentRPCResponseResult<AddressMessage>> => {
     const { nodeConnectionManager } = this.container;
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
@@ -54,13 +55,17 @@ class NodesConnectionSignalInitial extends UnaryHandler<
       port: remotePort as Port,
       scopes: ['global'],
     };
-    nodeConnectionManager.handleNodesConnectionSignalInitial(
-      requestingNodeId,
-      targetNodeId,
-      address,
-      input.signature,
-    );
-    return {};
+    const targetAddress =
+      await nodeConnectionManager.handleNodesConnectionSignalInitial(
+        requestingNodeId,
+        targetNodeId,
+        address,
+        input.signature,
+      );
+    return {
+      host: targetAddress.host,
+      port: targetAddress.port,
+    };
   };
 }
 

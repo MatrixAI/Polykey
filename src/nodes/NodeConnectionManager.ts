@@ -1028,9 +1028,19 @@ class NodeConnectionManager {
     this.logger.debug(
       `establishing single connection for address ${address.host}:${address.port}`,
     );
-    const iceProm = address.scopes.includes('global')
-      ? this.initiateHolePunch(nodeIds, ctx)
-      : undefined;
+    if (address.scopes.includes('global')) {
+      // Get updated address from ice procedure, using first result for now
+      const result = await this.initiateHolePunch(nodeIds, ctx);
+      for (const newAddress of result) {
+        if (newAddress != null) {
+          this.logger.debug(
+            `initiateHolePunch returned new ${newAddress.host}:${newAddress.port} vs old ${address.host}:${address.port}`,
+          );
+          address.host = newAddress.host as Host;
+          address.port = newAddress.port;
+        }
+      }
+    }
     const connection =
       await NodeConnection.createNodeConnection<ManifestClientAgent>(
         {
@@ -1048,17 +1058,12 @@ class NodeConnectionManager {
           ),
         },
         ctx,
-      )
-        .catch((e) => {
-          this.logger.debug(
-            `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
-          );
-          throw e;
-        })
-        .finally(async () => {
-          iceProm?.cancel('Connection was established');
-          await iceProm;
-        });
+      ).catch((e) => {
+        this.logger.debug(
+          `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
+        );
+        throw e;
+      });
     // 2. if established then add to result map
     const nodeId = connection.nodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
@@ -1798,18 +1803,21 @@ class NodeConnectionManager {
    * @param requestSignature - `base64url` encoded signature
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public handleNodesConnectionSignalInitial(
+  public async handleNodesConnectionSignalInitial(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
     address: NodeAddress,
     requestSignature: string,
-  ) {
+  ): Promise<NodeAddress> {
     // Need to get the connection details of the requester and add it to the message.
     // Then send the message to the target.
     // This would only function with existing connections
-    if (!this.hasConnection(targetNodeId)) {
+    const existingConnection = await this.getExistingConnection(targetNodeId);
+    if (existingConnection == null) {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
+    const host = existingConnection.connection.host;
+    const port = existingConnection.connection.port;
     // Do other checks.
     const sourceNodeIdString = sourceNodeId.toString();
     if (!this.rateLimiter.consume(sourceNodeIdString)) {
@@ -1839,6 +1847,11 @@ class NodeConnectionManager {
       this.activeSignalFinalPs.delete(connProm);
     });
     this.activeSignalFinalPs.add(connProm);
+    return {
+      host,
+      port,
+      scopes: ['global'],
+    };
   }
 
   /**
@@ -1858,7 +1871,7 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     signallingNodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<void>;
+  ): PromiseCancellable<NodeAddress>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(
     true,
@@ -1869,8 +1882,8 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     signallingNodeId: NodeId,
     @context ctx: ContextTimed,
-  ): Promise<void> {
-    await this.withConnF(
+  ): Promise<NodeAddress> {
+    return await this.withConnF(
       signallingNodeId,
       async (conn) => {
         const client = conn.getClient();
@@ -1881,13 +1894,20 @@ class NodeConnectionManager {
           this.keyRing.keyPair,
           data,
         );
-        await client.methods.nodesConnectionSignalInitial(
-          {
-            targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-            signature: signature.toString('base64url'),
-          },
-          ctx,
-        );
+        const addressMessage =
+          await client.methods.nodesConnectionSignalInitial(
+            {
+              targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+              signature: signature.toString('base64url'),
+            },
+            ctx,
+          );
+        const nodeAddress: NodeAddress = {
+          host: addressMessage.host as Host,
+          port: addressMessage.port as Port,
+          scopes: ['global'],
+        };
+        return nodeAddress;
       },
       ctx,
     );
@@ -2048,31 +2068,28 @@ class NodeConnectionManager {
   protected initiateHolePunch(
     targetNodeIds: Array<NodeId>,
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<void>;
+  ): PromiseCancellable<Array<NodeAddress | undefined>>;
   @timedCancellable(true)
   protected async initiateHolePunch(
     targetNodeIds: Array<NodeId>,
     @context ctx: ContextTimed,
-  ): Promise<void> {
+  ): Promise<Array<NodeAddress | undefined>> {
     const seedNodes = this.getSeedNodes();
-    const allProms: Array<Promise<Array<void>>> = [];
+    const allProms: Array<PromiseCancellable<NodeAddress | undefined>> = [];
     for (const targetNodeId of targetNodeIds) {
       if (!this.isSeedNode(targetNodeId)) {
         // Ask seed nodes to signal hole punching for target
         const holePunchProms = seedNodes.map((seedNodeId) => {
           return (
             this.connectionSignalInitial(targetNodeId, seedNodeId, ctx)
-              // Ignore results
-              .then(
-                () => {},
-                () => {},
-              )
+              // Ignore errors
+              .catch(() => undefined)
           );
         });
-        allProms.push(Promise.all(holePunchProms));
+        allProms.push(...holePunchProms);
       }
     }
-    await Promise.all(allProms).catch();
+    return await Promise.all(allProms);
   }
 }
 
