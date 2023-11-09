@@ -98,6 +98,11 @@ class NodeConnectionManager {
   public readonly connectionFindConcurrencyLimit: number;
 
   /**
+   * Time used to find a node using `findNodeLocal`.
+   */
+  public readonly connectionFindLocalTimeoutTime: number;
+
+  /**
    * Time to wait to garbage collect un-used node connections.
    */
   public readonly connectionIdleTimeoutTime: number;
@@ -345,6 +350,8 @@ class NodeConnectionManager {
     seedNodes = {},
     connectionFindConcurrencyLimit = config.defaultsSystem
       .nodesConnectionFindConcurrencyLimit,
+    connectionFindLocalTimeoutTime = config.defaultsSystem
+      .nodesConnectionFindLocalTimeoutTime,
     connectionIdleTimeoutTime = config.defaultsSystem
       .nodesConnectionIdleTimeoutTime,
     connectionConnectTimeoutTime = config.defaultsSystem
@@ -365,6 +372,7 @@ class NodeConnectionManager {
     tlsConfig: TLSConfig;
     seedNodes?: SeedNodes;
     connectionFindConcurrencyLimit?: number;
+    connectionFindLocalTimeoutTime?: number;
     connectionIdleTimeoutTime?: number;
     connectionConnectTimeoutTime?: number;
     connectionKeepAliveTimeoutTime?: number;
@@ -384,6 +392,7 @@ class NodeConnectionManager {
       return k !== nodeIdEncodedOwn;
     }) as SeedNodes;
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
+    this.connectionFindLocalTimeoutTime = connectionFindLocalTimeoutTime;
     this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
     this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
@@ -1393,7 +1402,7 @@ class NodeConnectionManager {
   @timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTimeoutTime,
+      nodeConnectionManager.connectionFindLocalTimeoutTime,
   )
   public async findNodeLocal(
     targetNodeId: NodeId,
@@ -1504,7 +1513,7 @@ class NodeConnectionManager {
     const [localAddresses, kademliaAddress] = await Promise.allSettled([
       this.findNodeLocal(targetNodeId, {
         signal: ctx.signal,
-        timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
+        timer: pingTimeoutTime ?? this.connectionFindLocalTimeoutTime,
       }),
       this.findNode(targetNodeId, pingTimeoutTime, ctx),
     ]);

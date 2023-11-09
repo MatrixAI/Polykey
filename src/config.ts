@@ -196,6 +196,22 @@ const config = {
      */
     nodesConnectionFindConcurrencyLimit: 3,
     /**
+     * Timeout for finding local nodes via MDNS.
+     *
+     * When `NodeConnectionManager.findNodeLocal` is executed, `js-mdns` will
+     * start up a query for any Polykey agent services. The timeout determines
+     * how long the query should sit before it is cancelled.
+     *
+     * During this time, if `js-mdns` manages to find a service relating to the
+     * nodeId that `NodeConnectionManager.findNodeLocal` is looking for, the
+     * timeout will be disregarded.
+     *
+     * The default value should allow some leeway for at least 2 query packets
+     * to be sent out, and for `js-mdns` to wait some time before receiving
+     * the corresponding answer packets from devices on the network.
+     */
+    nodesConnectionFindLocalTimeoutTime: 1_500, // 1.5 seconds
+    /**
      * Timeout for idle node connections.
      *
      * A node connection is idle, if nothing is using the connection. A

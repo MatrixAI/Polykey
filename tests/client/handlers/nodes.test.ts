@@ -183,7 +183,11 @@ describe('nodesAdd', () => {
       )!,
     );
     expect(result).toBeDefined();
-    expect(result!.address).toEqual({ host: '127.0.0.1', port: 11111 });
+    expect(result!.address).toEqual({
+      host: '127.0.0.1',
+      port: 11111,
+      scopes: ['global'],
+    });
   });
   test('cannot add invalid node', async () => {
     // Invalid host

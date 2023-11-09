@@ -163,6 +163,8 @@ class PolykeyAgent {
           config.defaultsSystem.nodesConnectionIdleTimeoutTime,
         connectionFindConcurrencyLimit:
           config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
+        connectionFindLocalTimeoutTime:
+          config.defaultsSystem.nodesConnectionFindLocalTimeoutTime,
         connectionConnectTimeoutTime:
           config.defaultsSystem.nodesConnectionConnectTimeoutTime,
         connectionKeepAliveTimeoutTime:
@@ -346,6 +348,8 @@ class PolykeyAgent {
         seedNodes: optionsDefaulted.seedNodes,
         connectionFindConcurrencyLimit:
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
+        connectionFindLocalTimeoutTime:
+          optionsDefaulted.nodes.connectionFindLocalTimeoutTime,
         connectionIdleTimeoutTime:
           optionsDefaulted.nodes.connectionIdleTimeoutTime,
         connectionConnectTimeoutTime:

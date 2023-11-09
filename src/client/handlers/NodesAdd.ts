@@ -6,7 +6,6 @@ import type {
 } from '../types';
 import type { NodeId } from '../../ids';
 import type { Host, Hostname, Port } from '../../network/types';
-import type { NodeAddress } from '../../nodes/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids';
@@ -68,7 +67,8 @@ class NodesAdd extends UnaryHandler<
         {
           host,
           port,
-        } as NodeAddress,
+          scopes: ['global'],
+        },
         true,
         input.force ?? false,
         1500,
