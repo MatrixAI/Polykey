@@ -72,7 +72,7 @@ describe(`${NodeConnection.name}`, () => {
         key: serverTlsConfig.keyPrivatePem,
         cert: serverTlsConfig.certChainPem,
         verifyPeer: true,
-        verifyCallback: networkUtils.verifyClientCertificateChain,
+        verifyCallback: nodesUtils.verifyClientCertificateChain,
       },
       crypto: {
         key: keysUtils.generateKey(),

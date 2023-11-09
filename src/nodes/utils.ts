@@ -1,8 +1,10 @@
 import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
-import type { CertificatePEM } from '../keys/types';
+import type { Certificate, CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
+import type { X509Certificate } from '@peculiar/x509';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
+import { CryptoError } from '@matrixai/quic/dist/native';
 import { utils as quicUtils, errors as quicErrors } from '@matrixai/quic';
 import { errors as rpcErrors } from '@matrixai/rpc';
 import lexi from 'lexicographic-integer';
@@ -456,6 +458,173 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
   return [seedNodes, defaults];
 }
 
+/**
+ * Verify the server certificate chain when connecting to it from a client
+ * This is a custom verification intended to verify that the server owned
+ * the relevant NodeId.
+ * It is possible that the server has a new NodeId. In that case we will
+ * verify that the new NodeId is the true descendant of the target NodeId.
+ */
+async function verifyServerCertificateChain(
+  nodeIds: Array<NodeId>,
+  certs: Array<Uint8Array>,
+): Promise<
+  | {
+      result: 'success';
+      nodeId: NodeId;
+    }
+  | {
+      result: 'fail';
+      value: CryptoError;
+    }
+> {
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
+  if (certPEMChain.length === 0) {
+    return {
+      result: 'fail',
+      value: CryptoError.CertificateRequired,
+    };
+  }
+  if (nodeIds.length === 0) {
+    throw new nodesErrors.ErrorConnectionNodesEmpty();
+  }
+  const certChain: Array<Readonly<X509Certificate>> = [];
+  for (const certPEM of certPEMChain) {
+    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
+    if (cert == null) {
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
+    }
+    certChain.push(cert);
+  }
+  const now = new Date();
+  let certClaim: Certificate | null = null;
+  let certClaimIndex: number | null = null;
+  let verifiedNodeId: NodeId | null = null;
+  for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
+    const cert = certChain[certIndex];
+    if (now < cert.notBefore || now > cert.notAfter) {
+      return {
+        result: 'fail',
+        value: CryptoError.CertificateExpired,
+      };
+    }
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
+    }
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
+    }
+    if (!(await keysUtils.certNodeSigned(cert))) {
+      return {
+        result: 'fail',
+        value: CryptoError.BadCertificate,
+      };
+    }
+    for (const nodeId of nodeIds) {
+      if (certNodeId.equals(nodeId)) {
+        // Found the certificate claiming the nodeId
+        certClaim = cert;
+        certClaimIndex = certIndex;
+        verifiedNodeId = nodeId;
+      }
+    }
+    // If cert is found then break out of loop
+    if (verifiedNodeId != null) break;
+  }
+  if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
+    return {
+      result: 'fail',
+      value: CryptoError.BadCertificate,
+    };
+  }
+  if (certClaimIndex > 0) {
+    let certParent: Certificate;
+    let certChild: Certificate;
+    for (let certIndex = 0; certIndex < certClaimIndex; certIndex++) {
+      certParent = certChain[certIndex];
+      certChild = certChain[certIndex + 1];
+      if (
+        !keysUtils.certIssuedBy(certParent, certChild) ||
+        !(await keysUtils.certSignedBy(
+          certParent,
+          keysUtils.certPublicKey(certChild)!,
+        ))
+      ) {
+        return {
+          result: 'fail',
+          value: CryptoError.BadCertificate,
+        };
+      }
+    }
+  }
+  return {
+    result: 'success',
+    nodeId: verifiedNodeId,
+  };
+}
+
+/**
+ * Verify the client certificate chain when it connects to the server.
+ * The server does have a target NodeId. This means we verify the entire chain.
+ */
+async function verifyClientCertificateChain(
+  certs: Array<Uint8Array>,
+): Promise<CryptoError | undefined> {
+  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
+  if (certPEMChain.length === 0) {
+    return CryptoError.CertificateRequired;
+  }
+  const certChain: Array<Readonly<X509Certificate>> = [];
+  for (const certPEM of certPEMChain) {
+    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
+    if (cert == null) return CryptoError.BadCertificate;
+    certChain.push(cert);
+  }
+  const now = new Date();
+  for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
+    const cert = certChain[certIndex];
+    const certNext = certChain[certIndex + 1];
+    if (now < cert.notBefore || now > cert.notAfter) {
+      return CryptoError.CertificateExpired;
+    }
+    const certNodeId = keysUtils.certNodeId(cert);
+    if (certNodeId == null) {
+      return CryptoError.BadCertificate;
+    }
+    const certPublicKey = keysUtils.certPublicKey(cert);
+    if (certPublicKey == null) {
+      return CryptoError.BadCertificate;
+    }
+    if (!(await keysUtils.certNodeSigned(cert))) {
+      return CryptoError.BadCertificate;
+    }
+    if (certNext != null) {
+      if (
+        !keysUtils.certIssuedBy(cert, certNext) ||
+        !(await keysUtils.certSignedBy(
+          cert,
+          keysUtils.certPublicKey(certNext)!,
+        ))
+      ) {
+        return CryptoError.BadCertificate;
+      }
+    }
+  }
+  // Undefined means success
+  return undefined;
+}
+
 export {
   sepBuffer,
   bucketIndex,
@@ -481,6 +650,8 @@ export {
   parseRemoteCertsChain,
   parseNetwork,
   parseSeedNodes,
+  verifyServerCertificateChain,
+  verifyClientCertificateChain,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids';

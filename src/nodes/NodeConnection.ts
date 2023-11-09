@@ -248,7 +248,7 @@ class NodeConnection<M extends ClientManifest> {
             maxIdleTimeout: connectionKeepAliveTimeoutTime,
             verifyPeer: true,
             verifyCallback: async (certPEMs) => {
-              const result = await networkUtils.verifyServerCertificateChain(
+              const result = await nodesUtils.verifyServerCertificateChain(
                 targetNodeIds,
                 certPEMs,
               );

@@ -1,8 +1,10 @@
 import type {
   CertId,
   Certificate,
+  CertificatePEM,
   CertificatePEMChain,
   KeyPair,
+  PrivateKeyPEM,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
 import type { ClientCryptoOps, ServerCryptoOps } from '@matrixai/quic';
@@ -34,7 +36,10 @@ async function createTLSConfig(
 async function createTLSConfigWithChain(
   keyPairs: Array<KeyPair>,
   generateCertId?: () => CertId,
-): Promise<TLSConfig> {
+): Promise<{
+  keyPrivatePem: PrivateKeyPEM;
+  certChainPem: Array<CertificatePEM>;
+}> {
   if (keyPairs.length === 0) throw Error('Must have at least 1 keypair');
   generateCertId = generateCertId ?? keysUtils.createCertIdGenerator();
   let previousCert: Certificate | null = null;
@@ -52,14 +57,11 @@ async function createTLSConfigWithChain(
     previousCert = newCert;
     previousKeyPair = keyPair;
   }
-  let certChainPEM = '';
-  for (const certificate of certChain) {
-    certChainPEM += keysUtils.certToPEM(certificate);
-  }
+  const certChainPEMs = certChain.map((v) => keysUtils.certToPEM(v));
 
   return {
     keyPrivatePem: keysUtils.privateKeyToPEM(previousKeyPair!.privateKey),
-    certChainPem: certChainPEM as CertificatePEMChain,
+    certChainPem: certChainPEMs,
   };
 }
 

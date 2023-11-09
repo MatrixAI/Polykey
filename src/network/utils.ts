@@ -1,19 +1,13 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { Address, Host, Hostname, Port } from './types';
-import type { Certificate, CertificatePEM } from '../keys/types';
-import type { NodeId } from '../ids/types';
 import type { NodeAddress, NodeAddressScope } from '../nodes/types';
 import type { JSONValue } from '../types';
-import type { X509Certificate } from '@peculiar/x509';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
-import { CryptoError } from '@matrixai/quic/dist/native';
-import { utils as quicUtils } from '@matrixai/quic';
 import { AbstractError } from '@matrixai/errors';
 import * as networkErrors from './errors';
-import * as keysUtils from '../keys/utils';
 import * as validationUtils from '../validation/utils';
 import * as validationErrors from '../validation/errors';
 import * as errors from '../errors';
@@ -272,173 +266,6 @@ function resolvesZeroIP(ip: Host): Host {
 }
 
 /**
- * Verify the server certificate chain when connecting to it from a client
- * This is a custom verification intended to verify that the server owned
- * the relevant NodeId.
- * It is possible that the server has a new NodeId. In that case we will
- * verify that the new NodeId is the true descendant of the target NodeId.
- */
-async function verifyServerCertificateChain(
-  nodeIds: Array<NodeId>,
-  certs: Array<Uint8Array>,
-): Promise<
-  | {
-      result: 'success';
-      nodeId: NodeId;
-    }
-  | {
-      result: 'fail';
-      value: CryptoError;
-    }
-> {
-  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
-  if (certPEMChain.length === 0) {
-    return {
-      result: 'fail',
-      value: CryptoError.CertificateRequired,
-    };
-  }
-  if (nodeIds.length === 0) {
-    throw new networkErrors.ErrorConnectionNodesEmpty();
-  }
-  const certChain: Array<Readonly<X509Certificate>> = [];
-  for (const certPEM of certPEMChain) {
-    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
-    if (cert == null) {
-      return {
-        result: 'fail',
-        value: CryptoError.BadCertificate,
-      };
-    }
-    certChain.push(cert);
-  }
-  const now = new Date();
-  let certClaim: Certificate | null = null;
-  let certClaimIndex: number | null = null;
-  let verifiedNodeId: NodeId | null = null;
-  for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
-    const cert = certChain[certIndex];
-    if (now < cert.notBefore || now > cert.notAfter) {
-      return {
-        result: 'fail',
-        value: CryptoError.CertificateExpired,
-      };
-    }
-    const certNodeId = keysUtils.certNodeId(cert);
-    if (certNodeId == null) {
-      return {
-        result: 'fail',
-        value: CryptoError.BadCertificate,
-      };
-    }
-    const certPublicKey = keysUtils.certPublicKey(cert);
-    if (certPublicKey == null) {
-      return {
-        result: 'fail',
-        value: CryptoError.BadCertificate,
-      };
-    }
-    if (!(await keysUtils.certNodeSigned(cert))) {
-      return {
-        result: 'fail',
-        value: CryptoError.BadCertificate,
-      };
-    }
-    for (const nodeId of nodeIds) {
-      if (certNodeId.equals(nodeId)) {
-        // Found the certificate claiming the nodeId
-        certClaim = cert;
-        certClaimIndex = certIndex;
-        verifiedNodeId = nodeId;
-      }
-    }
-    // If cert is found then break out of loop
-    if (verifiedNodeId != null) break;
-  }
-  if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
-    return {
-      result: 'fail',
-      value: CryptoError.BadCertificate,
-    };
-  }
-  if (certClaimIndex > 0) {
-    let certParent: Certificate;
-    let certChild: Certificate;
-    for (let certIndex = certClaimIndex; certIndex > 0; certIndex--) {
-      certParent = certChain[certIndex];
-      certChild = certChain[certIndex - 1];
-      if (
-        !keysUtils.certIssuedBy(certParent, certChild) ||
-        !(await keysUtils.certSignedBy(
-          certParent,
-          keysUtils.certPublicKey(certChild)!,
-        ))
-      ) {
-        return {
-          result: 'fail',
-          value: CryptoError.BadCertificate,
-        };
-      }
-    }
-  }
-  return {
-    result: 'success',
-    nodeId: verifiedNodeId,
-  };
-}
-
-/**
- * Verify the client certificate chain when it connects to the server.
- * The server does have a target NodeId. This means we verify the entire chain.
- */
-async function verifyClientCertificateChain(
-  certs: Array<Uint8Array>,
-): Promise<CryptoError | undefined> {
-  const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
-  if (certPEMChain.length === 0) {
-    return CryptoError.CertificateRequired;
-  }
-  const certChain: Array<Readonly<X509Certificate>> = [];
-  for (const certPEM of certPEMChain) {
-    const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
-    if (cert == null) return CryptoError.BadCertificate;
-    certChain.push(cert);
-  }
-  const now = new Date();
-  for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
-    const cert = certChain[certIndex];
-    const certNext = certChain[certIndex + 1];
-    if (now < cert.notBefore || now > cert.notAfter) {
-      return CryptoError.CertificateExpired;
-    }
-    const certNodeId = keysUtils.certNodeId(cert);
-    if (certNodeId == null) {
-      return CryptoError.BadCertificate;
-    }
-    const certPublicKey = keysUtils.certPublicKey(cert);
-    if (certPublicKey == null) {
-      return CryptoError.BadCertificate;
-    }
-    if (!(await keysUtils.certNodeSigned(cert))) {
-      return CryptoError.BadCertificate;
-    }
-    if (certNext != null) {
-      if (
-        !keysUtils.certIssuedBy(certNext, cert) ||
-        !(await keysUtils.certSignedBy(
-          certNext,
-          keysUtils.certPublicKey(cert)!,
-        ))
-      ) {
-        return CryptoError.BadCertificate;
-      }
-    }
-  }
-  // Undefined means success
-  return undefined;
-}
-
-/**
  * Takes an array of host or hostnames and resolves them to the host addresses.
  * It will also filter out any duplicates or IPV6 addresses.
  * @param addresses
@@ -662,8 +489,6 @@ export {
   isDNSError,
   resolveHostname,
   resolvesZeroIP,
-  verifyServerCertificateChain,
-  verifyClientCertificateChain,
   resolveHostnames,
   fromError,
   toError,

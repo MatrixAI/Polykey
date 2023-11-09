@@ -101,6 +101,11 @@ class ErrorNodeConnectionTransportGenericError<
   exitCode = sysexits.USAGE;
 }
 
+class ErrorConnectionNodesEmpty<T> extends ErrorNodeConnection<T> {
+  static description = 'Nodes list to verify against was empty';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeConnectionManager<T> extends ErrorNodes<T> {}
 
 class ErrorNodeConnectionManagerNotRunning<
@@ -196,6 +201,7 @@ export {
   ErrorNodeConnectionInternalError,
   ErrorNodeConnectionTransportUnknownError,
   ErrorNodeConnectionTransportGenericError,
+  ErrorConnectionNodesEmpty,
   ErrorNodeConnectionManager,
   ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionManagerStopping,

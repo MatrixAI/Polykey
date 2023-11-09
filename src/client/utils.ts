@@ -190,9 +190,9 @@ async function verifyServerCertificateChain(
   if (certClaimIndex > 0) {
     let certParent: Certificate;
     let certChild: Certificate;
-    for (let certIndex = certClaimIndex; certIndex > 0; certIndex--) {
+    for (let certIndex = 0; certIndex < certClaimIndex; certIndex++) {
       certParent = certChain[certIndex];
-      certChild = certChain[certIndex - 1];
+      certChild = certChain[certIndex + 1];
       if (
         !keysUtils.certIssuedBy(certParent, certChild) ||
         !(await keysUtils.certSignedBy(

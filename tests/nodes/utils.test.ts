@@ -1,5 +1,5 @@
 import type { NodeId } from '@/ids/types';
-import type { Key } from '@/keys/types';
+import type { Key, CertificatePEM, PrivateKeyPEM } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -8,11 +8,13 @@ import lexi from 'lexicographic-integer';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { errors as rpcErrors } from '@matrixai/rpc';
+import { utils as wsUtils } from '@matrixai/ws';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
 import * as utils from '@/utils';
 import * as testNodesUtils from './utils';
+import * as testTlsUtils from '../utils/tls';
 
 describe('nodes/utils', () => {
   const logger = new Logger(`nodes/utils test`, LogLevel.WARN, [
@@ -313,6 +315,83 @@ describe('nodes/utils', () => {
           `asdpk://${nodeIdEncoded1}@$invalidHost:${port1}`,
         ),
       ).toThrow(validationErrors.ErrorParse);
+    });
+  });
+  describe('verification utils', () => {
+    const keyPairRoot = keysUtils.generateKeyPair();
+    const nodeIdRoot = keysUtils.publicKeyToNodeId(keyPairRoot.publicKey);
+    const keyPairIntermediate = keysUtils.generateKeyPair();
+    const nodeIdIntermediate = keysUtils.publicKeyToNodeId(
+      keyPairIntermediate.publicKey,
+    );
+    const keyPairLeaf = keysUtils.generateKeyPair();
+    const nodeIdLeaf = keysUtils.publicKeyToNodeId(keyPairLeaf.publicKey);
+
+    let cert: {
+      keyPrivatePem: PrivateKeyPEM;
+      certChainPem: Array<CertificatePEM>;
+    };
+
+    beforeAll(async () => {
+      cert = await testTlsUtils.createTLSConfigWithChain([
+        keyPairRoot,
+        keyPairIntermediate,
+        keyPairLeaf,
+      ]);
+    });
+
+    describe('server verifyServerCertificateChain', () => {
+      test('verify on leaf cert', async () => {
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdLeaf],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('success');
+        if (result.result === 'fail') fail();
+        expect(Buffer.compare(result.nodeId, nodeIdLeaf)).toBe(0);
+      });
+      test('verify on intermediate cert', async () => {
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdIntermediate],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('success');
+        if (result.result === 'fail') fail();
+        expect(Buffer.compare(result.nodeId, nodeIdIntermediate)).toBe(0);
+      });
+      test('verify on root cert', async () => {
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdRoot],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('success');
+        if (result.result === 'fail') fail();
+        expect(Buffer.compare(result.nodeId, nodeIdRoot)).toBe(0);
+      });
+      test('newest cert takes priority', async () => {
+        const result1 = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdLeaf, nodeIdIntermediate, nodeIdRoot],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result1.result).toBe('success');
+        if (result1.result === 'fail') fail();
+        expect(Buffer.compare(result1.nodeId, nodeIdLeaf)).toBe(0);
+        const result2 = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdRoot, nodeIdIntermediate, nodeIdLeaf],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result2.result).toBe('success');
+        if (result2.result === 'fail') fail();
+        expect(Buffer.compare(result2.nodeId, nodeIdLeaf)).toBe(0);
+      });
+    });
+    describe('server verifyClientCertificateChain', () => {
+      test('verify with multiple certs', async () => {
+        const result = await nodesUtils.verifyClientCertificateChain(
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result).toBeUndefined();
+      });
     });
   });
 });

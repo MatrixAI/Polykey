@@ -438,7 +438,7 @@ class NodeConnectionManager {
         key: tlsConfig.keyPrivatePem,
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
-        verifyCallback: networkUtils.verifyClientCertificateChain,
+        verifyCallback: nodesUtils.verifyClientCertificateChain,
       },
       crypto: quicServerCrypto,
       socket: quicSocket,

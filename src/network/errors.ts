@@ -10,11 +10,6 @@ class ErrorNetwork<T> extends ErrorPolykey<T> {}
  */
 class ErrorCertChain<T> extends ErrorNetwork<T> {}
 
-class ErrorConnectionNodesEmpty<T> extends ErrorCertChain<T> {
-  static description = 'Nodes list to verify against was empty';
-  exitCode = sysexits.USAGE;
-}
-
 class ErrorCertChainEmpty<T> extends ErrorCertChain<T> {
   static description = 'Certificate chain is empty';
   exitCode = sysexits.PROTOCOL;
@@ -102,7 +97,6 @@ class ErrorPolykeyRemote<T> extends ErrorPolykey<T> {
 export {
   ErrorNetwork,
   ErrorCertChain,
-  ErrorConnectionNodesEmpty,
   ErrorCertChainEmpty,
   ErrorCertChainUnclaimed,
   ErrorCertChainBroken,
