@@ -6,7 +6,7 @@ import type { Host, Hostname, Port } from '../network/types';
  */
 type NodeGraphSpace = '0' | '1';
 
-type NodeAddressScope = 'local' | 'external';
+type NodeAddressScope = 'local' | 'global';
 
 type NodeAddress = {
   host: Host | Hostname;

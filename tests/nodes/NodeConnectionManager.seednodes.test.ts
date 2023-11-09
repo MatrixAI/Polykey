@@ -89,7 +89,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteAddress1 = {
       host: remotePolykeyAgent1.agentServiceHost,
       port: remotePolykeyAgent1.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     };
 
     const nodePathB = path.join(dataDir, 'agentB');
@@ -111,7 +111,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
     remoteAddress2 = {
       host: remotePolykeyAgent2.agentServiceHost,
       port: remotePolykeyAgent2.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     };
 
     // Setting up client dependencies
@@ -303,7 +303,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       [nodesUtils.encodeNodeId(localNodeId)]: {
         host: '127.0.0.1' as Host,
         port: 55123 as Port,
-        scopes: ['external'],
+        scopes: ['global'],
       },
     };
     nodeConnectionManager = new NodeConnectionManager({
@@ -357,7 +357,7 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
       [nodesUtils.encodeNodeId(remoteNodeId2)]: {
         host: '127.0.0.1' as Host,
         port: 55124 as Port,
-        scopes: ['external'],
+        scopes: ['global'],
       },
     };
     nodeConnectionManager = new NodeConnectionManager({

@@ -67,7 +67,7 @@ describe(`${NodeConnectionManager.name} timeout test`, () => {
     remoteAddress1 = {
       host: remotePolykeyAgent1.agentServiceHost,
       port: remotePolykeyAgent1.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     };
 
     // Setting up client dependencies

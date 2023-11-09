@@ -168,7 +168,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.setNode(nodeId, {
       host: '' as Host,
       port: 11111 as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     });
 
     const nodeData = (await nodeGraph.getNode(nodeId))!;
@@ -179,7 +179,7 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.setNode(nodeId, {
       host: '' as Host,
       port: 22222 as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     });
 
     const newNodeData = (await nodeGraph.getNode(nodeId))!;
@@ -364,7 +364,7 @@ describe(`${NodeManager.name} test`, () => {
     const serverNodeAddress: NodeAddress = {
       host: server.agentServiceHost,
       port: server.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     await nodeGraph.setNode(serverNodeId, serverNodeAddress);
 
@@ -403,7 +403,7 @@ describe(`${NodeManager.name} test`, () => {
     const address: NodeAddress = {
       host: localHost as Host,
       port: port as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
@@ -442,7 +442,7 @@ describe(`${NodeManager.name} test`, () => {
     const address: NodeAddress = {
       host: localHost as Host,
       port: port as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
@@ -488,7 +488,7 @@ describe(`${NodeManager.name} test`, () => {
     const address: NodeAddress = {
       host: localHost as Host,
       port: port as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     // Let's fill a bucket
     for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {

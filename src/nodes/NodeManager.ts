@@ -142,13 +142,13 @@ class NodeManager {
       never();
     }
     if (
-      await this.pingNode(nodeId, [{ host, port, scopes: ['external'] }], {
+      await this.pingNode(nodeId, [{ host, port, scopes: ['global'] }], {
         signal: ctx.signal,
       })
     ) {
       await this.setNode(
         nodeId,
-        { host, port, scopes: ['external'] },
+        { host, port, scopes: ['global'] },
         false,
         false,
         2000,
@@ -215,7 +215,7 @@ class NodeManager {
       {
         host: e.detail.remoteHost,
         port: e.detail.remotePort,
-        scopes: ['external'],
+        scopes: ['global'],
       },
       false,
       false,

@@ -148,7 +148,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     serverAddress1 = {
       host: nodeConnectionManagerPeer1.host,
       port: nodeConnectionManagerPeer1.port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
   });
 
@@ -260,7 +260,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     const clientAddress: NodeAddress = {
       host: nodeConnectionManager.host,
       port: nodeConnectionManager.port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
 
     const forwardConnectP = nodeConnectionManager.getMultiConnection(
@@ -592,17 +592,17 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.2' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.3' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
       ],
       { timer: 200 },
@@ -634,32 +634,32 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.2' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.3' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.2' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.3' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
       ],
       { timer: 200 },
@@ -693,7 +693,7 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
       ],
       { timer: 200 },
@@ -728,32 +728,32 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.2' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.3' as Host,
           port: nodeConnectionManagerPeer1.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.1' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.2' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
         {
           host: '127.0.0.3' as Host,
           port: nodeConnectionManagerPeer2.port,
-          scopes: ['external'],
+          scopes: ['global'],
         },
       ],
       { timer: 2000 },

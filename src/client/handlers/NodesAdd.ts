@@ -54,7 +54,7 @@ class NodesAdd extends UnaryHandler<
     if (
       (input.ping ?? false) &&
       !(await nodeManager.pingNode(nodeId, [
-        { host, port, scopes: ['external'] },
+        { host, port, scopes: ['global'] },
       ]))
     ) {
       throw new nodeErrors.ErrorNodePingFailed(

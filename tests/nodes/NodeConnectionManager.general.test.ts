@@ -127,7 +127,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     serverAddressA = {
       host: remotePolykeyAgentA.agentServiceHost as Host,
       port: remotePolykeyAgentA.agentServicePort as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     remotePolykeyAgentB = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -228,7 +228,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeAddress: NodeAddress = {
       host: localHost as Host,
       port: 11111 as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     await nodeGraph.setNode(nodeId, nodeAddress);
     // Expect no error thrown
@@ -268,7 +268,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const nodeAddress: NodeAddress = {
       host: localHost as Host,
       port: 11111 as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     await remotePolykeyAgentA.nodeGraph.setNode(nodeId, nodeAddress);
 
@@ -347,7 +347,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
       const nodeAddress: NodeAddress = {
         host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
-        scopes: ['external'],
+        scopes: ['global'],
       };
       await remotePolykeyAgentA.nodeGraph.setNode(closeNodeId, nodeAddress);
       addedClosestNodes.push([
@@ -421,7 +421,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           {
             host: remotePolykeyAgentB.agentServiceHost,
             port: remotePolykeyAgentB.agentServicePort,
-            scopes: ['external'],
+            scopes: ['global'],
           },
         ],
       ),
@@ -451,7 +451,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const serverAddress: NodeAddress = {
       host: remotePolykeyAgentA.agentServiceHost as Host,
       port: remotePolykeyAgentA.agentServicePort as Port,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     await nodeGraph.setNode(serverNodeId, serverAddress);
 
@@ -505,7 +505,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const serverAddress: NodeAddress = {
       host: remotePolykeyAgentA.agentServiceHost,
       port: remotePolykeyAgentA.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     };
     await nodeGraph.setNode(serverNodeId, serverAddress);
     // Establish connection between remote A and B
@@ -516,7 +516,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           {
             host: remotePolykeyAgentB.agentServiceHost,
             port: remotePolykeyAgentB.agentServicePort,
-            scopes: ['external'],
+            scopes: ['global'],
           },
         ],
       ),
@@ -642,7 +642,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           {
             host: remotePolykeyAgentB.agentServiceHost,
             port: remotePolykeyAgentB.agentServicePort,
-            scopes: ['external'],
+            scopes: ['global'],
           },
         ],
       ),
@@ -660,7 +660,7 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           {
             host: '127.0.0.1' as Host,
             port: 55555 as Port,
-            scopes: ['external'],
+            scopes: ['global'],
           },
           signature.toString('base64url'),
         );

@@ -829,10 +829,10 @@ class NodeConnectionManager {
     let timeoutDivisions = 0;
     const addressGroups: {
       local: Array<NodeAddress>;
-      external: Array<NodeAddress>;
-    } = { local: [], external: [] };
+      global: Array<NodeAddress>;
+    } = { local: [], global: [] };
     for (const address of addresses) {
-      const scope = address.scopes.includes('local') ? 'local' : 'external';
+      const scope = address.scopes.includes('local') ? 'local' : 'global';
       // If this is the first time an addressGroup has had an address added, the timeout divisions must be incremented.
       if (addressGroups[scope].length === 0) {
         timeoutDivisions++;
@@ -860,7 +860,7 @@ class NodeConnectionManager {
         if (results == null || results.size === 0) {
           results = await this.establishMultiConnection(
             [targetNodeId],
-            addressGroups.external,
+            addressGroups.global,
             {
               signal: ctx.signal,
               timer: timeout,
@@ -1019,7 +1019,7 @@ class NodeConnectionManager {
     this.logger.debug(
       `establishing single connection for address ${address.host}:${address.port}`,
     );
-    const iceProm = !address.scopes?.includes('local')
+    const iceProm = address.scopes.includes('global')
       ? this.initiateHolePunch(nodeIds, ctx)
       : undefined;
     const connection =
@@ -1592,7 +1592,7 @@ class NodeConnectionManager {
             {
               host: nextNodeAddress.address.host,
               port: nextNodeAddress.address.port,
-              scopes: ['external'],
+              scopes: ['global'],
             },
           ],
           {
@@ -1633,7 +1633,7 @@ class NodeConnectionManager {
               {
                 host: nodeData.address.host,
                 port: nodeData.address.port,
-                scopes: ['external'],
+                scopes: ['global'],
               },
             ],
             {
@@ -1715,7 +1715,7 @@ class NodeConnectionManager {
                   address: {
                     host: result.host as Host | Hostname,
                     port: result.port as Port,
-                    scopes: ['external'],
+                    scopes: ['global'],
                   },
                   // Not really needed
                   // But if it's needed then we need to add the information to the proto definition

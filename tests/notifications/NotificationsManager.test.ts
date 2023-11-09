@@ -148,7 +148,7 @@ describe('NotificationsManager', () => {
     await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
       host: receiver.agentServiceHost,
       port: receiver.agentServicePort,
-      scopes: ['external'],
+      scopes: ['global'],
     });
   }, globalThis.defaultTimeout);
   afterEach(async () => {
