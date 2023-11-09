@@ -110,7 +110,7 @@ function parsePort(data: any, connect: boolean = false): Port {
 function buildAddress(host: Host, port: Port = 0 as Port): Address {
   let address: string;
   const [isIPv4] = Validator.isValidIPv4String(host);
-  const [isIPv6] = Validator.isValidIPv6String(host);
+  const [isIPv6] = Validator.isValidIPv6String(host.replace(/%.*/, ''));
   if (isIPv4) {
     address = `${host}:${port}`;
   } else if (isIPv6) {
