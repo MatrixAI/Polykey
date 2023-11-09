@@ -1387,7 +1387,7 @@ class NodeConnectionManager {
    */
   public findNodeLocal(
     targetNodeId: NodeId,
-    ctx?: Partial<ContextTimed>,
+    ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<Array<NodeAddress>>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
@@ -1407,17 +1407,17 @@ class NodeConnectionManager {
     }
     // First check if we already have an existing MDNS Service
     const mdnsOptions = { type: 'polykey', protocol: 'udp' } as const;
-    let service = this.mdns.networkServices.get(
+    let service: ServicePOJO | void = this.mdns.networkServices.get(
       mdnsUtils.toFqdn({ name: encodedNodeId, ...mdnsOptions }),
     );
     if (service == null) {
       // Setup promises
-      ctx.signal.throwIfAborted();
-      const { p: abortP, rejectP: rejectAbortP } = utils.promise<never>();
+      const { p: endedP, resolveP: resolveEndedP } = utils.promise<void>();
       const abortHandler = () => {
-        rejectAbortP(ctx.signal.reason);
+        resolveEndedP();
       };
       ctx.signal.addEventListener('abort', abortHandler, { once: true });
+      ctx.timer.catch(() => {}).finally(() => abortHandler());
       const { p: serviceP, resolveP: resolveServiceP } =
         utils.promise<ServicePOJO>();
       const handleEventMDNSService = (evt: mdnsEvents.EventMDNSService) => {
@@ -1434,17 +1434,13 @@ class NodeConnectionManager {
       this.mdns.stopQuery(mdnsOptions);
       this.mdns.startQuery(mdnsOptions);
       // Race promises to find node or timeout
-      try {
-        service = await Promise.race([serviceP, abortP]);
-      } catch {
-        this.mdns.removeEventListener(
-          mdnsEvents.EventMDNSService.name,
-          handleEventMDNSService,
-        );
-      } finally {
-        this.mdns.stopQuery(mdnsOptions);
-        ctx.signal.removeEventListener('abort', abortHandler);
-      }
+      service = await Promise.race([serviceP, endedP]);
+      this.mdns.removeEventListener(
+        mdnsEvents.EventMDNSService.name,
+        handleEventMDNSService,
+      );
+      this.mdns.stopQuery(mdnsOptions);
+      ctx.signal.removeEventListener('abort', abortHandler);
     }
     // If the service is not found, just return no addresses
     if (service == null) {
@@ -1506,7 +1502,10 @@ class NodeConnectionManager {
     @context ctx: ContextTimed,
   ): Promise<Array<NodeAddress>> {
     const [localAddresses, kademliaAddress] = await Promise.allSettled([
-      this.findNodeLocal(targetNodeId, ctx),
+      this.findNodeLocal(targetNodeId, {
+        signal: ctx.signal,
+        timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
+      }),
       this.findNode(targetNodeId, pingTimeoutTime, ctx),
     ]);
     const addresses =
