@@ -739,7 +739,9 @@ class CertManager {
     await this.db.withTransactionF(async (tran) => {
       const cert = await this.getCurrentCert(tran);
       const delay = Math.max(
-        keysUtils.certRemainingDuration(cert, now) - this.certRenewLeadTime,
+        // Multiply by 1000 to convert from seconds to milliseconds
+        (keysUtils.certRemainingDuration(cert, now) - this.certRenewLeadTime) *
+          1000,
         0,
       );
       let task: Task | undefined;
