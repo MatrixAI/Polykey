@@ -32,8 +32,8 @@ class ErrorNodeGraphNodeIdNotFound<T> extends ErrorNodeGraph<T> {
   exitCode = sysexits.NOUSER;
 }
 
-class ErrorNodeGraphOversizedBucket<T> extends ErrorNodeGraph<T> {
-  static description: 'Bucket invalidly contains more nodes than capacity';
+class ErrorNodeGraphBucketLimit<T> extends ErrorNodeGraph<T> {
+  static description: 'Node graph bucket limit reached';
   exitCode = sysexits.USAGE;
 }
 
@@ -188,7 +188,7 @@ export {
   ErrorNodeGraphNotRunning,
   ErrorNodeGraphDestroyed,
   ErrorNodeGraphNodeIdNotFound,
-  ErrorNodeGraphOversizedBucket,
+  ErrorNodeGraphBucketLimit,
   ErrorNodeGraphSameNodeId,
   ErrorNodeGraphBucketIndex,
   ErrorNodeConnection,
