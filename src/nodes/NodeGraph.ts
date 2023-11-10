@@ -19,6 +19,7 @@ import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as utils from '../utils';
+import config from '../config';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer
@@ -53,7 +54,7 @@ class NodeGraph {
     db,
     keyRing,
     nodeIdBits = 256,
-    nodeBucketLimit = 20,
+    nodeBucketLimit = config.defaultsSystem.nodesGraphBucketLimit,
     logger = new Logger(this.name),
     fresh = false,
   }: {

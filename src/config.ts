@@ -265,6 +265,47 @@ const config = {
      */
     nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
     /**
+     * Interval for refreshing buckets.
+     *
+     * A bucket that hasn't had any lookups for this amount of time will be
+     * refreshed. Lookups can be successful or unsuccessful. A look up will
+     * generally result in updates to the node graph.
+     */
+    nodesRefreshBucketIntervalTime: 3_600_000, // 1 hour
+    /**
+     * Interval time jitter multiplier for refreshing buckets.
+     *
+     * For example, if the interval is 60 seconds, and the jitter is configured
+     * as 0.5 (50%), the actual interval could vary between 30 seconds
+     * (60 * 0.5) and 90 seconds (60 * 1.5).
+     */
+    nodesRefreshBucketIntervalTimeJitter: 0.5,
+    /**
+     * Node graph bucket limit. The node graph keeps record of all node
+     * addresses of the network.
+     *
+     * A smaller limit reduces how many node addresses each node needs to
+     * keep track of. This can increase stability and fault toelrance
+     * because it can be kept up to date more quickly, and when nodes
+     * leave the network, it has a smaller impact on the network. However,
+     * it may increase the number hops required to find a node.
+     *
+     * A larger limit increases how many node addresses each node needs to
+     * keep track of. This can decrease stability and fault tolerance
+     * because it can take longer to keep it up to date, and when nodes
+     * leave the network, it has a larger impact on the network. However,
+     * it may decrease the number hops required to find a node.
+     *
+     * This must be balannced between an efficient number of hops to look up
+     * a node and resource usage per node and across the network.
+     */
+    nodesGraphBucketLimit: 20,
+
+
+
+
+
+    /**
      * Multicast group addresses that the MDNS stack will operate on.
      *
      * These values are well-known, and hence must not be changed by the user.

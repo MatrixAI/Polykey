@@ -69,12 +69,13 @@ class NodeManager {
 
   protected db: DB;
   protected logger: Logger;
-  protected sigchain: Sigchain;
   protected keyRing: KeyRing;
-  protected nodeConnectionManager: NodeConnectionManager;
-  protected nodeGraph: NodeGraph;
-  protected taskManager: TaskManager;
+  protected sigchain: Sigchain;
   protected gestaltGraph: GestaltGraph;
+  protected taskManager: TaskManager;
+  protected nodeGraph: NodeGraph;
+  protected nodeConnectionManager: NodeConnectionManager;
+
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
   protected refreshBucketHandler: TaskHandler = async (
@@ -101,8 +102,10 @@ class NodeManager {
       priority: 0,
     });
   };
+
   public readonly refreshBucketHandlerId =
     `${this.basePath}.${this.refreshBucketHandler.name}.refreshBucketHandlerId` as TaskHandlerId;
+
   protected gcBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -121,8 +124,10 @@ class NodeManager {
     // Re-schedule the task
     await this.setupGCTask(bucketIndex);
   };
+
   public readonly gcBucketHandlerId =
     `${this.basePath}.${this.gcBucketHandler.name}.gcBucketHandlerId` as TaskHandlerId;
+
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -152,8 +157,10 @@ class NodeManager {
       );
     }
   };
+
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
     `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
+
   protected checkSeedConnectionsHandler: TaskHandler = async (
     ctx,
     taskInfo,
@@ -200,6 +207,7 @@ class NodeManager {
       });
     }
   };
+
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
     `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
@@ -222,28 +230,30 @@ class NodeManager {
     db,
     keyRing,
     sigchain,
-    nodeConnectionManager,
-    nodeGraph,
-    taskManager,
     gestaltGraph,
-    refreshBucketDelay = 3600000, // 1 hour in milliseconds
-    refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
-    retrySeedConnectionsDelay = 120000, // 2 minuets
+    taskManager,
+    nodeGraph,
+    nodeConnectionManager,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
+    refreshBucketDelay = config.defaultsSystem
+      .nodesRefreshBucketIntervalTime,
+    refreshBucketDelayJitter = config.defaultsSystem
+      .nodesRefreshBucketIntervalTimeJitter,
+    retrySeedConnectionsDelay = 120000, // 2 minutes
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     sigchain: Sigchain;
-    nodeConnectionManager: NodeConnectionManager;
-    nodeGraph: NodeGraph;
-    taskManager: TaskManager;
     gestaltGraph: GestaltGraph;
+    taskManager: TaskManager;
+    nodeGraph: NodeGraph;
+    nodeConnectionManager: NodeConnectionManager;
+    connectionConnectTimeoutTime?: number;
     refreshBucketDelay?: number;
     refreshBucketDelayJitter?: number;
     retrySeedConnectionsDelay?: number;
-    connectionConnectTimeoutTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -254,14 +264,10 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
-    this.refreshBucketDelay = refreshBucketDelay;
-    // Clamped from 0 to 1 inclusive
-    this.refreshBucketDelayJitter = Math.max(
-      0,
-      Math.min(refreshBucketDelayJitter, 1),
-    );
-    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
+    this.refreshBucketDelay = refreshBucketDelay;
+    this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
+    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
   }
 
   public async start() {
