@@ -1,8 +1,9 @@
 import type { DB, DBTransaction } from '@matrixai/db';
+import type { ContextTimed } from '@matrixai/contexts';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimedInput } from '@matrixai/contexts';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type KeyRing from '../keys/KeyRing';
-import type Sigchain from '../sigchain/Sigchain';
 import type {
   NodeId,
   NodeAddress,
@@ -11,44 +12,38 @@ import type {
   NodeData,
 } from './types';
 import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  AgentClaimMessage,
+} from './agent/types';
+import type KeyRing from '../keys/KeyRing';
+import type Sigchain from '../sigchain/Sigchain';
+import type TaskManager from '../tasks/TaskManager';
+import type GestaltGraph from '../gestalts/GestaltGraph';
+import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
+import type { SignedTokenEncoded } from '../tokens/types';
+import type { Host, Port } from '../network/types';
+import type {
   Claim,
   ClaimId,
   ClaimIdEncoded,
   SignedClaim,
 } from '../claims/types';
-import type TaskManager from '../tasks/TaskManager';
-import type GestaltGraph from '../gestalts/GestaltGraph';
-import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
-import type { ContextTimed } from '@matrixai/contexts';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { Host, Port } from '../network/types';
-import type { SignedTokenEncoded } from '../tokens/types';
 import type { ClaimLinkNode } from '../claims/payloads';
-import type {
-  AgentRPCRequestParams,
-  AgentRPCResponseResult,
-  AgentClaimMessage,
-} from './agent/types';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import * as nodesErrors from './errors';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
-import * as claimsUtils from '../claims/utils';
-import * as tasksErrors from '../tasks/errors';
-import * as claimsErrors from '../claims/errors';
-import * as keysUtils from '../keys/utils';
-import { never, promise } from '../utils/utils';
-import {
-  decodeClaimId,
-  encodeClaimId,
-  parseSignedClaim,
-} from '../claims/utils';
+import * as nodesErrors from './errors';
 import Token from '../tokens/Token';
+import * as keysUtils from '../keys/utils';
+import * as tasksErrors from '../tasks/errors';
+import * as claimsUtils from '../claims/utils';
+import * as claimsErrors from '../claims/errors';
+import * as utils from '../utils/utils';
 import config from '../config';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
@@ -139,7 +134,7 @@ class NodeManager {
       this.logger.error(
         `pingAndSetNodeHandler received invalid NodeId: ${nodeIdEncoded}`,
       );
-      never();
+      utils.never();
     }
     if (
       await this.pingNode(nodeId, [{ host, port, scopes: ['global'] }], {
@@ -401,13 +396,13 @@ class NodeManager {
         const client = connection.getClient();
         for await (const agentClaim of await client.methods.nodesClaimsGet({
           claimIdEncoded:
-            claimId != null ? encodeClaimId(claimId) : ('' as ClaimIdEncoded),
+            claimId != null ? claimsUtils.encodeClaimId(claimId) : ('' as ClaimIdEncoded),
         })) {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           // Need to re-construct each claim
-          const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
+          const claimId: ClaimId = claimsUtils.decodeClaimId(agentClaim.claimIdEncoded)!;
           const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = parseSignedClaim(signedClaimEncoded);
+          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
           // Verifying the claim
           const issPublicKey = keysUtils.publicKeyFromNodeId(
             nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
@@ -483,7 +478,7 @@ class NodeManager {
               }
               const receivedClaim = readStatus.value;
               // We need to re-construct the token from the message
-              const signedClaim = parseSignedClaim(
+              const signedClaim = claimsUtils.parseSignedClaim(
                 receivedClaim.signedTokenEncoded,
               );
               fullySignedToken = Token.fromSigned(signedClaim);
@@ -506,7 +501,7 @@ class NodeManager {
               }
               const receivedClaimRemote = readStatus2.value;
               // We need to re-construct the token from the message
-              const signedClaimRemote = parseSignedClaim(
+              const signedClaimRemote = claimsUtils.parseSignedClaim(
                 receivedClaimRemote.signedTokenEncoded,
               );
               // This is a singly signed claim,
@@ -570,7 +565,7 @@ class NodeManager {
       throw new claimsErrors.ErrorEmptyStream();
     }
     const receivedMessage = readStatus.value;
-    const signedClaim = parseSignedClaim(receivedMessage.signedTokenEncoded);
+    const signedClaim = claimsUtils.parseSignedClaim(receivedMessage.signedTokenEncoded);
     const token = Token.fromSigned(signedClaim);
     // Verify if the token is signed
     if (
@@ -591,7 +586,7 @@ class NodeManager {
     };
 
     // Now we want to send our own claim signed
-    const halfSignedClaimProm = promise<SignedTokenEncoded>();
+    const halfSignedClaimProm = utils.promise<SignedTokenEncoded>();
     const claimProm = this.sigchain.addClaim(
       {
         typ: 'ClaimLinkNode',
@@ -610,7 +605,7 @@ class NodeManager {
         }
         const receivedClaim = readStatus.value;
         // We need to re-construct the token from the message
-        const signedClaim = parseSignedClaim(receivedClaim.signedTokenEncoded);
+        const signedClaim = claimsUtils.parseSignedClaim(receivedClaim.signedTokenEncoded);
         const fullySignedToken = Token.fromSigned(signedClaim);
         // Check that the signatures are correct
         const requestingNodePublicKey =
@@ -780,7 +775,7 @@ class NodeManager {
           tran
         );
         const oldNodeId = bucket[0]?.[0];
-        if (oldNodeId == null) never();
+        if (oldNodeId == null) utils.never();
         this.logger.debug(
           `Force was set, removing ${nodesUtils.encodeNodeId(
             oldNodeId,
@@ -856,7 +851,7 @@ class NodeManager {
       this.nodeGraph.nodeBucketLimit,
       tran,
     );
-    if (bucket == null) never();
+    if (bucket == null) utils.never();
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
@@ -875,7 +870,7 @@ class NodeManager {
             timer: pingTimeoutTime,
           };
           const nodeAddress = await this.getNodeAddress(nodeId, tran);
-          if (nodeAddress == null) never();
+          if (nodeAddress == null) utils.never();
           if (await this.pingNode(nodeId, [nodeAddress], pingCtx)) {
             // Succeeded so update
             await this.setNode(
@@ -1180,7 +1175,7 @@ class NodeManager {
         priority: 0,
       });
     }
-    if (foundTask == null) never();
+    if (foundTask == null) utils.never();
     return foundTask;
   }
 
