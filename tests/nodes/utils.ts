@@ -4,7 +4,7 @@ import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
-import { bigInt2Bytes } from '@/utils';
+import * as utils from '@/utils';
 
 /**
  * Generate random `NodeId`
@@ -22,6 +22,14 @@ function generateRandomNodeId(readable: boolean = false): NodeId {
     const random = keysUtils.getRandomBytes(32);
     return IdInternal.fromBuffer<NodeId>(random);
   }
+}
+
+/**
+ * Generates a random unix timestamp between 0 and now.
+ */
+function generateRandomUnixtime() {
+  const now = utils.getUnixtime() + 1;
+  return Math.random() * (now - 0) + now;
 }
 
 /**
@@ -49,7 +57,7 @@ function generateNodeIdForBucket(
     throw new RangeError('bucketOffset is beyond bucket size');
   }
   // Offset position within the bucket
-  const distance = bigInt2Bytes(
+  const distance = utils.bigInt2Bytes(
     lowerBoundDistance + BigInt(bucketOffset),
     nodeId.byteLength,
   );
@@ -174,6 +182,7 @@ function createReasonConverters() {
 
 export {
   generateRandomNodeId,
+  generateRandomUnixtime,
   generateNodeIdForBucket,
   nodesConnect,
   nodeIdArb,

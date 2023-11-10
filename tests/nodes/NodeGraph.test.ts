@@ -5,6 +5,7 @@ import type {
   NodeBucket,
   NodeBucketIndex,
 } from '@/nodes/types';
+import type { Host, Hostname, Port } from '@/network/types';
 import type { Key } from '@/keys/types';
 import os from 'os';
 import path from 'path';
@@ -91,29 +92,40 @@ describe(`${NodeGraph.name} test`, () => {
     do {
       nodeId2 = testNodesUtils.generateRandomNodeId();
     } while (nodeId2.equals(keyRing.getNodeId()));
-
-    await nodeGraph.setNode(nodeId1, {
-      host: '10.0.0.1',
-      port: 1234,
-    } as NodeAddress);
+    const now = utils.getUnixtime();
+    await nodeGraph.setNode(
+      nodeId1,
+      {
+        host: '10.0.0.1' as Host,
+        port: 1234 as Port,
+        scopes: ['local']
+      },
+      now - 100
+    );
     const nodeData1 = await nodeGraph.getNode(nodeId1);
     expect(nodeData1).toStrictEqual({
       address: {
         host: '10.0.0.1',
         port: 1234,
+        scopes: ['local']
       },
       lastUpdated: expect.any(Number),
     });
-    await utils.sleep(1000);
-    await nodeGraph.setNode(nodeId2, {
-      host: 'abc.com',
-      port: 8978,
-    } as NodeAddress);
+    await nodeGraph.setNode(
+      nodeId2,
+      {
+        host: 'abc.com' as Hostname,
+        port: 8978 as Port,
+        scopes: ['global']
+      },
+      now
+    );
     const nodeData2 = await nodeGraph.getNode(nodeId2);
     expect(nodeData2).toStrictEqual({
       address: {
         host: 'abc.com',
         port: 8978,
+        scopes: ['global']
       },
       lastUpdated: expect.any(Number),
     });
@@ -126,6 +138,7 @@ describe(`${NodeGraph.name} test`, () => {
         address: {
           host: '10.0.0.1',
           port: 1234,
+          scopes: ['local']
         },
         lastUpdated: expect.any(Number),
       },
@@ -136,6 +149,7 @@ describe(`${NodeGraph.name} test`, () => {
         address: {
           host: 'abc.com',
           port: 8978,
+          scopes: ['global']
         },
         lastUpdated: expect.any(Number),
       },
@@ -149,6 +163,7 @@ describe(`${NodeGraph.name} test`, () => {
           address: {
             host: 'abc.com',
             port: 8978,
+            scopes: ['global']
           },
           lastUpdated: expect.any(Number),
         },
@@ -158,25 +173,37 @@ describe(`${NodeGraph.name} test`, () => {
     await nodeGraph.stop();
   });
   test('get all nodes', async () => {
+    const nodeBucketLimit = 25;
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
       logger,
+      nodeBucketLimit,
     });
-    let nodeIds = Array.from({ length: 25 }, () => {
+    let nodeIds = Array.from({ length: nodeBucketLimit }, () => {
       return testNodesUtils.generateRandomNodeId();
     });
     nodeIds = nodeIds.filter((nodeId) => !nodeId.equals(keyRing.getNodeId()));
+    const lastUpdatedNow = utils.getUnixtime();
+    const lastUpdatedTimes = Array.from({ length: nodeBucketLimit }, (_, i) => {
+      return lastUpdatedNow - i * 100;
+    });
     let bucketIndexes: Array<NodeBucketIndex>;
     let nodes: NodeBucket;
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
     expect(nodes).toHaveLength(0);
-    for (const nodeId of nodeIds) {
-      await utils.sleep(100);
-      await nodeGraph.setNode(nodeId, {
-        host: '127.0.0.1',
-        port: 55555,
-      } as NodeAddress);
+    for (let i = 0; i < nodeIds.length; i++) {
+      const nodeId = nodeIds[i];
+      const lastUpdated = lastUpdatedTimes[i];
+      await nodeGraph.setNode(
+        nodeId,
+        {
+          host: '127.0.0.1' as Host,
+          port: 55555 as Port,
+          scopes: ['local']
+        },
+        lastUpdated
+      );
     }
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
     expect(nodes).toHaveLength(25);
@@ -273,25 +300,49 @@ describe(`${NodeGraph.name} test`, () => {
     await nodeGraph.stop();
   });
   test('get bucket with multiple nodes', async () => {
+    const nodeBucketLimit = 25;
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
       logger,
+      nodeBucketLimit
     });
     // Contiguous node IDs starting from 0
-    let nodeIds = Array.from({ length: 25 }, (_, i) =>
+    let nodeIds = Array.from({ length: nodeBucketLimit }, (_, i) =>
       IdInternal.create<NodeId>(
         utils.bigInt2Bytes(BigInt(i), keyRing.getNodeId().byteLength),
       ),
     );
     nodeIds = nodeIds.filter((nodeId) => !nodeId.equals(keyRing.getNodeId()));
-    for (const nodeId of nodeIds) {
-      await utils.sleep(100);
-      await nodeGraph.setNode(nodeId, {
-        host: '127.0.0.1',
-        port: 55555,
-      } as NodeAddress);
+    const lastUpdatedNow = utils.getUnixtime();
+    const lastUpdatedTimes = Array.from({ length: nodeBucketLimit }, (_, i) => {
+      return lastUpdatedNow - i * 100;
+    });
+    for (let i = 0; i < nodeIds.length; i++) {
+      const nodeId = nodeIds[i];
+      const lastUpdated = lastUpdatedTimes[i];
+      await nodeGraph.setNode(
+        nodeId,
+        {
+          host: '127.0.0.1' as Host,
+          port: 55555 as Port,
+          scopes: [],
+        },
+        lastUpdated
+      );
     }
+    // Setting one more node would trigger the bucket limit error
+    const nodeIdExtra = IdInternal.create<NodeId>(
+      utils.bigInt2Bytes(BigInt(nodeBucketLimit), keyRing.getNodeId().byteLength),
+    );
+    await expect(nodeGraph.setNode(
+      nodeIdExtra,
+      {
+        host: '127.0.0.1' as Host,
+        port: 55555 as Port,
+        scopes: []
+      },
+    )).rejects.toThrow(nodesErrors.ErrorNodeGraphBucketLimit);
     // Use first and last buckets because node IDs may be split between buckets
     const bucketIndexFirst = nodesUtils.bucketIndex(
       keyRing.getNodeId(),
@@ -381,11 +432,24 @@ describe(`${NodeGraph.name} test`, () => {
     });
     const now = utils.getUnixtime();
     for (let i = 0; i < 50; i++) {
-      await utils.sleep(50);
-      await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
-        host: '127.0.0.1',
-        port: utils.getRandomInt(0, 2 ** 16),
-      } as NodeAddress);
+      try {
+        await nodeGraph.setNode(
+          testNodesUtils.generateRandomNodeId(),
+          {
+            host: '127.0.0.1' as Host,
+            port: utils.getRandomInt(0, 2 ** 16) as Port,
+            scopes: ['local']
+          },
+          testNodesUtils.generateRandomUnixtime(),
+        );
+      } catch (e) {
+        // 50% of all randomly generate NodeIds will be in the farthest bucket
+        // So there is a high chance of this exception, just skip it
+        if (e instanceof nodesErrors.ErrorNodeGraphBucketLimit) {
+          continue;
+        }
+        throw e;
+      }
     }
     let bucketIndex_ = -1;
     // Ascending order
@@ -576,16 +640,23 @@ describe(`${NodeGraph.name} test`, () => {
         getNodeId: getNodeIdMock,
       } as unknown as KeyRing;
       getNodeIdMock.mockImplementation(() => nodeIds[0]);
+      // If the bucket limit is 100, then even if all the random node IDs
+      // are put into 1 bucket, it will still work
       const nodeGraph = await NodeGraph.createNodeGraph({
         db,
         keyRing: dummyKeyRing,
+        nodeBucketLimit: 100,
         logger,
       });
       for (const nodeId of initialNodes) {
-        await nodeGraph.setNode(nodeId, {
-          host: '127.0.0.1',
-          port: utils.getRandomInt(0, 2 ** 16),
-        } as NodeAddress);
+        await nodeGraph.setNode(
+          nodeId,
+          {
+            host: '127.0.0.1' as Host,
+            port: utils.getRandomInt(0, 2 ** 16) as Port,
+            scopes: ['local']
+          }
+        );
       }
       const buckets0 = await utils.asyncIterableArray(nodeGraph.getBuckets());
       // Reset the buckets according to the new node ID
@@ -758,13 +829,19 @@ describe(`${NodeGraph.name} test`, () => {
       const nodeGraph = await NodeGraph.createNodeGraph({
         db,
         keyRing: dummyKeyRing,
+        nodeBucketLimit: 20,
         logger,
+        fresh: true
       });
       for (const nodeId of initialNodes) {
-        await nodeGraph.setNode(nodeId, {
-          host: '127.0.0.1',
-          port: utils.getRandomInt(0, 2 ** 16),
-        } as NodeAddress);
+        await nodeGraph.setNode(
+          nodeId,
+          {
+            host: '127.0.0.1' as Host,
+            port: utils.getRandomInt(0, 2 ** 16) as Port,
+            scopes: ['local']
+          },
+        );
       }
       // Reset the buckets according to the new node ID
       // Note that this should normally be only executed when the key manager NodeID changes
@@ -783,20 +860,25 @@ describe(`${NodeGraph.name} test`, () => {
       }
       await nodeGraph.stop();
     },
-    { numRuns: 15 },
+    {
+      numRuns: 15,
+    },
   );
   test('reset buckets is persistent', async () => {
+    const nodeBucketLimit = 100;
     const nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyRing,
+      nodeBucketLimit,
       logger,
     });
     const now = utils.getUnixtime();
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < nodeBucketLimit; i++) {
       await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
-        host: '127.0.0.1',
-        port: utils.getRandomInt(0, 2 ** 16),
-      } as NodeAddress);
+        host: '127.0.0.1' as Host,
+        port: utils.getRandomInt(0, 2 ** 16) as Port,
+        scopes: ['local']
+      });
     }
     const nodeIdNew1 = testNodesUtils.generateRandomNodeId();
     await nodeGraph.resetBuckets(nodeIdNew1);

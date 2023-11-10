@@ -681,6 +681,7 @@ class NodeManager {
       bucketIndex,
       undefined,
       undefined,
+      undefined,
       tran,
     );
   }
@@ -759,7 +760,7 @@ class NodeManager {
     if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
       // Either already exists or has room in the bucket
       // We want to add or update the node
-      await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+      await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
       // Updating the refreshBucket timer
       await this.updateRefreshBucketDelay(
         bucketIndex,
@@ -771,9 +772,14 @@ class NodeManager {
       // We want to add a node but the bucket is full
       if (force) {
         // We just add the new node anyway without checking the old one
-        const oldNodeId = (
-          await this.nodeGraph.getOldestNode(bucketIndex, 1, tran)
-        ).pop();
+        const bucket = await this.nodeGraph.getBucket(
+          bucketIndex,
+          'lastUpdated',
+          'asc',
+          1,
+          tran
+        );
+        const oldNodeId = bucket[0]?.[0];
         if (oldNodeId == null) never();
         this.logger.debug(
           `Force was set, removing ${nodesUtils.encodeNodeId(
@@ -781,7 +787,7 @@ class NodeManager {
           )} and adding ${nodesUtils.encodeNodeId(nodeId)}`,
         );
         await this.nodeGraph.unsetNode(oldNodeId, tran);
-        await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+        await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
         // Updating the refreshBucket timer
         await this.updateRefreshBucketDelay(
           bucketIndex,
@@ -842,10 +848,11 @@ class NodeManager {
     // Locking on bucket
     await this.nodeGraph.lockBucket(bucketIndex, tran);
     const semaphore = new Semaphore(3);
-
     // Iterating over existing nodes
-    const bucket = await this.nodeGraph.getOldestNode(
+    const bucket = await this.nodeGraph.getBucket(
       bucketIndex,
+      'lastUpdated',
+      'asc',
       this.nodeGraph.nodeBucketLimit,
       tran,
     );
@@ -853,7 +860,7 @@ class NodeManager {
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
-    for (const nodeId of bucket) {
+    for (const [nodeId] of bucket) {
       // We want to retain seed nodes regardless of state, so skip them
       if (this.nodeConnectionManager.isSeedNode(nodeId)) continue;
       if (removedNodes >= pendingNodes.size) break;
@@ -995,9 +1002,9 @@ class NodeManager {
 
   /**
    * Kademlia refresh bucket operation.
-   * It picks a random node within a bucket and does a search for that node.
-   * Connections during the search will share node information with other
-   * nodes.
+   * It generates a random node ID within the range of a bucket and does a
+   * lookup for that node in the network. This will cause the network to update
+   * its node graph information.
    * @param bucketIndex
    * @param pingTimeoutTime
    * @param ctx
