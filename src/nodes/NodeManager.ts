@@ -57,6 +57,16 @@ interface NodeManager extends StartStop {}
   eventStopped: nodesEvents.EventNodeManagerStopped,
 })
 class NodeManager {
+  /**
+   * Time used to establish `NodeConnection`
+   */
+  public readonly connectionConnectTimeoutTime: number;
+
+  public readonly refreshBucketDelay: number;
+  public readonly refreshBucketDelayJitter: number;
+  public readonly retrySeedConnectionsDelay: number;
+  public readonly basePath = this.constructor.name;
+
   protected db: DB;
   protected logger: Logger;
   protected sigchain: Sigchain;
@@ -65,17 +75,8 @@ class NodeManager {
   protected nodeGraph: NodeGraph;
   protected taskManager: TaskManager;
   protected gestaltGraph: GestaltGraph;
-  protected refreshBucketDelay: number;
-  protected refreshBucketDelayJitter: number;
-  protected retrySeedConnectionsDelay: number;
   protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
 
-  /**
-   * Time used to establish `NodeConnection`
-   */
-  public readonly connectionConnectTimeoutTime: number;
-
-  public readonly basePath = this.constructor.name;
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
