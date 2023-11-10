@@ -33,17 +33,20 @@ import * as networkUtils from '../network/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 import config from '../config';
+import agentClientManifest from './agent/callers';
+
+type AgentClientManifest = typeof agentClientManifest;
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
-interface NodeConnection<M extends ClientManifest> extends CreateDestroy {}
+interface NodeConnection extends CreateDestroy {}
 @CreateDestroy({
   eventDestroy: nodesEvents.EventNodeConnectionDestroy,
   eventDestroyed: nodesEvents.EventNodeConnectionDestroyed,
 })
-class NodeConnection<M extends ClientManifest> {
+class NodeConnection {
   /**
    * Hostname is defined if the target's host was resolved from this hostname
    * Undefined if a Host was directly provided
@@ -66,7 +69,7 @@ class NodeConnection<M extends ClientManifest> {
   protected logger: Logger;
   public readonly quicClient: QUICClient | undefined;
   public readonly quicConnection: QUICConnection;
-  public readonly rpcClient: RPCClient<M>;
+  public readonly rpcClient: RPCClient<AgentClientManifest>;
 
   /**
    * Dispatches a `EventNodeConnectionClose` in response to any `NodeConnection`
@@ -167,7 +170,7 @@ class NodeConnection<M extends ClientManifest> {
     }
   };
 
-  static createNodeConnection<M extends ClientManifest>(
+  static createNodeConnection(
     {
       targetNodeIds,
       targetHost,
@@ -190,16 +193,16 @@ class NodeConnection<M extends ClientManifest> {
       connectionKeepAliveIntervalTime?: number;
       connectionKeepAliveTimeoutTime?: number;
       quicSocket?: QUICSocket;
-      manifest: M;
+      manifest: AgentClientManifest;
       logger?: Logger;
     },
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<NodeConnection<M>>;
+  ): PromiseCancellable<NodeConnection>;
   @timedCancellable(
     true,
     config.defaultsSystem.nodesConnectionConnectTimeoutTime,
   )
-  static async createNodeConnection<M extends ClientManifest>(
+  static async createNodeConnection(
     {
       targetNodeIds,
       targetHost,
@@ -220,14 +223,14 @@ class NodeConnection<M extends ClientManifest> {
       targetHostname?: Hostname;
       crypto: ClientCryptoOps;
       tlsConfig: TLSConfig;
-      manifest: M;
+      manifest: AgentClientManifest;
       connectionKeepAliveIntervalTime?: number;
       connectionKeepAliveTimeoutTime?: number;
       quicSocket: QUICSocket;
       logger?: Logger;
     },
     @context ctx: ContextTimed,
-  ): Promise<NodeConnection<M>> {
+  ): Promise<NodeConnection> {
     logger.info(`Creating ${this.name}`);
     // Checking if attempting to connect to a wildcard IP
     if (networkUtils.isHostWildcard(targetHost)) {
@@ -297,7 +300,7 @@ class NodeConnection<M extends ClientManifest> {
       quicEvents.EventQUICConnectionStream.name,
       throwFunction,
     );
-    const rpcClient = new RPCClient<M>({
+    const rpcClient = new RPCClient<AgentClientManifest>({
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async () => {
@@ -320,7 +323,7 @@ class NodeConnection<M extends ClientManifest> {
         quicConnection.remoteHost
       }:${quicConnection.remotePort}]`,
     );
-    const nodeConnection = new this<M>({
+    const nodeConnection = new this({
       validatedNodeId,
       nodeId,
       host: targetHost,
@@ -367,7 +370,7 @@ class NodeConnection<M extends ClientManifest> {
     return nodeConnection;
   }
 
-  static createNodeConnectionReverse<M extends ClientManifest>({
+  static createNodeConnectionReverse({
     certChain,
     nodeId,
     quicConnection,
@@ -377,12 +380,12 @@ class NodeConnection<M extends ClientManifest> {
     certChain: Array<Certificate>;
     nodeId: NodeId;
     quicConnection: QUICConnection;
-    manifest: M;
+    manifest: AgentClientManifest;
     logger?: Logger;
-  }): NodeConnection<M> {
+  }): NodeConnection {
     logger.info(`Creating ${this.name}`);
     // Creating RPCClient
-    const rpcClient = new RPCClient<M>({
+    const rpcClient = new RPCClient<AgentClientManifest>({
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async (_ctx) => {
@@ -392,7 +395,7 @@ class NodeConnection<M extends ClientManifest> {
       logger: logger.getChild(RPCClient.name),
     });
     // Creating NodeConnection
-    const nodeConnection = new this<M>({
+    const nodeConnection = new this({
       validatedNodeId: nodeId,
       nodeId: nodeId,
       localHost: quicConnection.localHost as unknown as Host,
@@ -461,7 +464,7 @@ class NodeConnection<M extends ClientManifest> {
     hostname?: Hostname;
     quicClient?: QUICClient;
     quicConnection: QUICConnection;
-    rpcClient: RPCClient<M>;
+    rpcClient: RPCClient<AgentClientManifest>;
     logger: Logger;
   }) {
     this.validatedNodeId = validatedNodeId;
@@ -539,7 +542,7 @@ class NodeConnection<M extends ClientManifest> {
   /**
    * Gets RPCClient for this node connection
    */
-  public getClient(): RPCClient<M> {
+  public getClient(): RPCClient<AgentClientManifest> {
     return this.rpcClient;
   }
 }

@@ -1,5 +1,30 @@
+import type NodeConnection from './NodeConnection';
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
+
+/**
+ * Information about a node currently in the `NodeManager`.
+ * If you have a `NodeConnection` this means we have an active connection.
+ * However the connection may not be active once you try to use it.
+ */
+type NodeInfo = {
+  id: NodeId;
+  graph: {
+    data: NodeData;
+    bucketIndex: NodeBucketIndex;
+  };
+} | {
+  id: NodeId;
+  addresses: Array<NodeAddress>;
+  connection: NodeConnection;
+} | {
+  id: NodeId;
+  graph: {
+    data: NodeData;
+    bucketIndex: NodeBucketIndex;
+  };
+  connection: NodeConnection;
+};
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -64,10 +89,13 @@ enum ConnectionErrorReason {
   ForceClose = 'NodeConnection is forcing destruction',
 }
 
+
+
 export type {
   NodeId,
   NodeIdString,
   NodeIdEncoded,
+  NodeInfo,
   NodeAddressScope,
   NodeAddress,
   SeedNodes,

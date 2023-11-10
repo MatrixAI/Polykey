@@ -10,6 +10,11 @@ class ErrorNodeManagerNotRunning<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeManagerNodeIdOwn<T> extends ErrorNodeManager<T> {
+  static description = 'NodeId is the same as the current node';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
 class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
@@ -188,6 +193,7 @@ export {
   ErrorNodes,
   ErrorNodeManager,
   ErrorNodeManagerNotRunning,
+  ErrorNodeManagerNodeIdOwn,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
