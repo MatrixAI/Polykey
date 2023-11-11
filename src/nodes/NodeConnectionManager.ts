@@ -2,6 +2,8 @@ import type { LockRequest } from '@matrixai/async-locks';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimedInput, ContextTimed } from '@matrixai/contexts';
 import type { ClientCryptoOps, QUICConnection } from '@matrixai/quic';
+import type { MDNS, ServicePOJO } from '@matrixai/mdns';
+import type { ServerManifest } from '@matrixai/rpc';
 import type NodeGraph from './NodeGraph';
 import type {
   NodeAddress,
@@ -20,68 +22,54 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
-import type { ServerManifest } from '@matrixai/rpc';
-import type { MDNS, ServicePOJO } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
+import { Timer } from '@matrixai/timer';
 import { withF } from '@matrixai/resources';
-import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { IdInternal } from '@matrixai/id';
 import { Lock, LockBox, Semaphore } from '@matrixai/async-locks';
-import { Timer } from '@matrixai/timer';
-import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import {
+  StartStop,
+  ready,
+  running,
+  status,
+} from '@matrixai/async-init/dist/StartStop';
 import { AbstractEvent, EventAll } from '@matrixai/events';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import {
   QUICSocket,
   QUICServer,
   events as quicEvents,
   utils as quicUtils,
 } from '@matrixai/quic';
-import { running, status } from '@matrixai/async-init';
-import { RPCServer, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import { events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
+import { RPCServer, middleware as rpcMiddleware } from '@matrixai/rpc';
 import NodeConnection from './NodeConnection';
+import agentClientManifest from './agent/callers';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import manifestClientAgent from './agent/callers';
 import * as keysUtils from '../keys/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
-import config from '../config';
 import RateLimiter from '../utils/ratelimiter/RateLimiter';
+import config from '../config';
 
-type ManifestClientAgent = typeof manifestClientAgent;
+type AgentClientManifest = typeof agentClientManifest;
 
 type ConnectionAndTimer = {
-  connection: NodeConnection<ManifestClientAgent>;
+  connection: NodeConnection<AgentClientManifest>;
   timer: Timer | null;
   usageCount: number;
 };
 
 /**
  * NodeConnectionManager is a server that manages all node connections.
- * It manages both initiated and received connections
+ * It manages both initiated and received connections.
  *
- * It's an event target that emits events for new connections.
- *
- * We will need to fully encapsulate all the errors in NCM if we can.
- * Otherwise, it goes all the way to PolykeyAgent.
- *
- * That means the QUICSocket, QUICServer and QUICClient
- * As well as the QUICConnection and QUICStream.
- * The NCM basically encapsulates it.
- *
- * The NCM and NC both must encapsulate all the QUIC transport.
- *
- * Events:
- *
- * - connectionManagerStop
- * - connectionManagerError
- * - nodeConnection
- * - nodeConnectionError
- * - nodeConnectionStream
- * - nodeConnectionDestroy
+ * Node connections make use of the QUIC protocol.
+ * The NodeConnectionManager encapsulates `QUICServer`.
+ * While the NodeConnection encapsulates `QUICClient`.
  */
 interface NodeConnectionManager extends StartStop {}
 @StartStop({
@@ -191,7 +179,7 @@ class NodeConnectionManager {
    * These are doppelganger connections created by concurrent connection creation
    * between two nodes. These will be cleaned up after all their streams end.
    */
-  protected connectionsDraining: Set<NodeConnection<ManifestClientAgent>> =
+  protected connectionsDraining: Set<NodeConnection<AgentClientManifest>> =
     new Set();
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
@@ -458,7 +446,7 @@ class NodeConnectionManager {
     });
     // Setting up RPCServer
     const rpcServer = new RPCServer({
-      middlewareFactory: rpcUtilsMiddleware.defaultServerMiddlewareWrapper(
+      middlewareFactory: rpcMiddleware.defaultServerMiddlewareWrapper(
         undefined,
         this.rpcParserBufferSize,
       ),
@@ -639,7 +627,7 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     ctx?: Partial<ContextTimed>,
-  ): Promise<ResourceAcquire<NodeConnection<ManifestClientAgent>>> {
+  ): Promise<ResourceAcquire<NodeConnection<AgentClientManifest>>> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
@@ -692,7 +680,7 @@ class NodeConnectionManager {
    */
   public withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<ManifestClientAgent>) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -703,7 +691,7 @@ class NodeConnectionManager {
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<ManifestClientAgent>) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
@@ -727,7 +715,7 @@ class NodeConnectionManager {
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
     g: (
-      conn: NodeConnection<ManifestClientAgent>,
+      conn: NodeConnection<AgentClientManifest>,
     ) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
@@ -1042,10 +1030,10 @@ class NodeConnectionManager {
       }
     }
     const connection =
-      await NodeConnection.createNodeConnection<ManifestClientAgent>(
+      await NodeConnection.createNodeConnection<AgentClientManifest>(
         {
           targetNodeIds: nodeIds,
-          manifest: manifestClientAgent,
+          manifest: agentClientManifest,
           crypto: this.quicClientCrypto,
           targetHost: address.host,
           targetPort: address.port,
@@ -1117,10 +1105,10 @@ class NodeConnectionManager {
     if (nodeId == null) utils.never();
     const nodeIdString = nodeId.toString() as NodeIdString;
     const nodeConnectionNew =
-      NodeConnection.createNodeConnectionReverse<ManifestClientAgent>({
+      NodeConnection.createNodeConnectionReverse<AgentClientManifest>({
         nodeId,
         certChain,
-        manifest: manifestClientAgent,
+        manifest: agentClientManifest,
         quicConnection: quicConnection,
         logger: this.logger.getChild(
           `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
@@ -1210,7 +1198,7 @@ class NodeConnectionManager {
    */
   protected addConnection(
     nodeId: NodeId,
-    nodeConnection: NodeConnection<ManifestClientAgent>,
+    nodeConnection: NodeConnection<AgentClientManifest>,
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.

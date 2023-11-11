@@ -49,6 +49,11 @@ import config from '../config';
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
+/**
+ * NodeManager manages all operations involving nodes.
+ * It encapsulates mutations to the NodeGraph.
+ * It listens to the NodeConnectionManager events.
+ */
 interface NodeManager extends StartStop {}
 @StartStop({
   eventStart: nodesEvents.EventNodeManagerStart,
