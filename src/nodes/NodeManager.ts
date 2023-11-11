@@ -272,7 +272,9 @@ class NodeManager {
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Registering handler for setNode`);
+
+    console.log(this.refreshBucketHandlerId);
+
     this.taskManager.registerHandler(
       this.refreshBucketHandlerId,
       this.refreshBucketHandler,
@@ -289,6 +291,9 @@ class NodeManager {
       this.checkSeedConnectionsHandlerId,
       this.checkSeedConnectionsHandler,
     );
+
+
+
     await this.setupRefreshBucketTasks();
     await this.taskManager.scheduleTask({
       delay: this.retrySeedConnectionsDelay,
@@ -325,7 +330,6 @@ class NodeManager {
     // We don't care about the result, only that they've ended
     await Promise.allSettled(tasks);
     this.logger.info('Cancelled ephemeral tasks');
-    this.logger.info(`Unregistering handler for setNode`);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
