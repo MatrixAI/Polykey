@@ -70,7 +70,7 @@ class NodeManager {
   public readonly refreshBucketDelay: number;
   public readonly refreshBucketDelayJitter: number;
   public readonly retrySeedConnectionsDelay: number;
-  public readonly basePath = this.constructor.name;
+  public readonly tasksPath = this.constructor.name;
 
   protected db: DB;
   protected logger: Logger;
@@ -103,13 +103,13 @@ class NodeManager {
       handlerId: this.refreshBucketHandlerId,
       lazy: true,
       parameters: [bucketIndex],
-      path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
       priority: 0,
     });
   };
 
   public readonly refreshBucketHandlerId =
-    `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
 
   protected gcBucketHandler: TaskHandler = async (
     ctx,
@@ -131,7 +131,7 @@ class NodeManager {
   };
 
   public readonly gcBucketHandlerId =
-    `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.${this.gcBucketHandler.name}` as TaskHandlerId;
 
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
@@ -164,7 +164,7 @@ class NodeManager {
   };
 
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   protected checkSeedConnectionsHandler: TaskHandler = async (
     ctx,
@@ -207,14 +207,14 @@ class NodeManager {
         deadline: taskInfo.deadline,
         handlerId: this.checkSeedConnectionsHandlerId,
         lazy: true,
-        path: [this.basePath, this.checkSeedConnectionsHandlerId],
+        path: [this.tasksPath, this.checkSeedConnectionsHandlerId],
         priority: taskInfo.priority,
       });
     }
   };
 
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.checkSeedConnectionsHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.${this.checkSeedConnectionsHandler.name}` as TaskHandlerId;
 
   protected handleNodeConnectionEvent = async (
     e: nodesEvents.EventNodeConnectionManagerConnection,
@@ -298,7 +298,7 @@ class NodeManager {
       delay: this.retrySeedConnectionsDelay,
       handlerId: this.checkSeedConnectionsHandlerId,
       lazy: true,
-      path: [this.basePath, this.checkSeedConnectionsHandlerId],
+      path: [this.tasksPath, this.checkSeedConnectionsHandlerId],
     });
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
@@ -320,7 +320,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       undefined,
       false,
-      [this.basePath]
+      [this.tasksPath]
     )) {
       taskPs.push(task.promise());
       task.cancel(abortEphemeralTaskReason);
@@ -952,7 +952,7 @@ class NodeManager {
     // Check and start a 'garbageCollect` bucket task
     let scheduled: boolean = false;
     for await (const task of this.taskManager.getTasks('asc', true, [
-      this.basePath,
+      this.tasksPath,
       this.gcBucketHandlerId,
       `${bucketIndex}`,
     ])) {
@@ -981,7 +981,7 @@ class NodeManager {
       await this.taskManager.scheduleTask({
         handlerId: this.gcBucketHandlerId,
         parameters: [bucketIndex],
-        path: [this.basePath, this.gcBucketHandlerId, `${bucketIndex}`],
+        path: [this.tasksPath, this.gcBucketHandlerId, `${bucketIndex}`],
         lazy: true,
       });
     }
@@ -1049,7 +1049,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId],
+      [this.tasksPath, this.refreshBucketHandlerId],
       tran,
     )) {
       const bucketIndex = parseInt(task.path[0]);
@@ -1103,7 +1103,7 @@ class NodeManager {
           delay: this.refreshBucketDelay + jitter,
           lazy: true,
           parameters: [bucketIndex],
-          path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+          path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
           priority: 0,
         });
       }
@@ -1133,7 +1133,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
       if (!existingTask) {
@@ -1178,7 +1178,7 @@ class NodeManager {
         handlerId: this.refreshBucketHandlerId,
         lazy: true,
         parameters: [bucketIndex],
-        path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
         priority: 0,
       });
     }
@@ -1304,7 +1304,7 @@ class NodeManager {
             nodeData.address.host,
             nodeData.address.port,
           ],
-          path: [this.basePath, this.pingAndSetNodeHandlerId],
+          path: [this.tasksPath, this.pingAndSetNodeHandlerId],
           // Need to be somewhat active so high priority
           priority: 100,
           deadline: pingTimeoutTime,
