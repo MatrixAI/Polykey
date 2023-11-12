@@ -109,7 +109,7 @@ class NodeManager {
   };
 
   public readonly refreshBucketHandlerId =
-    `${this.basePath}.${this.refreshBucketHandler.name}.refreshBucketHandlerId` as TaskHandlerId;
+    `${this.basePath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
 
   protected gcBucketHandler: TaskHandler = async (
     ctx,
@@ -131,7 +131,7 @@ class NodeManager {
   };
 
   public readonly gcBucketHandlerId =
-    `${this.basePath}.${this.gcBucketHandler.name}.gcBucketHandlerId` as TaskHandlerId;
+    `${this.basePath}.${this.gcBucketHandler.name}` as TaskHandlerId;
 
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
@@ -164,7 +164,7 @@ class NodeManager {
   };
 
   public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
+    `${this.basePath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
 
   protected checkSeedConnectionsHandler: TaskHandler = async (
     ctx,
@@ -214,7 +214,7 @@ class NodeManager {
   };
 
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
+    `${this.basePath}.${this.checkSeedConnectionsHandler.name}` as TaskHandlerId;
 
   protected handleNodeConnectionEvent = async (
     e: nodesEvents.EventNodeConnectionManagerConnection,
