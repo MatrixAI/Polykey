@@ -277,9 +277,6 @@ class NodeManager {
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-
-    console.log(this.refreshBucketHandlerId);
-
     this.taskManager.registerHandler(
       this.refreshBucketHandlerId,
       this.refreshBucketHandler,
@@ -296,9 +293,6 @@ class NodeManager {
       this.checkSeedConnectionsHandlerId,
       this.checkSeedConnectionsHandler,
     );
-
-
-
     await this.setupRefreshBucketTasks();
     await this.taskManager.scheduleTask({
       delay: this.retrySeedConnectionsDelay,
@@ -321,20 +315,17 @@ class NodeManager {
       nodesEvents.EventNodeConnectionManagerConnection.name,
       this.handleNodeConnectionEvent,
     );
-    this.logger.info('Cancelling ephemeral tasks');
-    if (this.taskManager.isProcessing()) {
-      throw new tasksErrors.ErrorTaskManagerProcessing();
-    }
-    const tasks: Array<Promise<any>> = [];
-    for await (const task of this.taskManager.getTasks('asc', false, [
-      this.basePath,
-    ])) {
-      tasks.push(task.promise());
+    // Cancels all NodeManager tasks
+    const taskPs: Array<Promise<any>> = [];
+    for await (const task of this.taskManager.getTasks(
+      undefined,
+      false,
+      [this.basePath]
+    )) {
+      taskPs.push(task.promise());
       task.cancel(abortEphemeralTaskReason);
     }
-    // We don't care about the result, only that they've ended
-    await Promise.allSettled(tasks);
-    this.logger.info('Cancelled ephemeral tasks');
+    await Promise.allSettled(taskPs);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
