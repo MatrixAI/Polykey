@@ -502,7 +502,7 @@ class NodeConnectionManager {
     reuseAddr?: boolean;
     ipv6Only?: boolean;
     manifest?: ServerManifest;
-  }) {
+  } = {}) {
     const address = networkUtils.buildAddress(host, port);
     this.logger.info(`Start ${this.constructor.name} on ${address}`);
 
@@ -1513,7 +1513,7 @@ class NodeConnectionManager {
     const [localAddresses, kademliaAddress] = await Promise.allSettled([
       this.findNodeLocal(targetNodeId, {
         signal: ctx.signal,
-        timer: pingTimeoutTime ?? this.connectionFindLocalTimeoutTime,
+        timer: this.connectionFindLocalTimeoutTime,
       }),
       this.findNode(targetNodeId, pingTimeoutTime, ctx),
     ]);
