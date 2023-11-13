@@ -51,4 +51,14 @@ describe('utils', () => {
       networkUtils.resolveHostname('invalidHostname' as Hostname),
     ).resolves.toHaveLength(0);
   });
+  test('replacing stack property of JSON object', async () => {
+    expect(
+      JSON.parse(
+        JSON.stringify(
+          { error: { stack: {}, code: 1 } },
+          networkUtils.createStackReplacer(),
+        ),
+      ),
+    ).toEqual({ error: { code: 1 } });
+  });
 });

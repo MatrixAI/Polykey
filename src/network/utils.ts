@@ -475,6 +475,29 @@ function toError(
   return errorData;
 }
 
+function replacerWithPath(
+  replacer: (key: string, value: any, path: Array<string>) => any,
+) {
+  // Map<value, pathArray>
+  const pathMap = new Map<any, Array<string>>();
+  return function (key: string, value: any) {
+    const pathMapPath = pathMap.get(this);
+    // If it doesn't exist, it means that this is the root object.
+    const path = pathMapPath == null ? [] : [...pathMapPath, key];
+    if (typeof value === 'object') pathMap.set(value, path);
+    return replacer.call(this, key, value, path);
+  };
+}
+
+function createStackReplacer() {
+  return replacerWithPath(function (key, value, path) {
+    if (key === 'stack' && path.at(0) === 'error') {
+      return;
+    }
+    return value;
+  });
+}
+
 export {
   isHost,
   isHostWildcard,
@@ -492,4 +515,6 @@ export {
   resolveHostnames,
   fromError,
   toError,
+  replacerWithPath,
+  createStackReplacer,
 };
