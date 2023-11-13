@@ -58,7 +58,7 @@ import config from '../config';
 type AgentClientManifest = typeof agentClientManifest;
 
 type ConnectionAndTimer = {
-  connection: NodeConnection<AgentClientManifest>;
+  connection: NodeConnection;
   timer: Timer | null;
   usageCount: number;
 };

@@ -10,6 +10,7 @@ import type {
   NodeBucket,
   NodeBucketIndex,
   NodeData,
+  NodeInfo,
 } from './types';
 import type {
   AgentRPCRequestParams,
@@ -86,8 +87,13 @@ class NodeManager {
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
-    bucketIndex,
+    bucketIndex: NodeBucketIndex,
   ) => {
+
+    // Don't use defaults like this
+    // if a default is to be used
+    // provide it directly
+
     await this.refreshBucket(
       bucketIndex,
       this.connectionConnectTimeoutTime,
@@ -333,43 +339,284 @@ class NodeManager {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
+  // So why do we need `NodeManager.pingNode`?
+
+  // We should be able to work with at the p2p level of nodes
+  // We should not be taking node addresses
+
+  // /**
+  //  * Determines whether a node in the Polykey network is online.
+  //  *
+  //  * @param nodeId - NodeId of the node we're pinging
+  //  * @param addresses - Optional Host and Port we want to ping
+  //  * @param ctx
+  //  * @return true if online, false if offline
+  //  */
+  // public pingNode(
+  //   nodeId: NodeId,
+  //   addresses?: Array<NodeAddress>,
+  //   ctx?: Partial<ContextTimedInput>,
+  // ): PromiseCancellable<boolean>;
+  // @timedCancellable(
+  //   true,
+  //   (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
+  // )
+  // public async pingNode(
+  //   nodeId: NodeId,
+  //   addresses: Array<NodeAddress> | undefined,
+  //   @context ctx: ContextTimed,
+  // ): Promise<boolean> {
+  //   // We need to attempt a connection using the proxies
+  //   // For now we will just do a forward connect + relay message
+  //   // const targetAddresses =
+  //   //   addresses ??
+  //   //   (await this.nodeConnectionManager.findNodeAll(
+  //   //     nodeId,
+  //   //     this.connectionConnectTimeoutTime,
+  //   //     ctx,
+  //   //   ));
+  //   // if (targetAddresses == null) {
+  //   //   return false;
+  //   // }
+  //   return await this.nodeConnectionManager.pingNode(
+  //     nodeId,
+  //     targetAddresses,
+  //     ctx,
+  //   );
+  // }
+
+  // As a management system for nodes we should at least for the CRUD layer for this
+
   /**
-   * Determines whether a node in the Polykey network is online.
-   * @return true if online, false if offline
-   * @param nodeId - NodeId of the node we're pinging
-   * @param addresses - Optional Host and Port we want to ping
+   * Gets information about the node that the NodeManager is aware of.
+   *
+   * This does not perform any side-effects beyond querying local state.
+   * This will always return `undefined` for the own node ID.
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async getNode(
+    nodeId: NodeId,
+    tran?: DBTransaction
+  ): Promise<NodeInfo | undefined> {
+    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
+    if (nodeData == null) {
+      return;
+    }
+    // Shouldn't this be synchronous?
+    const nodeConnection = this.nodeConnectionManager.getConnection(
+      nodeId
+    );
+    // We are returning information about the node
+    return  {
+      id: nodeId,
+      data: nodeData,
+      connection: nodeConnection
+    };
+  }
+
+  /**
+   * Adds a node to the node graph. This assumes that you have already authenticated the node
+   * Updates the node if the node already exists
+   * This operation is blocking by default - set `block` 2qto false to make it non-blocking
+   * @param nodeId - Id of the node we wish to add
+   * @param nodeAddress - Expected address of the node we want to add
+   * @param block - When true it will wait for any garbage collection to finish before returning.
+   * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
+   * This will drop the oldest node in favor of the new.
+   * @param pingTimeoutTime - Timeout for each ping operation during garbage collection.
    * @param ctx
+   * @param tran
+   */
+  public setNode(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+    block?: boolean,
+    force?: boolean,
+    pingTimeoutTime?: number,
+    ctx?: Partial<ContextTimed>,
+    tran?: DBTransaction,
+  ): PromiseCancellable<void>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timedCancellable(true)
+  public async setNode(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+    block: boolean = false,
+    force: boolean = false,
+    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
+    @context ctx: ContextTimed,
+    tran?: DBTransaction,
+  ): Promise<void> {
+
+    // Such a complicated function
+    // To just set a node into our system
+    // We have to basically say we have already authenticated
+    // Because we can have a protected version of set Node
+    // that just sets the node without doing any authentication
+    // so what exactly is this function for?
+    // So doing this literally means we have the address
+    // To do so is to add a node into graph without connecting to it
+    // I'm not sure if that makes sense
+    // we can "prefill" some already well known things
+    // But I think with the SRV style
+    // I would not expose such a feature
+    // It seems more like a debug feature
+
+
+
+    // We don't want to add our own node
+    if (nodeId.equals(this.keyRing.getNodeId())) {
+      this.logger.debug('Is own NodeId, skipping');
+      return;
+    }
+
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setNode(
+          nodeId,
+          nodeAddress,
+          block,
+          force,
+          pingTimeoutTime,
+          ctx,
+          tran,
+        ),
+      );
+    }
+
+    // When adding a node we need to handle 3 cases
+    // 1. The node already exists. We need to update it's last updated field
+    // 2. The node doesn't exist and bucket has room.
+    //  We need to add the node to the bucket
+    // 3. The node doesn't exist and the bucket is full.
+    //  We need to ping the oldest node. If the ping succeeds we need to update
+    //  the lastUpdated of the oldest node and drop the new one. If the ping
+    //  fails we delete the old node and add in the new one.
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    // To avoid conflict we want to lock on the bucket index
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
+
+    // WHY!?
+
+    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
+    // If this is a new entry, check the bucket limit
+    const count = await this.nodeGraph.getBucketMetaProp(
+      bucketIndex,
+      'count',
+      tran,
+    );
+
+    // Beacause we have to do this one at a time?
+    // To avoid a bucket limit problem?
+    // Setting a node and now figuring out what to do with the old nodes
+    // To GC them somehow
+    // Problem is, we have to "force" it
+    // It should default to forcing it
+    // But you can keep old connections on automatic systems
+    // But if it is set, it should default to forcing
+
+
+    if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
+      // Either already exists or has room in the bucket
+      // We want to add or update the node
+      await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
+      // Updating the refreshBucket timer
+      await this.updateRefreshBucketDelay(
+        bucketIndex,
+        this.refreshBucketDelay,
+        true,
+        tran,
+      );
+    } else {
+      // We want to add a node but the bucket is full
+      if (force) {
+        // We just add the new node anyway without checking the old one
+        const bucket = await this.nodeGraph.getBucket(
+          bucketIndex,
+          'lastUpdated',
+          'asc',
+          1,
+          tran
+        );
+        const oldNodeId = bucket[0]?.[0];
+        if (oldNodeId == null) utils.never();
+        this.logger.debug(
+          `Force was set, removing ${nodesUtils.encodeNodeId(
+            oldNodeId,
+          )} and adding ${nodesUtils.encodeNodeId(nodeId)}`,
+        );
+        await this.nodeGraph.unsetNode(oldNodeId, tran);
+        await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
+        // Updating the refreshBucket timer
+        await this.updateRefreshBucketDelay(
+          bucketIndex,
+          this.refreshBucketDelay,
+          true,
+          tran,
+        );
+        return;
+      }
+      this.logger.debug(
+        `Bucket was full, adding ${nodesUtils.encodeNodeId(
+          nodeId,
+        )} to pending list`,
+      );
+      // Add the node to the pending nodes list
+      await this.addPendingNode(
+        bucketIndex,
+        nodeId,
+        nodeAddress,
+        block,
+        pingTimeoutTime,
+        ctx,
+        tran,
+      );
+    }
+  }
+
+  /**
+   * Removes a node from the NodeGraph
+   */
+  public async unsetNode(
+    nodeId: NodeId,
+    tran: DBTransaction
+  ): Promise<void> {
+    return await this.nodeGraph.unsetNode(nodeId, tran);
+  }
+
+  /**
+   * Ping a node to see if it possible to connect to it.
+   * This will find the node's address locally and globally.
+   * If this returns true, a successful connection is made.
+   * A successful connection means the connection is authenticated.
+   * And that its certificate validates. So even if there was some
+   * response from that connection
    */
   public pingNode(
     nodeId: NodeId,
-    addresses?: Array<NodeAddress>,
-    ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<boolean>;
+    ctx?: Partial<ContextTimedInput>
+  )
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
+    (nodeConnectionManager: NodeConnectionManager) => nodeConnectionManager.connectionConnectTimeoutTime,
   )
-  public async pingNode(
+  public pingNode(
     nodeId: NodeId,
-    addresses: Array<NodeAddress> | undefined,
-    @context ctx: ContextTimed,
+    @context ctx: ContextTimed
   ): Promise<boolean> {
-    // We need to attempt a connection using the proxies
-    // For now we will just do a forward connect + relay message
-    const targetAddresses =
-      addresses ??
-      (await this.nodeConnectionManager.findNodeAll(
-        nodeId,
-        this.connectionConnectTimeoutTime,
-        ctx,
-      ));
-    if (targetAddresses == null) {
-      return false;
-    }
-    return await this.nodeConnectionManager.pingNode(
+
+    // I think address resolution requires the NCM to do this too
+    // you have to do ice and whatever
+    // and you have to establish a connection
+    // once connected you don't really care - you can maintain a pool
+    // until it is not needed
+
+    // const addresses = await this.resolveNodeId(nodeId);
+    return this.nodeConnectionManager.connect(
       nodeId,
-      targetAddresses,
-      ctx,
+      addresses,
+      ctx
     );
   }
 
@@ -647,32 +894,6 @@ class NodeManager {
   }
 
   /**
-   * Retrieves the node Address from the NodeGraph
-   * @param nodeId node ID of the target node
-   * @param tran
-   * @returns Node Address of the target node
-   */
-  public async getNodeAddress(
-    nodeId: NodeId,
-    tran: DBTransaction,
-  ): Promise<NodeAddress | undefined> {
-    return (await this.nodeGraph.getNode(nodeId, tran))?.address;
-  }
-
-  /**
-   * Determines whether a node ID -> node address mapping exists in the NodeGraph
-   * @param targetNodeId the node ID of the node to find
-   * @param tran
-   * @returns true if the node exists in the table, false otherwise
-   */
-  public async knowsNode(
-    targetNodeId: NodeId,
-    tran: DBTransaction,
-  ): Promise<boolean> {
-    return (await this.nodeGraph.getNode(targetNodeId, tran)) != null;
-  }
-
-  /**
    * Gets the specified bucket from the NodeGraph
    */
   public async getBucket(
@@ -686,135 +907,6 @@ class NodeManager {
       undefined,
       tran,
     );
-  }
-
-  /**
-   * Adds a node to the node graph. This assumes that you have already authenticated the node
-   * Updates the node if the node already exists
-   * This operation is blocking by default - set `block` 2qto false to make it non-blocking
-   * @param nodeId - Id of the node we wish to add
-   * @param nodeAddress - Expected address of the node we want to add
-   * @param block - When true it will wait for any garbage collection to finish before returning.
-   * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
-   * This will drop the oldest node in favor of the new.
-   * @param pingTimeoutTime - Timeout for each ping operation during garbage collection.
-   * @param ctx
-   * @param tran
-   */
-  public setNode(
-    nodeId: NodeId,
-    nodeAddress: NodeAddress,
-    block?: boolean,
-    force?: boolean,
-    pingTimeoutTime?: number,
-    ctx?: Partial<ContextTimed>,
-    tran?: DBTransaction,
-  ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(true)
-  public async setNode(
-    nodeId: NodeId,
-    nodeAddress: NodeAddress,
-    block: boolean = false,
-    force: boolean = false,
-    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
-    @context ctx: ContextTimed,
-    tran?: DBTransaction,
-  ): Promise<void> {
-    // We don't want to add our own node
-    if (nodeId.equals(this.keyRing.getNodeId())) {
-      this.logger.debug('Is own NodeId, skipping');
-      return;
-    }
-
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.setNode(
-          nodeId,
-          nodeAddress,
-          block,
-          force,
-          pingTimeoutTime,
-          ctx,
-          tran,
-        ),
-      );
-    }
-
-    // When adding a node we need to handle 3 cases
-    // 1. The node already exists. We need to update it's last updated field
-    // 2. The node doesn't exist and bucket has room.
-    //  We need to add the node to the bucket
-    // 3. The node doesn't exist and the bucket is full.
-    //  We need to ping the oldest node. If the ping succeeds we need to update
-    //  the lastUpdated of the oldest node and drop the new one. If the ping
-    //  fails we delete the old node and add in the new one.
-    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
-    // To avoid conflict we want to lock on the bucket index
-    await this.nodeGraph.lockBucket(bucketIndex, tran);
-    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
-    // If this is a new entry, check the bucket limit
-    const count = await this.nodeGraph.getBucketMetaProp(
-      bucketIndex,
-      'count',
-      tran,
-    );
-    if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
-      // Either already exists or has room in the bucket
-      // We want to add or update the node
-      await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
-      // Updating the refreshBucket timer
-      await this.updateRefreshBucketDelay(
-        bucketIndex,
-        this.refreshBucketDelay,
-        true,
-        tran,
-      );
-    } else {
-      // We want to add a node but the bucket is full
-      if (force) {
-        // We just add the new node anyway without checking the old one
-        const bucket = await this.nodeGraph.getBucket(
-          bucketIndex,
-          'lastUpdated',
-          'asc',
-          1,
-          tran
-        );
-        const oldNodeId = bucket[0]?.[0];
-        if (oldNodeId == null) utils.never();
-        this.logger.debug(
-          `Force was set, removing ${nodesUtils.encodeNodeId(
-            oldNodeId,
-          )} and adding ${nodesUtils.encodeNodeId(nodeId)}`,
-        );
-        await this.nodeGraph.unsetNode(oldNodeId, tran);
-        await this.nodeGraph.setNode(nodeId, nodeAddress, undefined, tran);
-        // Updating the refreshBucket timer
-        await this.updateRefreshBucketDelay(
-          bucketIndex,
-          this.refreshBucketDelay,
-          true,
-          tran,
-        );
-        return;
-      }
-      this.logger.debug(
-        `Bucket was full, adding ${nodesUtils.encodeNodeId(
-          nodeId,
-        )} to pending list`,
-      );
-      // Add the node to the pending nodes list
-      await this.addPendingNode(
-        bucketIndex,
-        nodeId,
-        nodeAddress,
-        block,
-        pingTimeoutTime,
-        ctx,
-        tran,
-      );
-    }
   }
 
   protected garbageCollectBucket(
@@ -988,13 +1080,6 @@ class NodeManager {
   }
 
   /**
-   * Removes a node from the NodeGraph
-   */
-  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
-    return await this.nodeGraph.unsetNode(nodeId, tran);
-  }
-
-  /**
    * To be called on key renewal. Re-orders all nodes in all buckets with respect
    * to the new node ID.
    */
@@ -1012,14 +1097,14 @@ class NodeManager {
    * @param ctx
    */
   public refreshBucket(
-    bucketIndex: number,
+    bucketIndex: NodeBucketIndex,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number | undefined = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
