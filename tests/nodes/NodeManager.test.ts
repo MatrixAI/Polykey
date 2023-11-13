@@ -163,68 +163,45 @@ describe(`${NodeManager.name} test`, () => {
     // Should be a noop
     await nodeManager.stop();
   });
-
-
-  // test('stopping nodeManager should cancel all ephemeral tasks', async () => {
-  //   const nodeManager = new NodeManager({
-  //     db,
-  //     sigchain: dummySigchain,
-  //     keyRing,
-  //     gestaltGraph,
-  //     nodeGraph,
-  //     nodeConnectionManager: dummyNodeConnectionManager,
-  //     taskManager,
-  //     logger,
-  //   });
-  //   await nodeManager.start();
-  //   await taskManager.stopProcessing();
-
-  //   // Creating dummy tasks
-  //   const task1 = await taskManager.scheduleTask({
-  //     handlerId: nodeManager.pingAndSetNodeHandlerId,
-  //     lazy: false,
-  //     path: [nodeManager.basePath],
-  //   });
-  //   const task2 = await taskManager.scheduleTask({
-  //     handlerId: nodeManager.pingAndSetNodeHandlerId,
-  //     lazy: false,
-  //     path: [nodeManager.basePath],
-  //   });
-
-  //   // Stopping nodeManager should cancel any nodeManager tasks
-  //   await nodeManager.stop();
-  //   const tasks: Array<any> = [];
-  //   for await (const task of taskManager.getTasks('asc', true, [
-  //     nodeManager.basePath,
-  //   ])) {
-  //     tasks.push(task);
-  //   }
-  //   expect(tasks.length).toEqual(0);
-  //   await expect(task1.promise()).toReject();
-  //   await expect(task2.promise()).toReject();
-  // });
-  // test('Should have unique HandlerIds', async () => {
-  //   const nodeManager = new NodeManager({
-  //     db,
-  //     sigchain: dummySigchain,
-  //     keyRing,
-  //     gestaltGraph,
-  //     nodeGraph,
-  //     nodeConnectionManager: dummyNodeConnectionManager,
-  //     taskManager,
-  //     logger,
-  //   });
-  //   // This is a sanity check for a previous bug with SWC decorators causing Thing.name to be ''
-  //   expect(nodeManager.gcBucketHandlerId).not.toEqual(
-  //     nodeManager.refreshBucketHandlerId,
-  //   );
-  //   expect(nodeManager.gcBucketHandlerId).not.toEqual(
-  //     nodeManager.pingAndSetNodeHandlerId,
-  //   );
-  //   expect(nodeManager.refreshBucketHandlerId).not.toEqual(
-  //     nodeManager.pingAndSetNodeHandlerId,
-  //   );
-  // });
+  test('stopping NodeManager should cancel all tasks', async () => {
+    const nodeManager = new NodeManager({
+      db,
+      sigchain,
+      keyRing,
+      gestaltGraph,
+      nodeGraph,
+      nodeConnectionManager,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeManager.stop();
+    const tasks: Array<any> = [];
+    for await (const task of taskManager.getTasks('asc', true, [
+      nodeManager.tasksPath,
+    ])) {
+      tasks.push(task);
+    }
+    expect(tasks.length).toEqual(0);
+  });
+  test('task handler ids are not empty', async () => {
+    const nodeManager = new NodeManager({
+      db,
+      sigchain,
+      keyRing,
+      gestaltGraph,
+      nodeGraph,
+      nodeConnectionManager,
+      taskManager,
+      logger,
+    });
+    expect(nodeManager.gcBucketHandlerId).toEqual(
+      'NodeManager.gcBucketHandler',
+    );
+    expect(nodeManager.refreshBucketHandlerId).toEqual(
+      'NodeManager.refreshBucketHandler',
+    );
+  });
   // test('should add a node when bucket has room', async () => {
   //   const nodeManager = new NodeManager({
   //     db,
