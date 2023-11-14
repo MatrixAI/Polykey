@@ -399,20 +399,145 @@ class NodeManager {
     tran?: DBTransaction
   ): Promise<NodeInfo | undefined> {
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
-    if (nodeData == null) {
-      return;
-    }
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     // Shouldn't this be synchronous?
     const nodeConnection = this.nodeConnectionManager.getConnection(
       nodeId
     );
-    // We are returning information about the node
-    return  {
-      id: nodeId,
-      data: nodeData,
-      connection: nodeConnection
-    };
+    if (nodeData != null && nodeConnection != null) {
+      return  {
+        id: nodeId,
+        graph: {
+          data: nodeData,
+          bucketIndex
+        },
+        connection: nodeConnection
+      };
+    } else if (nodeData != null) {
+      return  {
+        id: nodeId,
+        graph: {
+          data: nodeData,
+          bucketIndex
+        },
+      };
+    } else if (nodeConnection != null) {
+      return {
+        id: nodeId,
+        connection: nodeConnection
+      };
+    }
   }
+
+  // Here we are going to add this info
+  // high level set node
+  // vs low level set node
+
+  /**
+   * Adds a new `NodeId` to the nodes system.
+   *
+   * This will attempt to connect to the node. If the connection is not
+   * successful, the node will not be saved in the node graph.
+   * If the bucket is full, we will want to check if the oldest last
+   * updated node is contacted, and if that fails, it will be replaced
+   * with this node. If the las updated node connection is successful,
+   * then the new node is dropped.
+   *
+   * Note that of the set of records in the bucket.
+   * We only consider records that are not active connections.
+   * If any of the `NodeId` has active connections, then they cannot
+   * be dropped.
+   *
+   * If the `NodeConnection`
+   *
+   * If `force` is set to true, it will not bother trying to connect.
+   * It will just set the node straight into the node graph.
+   *
+   * @throws {nodesErrors.ErrorNodeConnection} - If the connection fails
+   */
+  @timedCancellable(true)
+  public async addNode(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress,
+    @context ctx: ContextTimed,
+    tran?: DBTransaction,
+  ) {
+    // Remember if the last updated node cannot be an active connection
+    // If there is an active connection, they cannot be dropped
+    // Therefore if you make more than 20 active connections, do you just fail to do it?
+    // No in that case, it's data is just not added to the graph
+
+    if (nodeId.equals(this.keyRing.getNodeId())) {
+      throw new nodesErrors.ErrorNodeManagerNodeIdOwn('Cannot set own node ID');
+    }
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.addNode(
+          nodeId,
+          nodeAddress,
+          ctx,
+          tran,
+        ),
+      );
+    }
+    // If we don't have a connection or we cannot make a connection
+    // then we will not add this node to the graph
+    // Note that the existing connection may be using a different address
+    // Until NodeGraph supports multiple addresses, we have to prefer existing addresses
+    if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+      // Make a connection to the node Id
+      // Expect that the NCM would keep track of this
+      // And idle out afterwards
+      // Note that we also have a ctx for the entire operation!
+      await this.nodeConnectionManager.connectTo(
+        nodeId,
+        nodeAddress,
+        ctx
+      );
+    }
+
+    // Now we can check the graph
+
+
+
+
+    // If we already have an active connection
+    // If it fails to connect, we don't bother adding it
+    // We could throw an exception here
+    // And that would make sense
+
+
+    // Serialise operations to the bucket, because this requires updating
+    // the bucket count atomically to avoid concurrent thrashing
+    const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
+    await this.nodeGraph.lockBucket(bucketIndex, tran);
+
+
+    // We should attempting a connection first
+
+
+    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
+    const bucketCount = await this.nodeGraph.getBucketMetaProp(
+      bucketIndex,
+      'count',
+      tran,
+    );
+
+    // We must always connect to the thing first
+    // Plus if we are making a connection, the connection is managed
+    // by the NCM, we just get a reference to it?
+
+    if (bucketCount < this.nodeGraph.nodeBucketLimit) {
+      // we need to work this
+
+    }
+
+
+  }
+
+
+
+
 
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
@@ -496,7 +621,8 @@ class NodeManager {
     // To avoid conflict we want to lock on the bucket index
     await this.nodeGraph.lockBucket(bucketIndex, tran);
 
-    // WHY!?
+    // WHY - this checks if it already exists
+    // What if it doesn't exist?
 
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
     // If this is a new entry, check the bucket limit
@@ -505,6 +631,12 @@ class NodeManager {
       'count',
       tran,
     );
+
+
+
+
+
+
 
     // Beacause we have to do this one at a time?
     // To avoid a bucket limit problem?
