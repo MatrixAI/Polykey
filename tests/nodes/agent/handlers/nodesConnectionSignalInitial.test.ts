@@ -147,6 +147,13 @@ describe('nodesHolePunchSignal', () => {
     // Data is just `<sourceNodeId><targetNodeId>` concatenated
     const data = Buffer.concat([sourceNodeId, targetNodeId]);
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
+    dummyNodeConnectionManager.handleNodesConnectionSignalInitial.mockResolvedValue(
+      {
+        host: '127.0.0.1',
+        port: 55555,
+        scopes: ['global'],
+      },
+    );
     await rpcClient.methods.nodesConnectionSignalInitial({
       targetNodeIdEncoded,
       signature: signature.toString('base64url'),

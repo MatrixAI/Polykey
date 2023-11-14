@@ -8,6 +8,7 @@ import type {
   QUICSocket,
   ClientCryptoOps,
   QUICConnection,
+  Host as QUICHost,
 } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
@@ -20,6 +21,7 @@ import {
   QUICClient,
   events as quicEvents,
   errors as quicErrors,
+  utils as quicUtils,
 } from '@matrixai/quic';
 import { RPCClient } from '@matrixai/rpc';
 import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
@@ -464,9 +466,11 @@ class NodeConnection<M extends ClientManifest> {
   }) {
     this.validatedNodeId = validatedNodeId;
     this.nodeId = nodeId;
-    this.host = host;
+    this.host = quicUtils.toCanonicalIP(host) as unknown as Host;
     this.port = port;
-    this.localHost = localHost;
+    this.localHost = quicUtils.resolvesZeroIP(
+      localHost as unknown as QUICHost,
+    ) as unknown as Host;
     this.localPort = localPort;
     this.certChain = certChain;
     this.hostname = hostname;

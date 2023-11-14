@@ -1071,7 +1071,6 @@ class NodeConnectionManager {
       this.logger.debug(
         `single connection already existed, cleaning up ${address.host}:${address.port}`,
       );
-      throw Error('haha error go brrrr');
       // 3. if already exists then clean up
       await connection.destroy({ force: true });
       // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
