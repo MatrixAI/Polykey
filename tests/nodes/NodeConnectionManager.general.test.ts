@@ -652,9 +652,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
     const targetNodeId = remotePolykeyAgentB.keyRing.getNodeId();
     const data = Buffer.concat([sourceNodeId, targetNodeId]);
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
-    expect(() => {
+    await expect(async () => {
       for (let i = 0; i < 30; i++) {
-        nodeConnectionManager.handleNodesConnectionSignalInitial(
+        await nodeConnectionManager.handleNodesConnectionSignalInitial(
           sourceNodeId,
           targetNodeId,
           {
@@ -665,7 +665,9 @@ describe(`${NodeConnectionManager.name} general test`, () => {
           signature.toString('base64url'),
         );
       }
-    }).toThrow(nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded);
+    }).rejects.toThrow(
+      nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded,
+    );
 
     const signalMapA =
       // @ts-ignore: kidnap protected property

@@ -82,7 +82,6 @@ describe(`${NodeConnection.name}`, () => {
       logger: logger.getChild(`${QUICServer.name}`),
     });
     rpcServer = new RPCServer({
-      handlerTimeoutTime: 5000,
       fromError: networkUtils.fromError,
       logger: logger.getChild(`${RPCServer.name}`),
     });

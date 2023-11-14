@@ -648,4 +648,55 @@ describe(`${NodeConnectionManager.name} seednodes test`, () => {
 
     await nodeConnectionManager.stop();
   });
+  test('simulating hole punching with a common node', async () => {
+    // We can't truly test this without a nat, so we're just going through the motions in this test.
+    // Will trigger signaling via the seed node, remotePolykeyAgent1 in this case.
+    const seedNodes = {
+      [remoteNodeIdEncoded1]: remoteAddress1,
+    };
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      nodeGraph,
+      connectionConnectTimeoutTime: 1000,
+      tlsConfig,
+      seedNodes,
+    });
+    nodeManager = new NodeManager({
+      db,
+      gestaltGraph,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      connectionConnectTimeoutTime: 1000,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localHost as Host,
+    });
+
+    // Connect remote1 to remote2
+    const result1 = await remotePolykeyAgent1.nodeConnectionManager.pingNode(
+      remoteNodeId2,
+      [remoteAddress2],
+    );
+    expect(result1).toBeTrue();
+
+    // Establish connection to remotePolykeyAgent1
+    const result2 = await nodeConnectionManager.pingNode(remoteNodeId1, [
+      remoteAddress1,
+    ]);
+    expect(result2).toBeTrue();
+
+    // Now we attempt to connect to remotePolykeyAgent2 with signalling
+    const result3 = await nodeConnectionManager.pingNode(remoteNodeId2, [
+      remoteAddress2,
+    ]);
+    expect(result3).toBeTrue();
+    // Waiting for setNode to propagate
+    await utils.sleep(100);
+  });
 });
