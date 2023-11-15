@@ -22,6 +22,8 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
+import type { AgentClientManifest } from './agent/callers';
+import type { AgentServerManifest } from './agent/handlers';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { withF } from '@matrixai/resources';
@@ -46,6 +48,7 @@ import { events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
 import { RPCServer, middleware as rpcMiddleware } from '@matrixai/rpc';
 import NodeConnection from './NodeConnection';
 import agentClientManifest from './agent/callers';
+import agentServerManifest from './agent/handlers';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
@@ -54,8 +57,6 @@ import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
 import RateLimiter from '../utils/ratelimiter/RateLimiter';
 import config from '../config';
-
-type AgentClientManifest = typeof agentClientManifest;
 
 type ConnectionAndTimer = {
   connection: NodeConnection;
@@ -388,12 +389,6 @@ class NodeConnectionManager {
     this.rpcParserBufferSize = rpcParserBufferSize;
     this.rpcCallTimeoutTime = rpcCallTimeoutTime;
 
-    // SHOULD BE DONE ON THE START
-    // // Filter out own node ID
-    // const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    // this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
-    //   return k !== nodeIdEncodedOwn;
-    // }) as SeedNodes;
 
     const quicSocket = new QUICSocket({
       resolveHostname: () => {
@@ -449,19 +444,25 @@ class NodeConnectionManager {
     return this.quicSocket.port as unknown as Port;
   }
 
+  // Run on this
+  // with this port
+  // with reuseAddr
+
   public async start({
+    agentService,
+    // seedNodes = {},
     host = '::' as Host,
     port = 0 as Port,
-    reuseAddr = false,
-    ipv6Only = false,
-    manifest = {},
+    reuseAddr,
+    ipv6Only,
   }: {
+    agentService: AgentServerManifest;
+    // seedNodes?: SeedNodes;
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
     ipv6Only?: boolean;
-    manifest?: ServerManifest;
-  } = {}) {
+  }) {
     const address = networkUtils.buildAddress(host, port);
     this.logger.info(`Start ${this.constructor.name} on ${address}`);
 
@@ -475,6 +476,7 @@ class NodeConnectionManager {
       reuseAddr,
       ipv6Only,
     });
+
     this.quicSocket.addEventListener(
       quicEvents.EventQUICSocketError.name,
       this.handleEventQUICError,
@@ -506,6 +508,8 @@ class NodeConnectionManager {
     );
     this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
     this.rateLimiter.startRefillInterval();
+
+
     // MDNS Start
     if (this.mdns != null) {
       this.mdns.registerService({
@@ -515,6 +519,17 @@ class NodeConnectionManager {
         protocol: 'udp',
       });
     }
+
+
+    // None of this stuff!
+    // this.clearStats();
+
+    // Why is this started beforehand?
+    await this.rpcServer.start({ manifest: agentService });
+
+    // Should you make initial connections? If not
+    // Then why bother with seednodes at all
+
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -1871,17 +1886,17 @@ class NodeConnectionManager {
     );
   }
 
-  /**
-   * Returns an array of the seed nodes.
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public getSeedNodes(): Array<NodeId> {
-    return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-      if (nodeId == null) utils.never();
-      return nodeId;
-    });
-  }
+  // /**
+  //  * Returns an array of the seed nodes.
+  //  */
+  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  // public getSeedNodes(): Array<NodeId> {
+  //   return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
+  //     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+  //     if (nodeId == null) utils.never();
+  //     return nodeId;
+  //   });
+  // }
 
   /**
    * Returns true if the given node is a seed node.
