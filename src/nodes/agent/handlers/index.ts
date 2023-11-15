@@ -46,6 +46,8 @@ const manifestServer = (container: {
   };
 };
 
+type AgentServerManifest = ReturnType<typeof manifestServer>;
+
 export default manifestServer;
 
 export {
@@ -59,3 +61,5 @@ export {
   VaultsGitPackGet,
   VaultsScan,
 };
+
+export type { AgentServerManifest };

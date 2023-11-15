@@ -12,6 +12,7 @@ import type {
 } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
+import type agentClientManifest from './agent/callers';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { status } from '@matrixai/async-init';
@@ -33,7 +34,6 @@ import * as networkUtils from '../network/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 import config from '../config';
-import agentClientManifest from './agent/callers';
 
 type AgentClientManifest = typeof agentClientManifest;
 
@@ -469,11 +469,9 @@ class NodeConnection {
   }) {
     this.validatedNodeId = validatedNodeId;
     this.nodeId = nodeId;
-    this.host = quicUtils.toCanonicalIP(host) as unknown as Host;
+    this.host = networkUtils.toCanonicalIP(host);
     this.port = port;
-    this.localHost = quicUtils.resolvesZeroIP(
-      localHost as unknown as QUICHost,
-    ) as unknown as Host;
+    this.localHost = networkUtils.resolvesZeroIP(localHost);
     this.localPort = localPort;
     this.certChain = certChain;
     this.hostname = hostname;

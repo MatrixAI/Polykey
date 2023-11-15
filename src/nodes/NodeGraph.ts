@@ -380,11 +380,7 @@ class NodeGraph {
         bucket.push([nodeId, nodeData]);
       }
       if (sort === 'distance') {
-        nodesUtils.bucketSortByDistance(
-          bucket,
-          nodeIdOwn,
-          order,
-        );
+        nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
       }
     } else if (sort === 'lastUpdated') {
       const bucketDbIterator = tran.iterator<NodeData>(
@@ -461,11 +457,7 @@ class NodeGraph {
         } else if (bucketIndex !== bucketIndex_) {
           // New bucket
           if (sort === 'distance') {
-            nodesUtils.bucketSortByDistance(
-              bucket,
-              nodeIdOwn,
-              order,
-            );
+            nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
           }
           yield [bucketIndex, bucket];
           bucketIndex = bucketIndex_;
@@ -475,11 +467,7 @@ class NodeGraph {
       // Yield the last bucket if it exists
       if (bucketIndex != null) {
         if (sort === 'distance') {
-          nodesUtils.bucketSortByDistance(
-            bucket,
-            nodeIdOwn,
-            order,
-          );
+          nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
         }
         yield [bucketIndex, bucket];
       }
@@ -790,8 +778,7 @@ class NodeGraph {
     let element = nodes.pop();
     while (
       element != null &&
-      nodesUtils.bucketIndex(nodeIdOwn, element[0]) ===
-        bucketIndexLast
+      nodesUtils.bucketIndex(nodeIdOwn, element[0]) === bucketIndexLast
     ) {
       element = nodes.pop();
     }

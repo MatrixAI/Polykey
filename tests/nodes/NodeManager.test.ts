@@ -25,8 +25,7 @@ import * as testsNodesUtils from './utils';
 import * as testsUtils from '../utils';
 
 describe(`${NodeManager.name} test`, () => {
-
-  // const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
+  // Const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
   //   new StreamHandler(
   //     formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
   //   ),
@@ -67,7 +66,7 @@ describe(`${NodeManager.name} test`, () => {
   let nodeConnectionManager: NodeConnectionManager;
   let taskManager: TaskManager;
 
-  // let tlsConfig: TLSConfig;
+  // Let tlsConfig: TLSConfig;
   // let server: PolykeyAgent;
 
   beforeEach(async () => {
@@ -114,7 +113,7 @@ describe(`${NodeManager.name} test`, () => {
       logger,
     });
     await nodeConnectionManager.start({
-      host: localHost
+      host: localHost,
     });
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -151,14 +150,11 @@ describe(`${NodeManager.name} test`, () => {
     await nodeManager.start();
     await nodeManager.stop();
     await expect(async () => {
-      await nodeManager.setNode(
-        testsNodesUtils.generateRandomNodeId(),
-        {
-          host: '127.0.0.1' as Host,
-          port: 55555 as Port,
-          scopes: ['local']
-        }
-      );
+      await nodeManager.setNode(testsNodesUtils.generateRandomNodeId(), {
+        host: '127.0.0.1' as Host,
+        port: 55555 as Port,
+        scopes: ['local'],
+      });
     }).rejects.toThrow(nodesErrors.ErrorNodeManagerNotRunning);
     // Should be a noop
     await nodeManager.stop();
@@ -204,8 +200,6 @@ describe(`${NodeManager.name} test`, () => {
   });
 
   // We are going to need to inline alot of this together
-
-
 
   // test('should add a node when bucket has room', async () => {
   //   const nodeManager = new NodeManager({

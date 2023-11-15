@@ -275,10 +275,6 @@ const config = {
      */
     nodesGraphBucketLimit: 20,
 
-
-
-
-
     /**
      * Multicast group addresses that the MDNS stack will operate on.
      *

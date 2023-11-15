@@ -23,6 +23,8 @@ const manifestClient = {
   vaultsScan,
 };
 
+type AgentClientManifest = typeof manifestClient;
+
 export default manifestClient;
 
 export {
@@ -36,3 +38,5 @@ export {
   vaultsGitPackGet,
   vaultsScan,
 };
+
+export type { AgentClientManifest };

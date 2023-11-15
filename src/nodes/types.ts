@@ -7,24 +7,27 @@ import type { Host, Hostname, Port } from '../network/types';
  * If you have a `NodeConnection` this means we have an active connection.
  * However the connection may not be active once you try to use it.
  */
-type NodeInfo = {
-  id: NodeId;
-  graph: {
-    data: NodeData;
-    bucketIndex: NodeBucketIndex;
-  };
-} | {
-  id: NodeId;
-  addresses: Array<NodeAddress>;
-  connection: NodeConnection;
-} | {
-  id: NodeId;
-  graph: {
-    data: NodeData;
-    bucketIndex: NodeBucketIndex;
-  };
-  connection: NodeConnection;
-};
+type NodeInfo =
+  | {
+      id: NodeId;
+      graph: {
+        data: NodeData;
+        bucketIndex: NodeBucketIndex;
+      };
+    }
+  | {
+      id: NodeId;
+      addresses: Array<NodeAddress>;
+      connection: NodeConnection;
+    }
+  | {
+      id: NodeId;
+      graph: {
+        data: NodeData;
+        bucketIndex: NodeBucketIndex;
+      };
+      connection: NodeConnection;
+    };
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -88,8 +91,6 @@ enum ConnectionErrorCode {
 enum ConnectionErrorReason {
   ForceClose = 'NodeConnection is forcing destruction',
 }
-
-
 
 export type {
   NodeId,
