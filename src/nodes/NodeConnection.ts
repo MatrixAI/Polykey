@@ -69,6 +69,21 @@ class NodeConnection<M extends ClientManifest> {
   public readonly rpcClient: RPCClient<M>;
 
   /**
+   * Tracks the total number of streams created locally across all `NodeConnection`s
+   */
+  protected static streamsMadeForward: number = 0;
+
+  /**
+   * Tracks the total number of streams created by peer across all `NodeConnection`s
+   */
+  protected static streamsMadeReverse: number = 0;
+
+  /**
+   * Tracks the number of total active streams across all `NodeConnection`s
+   */
+  protected static streamsActive: number = 0;
+
+  /**
    * Dispatches a `EventNodeConnectionClose` in response to any `NodeConnection`
    * error event. Will trigger destruction of the `NodeConnection` via the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
@@ -106,6 +121,11 @@ class NodeConnection<M extends ClientManifest> {
   ): void => {
     // Re-dispatches the stream under a `EventNodeConnectionStream` event
     const quicStream = evt.detail;
+    NodeConnection.streamsMadeReverse += 1;
+    NodeConnection.streamsActive += 1;
+    void quicStream.closedP.finally(() => {
+      NodeConnection.streamsActive -= 1;
+    });
     this.dispatchEvent(
       new nodesEvents.EventNodeConnectionStream({ detail: quicStream }),
     );
@@ -301,7 +321,13 @@ class NodeConnection<M extends ClientManifest> {
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
       streamFactory: async () => {
-        return quicConnection.newStream();
+        NodeConnection.streamsMadeForward += 1;
+        NodeConnection.streamsActive += 1;
+        const stream = quicConnection.newStream();
+        void stream.closedP.finally(() => {
+          NodeConnection.streamsActive -= 1;
+        });
+        return stream;
       },
       toError: networkUtils.toError,
       logger: logger.getChild(RPCClient.name),
@@ -541,6 +567,26 @@ class NodeConnection<M extends ClientManifest> {
    */
   public getClient(): RPCClient<M> {
     return this.rpcClient;
+  }
+
+  /**
+   * Returns stream stats.
+   * Stats are tracked across all NodeConnections.
+   * The stats are static properties so these can be considered global values.
+   * Keep this in mind in testing.
+   */
+  public static getStats() {
+    return {
+      streamsMadeForward: NodeConnection.streamsMadeForward,
+      streamsMadeReverse: NodeConnection.streamsMadeReverse,
+      streamsActive: NodeConnection.streamsActive,
+    };
+  }
+
+  public static clearStats() {
+    NodeConnection.streamsMadeForward = 0;
+    NodeConnection.streamsMadeReverse = 0;
+    NodeConnection.streamsActive = 0;
   }
 }
 

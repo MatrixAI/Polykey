@@ -206,8 +206,16 @@ describe('agentStatus', () => {
       clientPort: pkAgent.clientServicePort,
       agentHost: pkAgent.agentServiceHost,
       agentPort: pkAgent.agentServicePort,
-      publicKeyJwk: keysUtils.publicKeyToJWK(pkAgent.keyRing.keyPair.publicKey),
-      certChainPEM: await pkAgent.certManager.getCertPEMsChainPEM(),
+      connectionsActive: expect.any(Number),
+      connectionsMadeForward: expect.any(Number),
+      connectionsMadeReverse: expect.any(Number),
+      connectionsUsage: expect.any(Number),
+      connectionsAcquired: expect.any(Number),
+      streamsMadeForward: expect.any(Number),
+      streamsMadeReverse: expect.any(Number),
+      streamsActive: expect.any(Number),
+      nodesKnown: expect.any(Number),
+      upTime: expect.any(Number),
     });
   });
 });

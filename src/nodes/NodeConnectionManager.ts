@@ -199,6 +199,26 @@ class NodeConnectionManager {
   protected rpcServer: RPCServer;
 
   /**
+   * Tracks the number of connections started locally
+   */
+  protected connectionsMadeForward: number = 0;
+
+  /**
+   * Tracks the number of connections started by peer
+   */
+  protected connectionsMadeReverse: number = 0;
+
+  /**
+   * Tracks the number of active acquires
+   */
+  protected connectionsUsage: number = 0;
+
+  /**
+   * Tracks the amount of times connections have been acquired
+   */
+  protected connectionsAcquired: number = 0;
+
+  /**
    * Dispatches a `EventNodeConnectionManagerClose` in response to any `NodeConnectionManager`
    * error event. Will trigger stop of the `NodeConnectionManager` via the
    * `EventNodeConnectionManagerError` -> `EventNodeConnectionManagerClose` event path.
@@ -506,6 +526,7 @@ class NodeConnectionManager {
     const address = networkUtils.buildAddress(host, port);
     this.logger.info(`Start ${this.constructor.name} on ${address}`);
 
+    this.clearStats();
     // We should expect that seed nodes are already in the node manager
     // It should not be managed here!
     await this.rpcServer.start({ manifest });
@@ -652,6 +673,8 @@ class NodeConnectionManager {
         undefined,
         ctx,
       );
+      this.connectionsAcquired += 1;
+      this.connectionsUsage += 1;
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
       connectionAndTimer.timer?.cancel();
@@ -659,6 +682,7 @@ class NodeConnectionManager {
       // Return tuple of [ResourceRelease, Resource]
       return [
         async () => {
+          this.connectionsUsage -= 1;
           // Decrement usage count and set up TTL if needed.
           // We're only setting up TTLs for non-seed nodes.
           connectionAndTimer.usageCount -= 1;
@@ -1077,6 +1101,7 @@ class NodeConnectionManager {
       return;
     }
     // Final setup
+    this.connectionsMadeForward += 1;
     const newConnAndTimer = this.addConnection(nodeId, connection);
     // We can assume connection was established and destination was valid, we can add the target to the nodeGraph
     connectionsResults.set(nodeIdString, newConnAndTimer);
@@ -1180,6 +1205,7 @@ class NodeConnectionManager {
           this.handleEventNodeConnectionDestroyed,
         );
         this.connections.delete(nodeIdString);
+        this.connectionsMadeReverse += 1;
         this.addConnection(nodeId, nodeConnectionNew);
         // Clean up existing connection in the background
         this.drainingConnections.add(nodeConnectionOld);
@@ -1200,6 +1226,7 @@ class NodeConnectionManager {
       }
     } else {
       // Add the new connection into the map
+      this.connectionsMadeReverse += 1;
       this.addConnection(nodeId, nodeConnectionNew);
     }
   }
@@ -2089,6 +2116,28 @@ class NodeConnectionManager {
       }
     }
     return await Promise.all(allProms);
+  }
+
+  /**
+   * This returns some basic stats about connections that have been made
+   */
+  public getStats() {
+    return {
+      connectionsActive: this.connections.size,
+      connectionsMadeForward: this.connectionsMadeForward,
+      connectionsMadeReverse: this.connectionsMadeReverse,
+      connectionsUsage: this.connectionsUsage,
+      connectionsAcquired: this.connectionsAcquired,
+      ...NodeConnection.getStats(),
+    };
+  }
+
+  public clearStats() {
+    this.connectionsMadeForward = 0;
+    this.connectionsMadeReverse = 0;
+    this.connectionsUsage = 0;
+    this.connectionsAcquired = 0;
+    NodeConnection.clearStats();
   }
 }
 
