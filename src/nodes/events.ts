@@ -32,7 +32,11 @@ class EventNodeConnectionManagerClose extends EventNodeConnectionManager {}
 
 class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<ConnectionData> {}
 
-class EventNodeConnectionManagerConnectionFailure extends EventNodeConnectionManager<
+class EventNodeConnectionManagerConnectionForward extends EventNodeConnectionManagerConnection {}
+
+class EventNodeConnectionManagerConnectionReverse extends EventNodeConnectionManagerConnection {}
+
+class EventNodeConnectionManagerConnectionReverseFailure extends EventNodeConnectionManager<
   Error | EventNodeConnectionError
 > {}
 
@@ -76,7 +80,9 @@ export {
   EventNodeConnectionManagerError,
   EventNodeConnectionManagerClose,
   EventNodeConnectionManagerConnection,
-  EventNodeConnectionManagerConnectionFailure,
+  EventNodeConnectionManagerConnectionForward,
+  EventNodeConnectionManagerConnectionReverse,
+  EventNodeConnectionManagerConnectionReverseFailure,
   EventNodeGraph,
   EventNodeGraphStart,
   EventNodeGraphStarted,

@@ -72,7 +72,7 @@ export {
  * reference all Polykey errors.
  * This is used by RPC to serialize errors from agent to client.
  */
-export * from './acl/errors';
+export * from './audit/errors';
 export * from './sessions/errors';
 export * from './keys/errors';
 export * from './vaults/errors';

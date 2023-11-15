@@ -20,6 +20,7 @@ import type {
   GestaltLinkId,
   NotificationId,
   NotificationIdEncoded,
+  AuditEventId,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
@@ -30,6 +31,33 @@ function createPermIdGenerator(): () => PermissionId {
     randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
+}
+
+function createAuditEventIdGenerator(
+  lastAuditEventId?: AuditEventId,
+): () => AuditEventId {
+  const generator = new IdSortable<AuditEventId>({
+    lastId: lastAuditEventId,
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
+  return () => generator.get();
+}
+
+/**
+ * Generates an auditId from an epoch timestamp.
+ *
+ * @param epoch
+ * @param randomSource
+ */
+function generateAuditEventIdFromEpoch(
+  epoch: number,
+  randomSource: (size: number) => Uint8Array = keysUtilsRandom.getRandomBytes,
+): AuditEventId {
+  const generator = new IdSortable<AuditEventId>({
+    timeSource: () => () => epoch,
+    randomSource,
+  });
+  return generator.get();
 }
 
 /**
@@ -463,6 +491,8 @@ function decodeNotificationId(
 
 export {
   createPermIdGenerator,
+  createAuditEventIdGenerator,
+  generateAuditEventIdFromEpoch,
   createNodeIdGenerator,
   isNodeId,
   assertNodeId,

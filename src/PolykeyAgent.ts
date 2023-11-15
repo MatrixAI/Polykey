@@ -13,6 +13,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { WorkerManager } from './workers';
+import Audit from './audit/Audit';
 import KeyRing from './keys/KeyRing';
 import CertManager from './keys/CertManager';
 import Status from './status/Status';
@@ -220,6 +221,7 @@ class PolykeyAgent {
     let vaultManager: VaultManager | undefined;
     let sessionManager: SessionManager | undefined;
     let clientService: ClientService | undefined;
+    let audit: Audit | undefined;
     try {
       status = new Status({
         statusPath,
@@ -442,6 +444,12 @@ class PolykeyAgent {
         rpcParserBufferSize: optionsDefaulted.client.rpcParserBufferSize,
         logger: logger.getChild(ClientService.name),
       });
+      audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager,
+        fresh,
+        logger: logger.getChild(Audit.name),
+      });
     } catch (e) {
       logger.warn(`Failed Creating ${this.name}`);
       await sessionManager?.stop();
@@ -455,6 +463,7 @@ class PolykeyAgent {
       await sigchain?.stop();
       await certManager?.stop();
       await taskManager?.stop();
+      await audit?.stop();
       await db?.stop();
       await keyRing?.stop();
       await schema?.stop();
@@ -463,6 +472,7 @@ class PolykeyAgent {
     }
     const pkAgent = new this({
       nodePath: optionsDefaulted.nodePath,
+      audit,
       status,
       schema,
       keyRing,
@@ -502,6 +512,7 @@ class PolykeyAgent {
   }
 
   public readonly nodePath: string;
+  public readonly audit: Audit;
   public readonly status: Status;
   public readonly schema: Schema;
   public readonly keyRing: KeyRing;
@@ -548,6 +559,7 @@ class PolykeyAgent {
 
   constructor({
     nodePath,
+    audit,
     status,
     schema,
     keyRing,
@@ -571,6 +583,7 @@ class PolykeyAgent {
     logger,
   }: {
     nodePath: string;
+    audit: Audit;
     status: Status;
     schema: Schema;
     keyRing: KeyRing;
@@ -595,6 +608,7 @@ class PolykeyAgent {
   }) {
     this.logger = logger;
     this.nodePath = nodePath;
+    this.audit = audit;
     this.status = status;
     this.schema = schema;
     this.keyRing = keyRing;
@@ -804,6 +818,7 @@ class PolykeyAgent {
         agentHost: this.nodeConnectionManager.host,
         agentPort: this.nodeConnectionManager.port,
       });
+      await this.audit.start({ fresh });
       this._startTime = utils.getUnixtime();
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
@@ -832,6 +847,7 @@ class PolykeyAgent {
       await this.sigchain?.stop();
       await this.certManager?.stop();
       await this.taskManager?.stop();
+      await this.audit?.stop();
       await this.db?.stop();
       await this.keyRing?.stop();
       await this.schema?.stop();
@@ -870,6 +886,7 @@ class PolykeyAgent {
     await this.sigchain.stop();
     await this.certManager.stop();
     await this.taskManager.stop();
+    await this.audit.stop();
     await this.db.stop();
     await this.keyRing.stop();
     await this.schema.stop();
@@ -918,6 +935,7 @@ class PolykeyAgent {
     await this.certManager.destroy();
     await this.taskManager.stop();
     await this.taskManager.destroy();
+    await this.audit.destroy();
     // Non-TaskManager dependencies
     await this.db.stop();
     // Non-DB dependencies

@@ -28,7 +28,7 @@ type TLSConfig = {
 };
 
 /**
- * Used for the connection event when receiving a reverse connection.
+ * Used for the connection event when creating a forward connection or receiving a reverse connection.
  */
 type ConnectionData = {
   remoteNodeId: NodeId;

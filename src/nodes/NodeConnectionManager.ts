@@ -1080,6 +1080,16 @@ class NodeConnectionManager {
     const newConnAndTimer = this.addConnection(nodeId, connection);
     // We can assume connection was established and destination was valid, we can add the target to the nodeGraph
     connectionsResults.set(nodeIdString, newConnAndTimer);
+    const connectionData: ConnectionData = {
+      remoteNodeId: connection.nodeId,
+      remoteHost: connection.host,
+      remotePort: connection.port,
+    };
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: connectionData,
+      }),
+    );
     this.logger.debug(
       `Created NodeConnection for ${nodesUtils.encodeNodeId(
         nodeId,
@@ -1248,7 +1258,7 @@ class NodeConnectionManager {
       remotePort: nodeConnection.port,
     };
     this.dispatchEvent(
-      new nodesEvents.EventNodeConnectionManagerConnection({
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
         detail: connectionData,
       }),
     );

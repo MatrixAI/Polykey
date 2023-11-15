@@ -207,8 +207,8 @@ class NodeManager {
   public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
     `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
 
-  protected handleNodeConnectionEvent = async (
-    e: nodesEvents.EventNodeConnectionManagerConnection,
+  protected handleEventNodeConnectionManagerConnectionReverse = async (
+    e: nodesEvents.EventNodeConnectionManagerConnectionReverse,
   ) => {
     await this.setNode(
       e.detail.remoteNodeId,
@@ -296,8 +296,8 @@ class NodeManager {
     });
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
-      nodesEvents.EventNodeConnectionManagerConnection.name,
-      this.handleNodeConnectionEvent,
+      nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
+      this.handleEventNodeConnectionManagerConnectionReverse,
     );
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -306,8 +306,8 @@ class NodeManager {
     this.logger.info(`Stopping ${this.constructor.name}`);
     // Remove handling for connections
     this.nodeConnectionManager.removeEventListener(
-      nodesEvents.EventNodeConnectionManagerConnection.name,
-      this.handleNodeConnectionEvent,
+      nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
+      this.handleEventNodeConnectionManagerConnectionReverse,
     );
     this.logger.info('Cancelling ephemeral tasks');
     if (this.taskManager.isProcessing()) {
