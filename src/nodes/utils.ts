@@ -1,7 +1,11 @@
 import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
-import type { Certificate, CertificatePEM } from '../keys/types';
+import type { Key, Certificate, CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
+import type {
+  QUICClientCrypto,
+  QUICServerCrypto,
+} from '@matrixai/quic';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import { CryptoError } from '@matrixai/quic/dist/native';
@@ -625,6 +629,50 @@ async function verifyClientCertificateChain(
   return undefined;
 }
 
+/**
+ * QUIC Client Crypto
+ * This uses the keys utilities which uses `allocUnsafeSlow`.
+ * This ensures that the underlying buffer is not shared.
+ * Also all node buffers satisfy the `ArrayBuffer` interface.
+ */
+const quicClientCrypto: QUICClientCrypto = {
+  ops: {
+    async randomBytes(data: ArrayBuffer): Promise<void> {
+      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+      randomBytes.copy(utils.bufferWrap(data));
+    },
+  }
+};
+
+/**
+ * QUIC Server Crypto
+ * This uses the keys utilities which uses `allocUnsafeSlow`.
+ * This ensures that the underlying buffer is not shared.
+ * Also all node buffers satisfy the `ArrayBuffer` interface.
+ */
+const quicServerCrypto: QUICServerCrypto = {
+  key: keysUtils.generateKey(),
+  ops: {
+    async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
+      return keysUtils.macWithKey(
+        utils.bufferWrap(key) as Key,
+        utils.bufferWrap(data),
+      );
+    },
+    async verify(
+      key: ArrayBuffer,
+      data: ArrayBuffer,
+      sig: ArrayBuffer,
+    ): Promise<boolean> {
+      return keysUtils.authWithKey(
+        utils.bufferWrap(key) as Key,
+        utils.bufferWrap(data),
+        utils.bufferWrap(sig),
+      );
+    },
+  },
+};
+
 export {
   sepBuffer,
   bucketIndex,
@@ -652,6 +700,8 @@ export {
   parseSeedNodes,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
+  quicClientCrypto,
+  quicServerCrypto,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids';

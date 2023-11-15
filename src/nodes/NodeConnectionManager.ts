@@ -67,6 +67,10 @@ type ConnectionAndTimer = {
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections.
  *
+ * It acts like a phone call system.
+ * It can maintain mulitple calls to other nodes.
+ * There's no guarantee that we need to make it.
+ *
  * Node connections make use of the QUIC protocol.
  * The NodeConnectionManager encapsulates `QUICServer`.
  * While the NodeConnection encapsulates `QUICClient`.
@@ -152,14 +156,12 @@ class NodeConnectionManager {
 
   protected logger: Logger;
   protected keyRing: KeyRing;
-  protected nodeGraph: NodeGraph;
   protected mdns: MDNS | undefined;
   protected tlsConfig: TLSConfig;
   protected seedNodes: SeedNodes;
 
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
-
   protected quicClientCrypto: ClientCryptoOps;
 
   /**
@@ -179,7 +181,7 @@ class NodeConnectionManager {
    * These are doppelganger connections created by concurrent connection creation
    * between two nodes. These will be cleaned up after all their streams end.
    */
-  protected connectionsDraining: Set<NodeConnection<AgentClientManifest>> =
+  protected connectionsDraining: Set<NodeConnection> =
     new Set();
 
   protected connectionLocks: LockBox<Lock> = new LockBox();
@@ -219,7 +221,7 @@ class NodeConnectionManager {
     evt: nodesEvents.EventNodeConnectionStream,
   ) => {
     if (evt.target == null) utils.never('target should be defined here');
-    const nodeConnection = evt.target as NodeConnection<any>;
+    const nodeConnection = evt.target as NodeConnection;
     const nodeId = nodeConnection.validatedNodeId as NodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     const stream = evt.detail;
@@ -248,7 +250,7 @@ class NodeConnectionManager {
     evt: nodesEvents.EventNodeConnectionDestroyed,
   ) => {
     if (evt.target == null) utils.never('target should be defined here');
-    const nodeConnection = evt.target as NodeConnection<any>;
+    const nodeConnection = evt.target as NodeConnection;
     const nodeId = nodeConnection.validatedNodeId as NodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     // To avoid deadlock only in the case where this is called
@@ -330,12 +332,14 @@ class NodeConnectionManager {
     }
   };
 
+  /**
+   * Constructs the `NodeConnectionManager`.
+   */
   public constructor({
     keyRing,
-    nodeGraph,
     mdns,
     tlsConfig,
-    seedNodes = {},
+
     connectionFindConcurrencyLimit = config.defaultsSystem
       .nodesConnectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime = config.defaultsSystem
@@ -352,13 +356,12 @@ class NodeConnectionManager {
       .nodesConnectionHolePunchIntervalTime,
     rpcParserBufferSize = config.defaultsSystem.rpcParserBufferSize,
     rpcCallTimeoutTime = config.defaultsSystem.rpcCallTimeoutTime,
+
     logger,
   }: {
     keyRing: KeyRing;
-    nodeGraph: NodeGraph;
     mdns?: MDNS;
     tlsConfig: TLSConfig;
-    seedNodes?: SeedNodes;
     connectionFindConcurrencyLimit?: number;
     connectionFindLocalTimeoutTime?: number;
     connectionIdleTimeoutTime?: number;
@@ -372,13 +375,9 @@ class NodeConnectionManager {
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keyRing = keyRing;
-    this.nodeGraph = nodeGraph;
+    this.mdns = mdns;
     this.tlsConfig = tlsConfig;
-    // Filter out own node ID
-    const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
-      return k !== nodeIdEncodedOwn;
-    }) as SeedNodes;
+
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
     this.connectionFindLocalTimeoutTime = connectionFindLocalTimeoutTime;
     this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
@@ -388,47 +387,24 @@ class NodeConnectionManager {
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     this.rpcParserBufferSize = rpcParserBufferSize;
     this.rpcCallTimeoutTime = rpcCallTimeoutTime;
-    // Note that all buffers allocated for crypto operations is using
-    // `allocUnsafeSlow`. Which ensures that the underlying `ArrayBuffer`
-    // is not shared. Also, all node buffers satisfy the `ArrayBuffer` interface.
-    const quicClientCrypto = {
-      async randomBytes(data: ArrayBuffer): Promise<void> {
-        const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-        randomBytes.copy(utils.bufferWrap(data));
-      },
-    };
-    const quicServerCrypto = {
-      key: keysUtils.generateKey(),
-      ops: {
-        async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
-          const sig = keysUtils.macWithKey(
-            utils.bufferWrap(key) as Key,
-            utils.bufferWrap(data),
-          );
-          // Convert the MAC to an ArrayBuffer
-          return sig.slice().buffer;
-        },
-        async verify(
-          key: ArrayBuffer,
-          data: ArrayBuffer,
-          sig: ArrayBuffer,
-        ): Promise<boolean> {
-          return keysUtils.authWithKey(
-            utils.bufferWrap(key) as Key,
-            utils.bufferWrap(data),
-            utils.bufferWrap(sig),
-          );
-        },
-      },
-    };
+
+    // SHOULD BE DONE ON THE START
+    // // Filter out own node ID
+    // const nodeIdEncodedOwn = nodesUtils.encodeNodeId(keyRing.getNodeId());
+    // this.seedNodes = utils.filterObject(seedNodes, ([k]) => {
+    //   return k !== nodeIdEncodedOwn;
+    // }) as SeedNodes;
+
     const quicSocket = new QUICSocket({
+      resolveHostname: () => {
+        // `NodeConnectionManager` must resolve all hostnames before it reaches
+        // `QUICSocket`.
+        utils.never();
+      },
       logger: this.logger.getChild(QUICSocket.name),
     });
-    // By the time we get to using QUIC server, all hostnames would have been
-    // resolved, we would not resolve hostnames inside the QUIC server.
-    // This is because node connections require special hostname resolution
-    // procedures.
     const quicServer = new QUICServer({
+      crypto: nodesUtils.quicServerCrypto,
       config: {
         maxIdleTimeout: connectionKeepAliveTimeoutTime,
         keepAliveIntervalTime: connectionKeepAliveIntervalTime,
@@ -437,14 +413,12 @@ class NodeConnectionManager {
         verifyPeer: true,
         verifyCallback: nodesUtils.verifyClientCertificateChain,
       },
-      crypto: quicServerCrypto,
       socket: quicSocket,
       reasonToCode: nodesUtils.reasonToCode,
       codeToReason: nodesUtils.codeToReason,
       minIdleTimeout: connectionConnectTimeoutTime,
       logger: this.logger.getChild(QUICServer.name),
     });
-    // Setting up RPCServer
     const rpcServer = new RPCServer({
       middlewareFactory: rpcMiddleware.defaultServerMiddlewareWrapper(
         undefined,
@@ -454,12 +428,9 @@ class NodeConnectionManager {
       timeoutTime: this.rpcCallTimeoutTime,
       logger: this.logger.getChild(RPCServer.name),
     });
-
-    this.quicClientCrypto = quicClientCrypto;
     this.quicSocket = quicSocket;
     this.quicServer = quicServer;
     this.rpcServer = rpcServer;
-    this.mdns = mdns;
   }
 
   /**
