@@ -22,7 +22,6 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
-import type { AgentClientManifest } from './agent/callers';
 import type { AgentServerManifest } from './agent/handlers';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
@@ -613,7 +612,7 @@ class NodeConnectionManager {
   public async acquireConnection(
     targetNodeId: NodeId,
     ctx?: Partial<ContextTimed>,
-  ): Promise<ResourceAcquire<NodeConnection<AgentClientManifest>>> {
+  ): Promise<ResourceAcquire<NodeConnection>> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
@@ -666,7 +665,7 @@ class NodeConnectionManager {
    */
   public withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
+    f: (conn: NodeConnection) => Promise<T>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<T>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
@@ -677,7 +676,7 @@ class NodeConnectionManager {
   )
   public async withConnF<T>(
     targetNodeId: NodeId,
-    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
+    f: (conn: NodeConnection) => Promise<T>,
     @context ctx: ContextTimed,
   ): Promise<T> {
     return await withF(
@@ -701,7 +700,7 @@ class NodeConnectionManager {
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
     g: (
-      conn: NodeConnection<AgentClientManifest>,
+      conn: NodeConnection,
     ) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
@@ -1016,7 +1015,7 @@ class NodeConnectionManager {
       }
     }
     const connection =
-      await NodeConnection.createNodeConnection<AgentClientManifest>(
+      await NodeConnection.createNodeConnection(
         {
           targetNodeIds: nodeIds,
           manifest: agentClientManifest,
@@ -1091,7 +1090,7 @@ class NodeConnectionManager {
     if (nodeId == null) utils.never();
     const nodeIdString = nodeId.toString() as NodeIdString;
     const nodeConnectionNew =
-      NodeConnection.createNodeConnectionReverse<AgentClientManifest>({
+      NodeConnection.createNodeConnectionReverse({
         nodeId,
         certChain,
         manifest: agentClientManifest,
@@ -1184,7 +1183,7 @@ class NodeConnectionManager {
    */
   protected addConnection(
     nodeId: NodeId,
-    nodeConnection: NodeConnection<AgentClientManifest>,
+    nodeConnection: NodeConnection,
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
     // Check if exists in map, this should never happen but better safe than sorry.
