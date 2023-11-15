@@ -8,12 +8,7 @@ import type {
 } from '../ids';
 import type { GestaltAction } from '../gestalts/types';
 import type { CommitId, VaultAction, VaultName } from '../vaults/types';
-import type {
-  CertificatePEM,
-  CertificatePEMChain,
-  JWKEncrypted,
-  PublicKeyJWK,
-} from '../keys/types';
+import type { CertificatePEM, JWKEncrypted, PublicKeyJWK } from '../keys/types';
 import type { Notification } from '../notifications/types';
 import type { ProviderToken } from '../identities/types';
 
@@ -35,13 +30,21 @@ type ClientRPCResponseResult<T extends JSONObject = JSONObject> =
 
 type StatusResultMessage = {
   pid: number;
-} & NodeIdMessage &
-  PublicKeyMessage & {
+} & NodeIdMessage & {
     clientHost: string;
     clientPort: number;
     agentHost: string;
     agentPort: number;
-    certChainPEM: CertificatePEMChain;
+    connectionsActive: number;
+    connectionsMadeForward: number;
+    connectionsMadeReverse: number;
+    connectionsUsage: number;
+    connectionsAcquired: number;
+    streamsMadeForward: number;
+    streamsMadeReverse: number;
+    streamsActive: number;
+    nodesKnown: number;
+    upTime: number;
   };
 
 // Identity messages

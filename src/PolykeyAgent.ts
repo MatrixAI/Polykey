@@ -524,6 +524,7 @@ class PolykeyAgent {
   public readonly logger: Logger;
   public readonly clientService: ClientService;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
+  protected startedAt: number;
 
   protected handleEventCertManagerCertChange = async (
     evt: keysEvents.EventCertManagerCertChange,
@@ -634,6 +635,14 @@ class PolykeyAgent {
   @ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServicePort() {
     return this.nodeConnectionManager.port;
+  }
+
+  /**
+   * Returns the time the `PolykeyAgent` has been running in milliseconds
+   */
+  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  get upTime(): number {
+    return Date.now() - this.startedAt;
   }
 
   public async start({
@@ -795,6 +804,7 @@ class PolykeyAgent {
         agentHost: this.nodeConnectionManager.host,
         agentPort: this.nodeConnectionManager.port,
       });
+      this.startedAt = Date.now();
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
       this.logger.warn(

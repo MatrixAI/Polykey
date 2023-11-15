@@ -6,7 +6,6 @@ import type {
 import type PolykeyAgent from '../../PolykeyAgent';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
-import * as keysUtils from '../../keys/utils';
 
 class AgentStatus extends UnaryHandler<
   {
@@ -26,10 +25,9 @@ class AgentStatus extends UnaryHandler<
       clientPort: polykeyAgent.clientServicePort,
       agentHost: polykeyAgent.agentServiceHost,
       agentPort: polykeyAgent.agentServicePort,
-      publicKeyJwk: keysUtils.publicKeyToJWK(
-        polykeyAgent.keyRing.keyPair.publicKey,
-      ),
-      certChainPEM: await polykeyAgent.certManager.getCertPEMsChainPEM(),
+      upTime: polykeyAgent.upTime,
+      ...polykeyAgent.nodeConnectionManager.getStats(),
+      ...(await polykeyAgent.nodeGraph.getStats()),
     };
   };
 }

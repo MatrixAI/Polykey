@@ -820,6 +820,21 @@ class NodeGraph {
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     return [bucketIndex, bucketKey];
   }
+
+  public async getStats(tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.getStats(tran));
+    }
+
+    // Stats include but not limited to...
+    // Number of nodes in graph
+
+    const nodesKnown = await tran.count(this.nodeGraphBucketsDbPath);
+
+    return {
+      nodesKnown,
+    };
+  }
 }
 
 export default NodeGraph;
