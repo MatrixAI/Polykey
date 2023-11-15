@@ -24,9 +24,7 @@ Key features:
 * Secure Computational Workflows - Share static secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure. Create dynamic (short-lived) smart-tokens with embedded policy for more sophisticated zero-trust authority verification.
 * With Polykey Enterprise, you can create private networks of Polykey nodes and apply mandatory policy governing node behaviour.
 
-<p align="center">
-  <img src="./images/cli_demo.gif" alt="Polykey CLI Demo"/>
-</p>
+https://github.com/MatrixAI/Polykey/assets/640797/e35a6bf4-4c07-4f2a-a6bf-bb176b961996
 
 This repository is the core library for Polykey.
 
