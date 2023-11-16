@@ -449,14 +449,12 @@ class NodeConnectionManager {
 
   public async start({
     agentService,
-    // seedNodes = {},
     host = '::' as Host,
     port = 0 as Port,
     reuseAddr,
     ipv6Only,
   }: {
     agentService: AgentServerManifest;
-    // seedNodes?: SeedNodes;
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
@@ -532,7 +530,15 @@ class NodeConnectionManager {
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  public async stop() {
+  /**
+   * What doe stop do with force?
+   * Figure it out.
+   */
+  public async stop({
+    force = false
+  }: {
+    force?: boolean;
+  } = {}) {
     this.logger.info(`Stop ${this.constructor.name}`);
     this.rateLimiter.stop();
 
