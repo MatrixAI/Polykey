@@ -725,6 +725,78 @@ class NodeConnectionManager {
     // Wait for any destruction to complete after locking is removed
   }
 
+  // Refactoring methods here
+
+  /**
+   * Starts a connection.
+   *
+   */
+  public async createConnection(
+    nodeIds: Array<NodeId>,
+    host: Host,
+    port: Port,
+    ctx: ContextTimed,
+  ): Promise<NodeConnection>{
+      return await NodeConnection.createNodeConnection(
+        {
+          targetNodeIds: nodeIds,
+          manifest: agentClientManifest,
+          crypto: this.quicClientCrypto,
+          targetHost: host,
+          targetPort: port,
+          tlsConfig: this.tlsConfig,
+          connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
+          connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
+          quicSocket: this.quicSocket,
+          logger: this.logger.getChild(
+            `${NodeConnection.name} [${host}:${port}]`,
+          ),
+        },
+        ctx,
+      )
+  };
+
+  /**
+   * This will start a new connection using a signalling node to coordinate hole punching.
+   */
+  public async createConnectionPunch(
+    nodeIdTarget: NodeId,
+    nodeIdSignaller: NodeId,
+    ctx: ContextTimed,
+  ): Promise<NodeConnection> {
+    // get the signaller node from the existing connections
+    if (!this.hasConnection(nodeIdSignaller)) throw Error('TMP IMP no existing connection to signaller');
+    const {host, port} = await this.withConnF(
+      nodeIdSignaller,
+      async (conn) => {
+        const client = conn.getClient();
+        const nodeIdSource = this.keyRing.getNodeId();
+        // Data is just `<sourceNodeId><targetNodeId>` concatenated
+        const data = Buffer.concat([nodeIdSource, nodeIdTarget]);
+        const signature = keysUtils.signWithPrivateKey(
+          this.keyRing.keyPair,
+          data,
+        );
+        const addressMessage =
+          await client.methods.nodesConnectionSignalInitial(
+            {
+              targetNodeIdEncoded: nodesUtils.encodeNodeId(nodeIdTarget),
+              signature: signature.toString('base64url'),
+            },
+            ctx,
+          );
+        return {
+          host: addressMessage.host as Host,
+          port: addressMessage.port as Port,
+        };
+      },
+      ctx,
+    );
+    return await this.createConnection([ nodeIdTarget ], host, port, ctx);
+  }
+
+  // end of refactoring method
+
   /**
    * This will return an existing connection or establish a new one as needed.
    * If no address is provided it will preform a kademlia search for the node.
@@ -785,6 +857,7 @@ class NodeConnectionManager {
     );
   }
 
+  // TODO: move to `NodeManager`
   /**
    * This gets a connection with a known address.
    * @param targetNodeId Id of node we are creating connection to.
@@ -867,6 +940,7 @@ class NodeConnectionManager {
       });
   }
 
+  // TODO: move to `NodeManager`
   /**
    * This will connect to the provided address looking for any of the listed nodes.
    * Locking is not handled at this level, it must be handled by the caller.
@@ -981,89 +1055,6 @@ class NodeConnectionManager {
       );
     }
     return connectionsResults;
-  }
-
-  /**
-   * Used internally by getMultiConnection to attempt a single connection.
-   * Locking is not done at this stage, it must be done at a higher level.
-   * This will do the following...
-   * 1. Attempt the connection
-   * 2. On success, do final setup and add connection to result and connection map.
-   * 3. If already in the map it will clean up connection.
-   */
-  protected async establishSingleConnection(
-    nodeIds: Array<NodeId>,
-    address: {
-      host: Host;
-      port: Port;
-      scopes: Array<NodeAddressScope>;
-    },
-    connectionsResults: Map<NodeIdString, ConnectionAndTimer>,
-    ctx: ContextTimed,
-  ): Promise<void> {
-    // TODO: do we bother with a concurrency limit for now? It's simple to use a semaphore.
-    // TODO: if all connections fail then this needs to throw. Or does it? Do we just report the allSettled result?
-    // 1. attempt connection to an address
-    this.logger.debug(
-      `establishing single connection for address ${address.host}:${address.port}`,
-    );
-    if (address.scopes.includes('global')) {
-      // Get updated address from ice procedure, using first result for now
-      const result = await this.initiateHolePunch(nodeIds, ctx);
-      for (const newAddress of result) {
-        if (newAddress != null) {
-          this.logger.debug(
-            `initiateHolePunch returned new ${newAddress.host}:${newAddress.port} vs old ${address.host}:${address.port}`,
-          );
-          address.host = newAddress.host as Host;
-          address.port = newAddress.port;
-        }
-      }
-    }
-    const connection =
-      await NodeConnection.createNodeConnection(
-        {
-          targetNodeIds: nodeIds,
-          manifest: agentClientManifest,
-          crypto: this.quicClientCrypto,
-          targetHost: address.host,
-          targetPort: address.port,
-          tlsConfig: this.tlsConfig,
-          connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
-          connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
-          quicSocket: this.quicSocket,
-          logger: this.logger.getChild(
-            `${NodeConnection.name} [${address.host}:${address.port}]`,
-          ),
-        },
-        ctx,
-      ).catch((e) => {
-        this.logger.debug(
-          `establish single connection failed for ${address.host}:${address.port} with ${e.message}`,
-        );
-        throw e;
-      });
-    // 2. if established then add to result map
-    const nodeId = connection.nodeId;
-    const nodeIdString = nodeId.toString() as NodeIdString;
-    if (connectionsResults.has(nodeIdString)) {
-      this.logger.debug(
-        `single connection already existed, cleaning up ${address.host}:${address.port}`,
-      );
-      // 3. if already exists then clean up
-      await connection.destroy({ force: true });
-      // I can only see this happening as a race condition with creating a forward connection and receiving a reverse.
-      return;
-    }
-    // Final setup
-    const newConnAndTimer = this.addConnection(nodeId, connection);
-    // We can assume connection was established and destination was valid, we can add the target to the nodeGraph
-    connectionsResults.set(nodeIdString, newConnAndTimer);
-    this.logger.debug(
-      `Created NodeConnection for ${nodesUtils.encodeNodeId(
-        nodeId,
-      )} on ${address}`,
-    );
   }
 
   /**
@@ -1321,6 +1312,7 @@ class NodeConnectionManager {
     }
   }
 
+  // TODO: move to `NodeManager`
   /**
    * Will attempt to find a connection via a Kademlia search.
    * The connection will be established in the process.
@@ -1373,6 +1365,7 @@ class NodeConnectionManager {
     return address;
   }
 
+  // TODO: move to `NodeManager`
   /**
    * Will attempt to find a connection via MDNS.
    * @param targetNodeId Id of the node we are tying to find
@@ -1474,6 +1467,7 @@ class NodeConnectionManager {
     return addresses;
   }
 
+  // TODO: move to `NodeManager`
   /**
    * Will attempt to find a connection via a Kademlia search or MDNS.
    * The connection may be established in the process.
@@ -1661,6 +1655,7 @@ class NodeConnectionManager {
     return foundAddress;
   }
 
+  // TODO: move to `NodeManager`
   /**
    * Performs an RPC request to retrieve the closest nodes relative to the given
    * target node ID.
@@ -1728,6 +1723,7 @@ class NodeConnectionManager {
     }
   }
 
+  // TODO: move to `NodeManager`
   /**
    * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
    *
@@ -1765,6 +1761,7 @@ class NodeConnectionManager {
     this.activeHolePunchPs.set(id, holePunchAttempt);
   }
 
+  // TODO: move to `NodeManager`
   /**
    * This is used by the `NodesConnectionSignalInitial` to initiate a relay request.
    * Requests can only be relayed to nodes this node is currently connected to.
@@ -1832,88 +1829,7 @@ class NodeConnectionManager {
     };
   }
 
-  /**
-   * Will make a connection to the signalling node and make a nodesConnectionSignalInitial` request.
-   *
-   * If the signalling node does not have an existing connection to the target then this will throw.
-   * If verification of the request fails then this will throw, but this shouldn't happen.
-   * The request contains a signature generated from `<sourceNodeId><targetNodeId>`.
-   *
-   *
-   *
-   * @param targetNodeId - NodeId of the node that needs to signal back.
-   * @param signallingNodeId - NodeId of the signalling node.
-   * @param ctx
-   */
-  public connectionSignalInitial(
-    targetNodeId: NodeId,
-    signallingNodeId: NodeId,
-    ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<NodeAddress>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTimeoutTime,
-  )
-  public async connectionSignalInitial(
-    targetNodeId: NodeId,
-    signallingNodeId: NodeId,
-    @context ctx: ContextTimed,
-  ): Promise<NodeAddress> {
-    return await this.withConnF(
-      signallingNodeId,
-      async (conn) => {
-        const client = conn.getClient();
-        const sourceNodeId = this.keyRing.getNodeId();
-        // Data is just `<sourceNodeId><targetNodeId>` concatenated
-        const data = Buffer.concat([sourceNodeId, targetNodeId]);
-        const signature = keysUtils.signWithPrivateKey(
-          this.keyRing.keyPair,
-          data,
-        );
-        const addressMessage =
-          await client.methods.nodesConnectionSignalInitial(
-            {
-              targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-              signature: signature.toString('base64url'),
-            },
-            ctx,
-          );
-        const nodeAddress: NodeAddress = {
-          host: addressMessage.host as Host,
-          port: addressMessage.port as Port,
-          scopes: ['global'],
-        };
-        return nodeAddress;
-      },
-      ctx,
-    );
-  }
-
-  // /**
-  //  * Returns an array of the seed nodes.
-  //  */
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // public getSeedNodes(): Array<NodeId> {
-  //   return Object.keys(this.seedNodes).map((nodeIdEncoded) => {
-  //     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-  //     if (nodeId == null) utils.never();
-  //     return nodeId;
-  //   });
-  // }
-
-  /**
-   * Returns true if the given node is a seed node.
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public isSeedNode(nodeId: NodeId): boolean {
-    const seedNodes = this.getSeedNodes();
-    return !!seedNodes.find((seedNode) => {
-      return nodeId.equals(seedNode);
-    });
-  }
-
+  // TODO: move to `NodeManager`
   /**
    * Checks if a connection can be made to the target. Returns true if the
    * connection can be authenticated, it's certificate matches the nodeId and
@@ -1946,6 +1862,7 @@ class NodeConnectionManager {
     }
   }
 
+  // TODO: move to `NodeManager`
   /**
    * Used to start connections to multiple nodes and hosts at the same time.
    * The main use-case is to connect to multiple seed nodes on the same hostname.
@@ -2037,44 +1954,6 @@ class NodeConnectionManager {
       key: tlsConfig.keyPrivatePem,
       cert: tlsConfig.certChainPem,
     });
-  }
-
-  /**
-   * This attempts the NAT hole punch procedure. It will return a
-   * `PromiseCancellable` that will resolve once the procedure times out, is
-   * cancelled or the other end responds.
-   *
-   * This is pretty simple, it will contact all known seed nodes and get them to
-   * relay a punch signal message.
-   *
-   * This doesn't care if the requests fail or succeed, so any errors or results are ignored.
-   *
-   */
-  protected initiateHolePunch(
-    targetNodeIds: Array<NodeId>,
-    ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<Array<NodeAddress | undefined>>;
-  @timedCancellable(true)
-  protected async initiateHolePunch(
-    targetNodeIds: Array<NodeId>,
-    @context ctx: ContextTimed,
-  ): Promise<Array<NodeAddress | undefined>> {
-    const seedNodes = this.getSeedNodes();
-    const allProms: Array<PromiseCancellable<NodeAddress | undefined>> = [];
-    for (const targetNodeId of targetNodeIds) {
-      if (!this.isSeedNode(targetNodeId)) {
-        // Ask seed nodes to signal hole punching for target
-        const holePunchProms = seedNodes.map((seedNodeId) => {
-          return (
-            this.connectionSignalInitial(targetNodeId, seedNodeId, ctx)
-              // Ignore errors
-              .catch(() => undefined)
-          );
-        });
-        allProms.push(...holePunchProms);
-      }
-    }
-    return await Promise.all(allProms);
   }
 }
 
