@@ -14,16 +14,137 @@ import * as errors from '../errors';
 import ErrorPolykey from '../ErrorPolykey';
 
 /**
+ * Is it an IPv4 address?
+ */
+function isIPv4(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  const [isIPv4] = Validator.isValidIPv4String(host);
+  return isIPv4;
+}
+
+/**
+ * Is it an IPv6 address?
+ * This considers IPv4 mapped IPv6 addresses to also be IPv6 addresses.
+ */
+function isIPv6(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  const [isIPv6] = Validator.isValidIPv6String(host.replace(/%.+$/, ''));
+  if (isIPv6) return true;
+  // Test if the host is an IPv4 mapped IPv6 address.
+  // In the future, `isValidIPv6String` should be able to handle this
+  // and this code can be removed.
+  return isIPv4MappedIPv6(host);
+}
+
+/**
+ * There are 2 kinds of IPv4 mapped IPv6 addresses.
+ * 1. ::ffff:127.0.0.1 - dotted decimal version
+ * 2. ::ffff:7f00:1 - hex version
+ * Both are accepted by Node's dgram module.
+ */
+function isIPv4MappedIPv6(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  if (host.startsWith('::ffff:')) {
+    try {
+      // The `ip-num` package understands `::ffff:7f00:1`
+      IPv6.fromString(host);
+      return true;
+    } catch {
+      // But it does not understand `::ffff:127.0.0.1`
+      const ipv4 = host.slice('::ffff:'.length);
+      if (isIPv4(ipv4)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isIPv4MappedIPv6Hex(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  if (host.startsWith('::ffff:')) {
+    try {
+      // The `ip-num` package understands `::ffff:7f00:1`
+      IPv6.fromString(host);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function isIPv4MappedIPv6Dec(host: any): host is Host {
+  if (typeof host !== 'string') return false;
+  if (host.startsWith('::ffff:')) {
+    // But it does not understand `::ffff:127.0.0.1`
+    const ipv4 = host.slice('::ffff:'.length);
+    if (isIPv4(ipv4)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Extracts the IPv4 portion out of the IPv4 mapped IPv6 address.
+ * Can handle both the dotted decimal and hex variants.
+ * 1. ::ffff:7f00:1
+ * 2. ::ffff:127.0.0.1
+ * Always returns the dotted decimal variant.
+ */
+function fromIPv4MappedIPv6(host: string): Host {
+  const ipv4 = host.slice('::ffff:'.length);
+  if (isIPv4(ipv4)) {
+    return ipv4 as Host;
+  }
+  const matches = ipv4.match(/^([0-9a-fA-F]{1,4}):([0-9a-fA-F]{1,4})$/);
+  if (matches == null) {
+    throw new TypeError('Invalid IPv4 mapped IPv6 address');
+  }
+  const ipv4Hex = matches[1].padStart(4, '0') + matches[2].padStart(4, '0');
+  const ipv4Hexes = ipv4Hex.match(/.{1,2}/g)!;
+  const ipv4Decs = ipv4Hexes.map((h) => parseInt(h, 16));
+  return ipv4Decs.join('.') as Host;
+}
+
+/**
+ * Canonicalizes an IP address into a consistent format.
+ * This will:
+ * - Remove leading 0s from IPv4 addresses and IPv6 addresses
+ * - Expand :: into 0s for IPv6 addresses
+ * - Extract IPv4 decimal notation from IPv4 mapped IPv6 addresses
+ * - Lowercase all hex characters in IPv6 addresses
+ */
+function toCanonicalIP(host: string): Host {
+  const scope = host.match(/%.+$/);
+  if (scope != null) {
+    host = host.replace(/%.+/, '');
+  }
+  let host_: string;
+  if (isIPv4MappedIPv6(host)) {
+    host_ = fromIPv4MappedIPv6(host);
+  } else if (isIPv4(host)) {
+    host_ = IPv4.fromString(host).toString();
+    // host_ = (new IPv4(host)).toString();
+  } else if (isIPv6(host)) {
+    host_ = IPv6.fromString(host).toString();
+    // host_ = (new IPv6(host)).toString();
+  } else {
+    throw new TypeError('Invalid IP address');
+  }
+  return host_ +  (scope != null ? scope[0] : '') as Host
+}
+
+/**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
  */
 function isHost(host: any): host is Host {
   if (typeof host !== 'string') return false;
-  const [isIPv4] = Validator.isValidIPv4String(host);
-  const [isIPv6] = Validator.isValidIPv6String(host.replace(/%.*/, ''));
-  return isIPv4 || isIPv6;
+  return isIPv4(host) || isIPv6(host);
 }
 
-function isHostWildcard(host: Host): boolean {
+function isHostWildcard(host: any): boolean {
   return host === '0.0.0.0' || host === '::';
 }
 
@@ -476,6 +597,12 @@ function toError(
 }
 
 export {
+  isIPv4,
+  isIPv6,
+  isIPv4MappedIPv6,
+  isIPv4MappedIPv6Hex,
+  isIPv4MappedIPv6Dec,
+  toCanonicalIP,
   isHost,
   isHostWildcard,
   isHostname,
