@@ -821,19 +821,14 @@ class NodeGraph {
     return [bucketIndex, bucketKey];
   }
 
-  public async getStats(tran?: DBTransaction) {
+  /**
+   * Returns to total number of nodes in the `NodeGraph`
+   */
+  public async nodesTotal(tran?: DBTransaction): Promise<number> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getStats(tran));
+      return this.db.withTransactionF((tran) => this.nodesTotal(tran));
     }
-
-    // Stats include but not limited to...
-    // Number of nodes in graph
-
-    const nodesKnown = await tran.count(this.nodeGraphBucketsDbPath);
-
-    return {
-      nodesKnown,
-    };
+    return await tran.count(this.nodeGraphBucketsDbPath);
   }
 }
 

@@ -25,9 +25,9 @@ class AgentStatus extends UnaryHandler<
       clientPort: polykeyAgent.clientServicePort,
       agentHost: polykeyAgent.agentServiceHost,
       agentPort: polykeyAgent.agentServicePort,
-      upTime: polykeyAgent.upTime,
-      ...polykeyAgent.nodeConnectionManager.getStats(),
-      ...(await polykeyAgent.nodeGraph.getStats()),
+      startTime: polykeyAgent.startTime,
+      connectionsActive: polykeyAgent.nodeConnectionManager.connectionsActive(),
+      nodesTotal: await polykeyAgent.nodeGraph.nodesTotal(),
     };
   };
 }

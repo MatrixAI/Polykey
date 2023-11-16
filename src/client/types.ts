@@ -35,16 +35,9 @@ type StatusResultMessage = {
     clientPort: number;
     agentHost: string;
     agentPort: number;
+    startTime: number;
     connectionsActive: number;
-    connectionsMadeForward: number;
-    connectionsMadeReverse: number;
-    connectionsUsage: number;
-    connectionsAcquired: number;
-    streamsMadeForward: number;
-    streamsMadeReverse: number;
-    streamsActive: number;
-    nodesKnown: number;
-    upTime: number;
+    nodesTotal: number;
   };
 
 // Identity messages
