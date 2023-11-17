@@ -677,7 +677,7 @@ const quicServerCrypto: QUICServerCrypto = {
       return keysUtils.macWithKey(
         utils.bufferWrap(key) as Key,
         utils.bufferWrap(data),
-      );
+      ).buffer;
     },
     async verify(
       key: ArrayBuffer,

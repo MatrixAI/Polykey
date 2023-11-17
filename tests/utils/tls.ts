@@ -65,16 +65,4 @@ async function createTLSConfigWithChain(
   };
 }
 
-function createCrypto(): ServerCryptoOps & ClientCryptoOps {
-  return {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
-}
-
-export { createTLSConfig, createTLSConfigWithChain, createCrypto };
+export { createTLSConfig, createTLSConfigWithChain };

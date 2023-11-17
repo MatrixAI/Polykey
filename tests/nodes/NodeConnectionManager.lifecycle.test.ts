@@ -198,7 +198,6 @@ describe(`${NodeConnectionManager.name} lifecycle test`, () => {
     await nodeConnectionManager.stop();
   });
 
-  // FIXME: holding process open for a time. connectionKeepAliveIntervalTime holds the process open, failing to clean up?
   test('acquireConnection should create connection', async () => {
     await nodeGraph.setNode(serverNodeId1, serverAddress1);
     nodeConnectionManager = new NodeConnectionManager({
