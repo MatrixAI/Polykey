@@ -86,7 +86,9 @@ describe('utils', () => {
     expect(networkUtils.toCanonicalHost('::1234:7f00:1')).toBe(
       '0:0:0:0:0:1234:7f00:1',
     );
-    expect(networkUtils.toCanonicalHost('::1234:0:0')).toBe('0:0:0:0:0:1234:0:0');
+    expect(networkUtils.toCanonicalHost('::1234:0:0')).toBe(
+      '0:0:0:0:0:1234:0:0',
+    );
     expect(networkUtils.toCanonicalHost('::1234:ffff:ffff')).toBe(
       '0:0:0:0:0:1234:ffff:ffff',
     );
@@ -94,7 +96,9 @@ describe('utils', () => {
       '0:0:0:0:0:1234:4a7d:2b63',
     );
     // Scoped
-    expect(networkUtils.toCanonicalHost('::1%eth1')).toBe('0:0:0:0:0:0:0:1%eth1');
+    expect(networkUtils.toCanonicalHost('::1%eth1')).toBe(
+      '0:0:0:0:0:0:0:1%eth1',
+    );
 
     // IPv4 mapped hex -> IPv4
 
@@ -103,7 +107,9 @@ describe('utils', () => {
     expect(networkUtils.toCanonicalHost('::ffff:ffff:ffff')).toBe(
       '255.255.255.255',
     );
-    expect(networkUtils.toCanonicalHost('::ffff:4a7d:2b63')).toBe('74.125.43.99');
+    expect(networkUtils.toCanonicalHost('::ffff:4a7d:2b63')).toBe(
+      '74.125.43.99',
+    );
 
     // IPv4 mapped dec -> IPv4
 

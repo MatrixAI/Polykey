@@ -1,7 +1,7 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
-import type { ClientCryptoOps, QUICConnection } from '@matrixai/quic';
-import type { NodeId, NodeIdString, SeedNodes } from './types';
+import type { QUICConnection } from '@matrixai/quic';
+import type { NodeAddress, NodeId, NodeIdString, SeedNodes } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { CertificatePEM } from '../keys/types';
 import type {
@@ -12,9 +12,7 @@ import type {
   TLSConfig,
 } from '../network/types';
 import type { AgentServerManifest } from './agent/handlers';
-import type { Semaphore } from '@matrixai/async-locks';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import { withF } from "@matrixai/resources";
+import { withF } from '@matrixai/resources';
 import {
   events as quicEvents,
   QUICServer,
@@ -33,6 +31,8 @@ import {
 } from '@matrixai/async-init/dist/StartStop';
 import { AbstractEvent, EventAll } from '@matrixai/events';
 import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
+import { Semaphore } from '@matrixai/async-locks';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeConnection from './NodeConnection';
 import agentClientManifest from './agent/callers';
 import * as nodesUtils from './utils';
@@ -120,6 +120,7 @@ class NodeConnectionManager {
    * Default timeout for RPC handlers
    */
   public readonly rpcCallTimeoutTime: number;
+
   /**
    * Used to track active hole punching attempts.
    * Attempts are mapped by a string of `${host}:${port}`.
@@ -139,7 +140,7 @@ class NodeConnectionManager {
    * Used track the active `nodesConnectionSignalFinal` attempts and prevent orphaned promises.
    * Used to cancel and await the active `nodesConnectionSignalFinal` when stopping.
    */
-  protected activeSignalFinalPs = new Set<PromiseCancellable<void>>();
+  protected activeSignalFinalPs = new Set<Promise<void>>();
   /**
    * Used to limit signalling requests on a per-requester basis.
    * This is mainly used to limit a single source node making too many requests through a relay.
@@ -153,7 +154,6 @@ class NodeConnectionManager {
 
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
-  protected quicClientCrypto: ClientCryptoOps;
 
   /**
    * Data structure to store all NodeConnections. If a connection to a node n does
@@ -180,7 +180,7 @@ class NodeConnectionManager {
     this.logger.warn(
       `NodeConnectionManager error caused by ${evt.detail.message}`,
     );
-    this.dispatchEvent(new nodesEvents.EventNodeConnectionClose());
+    this.dispatchEvent(new nodesEvents.EventNodeConnectionManagerClose());
   };
 
   /**
@@ -203,16 +203,14 @@ class NodeConnectionManager {
   ) => {
     if (evt.target == null) utils.never('target should be defined here');
     const nodeConnection = evt.target as NodeConnection;
-    const connectionIdString = Buffer.from(
-      nodeConnection.quicConnection.connectionIdShared.buffer,
-    ).toString();
+    const connectionId = nodeConnection.connectionId;
     const nodeId = nodeConnection.validatedNodeId as NodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     const stream = evt.detail;
     this.rpcServer.handleStream(stream);
     const connectionsEntry = this.connections.get(nodeIdString);
     if (connectionsEntry == null) utils.never('should have a connection entry');
-    const connectionAndTimer = connectionsEntry.connections[connectionIdString];
+    const connectionAndTimer = connectionsEntry.connections[connectionId];
     if (connectionAndTimer == null) utils.never('should have a connection');
     connectionAndTimer.usageCount += 1;
     connectionAndTimer.timer?.cancel();
@@ -225,7 +223,7 @@ class NodeConnectionManager {
         );
         connectionAndTimer.timer = new Timer({
           handler: async () =>
-            await this.destroyConnection(nodeId, false, connectionIdString),
+            await this.destroyConnection(nodeId, false, connectionId),
           delay: this.connectionIdleTimeoutTime,
         });
       }
@@ -238,10 +236,8 @@ class NodeConnectionManager {
     if (evt.target == null) utils.never('target should be defined here');
     const nodeConnection = evt.target as NodeConnection;
     const nodeId = nodeConnection.validatedNodeId as NodeId;
-    const connectionIdString = Buffer.from(
-      nodeConnection.quicConnection.connectionIdShared.buffer,
-    ).toString();
-    await this.destroyConnection(nodeId, true, connectionIdString);
+    const connectionId = nodeConnection.connectionId;
+    await this.destroyConnection(nodeId, true, connectionId);
     nodeConnection.removeEventListener(
       nodesEvents.EventNodeConnectionStream.name,
       this.handleEventNodeConnectionStream,
@@ -545,14 +541,13 @@ class NodeConnectionManager {
       destroyProms.push(destroyProm);
     }
     await Promise.all(destroyProms);
-    const signallingProms: Array<PromiseCancellable<void>> = [];
+    const signallingProms: Array<PromiseCancellable<void> | Promise<void>> = [];
     for (const [, activePunch] of this.activeHolePunchPs) {
       signallingProms.push(activePunch);
       activePunch.cancel();
     }
     for (const activeSignal of this.activeSignalFinalPs) {
       signallingProms.push(activeSignal);
-      activeSignal.cancel();
     }
     await Promise.allSettled(signallingProms);
     await this.quicServer.stop({ force: true });
@@ -648,13 +643,11 @@ class NodeConnectionManager {
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
    * @param g Generator function to handle communication
-   * @param ctx
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
-    ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = await this.acquireConnection(targetNodeId);
     const [release, conn] = await acquire();
@@ -681,13 +674,12 @@ class NodeConnectionManager {
     nodeIds: Array<NodeId>,
     host: Host,
     port: Port,
-    ctx: ContextTimed,
+    ctx?: Partial<ContextTimedInput>,
   ): Promise<NodeConnection> {
-    return await NodeConnection.createNodeConnection(
+    const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: nodeIds,
         manifest: agentClientManifest,
-        crypto: this.quicClientCrypto,
         targetHost: host,
         targetPort: port,
         tlsConfig: this.tlsConfig,
@@ -700,6 +692,8 @@ class NodeConnectionManager {
       },
       ctx,
     );
+    this.addConnection(nodeConnection.validatedNodeId, nodeConnection);
+    return nodeConnection;
   }
 
   /**
@@ -708,7 +702,7 @@ class NodeConnectionManager {
   public async createConnectionPunch(
     nodeIdTarget: NodeId,
     nodeIdSignaller: NodeId,
-    ctx: ContextTimed,
+    ctx?: Partial<ContextTimedInput>,
   ): Promise<NodeConnection> {
     // Get the signaller node from the existing connections
     if (!this.hasConnection(nodeIdSignaller)) {
@@ -747,7 +741,7 @@ class NodeConnectionManager {
    * This code is shared between the reverse and forward connection creation.
    *
    * Multiple connections can be added for a single NodeId, but the connection
-   * with the 'lowest' `connectionIdShared` will be used. The remaining
+   * with the 'lowest' `connectionId` will be used. The remaining
    * connections will be left to timeout gracefully.
    */
   protected addConnection(
@@ -755,10 +749,7 @@ class NodeConnectionManager {
     nodeConnection: NodeConnection,
   ): ConnectionAndTimer {
     const nodeIdString = nodeId.toString() as NodeIdString;
-    const connectionId = nodeConnection.quicConnection.connectionIdShared;
-    const connectionIdString = Buffer.from(connectionId.buffer).toString();
-
-    if (this.connections.has(nodeIdString)) utils.never();
+    const connectionId = nodeConnection.connectionId;
     // Setting up events
     nodeConnection.addEventListener(
       nodesEvents.EventNodeConnectionStream.name,
@@ -776,7 +767,7 @@ class NodeConnectionManager {
     const timeToLiveTimer = !this.isStickyNode(nodeId)
       ? new Timer({
           handler: async () =>
-            await this.destroyConnection(nodeId, false, connectionIdString),
+            await this.destroyConnection(nodeId, false, connectionId),
           delay: this.connectionIdleTimeoutTime,
         })
       : null;
@@ -793,18 +784,18 @@ class NodeConnectionManager {
     if (entry == null) {
       // Creating a new entry
       entry = {
-        activeConnection: connectionIdString,
+        activeConnection: connectionId,
         connections: {
-          [connectionIdString]: newConnAndTimer,
+          [connectionId]: newConnAndTimer,
         },
       };
       this.connections.set(nodeIdString, entry);
     } else {
       // Updating existing entry
-      entry.connections[connectionIdString] = newConnAndTimer;
+      entry.connections[connectionId] = newConnAndTimer;
       // If the new connection ID is less than the old then replace it
-      if (entry.activeConnection > connectionIdString) {
-        entry.activeConnection = connectionIdString;
+      if (entry.activeConnection > connectionId) {
+        entry.activeConnection = connectionId;
       }
     }
 
@@ -823,6 +814,16 @@ class NodeConnectionManager {
   }
 
   /**
+   * Gets the existing active connection for the target node
+   */
+  public getConnection(nodeId): ConnectionAndTimer | undefined {
+    const nodeIdString = nodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(nodeIdString);
+    if (connectionsEntry == null) return;
+    return connectionsEntry.connections[connectionsEntry.activeConnection];
+  }
+
+  /**
    * Removes the connection from the connection map and destroys it.
    * If the connectionId is specified then just that connection is destroyed.
    * If no connectionId is specified then all connections for that node are destroyed.
@@ -831,7 +832,7 @@ class NodeConnectionManager {
    * @param force - if true force the connection to end with error.
    * @param connectionIdTarget - if specified destroys only the desired connection.
    */
-  protected async destroyConnection(
+  public async destroyConnection(
     targetNodeId: NodeId,
     force: boolean,
     connectionIdTarget?: string,
@@ -854,6 +855,7 @@ class NodeConnectionManager {
         destroyPs.push(connAndTimer.connection.destroy({ force }));
         // Destroying TTL timer
         if (connAndTimer.timer != null) connAndTimer.timer.cancel();
+        delete connections[connectionId];
       }
     }
     // If empty then remove the entry
@@ -864,7 +866,6 @@ class NodeConnectionManager {
       // Check if the active connection was removed.
       if (connections[connectionsEntry.activeConnection] == null) {
         // Find the new lowest
-        // TODO: make extra sure this is the lowest key
         connectionsEntry.activeConnection = remainingKeys.sort()[0];
       }
     }
@@ -872,6 +873,7 @@ class NodeConnectionManager {
     await Promise.all(destroyPs);
   }
 
+  // TODO: placeholder for now.
   /**
    *  Checks if a node is considered sticky or not.
    * @param _nodeId
@@ -978,12 +980,16 @@ class NodeConnectionManager {
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public listConnections(): Array<{
     nodeId: NodeId;
+    connectionId: string;
+    primary: boolean;
     address: { host: Host; port: Port; hostname: Hostname | undefined };
     usageCount: number;
     timeout: number | undefined;
   }> {
     const results: Array<{
       nodeId: NodeId;
+      connectionId: string;
+      primary: boolean;
       address: { host: Host; port: Port; hostname: Hostname | undefined };
       usageCount: number;
       timeout: number | undefined;
@@ -996,6 +1002,9 @@ class NodeConnectionManager {
         const connection = connectionAndTimer.connection;
         results.push({
           nodeId,
+          connectionId: connection.connectionId,
+          primary:
+            connectionsEntry.activeConnection === connection.connectionId,
           address: {
             host: connection.host,
             port: connection.port,
@@ -1017,7 +1026,7 @@ class NodeConnectionManager {
     for (const [, connectionsEntry] of this.connections) {
       size += Object.keys(connectionsEntry.connections).length;
     }
-    return this.connections.size;
+    return size;
   }
 
   public updateTlsConfig(tlsConfig: TLSConfig) {
@@ -1644,113 +1653,110 @@ class NodeConnectionManager {
   //     throw e;
   //   }
   // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
-  //  *
-  //  * Will validate the message, and initiate hole punching in the background and return immediately.
-  //  * Attempts to the same host and port are coalesced.
-  //  * Attempts to the same host are limited by a semaphore.
-  //  * Active attempts are tracked inside of the `activeHolePunchPs` set and are cancelled and awaited when the
-  //  * `NodeConnectionManager` stops.
-  //  */
-  // @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  // public handleNodesConnectionSignalFinal(host: Host, port: Port) {
-  //   const id = `${host}:${port}`;
-  //   if (this.activeHolePunchPs.has(id)) return;
-  //   // Checking for resource semaphore
-  //   let semaphore: Semaphore | undefined =
-  //     this.activeHolePunchAddresses.get(host);
-  //   if (semaphore == null) {
-  //     semaphore = new Semaphore(3);
-  //     this.activeHolePunchAddresses.set(host, semaphore);
-  //   }
-  //   const holePunchAttempt = new PromiseCancellable<void>(
-  //     async (res, rej, signal) => {
-  //       await semaphore!.withF(async () => {
-  //         this.holePunch(host, port, { signal })
-  //           .finally(() => {
-  //             this.activeHolePunchPs.delete(id);
-  //             if (semaphore!.count === 0) {
-  //               this.activeHolePunchAddresses.delete(host);
-  //             }
-  //           })
-  //           .then(res, rej);
-  //       });
-  //     },
-  //   );
-  //   this.activeHolePunchPs.set(id, holePunchAttempt);
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * This is used by the `NodesConnectionSignalInitial` to initiate a relay request.
-  //  * Requests can only be relayed to nodes this node is currently connected to.
-  //  *
-  //  * Requests made by the same node are rate limited, when the limit has been exceeded the request
-  //  * throws an `ErrorNodeConnectionManagerRequestRateExceeded` error.
-  //  *
-  //  * Active relay attempts are tracked in `activeSignalFinalPs` and are cancelled and awaited when the
-  //  * `NodeConnectionManager` stops.
-  //  *
-  //  * @param sourceNodeId - NodeId of the node making the request. Used for rate limiting.
-  //  * @param targetNodeId - NodeId of the node that needs to initiate hole punching.
-  //  * @param address - Address the target needs to punch to.
-  //  * @param requestSignature - `base64url` encoded signature
-  //  */
-  // @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  // public async handleNodesConnectionSignalInitial(
-  //   sourceNodeId: NodeId,
-  //   targetNodeId: NodeId,
-  //   address: NodeAddress,
-  //   requestSignature: string,
-  // ): Promise<NodeAddress> {
-  //   // Need to get the connection details of the requester and add it to the message.
-  //   // Then send the message to the target.
-  //   // This would only function with existing connections
-  //   const existingConnection = await this.getExistingConnection(targetNodeId);
-  //   if (existingConnection == null) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
-  //   }
-  //   const host = existingConnection.connection.host;
-  //   const port = existingConnection.connection.port;
-  //   // Do other checks.
-  //   const sourceNodeIdString = sourceNodeId.toString();
-  //   if (!this.rateLimiter.consume(sourceNodeIdString)) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded();
-  //   }
-  //   // Generating relay signature, data is just `<sourceNodeId><targetNodeId><Address><requestSignature>` concatenated
-  //   const data = Buffer.concat([
-  //     sourceNodeId,
-  //     targetNodeId,
-  //     Buffer.from(JSON.stringify(address), 'utf-8'),
-  //     Buffer.from(requestSignature, 'base64url'),
-  //   ]);
-  //   const relaySignature = keysUtils.signWithPrivateKey(
-  //     this.keyRing.keyPair,
-  //     data,
-  //   );
-  //   const connProm = this.withConnF(targetNodeId, async (conn) => {
-  //     const client = conn.getClient();
-  //     await client.methods.nodesConnectionSignalFinal({
-  //       sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
-  //       targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-  //       address,
-  //       requestSignature: requestSignature,
-  //       relaySignature: relaySignature.toString('base64url'),
-  //     });
-  //   }).finally(() => {
-  //     this.activeSignalFinalPs.delete(connProm);
-  //   });
-  //   this.activeSignalFinalPs.add(connProm);
-  //   return {
-  //     host,
-  //     port,
-  //     scopes: ['global'],
-  //   };
-  // }
-  //
+
+  /**
+   * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
+   *
+   * Will validate the message, and initiate hole punching in the background and return immediately.
+   * Attempts to the same host and port are coalesced.
+   * Attempts to the same host are limited by a semaphore.
+   * Active attempts are tracked inside of the `activeHolePunchPs` set and are cancelled and awaited when the
+   * `NodeConnectionManager` stops.
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public handleNodesConnectionSignalFinal(host: Host, port: Port) {
+    const id = `${host}:${port}`;
+    if (this.activeHolePunchPs.has(id)) return;
+    // Checking for resource semaphore
+    let semaphore: Semaphore | undefined =
+      this.activeHolePunchAddresses.get(host);
+    if (semaphore == null) {
+      semaphore = new Semaphore(3);
+      this.activeHolePunchAddresses.set(host, semaphore);
+    }
+    const holePunchAttempt = new PromiseCancellable<void>(
+      async (res, rej, signal) => {
+        await semaphore!.withF(async () => {
+          this.holePunch(host, port, { signal })
+            .finally(() => {
+              this.activeHolePunchPs.delete(id);
+              if (semaphore!.count === 0) {
+                this.activeHolePunchAddresses.delete(host);
+              }
+            })
+            .then(res, rej);
+        });
+      },
+    );
+    this.activeHolePunchPs.set(id, holePunchAttempt);
+  }
+
+  /**
+   * This is used by the `NodesConnectionSignalInitial` to initiate a relay request.
+   * Requests can only be relayed to nodes this node is currently connected to.
+   *
+   * Requests made by the same node are rate limited, when the limit has been exceeded the request
+   * throws an `ErrorNodeConnectionManagerRequestRateExceeded` error.
+   *
+   * Active relay attempts are tracked in `activeSignalFinalPs` and are cancelled and awaited when the
+   * `NodeConnectionManager` stops.
+   *
+   * @param sourceNodeId - NodeId of the node making the request. Used for rate limiting.
+   * @param targetNodeId - NodeId of the node that needs to initiate hole punching.
+   * @param address - Address the target needs to punch to.
+   * @param requestSignature - `base64url` encoded signature
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async handleNodesConnectionSignalInitial(
+    sourceNodeId: NodeId,
+    targetNodeId: NodeId,
+    address: NodeAddress,
+    requestSignature: string,
+  ): Promise<NodeAddress> {
+    // Need to get the connection details of the requester and add it to the message.
+    // Then send the message to the target.
+    // This would only function with existing connections
+    const existingConnection = await this.getConnection(targetNodeId);
+    if (existingConnection == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    const host = existingConnection.connection.host;
+    const port = existingConnection.connection.port;
+    // Do other checks.
+    const sourceNodeIdString = sourceNodeId.toString();
+    if (!this.rateLimiter.consume(sourceNodeIdString)) {
+      throw new nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded();
+    }
+    // Generating relay signature, data is just `<sourceNodeId><targetNodeId><Address><requestSignature>` concatenated
+    const data = Buffer.concat([
+      sourceNodeId,
+      targetNodeId,
+      Buffer.from(JSON.stringify(address), 'utf-8'),
+      Buffer.from(requestSignature, 'base64url'),
+    ]);
+    const relaySignature = keysUtils.signWithPrivateKey(
+      this.keyRing.keyPair,
+      data,
+    );
+    const connProm = this.withConnF(targetNodeId, async (conn) => {
+      const client = conn.getClient();
+      await client.methods.nodesConnectionSignalFinal({
+        sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
+        targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+        address,
+        requestSignature: requestSignature,
+        relaySignature: relaySignature.toString('base64url'),
+      });
+    }).finally(() => {
+      this.activeSignalFinalPs.delete(connProm);
+    });
+    this.activeSignalFinalPs.add(connProm);
+    return {
+      host,
+      port,
+    };
+  }
+
   // // TODO: move to `NodeManager`
   // /**
   //  * Checks if a connection can be made to the target. Returns true if the

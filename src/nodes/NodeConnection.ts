@@ -3,13 +3,7 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { NodeId } from './types';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { Certificate } from '../keys/types';
-import type { ClientManifest } from '@matrixai/rpc';
-import type {
-  QUICSocket,
-  ClientCryptoOps,
-  QUICConnection,
-  Host as QUICHost,
-} from '@matrixai/quic';
+import type { QUICSocket, QUICConnection } from '@matrixai/quic';
 import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import type { X509Certificate } from '@peculiar/x509';
 import type agentClientManifest from './agent/callers';
@@ -22,7 +16,6 @@ import {
   QUICClient,
   events as quicEvents,
   errors as quicErrors,
-  utils as quicUtils,
 } from '@matrixai/quic';
 import { RPCClient } from '@matrixai/rpc';
 import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
@@ -40,7 +33,6 @@ type AgentClientManifest = typeof agentClientManifest;
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- False positive for M
 interface NodeConnection extends CreateDestroy {}
 @CreateDestroy({
   eventDestroy: nodesEvents.EventNodeConnectionDestroy,
@@ -69,6 +61,7 @@ class NodeConnection {
   protected logger: Logger;
   public readonly quicClient: QUICClient | undefined;
   public readonly quicConnection: QUICConnection;
+  public readonly connectionId: string;
   public readonly rpcClient: RPCClient<AgentClientManifest>;
 
   /**
@@ -188,7 +181,6 @@ class NodeConnection {
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      crypto: ClientCryptoOps;
       tlsConfig: TLSConfig;
       connectionKeepAliveIntervalTime?: number;
       connectionKeepAliveTimeoutTime?: number;
@@ -208,7 +200,6 @@ class NodeConnection {
       targetHost,
       targetPort,
       targetHostname,
-      crypto,
       tlsConfig,
       manifest,
       connectionKeepAliveIntervalTime,
@@ -221,7 +212,6 @@ class NodeConnection {
       targetHost: Host;
       targetPort: Port;
       targetHostname?: Hostname;
-      crypto: ClientCryptoOps;
       tlsConfig: TLSConfig;
       manifest: AgentClientManifest;
       connectionKeepAliveIntervalTime?: number;
@@ -268,9 +258,7 @@ class NodeConnection {
             key: tlsConfig.keyPrivatePem,
             cert: tlsConfig.certChainPem,
           },
-          crypto: {
-            ops: crypto,
-          },
+          crypto: nodesUtils.quicClientCrypto,
           reasonToCode: nodesUtils.reasonToCode,
           codeToReason: nodesUtils.codeToReason,
           logger: logger.getChild(QUICClient.name),
@@ -334,6 +322,9 @@ class NodeConnection {
       hostname: targetHostname,
       quicClient,
       quicConnection,
+      connectionId: Buffer.from(quicConnection.connectionIdShared).toString(
+        'base64url',
+      ),
       rpcClient,
       logger: newLogger,
     });
@@ -407,6 +398,9 @@ class NodeConnection {
       hostname: undefined,
       quicClient: undefined,
       quicConnection,
+      connectionId: Buffer.from(quicConnection.connectionIdShared).toString(
+        'base64url',
+      ),
       rpcClient,
       logger,
     });
@@ -451,6 +445,7 @@ class NodeConnection {
     hostname,
     quicClient,
     quicConnection,
+    connectionId,
     rpcClient,
     logger,
   }: {
@@ -464,12 +459,13 @@ class NodeConnection {
     hostname?: Hostname;
     quicClient?: QUICClient;
     quicConnection: QUICConnection;
+    connectionId: string;
     rpcClient: RPCClient<AgentClientManifest>;
     logger: Logger;
   }) {
     this.validatedNodeId = validatedNodeId;
     this.nodeId = nodeId;
-    this.host = networkUtils.toCanonicalIP(host);
+    this.host = networkUtils.toCanonicalHost(host);
     this.port = port;
     this.localHost = networkUtils.resolvesZeroIP(localHost);
     this.localPort = localPort;
@@ -477,6 +473,7 @@ class NodeConnection {
     this.hostname = hostname;
     this.quicClient = quicClient;
     this.quicConnection = quicConnection;
+    this.connectionId = connectionId;
     this.rpcClient = rpcClient;
     this.logger = logger;
   }
