@@ -4,9 +4,11 @@ import type {
   NodeAddress,
   NodeBucket,
   NodeData,
+  NodeContacts,
   NodeBucketMeta,
   NodeBucketIndex,
   NodeGraphSpace,
+  NodeAddressKey,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import Logger from '@matrixai/logger';
@@ -96,15 +98,18 @@ class NodeGraph {
 
   protected nodeGraphDbPath: LevelPath = [this.constructor.name];
   /**
-   * Meta stores the `keyof NodeBucketMeta` -> `NodeBucketMeta[keyof NodeBucketMeta]`
+   * Meta stores the `keyof NodeBucketMeta` -> `NodeBucketMeta[keyof NodeBucketMeta]`.
    */
   protected nodeGraphMetaDbPath: LevelPath;
   /**
-   * Buckets stores `lexi(NodeBucketIndex)/NodeId` -> `NodeData`
+   * Buckets stores `lexi(NodeBucketIndex)/NodeId/(Host|Hostname)-Port` -> `NodeData`.
+   *
+   * Hosts are canoncialized to be consistent.
+   * In some cases, we do not have an exact `Host`, but instead a `Hostname`.
    */
   protected nodeGraphBucketsDbPath: LevelPath;
   /**
-   * Last updated stores `lexi(NodeBucketIndex)/lexi(lastUpdated)-NodeId` -> `NodeId`
+   * Last updated stores `lexi(NodeBucketIndex)/lexi(lastUpdated)-NodeId` -> `NodeId`.
    */
   protected nodeGraphLastUpdatedDbPath: LevelPath;
 
@@ -215,23 +220,52 @@ class NodeGraph {
     return await tran.lock(keyPath.join(''));
   }
 
-  /**
-   * Gets the `NodeData` given a `NodeId`.
-   */
+  // Getting a node now gets you all the addresses
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNode(
     nodeId: NodeId,
     tran?: DBTransaction,
-  ): Promise<NodeData | undefined> {
-    const tranOrDb = tran ?? this.db;
+  ): Promise<NodeContacts | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getNode(nodeId, tran),
+      );
+    }
     const [bucketIndex] = this.bucketIndex(nodeId);
-    const bucketDomain = [
-      ...this.nodeGraphBucketsDbPath,
-      nodesUtils.bucketKey(bucketIndex),
-      nodesUtils.bucketDbKey(nodeId),
-    ];
-    return await tranOrDb.get<NodeData>(bucketDomain);
+    const contacts: Record<NodeAddressKey, NodeData> = {};
+    for await (const [keyPath, nodeData] of tran.iterator<NodeData>(
+      [
+        ...this.nodeGraphBucketsDbPath,
+        nodesUtils.bucketKey(bucketIndex),
+        nodesUtils.bucketDbKey(nodeId),
+      ],
+      {
+        valueAsBuffer: false,
+      }
+    )) {
+      const nodeAddressKey = keyPath[0].toString();
+      contacts[nodeAddressKey] = nodeData;
+    }
+    return contacts;
   }
+
+  // /**
+  //  * Gets the `NodeData` given a `NodeId`.
+  //  */
+  // @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  // public async getNode(
+  //   nodeId: NodeId,
+  //   tran?: DBTransaction,
+  // ): Promise<NodeData | undefined> {
+  //   const tranOrDb = tran ?? this.db;
+  //   const [bucketIndex] = this.bucketIndex(nodeId);
+  //   const bucketDomain = [
+  //     ...this.nodeGraphBucketsDbPath,
+  //     nodesUtils.bucketKey(bucketIndex),
+  //     nodesUtils.bucketDbKey(nodeId),
+  //   ];
+  //   return await tranOrDb.get<NodeData>(bucketDomain);
+  // }
 
   /**
    * Get all `NodeData`.
