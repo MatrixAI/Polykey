@@ -89,7 +89,6 @@ class NodeManager {
     _taskInfo,
     bucketIndex: NodeBucketIndex,
   ) => {
-
     // Don't use defaults like this
     // if a default is to be used
     // provide it directly
@@ -247,8 +246,7 @@ class NodeManager {
     nodeConnectionManager,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
-    refreshBucketDelay = config.defaultsSystem
-      .nodesRefreshBucketIntervalTime,
+    refreshBucketDelay = config.defaultsSystem.nodesRefreshBucketIntervalTime,
     refreshBucketDelayJitter = config.defaultsSystem
       .nodesRefreshBucketIntervalTimeJitter,
     retrySeedConnectionsDelay = 120000, // 2 minutes
@@ -323,11 +321,9 @@ class NodeManager {
     );
     // Cancels all NodeManager tasks
     const taskPs: Array<Promise<any>> = [];
-    for await (const task of this.taskManager.getTasks(
-      undefined,
-      false,
-      [this.tasksPath]
-    )) {
+    for await (const task of this.taskManager.getTasks(undefined, false, [
+      this.tasksPath,
+    ])) {
       taskPs.push(task.promise());
       task.cancel(abortEphemeralTaskReason);
     }
@@ -396,35 +392,33 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async getNode(
     nodeId: NodeId,
-    tran?: DBTransaction
+    tran?: DBTransaction,
   ): Promise<NodeInfo | undefined> {
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
     const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     // Shouldn't this be synchronous?
-    const nodeConnection = this.nodeConnectionManager.getConnection(
-      nodeId
-    );
+    const nodeConnection = this.nodeConnectionManager.getConnection(nodeId);
     if (nodeData != null && nodeConnection != null) {
-      return  {
+      return {
         id: nodeId,
         graph: {
           data: nodeData,
-          bucketIndex
+          bucketIndex,
         },
-        connection: nodeConnection
+        connection: nodeConnection,
       };
     } else if (nodeData != null) {
-      return  {
+      return {
         id: nodeId,
         graph: {
           data: nodeData,
-          bucketIndex
+          bucketIndex,
         },
       };
     } else if (nodeConnection != null) {
       return {
         id: nodeId,
-        connection: nodeConnection
+        connection: nodeConnection,
       };
     }
   }
@@ -472,12 +466,7 @@ class NodeManager {
     }
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.addNode(
-          nodeId,
-          nodeAddress,
-          ctx,
-          tran,
-        ),
+        this.addNode(nodeId, nodeAddress, ctx, tran),
       );
     }
     // If we don't have a connection or we cannot make a connection
@@ -489,32 +478,22 @@ class NodeManager {
       // Expect that the NCM would keep track of this
       // And idle out afterwards
       // Note that we also have a ctx for the entire operation!
-      await this.nodeConnectionManager.connectTo(
-        nodeId,
-        nodeAddress,
-        ctx
-      );
+      await this.nodeConnectionManager.connectTo(nodeId, nodeAddress, ctx);
     }
 
     // Now we can check the graph
-
-
-
 
     // If we already have an active connection
     // If it fails to connect, we don't bother adding it
     // We could throw an exception here
     // And that would make sense
 
-
     // Serialise operations to the bucket, because this requires updating
     // the bucket count atomically to avoid concurrent thrashing
     const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     await this.nodeGraph.lockBucket(bucketIndex, tran);
 
-
     // We should attempting a connection first
-
 
     const nodeData = await this.nodeGraph.getNode(nodeId, tran);
     const bucketCount = await this.nodeGraph.getBucketMetaProp(
@@ -528,16 +507,9 @@ class NodeManager {
     // by the NCM, we just get a reference to it?
 
     if (bucketCount < this.nodeGraph.nodeBucketLimit) {
-      // we need to work this
-
+      // We need to work this
     }
-
-
   }
-
-
-
-
 
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
@@ -572,7 +544,6 @@ class NodeManager {
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
-
     // Such a complicated function
     // To just set a node into our system
     // We have to basically say we have already authenticated
@@ -586,8 +557,6 @@ class NodeManager {
     // But I think with the SRV style
     // I would not expose such a feature
     // It seems more like a debug feature
-
-
 
     // We don't want to add our own node
     if (nodeId.equals(this.keyRing.getNodeId())) {
@@ -632,12 +601,6 @@ class NodeManager {
       tran,
     );
 
-
-
-
-
-
-
     // Beacause we have to do this one at a time?
     // To avoid a bucket limit problem?
     // Setting a node and now figuring out what to do with the old nodes
@@ -646,7 +609,6 @@ class NodeManager {
     // It should default to forcing it
     // But you can keep old connections on automatic systems
     // But if it is set, it should default to forcing
-
 
     if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
       // Either already exists or has room in the bucket
@@ -668,7 +630,7 @@ class NodeManager {
           'lastUpdated',
           'asc',
           1,
-          tran
+          tran,
         );
         const oldNodeId = bucket[0]?.[0];
         if (oldNodeId == null) utils.never();
@@ -709,10 +671,7 @@ class NodeManager {
   /**
    * Removes a node from the NodeGraph
    */
-  public async unsetNode(
-    nodeId: NodeId,
-    tran: DBTransaction
-  ): Promise<void> {
+  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
     return await this.nodeGraph.unsetNode(nodeId, tran);
   }
 
@@ -724,20 +683,17 @@ class NodeManager {
    * And that its certificate validates. So even if there was some
    * response from that connection
    */
-  public pingNode(
-    nodeId: NodeId,
-    ctx?: Partial<ContextTimedInput>
-  )
+  public pingNode(nodeId: NodeId, ctx?: Partial<ContextTimedInput>);
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,
-    (nodeConnectionManager: NodeConnectionManager) => nodeConnectionManager.connectionConnectTimeoutTime,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public pingNode(
     nodeId: NodeId,
-    @context ctx: ContextTimed
+    @context ctx: ContextTimed,
   ): Promise<boolean> {
-
     // I think address resolution requires the NCM to do this too
     // you have to do ice and whatever
     // and you have to establish a connection
@@ -745,11 +701,7 @@ class NodeManager {
     // until it is not needed
 
     // const addresses = await this.resolveNodeId(nodeId);
-    return this.nodeConnectionManager.connect(
-      nodeId,
-      addresses,
-      ctx
-    );
+    return this.nodeConnectionManager.connect(nodeId, addresses, ctx);
   }
 
   /**
@@ -782,11 +734,15 @@ class NodeManager {
         const client = connection.getClient();
         for await (const agentClaim of await client.methods.nodesClaimsGet({
           claimIdEncoded:
-            claimId != null ? claimsUtils.encodeClaimId(claimId) : ('' as ClaimIdEncoded),
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
         })) {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           // Need to re-construct each claim
-          const claimId: ClaimId = claimsUtils.decodeClaimId(agentClaim.claimIdEncoded)!;
+          const claimId: ClaimId = claimsUtils.decodeClaimId(
+            agentClaim.claimIdEncoded,
+          )!;
           const signedClaimEncoded = agentClaim.signedTokenEncoded;
           const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
           // Verifying the claim
@@ -951,7 +907,9 @@ class NodeManager {
       throw new claimsErrors.ErrorEmptyStream();
     }
     const receivedMessage = readStatus.value;
-    const signedClaim = claimsUtils.parseSignedClaim(receivedMessage.signedTokenEncoded);
+    const signedClaim = claimsUtils.parseSignedClaim(
+      receivedMessage.signedTokenEncoded,
+    );
     const token = Token.fromSigned(signedClaim);
     // Verify if the token is signed
     if (
@@ -991,7 +949,9 @@ class NodeManager {
         }
         const receivedClaim = readStatus.value;
         // We need to re-construct the token from the message
-        const signedClaim = claimsUtils.parseSignedClaim(receivedClaim.signedTokenEncoded);
+        const signedClaim = claimsUtils.parseSignedClaim(
+          receivedClaim.signedTokenEncoded,
+        );
         const fullySignedToken = Token.fromSigned(signedClaim);
         // Check that the signatures are correct
         const requestingNodePublicKey =

@@ -126,14 +126,14 @@ function toCanonicalIP(host: string): Host {
     host_ = fromIPv4MappedIPv6(host);
   } else if (isIPv4(host)) {
     host_ = IPv4.fromString(host).toString();
-    // host_ = (new IPv4(host)).toString();
+    // Host_ = (new IPv4(host)).toString();
   } else if (isIPv6(host)) {
     host_ = IPv6.fromString(host).toString();
-    // host_ = (new IPv6(host)).toString();
+    // Host_ = (new IPv6(host)).toString();
   } else {
     throw new TypeError('Invalid IP address');
   }
-  return host_ +  (scope != null ? scope[0] : '') as Host
+  return (host_ + (scope != null ? scope[0] : '')) as Host;
 }
 
 /**

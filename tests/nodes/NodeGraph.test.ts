@@ -98,16 +98,16 @@ describe(`${NodeGraph.name} test`, () => {
       {
         host: '10.0.0.1' as Host,
         port: 1234 as Port,
-        scopes: ['local']
+        scopes: ['local'],
       },
-      now - 100
+      now - 100,
     );
     const nodeData1 = await nodeGraph.getNode(nodeId1);
     expect(nodeData1).toStrictEqual({
       address: {
         host: '10.0.0.1',
         port: 1234,
-        scopes: ['local']
+        scopes: ['local'],
       },
       lastUpdated: expect.any(Number),
     });
@@ -116,16 +116,16 @@ describe(`${NodeGraph.name} test`, () => {
       {
         host: 'abc.com' as Hostname,
         port: 8978 as Port,
-        scopes: ['global']
+        scopes: ['global'],
       },
-      now
+      now,
     );
     const nodeData2 = await nodeGraph.getNode(nodeId2);
     expect(nodeData2).toStrictEqual({
       address: {
         host: 'abc.com',
         port: 8978,
-        scopes: ['global']
+        scopes: ['global'],
       },
       lastUpdated: expect.any(Number),
     });
@@ -138,7 +138,7 @@ describe(`${NodeGraph.name} test`, () => {
         address: {
           host: '10.0.0.1',
           port: 1234,
-          scopes: ['local']
+          scopes: ['local'],
         },
         lastUpdated: expect.any(Number),
       },
@@ -149,7 +149,7 @@ describe(`${NodeGraph.name} test`, () => {
         address: {
           host: 'abc.com',
           port: 8978,
-          scopes: ['global']
+          scopes: ['global'],
         },
         lastUpdated: expect.any(Number),
       },
@@ -163,7 +163,7 @@ describe(`${NodeGraph.name} test`, () => {
           address: {
             host: 'abc.com',
             port: 8978,
-            scopes: ['global']
+            scopes: ['global'],
           },
           lastUpdated: expect.any(Number),
         },
@@ -200,9 +200,9 @@ describe(`${NodeGraph.name} test`, () => {
         {
           host: '127.0.0.1' as Host,
           port: 55555 as Port,
-          scopes: ['local']
+          scopes: ['local'],
         },
-        lastUpdated
+        lastUpdated,
       );
     }
     nodes = await utils.asyncIterableArray(nodeGraph.getNodes());
@@ -305,7 +305,7 @@ describe(`${NodeGraph.name} test`, () => {
       db,
       keyRing,
       logger,
-      nodeBucketLimit
+      nodeBucketLimit,
     });
     // Contiguous node IDs starting from 0
     let nodeIds = Array.from({ length: nodeBucketLimit }, (_, i) =>
@@ -328,21 +328,23 @@ describe(`${NodeGraph.name} test`, () => {
           port: 55555 as Port,
           scopes: [],
         },
-        lastUpdated
+        lastUpdated,
       );
     }
     // Setting one more node would trigger the bucket limit error
     const nodeIdExtra = IdInternal.create<NodeId>(
-      utils.bigInt2Bytes(BigInt(nodeBucketLimit), keyRing.getNodeId().byteLength),
+      utils.bigInt2Bytes(
+        BigInt(nodeBucketLimit),
+        keyRing.getNodeId().byteLength,
+      ),
     );
-    await expect(nodeGraph.setNode(
-      nodeIdExtra,
-      {
+    await expect(
+      nodeGraph.setNode(nodeIdExtra, {
         host: '127.0.0.1' as Host,
         port: 55555 as Port,
-        scopes: []
-      },
-    )).rejects.toThrow(nodesErrors.ErrorNodeGraphBucketLimit);
+        scopes: [],
+      }),
+    ).rejects.toThrow(nodesErrors.ErrorNodeGraphBucketLimit);
     // Use first and last buckets because node IDs may be split between buckets
     const bucketIndexFirst = nodesUtils.bucketIndex(
       keyRing.getNodeId(),
@@ -438,7 +440,7 @@ describe(`${NodeGraph.name} test`, () => {
           {
             host: '127.0.0.1' as Host,
             port: utils.getRandomInt(0, 2 ** 16) as Port,
-            scopes: ['local']
+            scopes: ['local'],
           },
           testNodesUtils.generateRandomUnixtime(),
         );
@@ -649,14 +651,11 @@ describe(`${NodeGraph.name} test`, () => {
         logger,
       });
       for (const nodeId of initialNodes) {
-        await nodeGraph.setNode(
-          nodeId,
-          {
-            host: '127.0.0.1' as Host,
-            port: utils.getRandomInt(0, 2 ** 16) as Port,
-            scopes: ['local']
-          }
-        );
+        await nodeGraph.setNode(nodeId, {
+          host: '127.0.0.1' as Host,
+          port: utils.getRandomInt(0, 2 ** 16) as Port,
+          scopes: ['local'],
+        });
       }
       const buckets0 = await utils.asyncIterableArray(nodeGraph.getBuckets());
       // Reset the buckets according to the new node ID
@@ -831,17 +830,14 @@ describe(`${NodeGraph.name} test`, () => {
         keyRing: dummyKeyRing,
         nodeBucketLimit: 20,
         logger,
-        fresh: true
+        fresh: true,
       });
       for (const nodeId of initialNodes) {
-        await nodeGraph.setNode(
-          nodeId,
-          {
-            host: '127.0.0.1' as Host,
-            port: utils.getRandomInt(0, 2 ** 16) as Port,
-            scopes: ['local']
-          },
-        );
+        await nodeGraph.setNode(nodeId, {
+          host: '127.0.0.1' as Host,
+          port: utils.getRandomInt(0, 2 ** 16) as Port,
+          scopes: ['local'],
+        });
       }
       // Reset the buckets according to the new node ID
       // Note that this should normally be only executed when the key manager NodeID changes
@@ -877,7 +873,7 @@ describe(`${NodeGraph.name} test`, () => {
       await nodeGraph.setNode(testNodesUtils.generateRandomNodeId(), {
         host: '127.0.0.1' as Host,
         port: utils.getRandomInt(0, 2 ** 16) as Port,
-        scopes: ['local']
+        scopes: ['local'],
       });
     }
     const nodeIdNew1 = testNodesUtils.generateRandomNodeId();

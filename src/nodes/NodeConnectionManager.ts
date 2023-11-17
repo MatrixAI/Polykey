@@ -1,32 +1,48 @@
-import { Semaphore } from "@matrixai/async-locks";
-import type { ResourceAcquire } from "@matrixai/resources";
+import type { ResourceAcquire } from '@matrixai/resources';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
+import type { ClientCryptoOps, QUICConnection } from '@matrixai/quic';
+import type { NodeId, NodeIdString, SeedNodes } from './types';
+import type KeyRing from '../keys/KeyRing';
+import type { CertificatePEM } from '../keys/types';
+import type {
+  ConnectionData,
+  Host,
+  Hostname,
+  Port,
+  TLSConfig,
+} from '../network/types';
+import type { AgentServerManifest } from './agent/handlers';
+import type { Semaphore } from '@matrixai/async-locks';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import { withF } from "@matrixai/resources";
-import type { ContextTimed, ContextTimedInput } from "@matrixai/contexts";
-import type { ClientCryptoOps, QUICConnection } from "@matrixai/quic";
-import { events as quicEvents, QUICServer, QUICSocket, utils as quicUtils } from "@matrixai/quic";
-import { middleware as rpcMiddleware, RPCServer } from "@matrixai/rpc";
-import type { NodeId, NodeIdString, SeedNodes } from "./types";
-import type KeyRing from "../keys/KeyRing";
-import type { CertificatePEM } from "../keys/types";
-import type { ConnectionData, Host, Hostname, Port, TLSConfig } from "../network/types";
-import type { AgentServerManifest } from "./agent/handlers";
-import Logger from "@matrixai/logger";
-import { Timer } from "@matrixai/timer";
-import { IdInternal } from "@matrixai/id";
-import { ready, running, StartStop, status } from "@matrixai/async-init/dist/StartStop";
-import { AbstractEvent, EventAll } from "@matrixai/events";
-import { PromiseCancellable } from "@matrixai/async-cancellable";
-import { context, timedCancellable } from "@matrixai/contexts/dist/decorators";
-import NodeConnection from "./NodeConnection";
-import agentClientManifest from "./agent/callers";
-import * as nodesUtils from "./utils";
-import * as nodesErrors from "./errors";
-import * as nodesEvents from "./events";
-import * as keysUtils from "../keys/utils";
-import * as networkUtils from "../network/utils";
-import * as utils from "../utils";
-import RateLimiter from "../utils/ratelimiter/RateLimiter";
-import config from "../config";
+import {
+  events as quicEvents,
+  QUICServer,
+  QUICSocket,
+  utils as quicUtils,
+} from '@matrixai/quic';
+import { middleware as rpcMiddleware, RPCServer } from '@matrixai/rpc';
+import Logger from '@matrixai/logger';
+import { Timer } from '@matrixai/timer';
+import { IdInternal } from '@matrixai/id';
+import {
+  ready,
+  running,
+  StartStop,
+  status,
+} from '@matrixai/async-init/dist/StartStop';
+import { AbstractEvent, EventAll } from '@matrixai/events';
+import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
+import NodeConnection from './NodeConnection';
+import agentClientManifest from './agent/callers';
+import * as nodesUtils from './utils';
+import * as nodesErrors from './errors';
+import * as nodesEvents from './events';
+import * as keysUtils from '../keys/utils';
+import * as networkUtils from '../network/utils';
+import * as utils from '../utils';
+import RateLimiter from '../utils/ratelimiter/RateLimiter';
+import config from '../config';
 
 type ConnectionAndTimer = {
   connection: NodeConnection;
@@ -35,9 +51,9 @@ type ConnectionAndTimer = {
 };
 
 type connectionsEntry = {
-  activeConnection: string,
-  connections: Record<string, ConnectionAndTimer>
-}
+  activeConnection: string;
+  connections: Record<string, ConnectionAndTimer>;
+};
 
 /**
  * NodeConnectionManager is a server that manages all node connections.
@@ -187,15 +203,17 @@ class NodeConnectionManager {
   ) => {
     if (evt.target == null) utils.never('target should be defined here');
     const nodeConnection = evt.target as NodeConnection;
-    const connectionIdString = Buffer.from(nodeConnection.quicConnection.connectionIdShared.buffer).toString();
+    const connectionIdString = Buffer.from(
+      nodeConnection.quicConnection.connectionIdShared.buffer,
+    ).toString();
     const nodeId = nodeConnection.validatedNodeId as NodeId;
     const nodeIdString = nodeId.toString() as NodeIdString;
     const stream = evt.detail;
     this.rpcServer.handleStream(stream);
     const connectionsEntry = this.connections.get(nodeIdString);
-    if ( connectionsEntry == null ) utils.never('should have a connection entry');
+    if (connectionsEntry == null) utils.never('should have a connection entry');
     const connectionAndTimer = connectionsEntry.connections[connectionIdString];
-    if (connectionAndTimer == null) utils.never('should have a connection')
+    if (connectionAndTimer == null) utils.never('should have a connection');
     connectionAndTimer.usageCount += 1;
     connectionAndTimer.timer?.cancel();
     connectionAndTimer.timer = null;
@@ -206,7 +224,8 @@ class NodeConnectionManager {
           `creating TTL for ${nodesUtils.encodeNodeId(nodeId)}`,
         );
         connectionAndTimer.timer = new Timer({
-          handler: async () => await this.destroyConnection(nodeId, false, connectionIdString),
+          handler: async () =>
+            await this.destroyConnection(nodeId, false, connectionIdString),
           delay: this.connectionIdleTimeoutTime,
         });
       }
@@ -219,7 +238,9 @@ class NodeConnectionManager {
     if (evt.target == null) utils.never('target should be defined here');
     const nodeConnection = evt.target as NodeConnection;
     const nodeId = nodeConnection.validatedNodeId as NodeId;
-    const connectionIdString = Buffer.from(nodeConnection.quicConnection.connectionIdShared.buffer).toString();
+    const connectionIdString = Buffer.from(
+      nodeConnection.quicConnection.connectionIdShared.buffer,
+    ).toString();
     await this.destroyConnection(nodeId, true, connectionIdString);
     nodeConnection.removeEventListener(
       nodesEvents.EventNodeConnectionStream.name,
@@ -344,7 +365,6 @@ class NodeConnectionManager {
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
     this.rpcParserBufferSize = rpcParserBufferSize;
     this.rpcCallTimeoutTime = rpcCallTimeoutTime;
-
 
     const quicSocket = new QUICSocket({
       resolveHostname: () => {
@@ -477,7 +497,7 @@ class NodeConnectionManager {
    * Figure it out.
    */
   public async stop({
-    force = false
+    force = false,
   }: {
     force?: boolean;
   } = {}) {
@@ -563,9 +583,14 @@ class NodeConnectionManager {
       );
       const targetNodeIdString = targetNodeId.toString() as NodeIdString;
       const connectionsEntry = this.connections.get(targetNodeIdString);
-      if (connectionsEntry == null) throw Error('TMP IMP connection should exist');
-      const connectionAndTimer = connectionsEntry.connections[connectionsEntry.activeConnection];
-      if (connectionAndTimer == null) utils.never('ConnectionAndTimer should exist');
+      if (connectionsEntry == null) {
+        throw Error('TMP IMP connection should exist');
+      }
+      const connectionAndTimer =
+        connectionsEntry.connections[connectionsEntry.activeConnection];
+      if (connectionAndTimer == null) {
+        utils.never('ConnectionAndTimer should exist');
+      }
 
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
@@ -628,9 +653,7 @@ class NodeConnectionManager {
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
-    g: (
-      conn: NodeConnection,
-    ) => AsyncGenerator<T, TReturn, TNext>,
+    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimed>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = await this.acquireConnection(targetNodeId);
@@ -659,25 +682,25 @@ class NodeConnectionManager {
     host: Host,
     port: Port,
     ctx: ContextTimed,
-  ): Promise<NodeConnection>{
-      return await NodeConnection.createNodeConnection(
-        {
-          targetNodeIds: nodeIds,
-          manifest: agentClientManifest,
-          crypto: this.quicClientCrypto,
-          targetHost: host,
-          targetPort: port,
-          tlsConfig: this.tlsConfig,
-          connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
-          connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
-          quicSocket: this.quicSocket,
-          logger: this.logger.getChild(
-            `${NodeConnection.name} [${host}:${port}]`,
-          ),
-        },
-        ctx,
-      )
-  };
+  ): Promise<NodeConnection> {
+    return await NodeConnection.createNodeConnection(
+      {
+        targetNodeIds: nodeIds,
+        manifest: agentClientManifest,
+        crypto: this.quicClientCrypto,
+        targetHost: host,
+        targetPort: port,
+        tlsConfig: this.tlsConfig,
+        connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
+        connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
+        quicSocket: this.quicSocket,
+        logger: this.logger.getChild(
+          `${NodeConnection.name} [${host}:${port}]`,
+        ),
+      },
+      ctx,
+    );
+  }
 
   /**
    * This will start a new connection using a signalling node to coordinate hole punching.
@@ -687,9 +710,11 @@ class NodeConnectionManager {
     nodeIdSignaller: NodeId,
     ctx: ContextTimed,
   ): Promise<NodeConnection> {
-    // get the signaller node from the existing connections
-    if (!this.hasConnection(nodeIdSignaller)) throw Error('TMP IMP no existing connection to signaller');
-    const {host, port} = await this.withConnF(
+    // Get the signaller node from the existing connections
+    if (!this.hasConnection(nodeIdSignaller)) {
+      throw Error('TMP IMP no existing connection to signaller');
+    }
+    const { host, port } = await this.withConnF(
       nodeIdSignaller,
       async (conn) => {
         const client = conn.getClient();
@@ -714,7 +739,7 @@ class NodeConnectionManager {
         };
       },
     );
-    return await this.createConnection([ nodeIdTarget ], host, port, ctx);
+    return await this.createConnection([nodeIdTarget], host, port, ctx);
   }
 
   /**
@@ -750,9 +775,10 @@ class NodeConnectionManager {
     // We don't create a TTL for seed nodes.
     const timeToLiveTimer = !this.isStickyNode(nodeId)
       ? new Timer({
-        handler: async () => await this.destroyConnection(nodeId, false, connectionIdString),
-        delay: this.connectionIdleTimeoutTime,
-      })
+          handler: async () =>
+            await this.destroyConnection(nodeId, false, connectionIdString),
+          delay: this.connectionIdleTimeoutTime,
+        })
       : null;
     // Add to map
     const newConnAndTimer: ConnectionAndTimer = {
@@ -761,28 +787,28 @@ class NodeConnectionManager {
       usageCount: 0,
     };
 
-    // adding the new connection into the connection map
+    // Adding the new connection into the connection map
 
     let entry = this.connections.get(nodeIdString);
-    if ( entry == null ) {
+    if (entry == null) {
       // Creating a new entry
       entry = {
         activeConnection: connectionIdString,
         connections: {
-          [connectionIdString]: newConnAndTimer
-        }
-      }
+          [connectionIdString]: newConnAndTimer,
+        },
+      };
       this.connections.set(nodeIdString, entry);
     } else {
-      // updating existing entry
+      // Updating existing entry
       entry.connections[connectionIdString] = newConnAndTimer;
-      // if the new connection ID is less than the old then replace it
-      if (entry.activeConnection > connectionIdString){
+      // If the new connection ID is less than the old then replace it
+      if (entry.activeConnection > connectionIdString) {
         entry.activeConnection = connectionIdString;
       }
     }
 
-    // dispatch the connection event
+    // Dispatch the connection event
     const connectionData: ConnectionData = {
       remoteNodeId: nodeConnection.nodeId,
       remoteHost: nodeConnection.host,
@@ -813,15 +839,12 @@ class NodeConnectionManager {
     const targetNodeIdString = targetNodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
     // No entry then nothing to destroy
-    if (connectionsEntry == null ) return;
+    if (connectionsEntry == null) return;
     const destroyPs: Array<Promise<void>> = [];
     const connections = connectionsEntry.connections;
     for (const connectionId of Object.keys(connections)) {
-      // destroy if target or no target set
-      if (
-        connectionIdTarget == null
-        || connectionIdTarget === connectionId
-      ) {
+      // Destroy if target or no target set
+      if (connectionIdTarget == null || connectionIdTarget === connectionId) {
         const connAndTimer = connections[connectionId];
         this.logger.debug(
           `Destroying NodeConnection for ${nodesUtils.encodeNodeId(
@@ -833,19 +856,19 @@ class NodeConnectionManager {
         if (connAndTimer.timer != null) connAndTimer.timer.cancel();
       }
     }
-    // if empty then remove the entry
+    // If empty then remove the entry
     const remainingKeys = Object.keys(connectionsEntry.connections);
     if (remainingKeys.length === 0) {
       this.connections.delete(targetNodeIdString);
     } else {
-      //check if the active connection was removed.
+      // Check if the active connection was removed.
       if (connections[connectionsEntry.activeConnection] == null) {
-        // find the new lowest
+        // Find the new lowest
         // TODO: make extra sure this is the lowest key
         connectionsEntry.activeConnection = remainingKeys.sort()[0];
       }
     }
-    // now that all the mutations are done we await destruction
+    // Now that all the mutations are done we await destruction
     await Promise.all(destroyPs);
   }
 
@@ -875,18 +898,17 @@ class NodeConnectionManager {
     if (certChain == null) utils.never();
     const nodeId = keysUtils.certNodeId(certChain[0]);
     if (nodeId == null) utils.never();
-    const nodeConnectionNew =
-      NodeConnection.createNodeConnectionReverse({
-        nodeId,
-        certChain,
-        manifest: agentClientManifest,
-        quicConnection: quicConnection,
-        logger: this.logger.getChild(
-          `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
-            quicConnection.remoteHost
-          }:${quicConnection.remotePort}]`,
-        ),
-      });
+    const nodeConnectionNew = NodeConnection.createNodeConnectionReverse({
+      nodeId,
+      certChain,
+      manifest: agentClientManifest,
+      quicConnection: quicConnection,
+      logger: this.logger.getChild(
+        `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+          quicConnection.remoteHost
+        }:${quicConnection.remotePort}]`,
+      ),
+    });
     this.addConnection(nodeId, nodeConnectionNew);
   }
 
@@ -966,10 +988,7 @@ class NodeConnectionManager {
       usageCount: number;
       timeout: number | undefined;
     }> = [];
-    for (const [
-      nodeIdString,
-      connectionsEntry,
-    ] of this.connections.entries()) {
+    for (const [nodeIdString, connectionsEntry] of this.connections.entries()) {
       const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
       const connections = connectionsEntry.connections;
       for (const connectionId of Object.keys(connections)) {
@@ -996,7 +1015,7 @@ class NodeConnectionManager {
   public connectionsActive(): number {
     let size = 0;
     for (const [, connectionsEntry] of this.connections) {
-      size += Object.keys(connectionsEntry.connections).length
+      size += Object.keys(connectionsEntry.connections).length;
     }
     return this.connections.size;
   }
@@ -1009,7 +1028,7 @@ class NodeConnectionManager {
     });
   }
 
-  // end of refactoring method
+  // End of refactoring method
 
   // TODO: this is all the old code that is either no longer needed, or needs to
   //  be re-created in some form in the `NodeConnectionManager`.

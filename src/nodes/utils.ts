@@ -2,10 +2,7 @@ import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
 import type { Key, Certificate, CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
-import type {
-  QUICClientCrypto,
-  QUICServerCrypto,
-} from '@matrixai/quic';
+import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import { CryptoError } from '@matrixai/quic/dist/native';
@@ -641,7 +638,7 @@ const quicClientCrypto: QUICClientCrypto = {
       const randomBytes = keysUtils.getRandomBytes(data.byteLength);
       randomBytes.copy(utils.bufferWrap(data));
     },
-  }
+  },
 };
 
 /**

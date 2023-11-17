@@ -39,6 +39,4 @@ export {
   vaultsScan,
 };
 
-export type {
-  AgentClientManifest
-};
+export type { AgentClientManifest };
