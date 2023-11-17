@@ -3,10 +3,10 @@ import type {
   TopicSubPath,
   TopicPath,
   TopicSubPathToAuditEvent,
-  AuditEvent,
   MetricPath,
   MetricPathToAuditMetric,
   AuditMetricNodeConnection,
+  AuditEventSerialized,
 } from './types';
 import type { AuditEventId } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
@@ -163,10 +163,12 @@ class Audit {
     const handler = async (evt: InstanceType<T>) => {
       const eventData = await toAuditEvent(evt);
       await this.db.withTransactionF(async (tran) => {
-        const event: AuditEvent = {
-          data: eventData,
-        };
-        await this.addAuditEvent(topicPath, event as any, tran);
+        const auditEventId = this.generateAuditEventId();
+        await this.setAuditEvent(
+          topicPath,
+          { id: auditEventId, data: eventData } as any,
+          tran,
+        );
       });
     };
     target.addEventListener(event.name, handler);
@@ -176,17 +178,24 @@ class Audit {
   @ready(new auditErrors.ErrorAuditNotRunning())
   protected async setAuditEvent<T extends TopicPath>(
     topicPath: TopicPath,
-    auditEventId: AuditEventId,
     auditEvent: TopicSubPathToAuditEvent<T>,
     tran?: DBTransaction,
   ) {
     if (tran == null) {
       return await this.db.withTransactionF((tran) =>
-        this.setAuditEvent(topicPath, auditEventId, auditEvent, tran),
+        this.setAuditEvent(topicPath, auditEvent, tran),
       );
     }
-    const auditEventIdBuffer = auditEventId.toBuffer();
-    await tran.put([...this.auditEventDbPath, auditEventIdBuffer], auditEvent);
+    const clonedAuditEvent: AuditEventSerialized<TopicSubPathToAuditEvent<T>> =
+      {
+        ...auditEvent,
+      };
+    delete (clonedAuditEvent as any).id;
+    const auditEventIdBuffer = auditEvent.id.toBuffer();
+    await tran.put(
+      [...this.auditEventDbPath, auditEventIdBuffer],
+      clonedAuditEvent,
+    );
     const subTopicArray: Array<string> = [];
     for (const topic of topicPath) {
       subTopicArray.push(topic);
@@ -198,18 +207,22 @@ class Audit {
   }
 
   @ready(new auditErrors.ErrorAuditNotRunning())
-  protected async addAuditEvent<T extends TopicPath>(
-    topicPath: TopicPath,
-    auditEvent: TopicSubPathToAuditEvent<T>,
-    tran?: DBTransaction,
+  public async *getAuditEventsLongRunning<T extends TopicSubPath>(
+    topicPath: T,
+    {
+      seek,
+      order,
+      limit,
+    }: {
+      seek?: AuditEventId;
+      order?: 'asc' | 'desc';
+      limit?: number;
+    } = {},
   ) {
-    if (tran == null) {
-      return await this.db.withTransactionF((tran) =>
-        this.addAuditEvent(topicPath, auditEvent, tran),
-      );
+    const seekCursor = seek;
+    while (true) {
+      this.getAuditEvents(topicPath);
     }
-    const auditEventId = this.generateAuditEventId();
-    await this.setAuditEvent(topicPath, auditEventId, auditEvent, tran);
   }
 
   @ready(new auditErrors.ErrorAuditNotRunning())
@@ -263,6 +276,7 @@ class Audit {
     const iterator = tran.iterator<void>(
       [...this.auditTopicDbPath, topicPath.join('.')],
       {
+        keyAsBuffer: true,
         keys: true,
         values: false,
         valueAsBuffer: false,
@@ -274,11 +288,13 @@ class Audit {
       iterator.seek(seek.toBuffer());
     }
     for await (const [keyPath] of iterator) {
+      const key = keyPath.at(-1)! as Buffer;
       const event = await tran.get<TopicSubPathToAuditEvent<T>>([
         ...this.auditEventDbPath,
-        keyPath.at(-1)!,
+        key,
       ]);
       if (event != null) {
+        event.id = IdInternal.fromBuffer<AuditEventId>(key);
         yield event;
       }
     }

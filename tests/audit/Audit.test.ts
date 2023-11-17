@@ -82,6 +82,37 @@ describe(Audit.name, () => {
       auditErrors.ErrorAuditNotRunning,
     );
   });
+  // Test('long running', async () => {
+  //   const nodeId = testNodesUtils.generateRandomNodeId();
+  //   const audit = await Audit.createAudit({
+  //     db,
+  //     nodeConnectionManager: mockNodeConnectionManager,
+  //     logger,
+  //   });
+  //   const eventDetail: ConnectionData = {
+  //     remoteHost: '::' as Host,
+  //     remoteNodeId: nodeId,
+  //     remotePort: 0 as Port,
+  //   };
+  //   const auditEventData = {
+  //     ...eventDetail,
+  //     remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+  //   };
+  //   // @ts-ignore: kidnap protected
+  //   const handlerMap = audit.eventHandlerMap;
+  //   await handlerMap
+  //     .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+  //     ?.handler(
+  //       new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+  //         detail: eventDetail,
+  //       }),
+  //     );
+
+  //   for await (const s of audit.getAuditEventsLongRunning(['node'])) {
+
+  //   }
+  //   await audit.stop();
+  // });
   describe('AuditEvent', () => {
     test('node connection', async () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
@@ -172,29 +203,23 @@ describe(Audit.name, () => {
       ];
       for (const iterDate of dates) {
         // @ts-ignore: kidnap protected
-        await audit.setAuditEvent(
-          ['node', 'connection', 'reverse'],
-          ids.generateAuditEventIdFromEpoch(iterDate),
-          {
-            data: {
-              ...auditEventData,
-              type: 'reverse',
-            },
+        await audit.setAuditEvent(['node', 'connection', 'reverse'], {
+          id: ids.generateAuditEventIdFromEpoch(iterDate),
+          data: {
+            ...auditEventData,
+            type: 'reverse',
           },
-        );
+        });
       }
       for (const iterDate of dates) {
         // @ts-ignore: kidnap protected
-        await audit.setAuditEvent(
-          ['node', 'connection', 'forward'],
-          ids.generateAuditEventIdFromEpoch(iterDate),
-          {
-            data: {
-              ...auditEventData,
-              type: 'forward',
-            },
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id: ids.generateAuditEventIdFromEpoch(iterDate),
+          data: {
+            ...auditEventData,
+            type: 'forward',
           },
-        );
+        });
       }
       // Range from first element to now
       await expect(

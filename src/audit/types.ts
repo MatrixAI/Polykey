@@ -1,3 +1,4 @@
+import type { AuditEventId } from '../ids';
 import type { POJO } from '../types';
 import type {
   nodeConnectionInboundMetricPath,
@@ -24,8 +25,11 @@ type InferTypeFromSubpath<
  * Represents a capture of an event.
  */
 type AuditEvent<T extends POJO = POJO> = {
+  id: AuditEventId;
   data: T;
 };
+
+type AuditEventSerialized<T extends AuditEvent> = Omit<T, 'id'>;
 
 type TopicPath =
   // Nodes
@@ -107,6 +111,7 @@ export type {
   IsSubpath,
   InferTypeFromSubpath,
   AuditEvent,
+  AuditEventSerialized,
   TopicPath,
   TopicSubPathToAuditEvent,
   TopicSubPath,
