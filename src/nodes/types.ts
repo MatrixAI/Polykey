@@ -1,6 +1,7 @@
 import type NodeConnection from './NodeConnection';
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
+import type { Opaque } from '../types';
 
 /**
  * Information about a node currently in the `NodeManager`.
@@ -53,11 +54,6 @@ type NodeAddress = {
    * Port of the node.
    */
   port: Port;
-  /**
-   * Scopes can be used to classify the address.
-   * Multiple scopes is understood as set-union.
-   */
-  scopes: Array<NodeAddressScope>;
 };
 
 type NodeBucketIndex = number;
@@ -73,14 +69,36 @@ type NodeBucketMeta = {
  */
 type NodeData = {
   /**
-   * The address of the node.
-   */
-  address: NodeAddress;
-  /**
    * Unix timestamp of when it was last updated.
    */
   lastUpdated: number;
+  /**
+   * Scopes can be used to classify the address.
+   * Multiple scopes is understood as set-union.
+   */
+  scopes: Array<NodeAddressScope>;
 };
+
+// Cause otherwise we would need a special string to indicate the key
+// type NodeAddress = [Host | Hostname, Port];
+
+type NodeAddressKey = Opaque<'NodeAddressKey', string>;
+
+type NodeContacts = Record<NodeAddressKey, NodeData>;
+
+// /**
+//  * This is the record value stored in the NodeGraph.
+//  */
+// type NodeData = {
+//   /**
+//    * The address of the node.
+//    */
+//   address: NodeAddress;
+//   /**
+//    * Unix timestamp of when it was last updated.
+//    */
+//   lastUpdated: number;
+// };
 
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
@@ -99,6 +117,8 @@ export type {
   NodeInfo,
   NodeAddressScope,
   NodeAddress,
+  NodeAddressKey,
+  NodeContacts,
   SeedNodes,
   NodeBucketIndex,
   NodeBucketMeta,

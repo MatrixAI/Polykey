@@ -109,34 +109,6 @@ function fromIPv4MappedIPv6(host: string): Host {
 }
 
 /**
- * Canonicalizes an IP address into a consistent format.
- * This will:
- * - Remove leading 0s from IPv4 addresses and IPv6 addresses
- * - Expand :: into 0s for IPv6 addresses
- * - Extract IPv4 decimal notation from IPv4 mapped IPv6 addresses
- * - Lowercase all hex characters in IPv6 addresses
- */
-function toCanonicalIP(host: string): Host {
-  const scope = host.match(/%.+$/);
-  if (scope != null) {
-    host = host.replace(/%.+/, '');
-  }
-  let host_: string;
-  if (isIPv4MappedIPv6(host)) {
-    host_ = fromIPv4MappedIPv6(host);
-  } else if (isIPv4(host)) {
-    host_ = IPv4.fromString(host).toString();
-    // Host_ = (new IPv4(host)).toString();
-  } else if (isIPv6(host)) {
-    host_ = IPv6.fromString(host).toString();
-    // Host_ = (new IPv6(host)).toString();
-  } else {
-    throw new TypeError('Invalid IP address');
-  }
-  return (host_ + (scope != null ? scope[0] : '')) as Host;
-}
-
-/**
  * Validates that a provided host address is a valid IPv4 or IPv6 address.
  */
 function isHost(host: any): host is Host {
@@ -223,6 +195,43 @@ function parsePort(data: any, connect: boolean = false): Port {
     }
   }
   return data;
+}
+
+/**
+ * Canonicalizes an IP address into a consistent format.
+ * This will:
+ * - Remove leading 0s from IPv4 addresses and IPv6 addresses
+ * - Expand :: into 0s for IPv6 addresses
+ * - Extract IPv4 decimal notation from IPv4 mapped IPv6 addresses
+ * - Lowercase all hex characters in IPv6 addresses
+ */
+function toCanonicalHost(host: string): Host {
+  let host_: string = host.trim();
+  const scope = host_.match(/%.+$/);
+  if (scope != null) {
+    host_ = host_.replace(/%.+/, '');
+  }
+  if (isIPv4MappedIPv6(host)) {
+    host_ = fromIPv4MappedIPv6(host);
+  } else if (isIPv4(host)) {
+    host_ = IPv4.fromString(host).toString();
+    // Host_ = (new IPv4(host)).toString();
+  } else if (isIPv6(host)) {
+    host_ = IPv6.fromString(host).toString();
+    // Host_ = (new IPv6(host)).toString();
+  } else {
+    throw new TypeError('Invalid IP address');
+  }
+  return (host_ + (scope != null ? scope[0] : '')) as Host;
+}
+
+function toCanonicalHostname(hostname: string): Hostname {
+  let hostname_ = hostname.trim()
+  hostname_ = hostname_.toLowerCase();
+  if (hostname_.endsWith('.')) {
+    hostname_ = hostname_.substring(0, hostname_.length - 1);
+  }
+  return hostname_ as Hostname;
 }
 
 /**
@@ -430,7 +439,6 @@ async function resolveHostnames(
 
 // TODO: review and fix the `toError` and `fromError` code here.
 //  Right now it's very basic and need fleshing out.
-
 function fromError(error: any) {
   switch (typeof error) {
     case 'symbol':
@@ -602,15 +610,16 @@ export {
   isIPv4MappedIPv6,
   isIPv4MappedIPv6Hex,
   isIPv4MappedIPv6Dec,
-  toCanonicalIP,
   isHost,
   isHostWildcard,
   isHostname,
   isPort,
   parseHost,
   parseHostname,
-  parsePort,
   parseHostOrHostname,
+  parsePort,
+  toCanonicalHost,
+  toCanonicalHostname,
   buildAddress,
   parseAddress,
   isDNSError,

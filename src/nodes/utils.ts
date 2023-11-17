@@ -1,9 +1,9 @@
-import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
-import type { Hostname, Port } from '../network/types';
-import type { Key, Certificate, CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
+import type { NodeAddress, NodeAddressKey, NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
+import type { Key, Certificate, CertificatePEM } from '../keys/types';
+import type { Host, Hostname, Port } from '../network/types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -65,6 +65,19 @@ function bucketIndex(sourceNode: NodeId, targetNode: NodeId): NodeBucketIndex {
 }
 
 /**
+ * Encodes NodeAddress to NodeAddressKey
+ */
+function nodeAddressKey({host, port}: NodeAddress): NodeAddressKey {
+  if (networkUtils.isHost(host)) {
+    const host_ = networkUtils.toCanonicalHost(host);
+    return `${host_}-${port}` as NodeAddressKey;
+  } else {
+    const hostname = networkUtils.toCanonicalHostname(host);
+    return `${hostname}-${port}` as NodeAddressKey;
+  }
+}
+
+/**
  * Encodes bucket index to bucket sublevel key
  */
 function bucketKey(bucketIndex: NodeBucketIndex): string {
@@ -119,6 +132,15 @@ function lastUpdatedBucketDbKey(lastUpdated: number, nodeId: NodeId): Buffer {
 
 function lastUpdatedKey(lastUpdated: number): Buffer {
   return Buffer.from(lexi.pack(lastUpdated, 'hex'));
+}
+
+function parseNodeAddressKey(keyBuffer: Buffer): NodeAddress {
+  const key = keyBuffer.toString();
+  // Take the last occurrence of `-` because the hostname may contain `-`
+  const lastDashIndex = key.lastIndexOf('-');
+  const hostOrHostname = key.slice(0, lastDashIndex);
+  const port = key.slice(lastDashIndex + 1);
+  return { host: hostOrHostname, port: parseInt(port, 10)} as NodeAddress;
 }
 
 /**
@@ -712,6 +734,7 @@ const quicServerCrypto: QUICServerCrypto = {
 
 export {
   sepBuffer,
+  nodeAddressKey,
   bucketIndex,
   bucketKey,
   bucketsDbKey,
@@ -719,6 +742,7 @@ export {
   lastUpdatedBucketsDbKey,
   lastUpdatedBucketDbKey,
   lastUpdatedKey,
+  parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,
   parseLastUpdatedBucketsDbKey,

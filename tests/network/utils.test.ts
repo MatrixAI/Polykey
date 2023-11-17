@@ -55,64 +55,64 @@ describe('utils', () => {
     // IPv4 -> IPv4
 
     // Local
-    expect(networkUtils.toCanonicalIP('127.0.0.1')).toBe('127.0.0.1');
+    expect(networkUtils.toCanonicalHost('127.0.0.1')).toBe('127.0.0.1');
     // Wildcard
-    expect(networkUtils.toCanonicalIP('0.0.0.0')).toBe('0.0.0.0');
-    expect(networkUtils.toCanonicalIP('255.255.255.255')).toBe(
+    expect(networkUtils.toCanonicalHost('0.0.0.0')).toBe('0.0.0.0');
+    expect(networkUtils.toCanonicalHost('255.255.255.255')).toBe(
       '255.255.255.255',
     );
-    expect(networkUtils.toCanonicalIP('74.125.43.99')).toBe('74.125.43.99');
+    expect(networkUtils.toCanonicalHost('74.125.43.99')).toBe('74.125.43.99');
     // Leading zeros are removed
-    expect(networkUtils.toCanonicalIP('192.168.001.001')).toBe('192.168.1.1');
+    expect(networkUtils.toCanonicalHost('192.168.001.001')).toBe('192.168.1.1');
 
     // IPv6 -> IPv6
 
     // Local
-    expect(networkUtils.toCanonicalIP('::1')).toBe('0:0:0:0:0:0:0:1');
+    expect(networkUtils.toCanonicalHost('::1')).toBe('0:0:0:0:0:0:0:1');
     // Wildcard
-    expect(networkUtils.toCanonicalIP('::0')).toBe('0:0:0:0:0:0:0:0');
+    expect(networkUtils.toCanonicalHost('::0')).toBe('0:0:0:0:0:0:0:0');
     // Lowercase
-    expect(networkUtils.toCanonicalIP('ABC:0:0:CD30:ABC:0:0:CD30')).toBe(
+    expect(networkUtils.toCanonicalHost('ABC:0:0:CD30:ABC:0:0:CD30')).toBe(
       'abc:0:0:cd30:abc:0:0:cd30',
     );
     // Quad zeros are reduced to a single 0
     expect(
-      networkUtils.toCanonicalIP('0ABC:0000:0000:CD30:0ABC:0000:0000:CD30'),
+      networkUtils.toCanonicalHost('0ABC:0000:0000:CD30:0ABC:0000:0000:CD30'),
     ).toBe('abc:0:0:cd30:abc:0:0:cd30');
     // Double colon is expanded
-    expect(networkUtils.toCanonicalIP('FE80::0202:B3FF:FE1E:8329')).toBe(
+    expect(networkUtils.toCanonicalHost('FE80::0202:B3FF:FE1E:8329')).toBe(
       'fe80:0:0:0:202:b3ff:fe1e:8329',
     );
-    expect(networkUtils.toCanonicalIP('::1234:7f00:1')).toBe(
+    expect(networkUtils.toCanonicalHost('::1234:7f00:1')).toBe(
       '0:0:0:0:0:1234:7f00:1',
     );
-    expect(networkUtils.toCanonicalIP('::1234:0:0')).toBe('0:0:0:0:0:1234:0:0');
-    expect(networkUtils.toCanonicalIP('::1234:ffff:ffff')).toBe(
+    expect(networkUtils.toCanonicalHost('::1234:0:0')).toBe('0:0:0:0:0:1234:0:0');
+    expect(networkUtils.toCanonicalHost('::1234:ffff:ffff')).toBe(
       '0:0:0:0:0:1234:ffff:ffff',
     );
-    expect(networkUtils.toCanonicalIP('::1234:4a7d:2b63')).toBe(
+    expect(networkUtils.toCanonicalHost('::1234:4a7d:2b63')).toBe(
       '0:0:0:0:0:1234:4a7d:2b63',
     );
     // Scoped
-    expect(networkUtils.toCanonicalIP('::1%eth1')).toBe('0:0:0:0:0:0:0:1%eth1');
+    expect(networkUtils.toCanonicalHost('::1%eth1')).toBe('0:0:0:0:0:0:0:1%eth1');
 
     // IPv4 mapped hex -> IPv4
 
-    expect(networkUtils.toCanonicalIP('::ffff:7f00:1')).toBe('127.0.0.1');
-    expect(networkUtils.toCanonicalIP('::ffff:0:0')).toBe('0.0.0.0');
-    expect(networkUtils.toCanonicalIP('::ffff:ffff:ffff')).toBe(
+    expect(networkUtils.toCanonicalHost('::ffff:7f00:1')).toBe('127.0.0.1');
+    expect(networkUtils.toCanonicalHost('::ffff:0:0')).toBe('0.0.0.0');
+    expect(networkUtils.toCanonicalHost('::ffff:ffff:ffff')).toBe(
       '255.255.255.255',
     );
-    expect(networkUtils.toCanonicalIP('::ffff:4a7d:2b63')).toBe('74.125.43.99');
+    expect(networkUtils.toCanonicalHost('::ffff:4a7d:2b63')).toBe('74.125.43.99');
 
     // IPv4 mapped dec -> IPv4
 
-    expect(networkUtils.toCanonicalIP('::ffff:127.0.0.1')).toBe('127.0.0.1');
-    expect(networkUtils.toCanonicalIP('::ffff:0.0.0.0')).toBe('0.0.0.0');
-    expect(networkUtils.toCanonicalIP('::ffff:255.255.255.255')).toBe(
+    expect(networkUtils.toCanonicalHost('::ffff:127.0.0.1')).toBe('127.0.0.1');
+    expect(networkUtils.toCanonicalHost('::ffff:0.0.0.0')).toBe('0.0.0.0');
+    expect(networkUtils.toCanonicalHost('::ffff:255.255.255.255')).toBe(
       '255.255.255.255',
     );
-    expect(networkUtils.toCanonicalIP('::ffff:74.125.43.99')).toBe(
+    expect(networkUtils.toCanonicalHost('::ffff:74.125.43.99')).toBe(
       '74.125.43.99',
     );
   });
