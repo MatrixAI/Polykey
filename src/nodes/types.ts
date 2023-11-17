@@ -82,7 +82,7 @@ type NodeData = {
 // Cause otherwise we would need a special string to indicate the key
 // type NodeAddress = [Host | Hostname, Port];
 
-type NodeAddressKey = Opaque<'NodeAddress', string>;
+type NodeAddressKey = Opaque<'NodeAddressKey', string>;
 
 type NodeContacts = Record<NodeAddressKey, NodeData>;
 
