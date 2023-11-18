@@ -9,6 +9,7 @@ import { DB } from '@matrixai/db';
 import Audit from '@/audit/Audit';
 import * as utils from '@/utils';
 import * as auditErrors from '@/audit/errors';
+import * as auditEvents from '@/audit/events';
 import * as keysUtils from '@/keys/utils';
 import * as nodeEvents from '@/nodes/events';
 import * as nodeUtils from '@/nodes/utils';
@@ -82,39 +83,46 @@ describe(Audit.name, () => {
       auditErrors.ErrorAuditNotRunning,
     );
   });
-  // Test('long running', async () => {
-  //   const nodeId = testNodesUtils.generateRandomNodeId();
-  //   const audit = await Audit.createAudit({
-  //     db,
-  //     nodeConnectionManager: mockNodeConnectionManager,
-  //     logger,
-  //   });
-  //   const eventDetail: ConnectionData = {
-  //     remoteHost: '::' as Host,
-  //     remoteNodeId: nodeId,
-  //     remotePort: 0 as Port,
-  //   };
-  //   const auditEventData = {
-  //     ...eventDetail,
-  //     remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
-  //   };
-  //   // @ts-ignore: kidnap protected
-  //   const handlerMap = audit.eventHandlerMap;
-  //   await handlerMap
-  //     .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
-  //     ?.handler(
-  //       new nodeEvents.EventNodeConnectionManagerConnectionReverse({
-  //         detail: eventDetail,
-  //       }),
-  //     );
+  test('event dispatch', async () => {
+    const nodeId = testNodesUtils.generateRandomNodeId();
+    const audit = await Audit.createAudit({
+      db,
+      nodeConnectionManager: mockNodeConnectionManager,
+      logger,
+    });
+    const eventDetail: ConnectionData = {
+      remoteHost: '::' as Host,
+      remoteNodeId: nodeId,
+      remotePort: 0 as Port,
+    };
+    const auditEventData = {
+      ...eventDetail,
+      remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+    };
 
-  //   for await (const s of audit.getAuditEventsLongRunning(['node'])) {
+    const { p: eventP, resolveP: resolveEventP } = utils.promise();
+    audit.addEventListener(auditEvents.EventAuditAuditEventSet.name, () =>
+      resolveEventP(),
+    );
 
-  //   }
-  //   await audit.stop();
-  // });
+    // @ts-ignore: kidnap protected
+    const handlerMap = audit.eventHandlerMap;
+    void handlerMap
+      .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+      ?.handler(
+        new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+          detail: eventDetail,
+        }),
+      );
+    await eventP;
+    const iterator = audit.getAuditEvents(['node']);
+    await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual({
+      ...auditEventData,
+      type: 'reverse',
+    });
+  });
   describe('AuditEvent', () => {
-    test('node connection', async () => {
+    test('order', async () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
       const audit = await Audit.createAudit({
         db,
@@ -150,13 +158,217 @@ describe(Audit.name, () => {
       await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
         {
           ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      iterator = audit.getAuditEvents(['node', 'connection'], {
+        order: 'desc',
+      });
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
           type: 'forward',
+        },
+      );
+      await audit.stop();
+    });
+    test('limit', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      for (let i = 0; i < 10; i++) {
+        await handlerMap
+          .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+          ?.handler(
+            new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+              detail: eventDetail,
+            }),
+          );
+      }
+      const limit = 5;
+      let count = 0;
+      for await (const _ of audit.getAuditEvents(
+        ['node', 'connection', 'reverse'],
+        { limit },
+      )) {
+        count++;
+      }
+      expect(count).toBe(limit);
+      await audit.stop();
+    });
+    test('topic nesting', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionForward({
+            detail: eventDetail,
+          }),
+        );
+      let iterator = audit.getAuditEvents(['node', 'connection']);
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
         },
       );
       await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
         {
           ...auditEventData,
+          type: 'forward',
+        },
+      );
+      iterator = audit.getAuditEvents(['node']);
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
           type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
+        },
+      );
+      iterator = audit.getAuditEvents([]);
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
+        },
+      );
+      await audit.stop();
+    });
+    test('long running', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      const iterator = audit.getAuditEventsLongRunning(['node']);
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionForward({
+            detail: eventDetail,
+          }),
+        );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
+        },
+      );
+      await audit.stop();
+    });
+    test('node connection topic', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionForward({
+            detail: eventDetail,
+          }),
+        );
+      let iterator = audit.getAuditEvents(['node', 'connection']);
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
         },
       );
       iterator = audit.getAuditEvents(['node', 'connection', 'forward']);

@@ -21,6 +21,7 @@ import type {
   NotificationId,
   NotificationIdEncoded,
   AuditEventId,
+  AuditEventIdEncoded,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
@@ -41,6 +42,34 @@ function createAuditEventIdGenerator(
     randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
+}
+
+/**
+ * Encodes `AuditEventId` to `AuditEventIdEncoded`
+ */
+function encodeAuditEventId(auditEventId: AuditEventId): AuditEventIdEncoded {
+  return auditEventId.toBuffer().toString('hex') as AuditEventIdEncoded;
+}
+
+/**
+ * Decodes `AuditEventIdEncoded` to `AuditEventId`
+ */
+function decodeAuditEventId(
+  auditEventIdEncoded: unknown,
+): AuditEventId | undefined {
+  if (typeof auditEventIdEncoded !== 'string') {
+    return;
+  }
+  const auditEventIdBuffer = Buffer.from(auditEventIdEncoded, 'hex');
+  const auditEventId = IdInternal.fromBuffer<AuditEventId>(auditEventIdBuffer);
+  if (auditEventId == null) {
+    return;
+  }
+  // All `AuditEventId` are 16 bytes long
+  if (auditEventId.length !== 16) {
+    return;
+  }
+  return auditEventId;
 }
 
 /**
@@ -493,6 +522,8 @@ export {
   createPermIdGenerator,
   createAuditEventIdGenerator,
   generateAuditEventIdFromEpoch,
+  encodeAuditEventId,
+  decodeAuditEventId,
   createNodeIdGenerator,
   isNodeId,
   assertNodeId,

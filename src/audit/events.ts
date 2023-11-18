@@ -1,3 +1,4 @@
+import type { TopicPath, TopicSubPathToAuditEvent } from './types';
 import EventPolykey from '../EventPolykey';
 
 abstract class EventAudit<T = undefined> extends EventPolykey<T> {}
@@ -14,6 +15,16 @@ class EventAuditDestroy extends EventAudit {}
 
 class EventAuditDestroyed extends EventAudit {}
 
+abstract class EventAuditAuditEvent<T = null> extends EventAudit<T> {}
+
+class EventAuditAuditEventSet<
+  P extends TopicPath = TopicPath,
+  T extends TopicSubPathToAuditEvent<P> = TopicSubPathToAuditEvent<P>,
+> extends EventAuditAuditEvent<{
+  topicPath: P;
+  auditEvent: T;
+}> {}
+
 export {
   EventAudit,
   EventAuditStart,
@@ -22,4 +33,6 @@ export {
   EventAuditStopped,
   EventAuditDestroy,
   EventAuditDestroyed,
+  EventAuditAuditEvent,
+  EventAuditAuditEventSet,
 };

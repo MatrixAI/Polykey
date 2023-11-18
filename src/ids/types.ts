@@ -10,6 +10,7 @@ type PermissionIdString = Opaque<'PermissionIdString', string>;
 
 type AuditEventId = Opaque<'AuditEventId', Id>;
 type AuditEventIdString = Opaque<'AuditEventIdString', string>;
+type AuditEventIdEncoded = Opaque<'AuditEventIdEncoded', string>;
 
 // Keys
 
@@ -107,6 +108,7 @@ export type {
   PermissionIdString,
   AuditEventId,
   AuditEventIdString,
+  AuditEventIdEncoded,
   CertId,
   CertIdString,
   CertIdEncoded,

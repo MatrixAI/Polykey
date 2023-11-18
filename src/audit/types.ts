@@ -1,4 +1,4 @@
-import type { AuditEventId } from '../ids';
+import type { AuditEventId, AuditEventIdEncoded } from '../ids';
 import type { POJO } from '../types';
 import type {
   nodeConnectionInboundMetricPath,
@@ -24,12 +24,33 @@ type InferTypeFromSubpath<
 /**
  * Represents a capture of an event.
  */
-type AuditEvent<T extends POJO = POJO> = {
+type AuditEventBase<T extends POJO = POJO> = {
   id: AuditEventId;
   data: T;
 };
 
-type AuditEventSerialized<T extends AuditEvent> = Omit<T, 'id'>;
+/**
+ * Represents a capture of an event.
+ */
+type AuditEvent =
+  | AuditEventNodeConnectionForward
+  | AuditEventNodeConnectionReverse;
+
+/**
+ * Represents a capture of an event stored in the database.
+ */
+type AuditEventDB = AuditEventToAuditEventDB<AuditEvent>;
+
+/**
+ * Represents a capture of an event for transmission over network.
+ */
+type AuditEventSerialized = AuditEventToAuditEventSerialized<AuditEvent>;
+
+type AuditEventToAuditEventDB<T extends AuditEvent> = Omit<T, 'id'>;
+
+type AuditEventToAuditEventSerialized<T extends AuditEvent> = T & {
+  id: AuditEventIdEncoded;
+};
 
 type TopicPath =
   // Nodes
@@ -56,7 +77,7 @@ type TopicSubPathToAuditEvent<T extends TopicSubPath> =
 
 // Nodes
 
-type AuditEventNodeConnectionBase = AuditEvent<{
+type AuditEventNodeConnectionBase = AuditEventBase<{
   remoteNodeId: string;
   remoteHost: string;
   remotePort: number;
@@ -67,12 +88,12 @@ type AuditEventNodeConnection =
   | AuditEventNodeConnectionForward;
 
 type AuditEventNodeConnectionReverse = AuditEventNodeConnectionBase &
-  AuditEvent<{
+  AuditEventBase<{
     type: 'reverse';
   }>;
 
 type AuditEventNodeConnectionForward = AuditEventNodeConnectionBase &
-  AuditEvent<{
+  AuditEventBase<{
     type: 'forward';
   }>;
 
@@ -92,14 +113,16 @@ type MetricPathToAuditMetric<T extends MetricPath> =
     ? AuditMetricNodeConnection
     : never;
 
+type AuditMetric = AuditMetricNodeConnection;
+
 /**
  * Represents a capture of an event.
  */
-type AuditMetric<T extends POJO = POJO> = {
+type AuditMetricBase<T extends POJO = POJO> = {
   data: T;
 };
 
-type AuditMetricNodeConnection = AuditMetric<{
+type AuditMetricNodeConnection = AuditMetricBase<{
   total: number;
   averagePerMinute: number;
   averagePerHour: number;
@@ -110,8 +133,12 @@ export type {
   // Event
   IsSubpath,
   InferTypeFromSubpath,
+  AuditEventBase,
   AuditEvent,
+  AuditEventDB,
+  AuditEventToAuditEventDB,
   AuditEventSerialized,
+  AuditEventToAuditEventSerialized,
   TopicPath,
   TopicSubPathToAuditEvent,
   TopicSubPath,
@@ -123,5 +150,6 @@ export type {
   MetricPath,
   MetricPathToAuditMetric,
   AuditMetric,
+  AuditMetricBase,
   AuditMetricNodeConnection,
 };

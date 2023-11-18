@@ -4,7 +4,11 @@ import type {
 } from './types';
 import type * as nodesEvents from '../nodes/events';
 import * as nodesUtils from '../nodes/utils';
-import { createAuditEventIdGenerator } from '../ids';
+import {
+  createAuditEventIdGenerator,
+  encodeAuditEventId,
+  decodeAuditEventId,
+} from '../ids';
 
 // Events
 
@@ -66,6 +70,8 @@ const nodeConnectionOutboundMetricPath = [
 
 export {
   createAuditEventIdGenerator,
+  encodeAuditEventId,
+  decodeAuditEventId,
   nodeConnectionReverseTopicPath,
   fromEventNodeConnectionManagerConnectionReverse,
   nodeConnectionForwardTopicPath,

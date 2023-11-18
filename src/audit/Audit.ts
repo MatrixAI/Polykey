@@ -6,7 +6,7 @@ import type {
   MetricPath,
   MetricPathToAuditMetric,
   AuditMetricNodeConnection,
-  AuditEventSerialized,
+  AuditEventToAuditEventDB,
 } from './types';
 import type { AuditEventId } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
@@ -186,10 +186,11 @@ class Audit {
         this.setAuditEvent(topicPath, auditEvent, tran),
       );
     }
-    const clonedAuditEvent: AuditEventSerialized<TopicSubPathToAuditEvent<T>> =
-      {
-        ...auditEvent,
-      };
+    const clonedAuditEvent: AuditEventToAuditEventDB<
+      TopicSubPathToAuditEvent<T>
+    > = {
+      ...auditEvent,
+    };
     delete (clonedAuditEvent as any).id;
     const auditEventIdBuffer = auditEvent.id.toBuffer();
     await tran.put(
@@ -204,6 +205,16 @@ class Audit {
         true,
       );
     }
+    tran.queueFinally(() => {
+      this.dispatchEvent(
+        new auditEvents.EventAuditAuditEventSet({
+          detail: {
+            topicPath,
+            auditEvent,
+          },
+        }),
+      );
+    });
   }
 
   @ready(new auditErrors.ErrorAuditNotRunning())
@@ -211,17 +222,61 @@ class Audit {
     topicPath: T,
     {
       seek,
-      order,
-      limit,
     }: {
       seek?: AuditEventId;
-      order?: 'asc' | 'desc';
-      limit?: number;
     } = {},
-  ) {
-    const seekCursor = seek;
-    while (true) {
-      this.getAuditEvents(topicPath);
+  ): AsyncGenerator<TopicSubPathToAuditEvent<T>> {
+    let blockP: Promise<void>;
+    let resolveBlockP: () => void;
+    const handleEventAuditAuditEventSet = (
+      evt: auditEvents.EventAuditAuditEventSet,
+    ) => {
+      let isSupTopic = true;
+      for (let i = 0; i < topicPath.length; i++) {
+        if (evt.detail.topicPath.at(i) !== topicPath[i]) {
+          isSupTopic = false;
+        }
+      }
+      if (isSupTopic) {
+        resolveBlockP();
+      }
+    };
+    try {
+      let seekCursor = seek;
+      let firstRunComplete = false;
+      this.addEventListener(
+        auditEvents.EventAuditAuditEventSet.name,
+        handleEventAuditAuditEventSet,
+      );
+      while (true) {
+        const blockProm = utils.promise<void>();
+        blockP = blockProm.p;
+        resolveBlockP = blockProm.resolveP;
+
+        const iterator = this.getAuditEvents(topicPath, {
+          seek: seekCursor,
+          order: 'asc',
+        });
+        let i = 0;
+        for await (const auditEvent of iterator) {
+          seekCursor = auditEvent.id;
+          // Skip the first element if this is not the first run
+          if (firstRunComplete && i === 0) {
+            i++;
+            continue;
+          }
+          yield auditEvent;
+          i++;
+        }
+        firstRunComplete = true;
+
+        await blockP;
+      }
+    } finally {
+      this.removeEventListener(
+        auditEvents.EventAuditAuditEventSet.name,
+        handleEventAuditAuditEventSet,
+      );
     }
   }
 
@@ -230,7 +285,7 @@ class Audit {
     topicPath: T,
     {
       seek,
-      order,
+      order = 'asc',
       limit,
     }: {
       seek?: AuditEventId;
@@ -238,11 +293,7 @@ class Audit {
       limit?: number;
     } = {},
     tran?: DBTransaction,
-  ): AsyncGenerator<
-    TopicSubPathToAuditEvent<T>,
-    void,
-    TopicSubPathToAuditEvent<T>
-  > {
+  ): AsyncGenerator<TopicSubPathToAuditEvent<T>> {
     if (tran == null) {
       const getEvents = (tran) =>
         this.getAuditEvents(
@@ -259,16 +310,20 @@ class Audit {
       });
     }
     if (topicPath.length === 0) {
-      for await (const [, auditEvent] of tran.iterator<
-        TopicSubPathToAuditEvent<T>
-      >(this.auditEventDbPath, {
-        keys: false,
-        values: true,
-        valueAsBuffer: false,
-        reverse: order !== 'asc',
-        limit,
-        gte: seek?.toBuffer(),
-      })) {
+      const iterator = tran.iterator<TopicSubPathToAuditEvent<T>>(
+        this.auditEventDbPath,
+        {
+          keys: false,
+          values: true,
+          valueAsBuffer: false,
+          reverse: order !== 'asc',
+          limit,
+        },
+      );
+      if (seek != null) {
+        iterator.seek(seek.toBuffer());
+      }
+      for await (const [, auditEvent] of iterator) {
         yield auditEvent;
       }
       return;
@@ -320,7 +375,10 @@ class Audit {
     let fromIdBuffer: Buffer | undefined;
     if (fromEpoch != null) {
       fromIdBuffer = ids
-        .generateAuditEventIdFromEpoch(fromEpoch, () => new Uint8Array())
+        .generateAuditEventIdFromEpoch(
+          fromEpoch,
+          (size) => new Uint8Array(size),
+        )
         .toBuffer();
     }
     let toIdBuffer: Buffer | undefined;
