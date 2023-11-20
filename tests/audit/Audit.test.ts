@@ -83,6 +83,50 @@ describe(Audit.name, () => {
       auditErrors.ErrorAuditNotRunning,
     );
   });
+  test('audit cleanup', async () => {
+    const nodeId = testNodesUtils.generateRandomNodeId();
+    const audit = await Audit.createAudit({
+      db,
+      nodeConnectionManager: new EventTarget() as any,
+      logger,
+    });
+    // @ts-ignore: kidnap protected
+    const handlerMap = audit.eventHandlerMap;
+    const eventDetail: ConnectionData = {
+      remoteHost: '::' as Host,
+      remoteNodeId: nodeId,
+      remotePort: 0 as Port,
+    };
+    await handlerMap
+      .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+      ?.handler(
+        new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+          detail: eventDetail,
+        }),
+      );
+    // Audit is able to stop when iterator is exhausted
+    let iterator = audit.getAuditEvents(['node', 'connection', 'reverse']);
+    await iterator.next();
+    await iterator.next();
+    await audit.stop({ force: false });
+    await audit.start();
+    // Audit is able to stop when iterator is not exhausted
+    await audit.start();
+    iterator = audit.getAuditEvents(['node', 'connection', 'reverse']);
+    await iterator.next();
+    await audit.stop({ force: true });
+    await audit.start();
+    iterator = audit.getAuditEventsLongRunning([
+      'node',
+      'connection',
+      'reverse',
+    ]);
+    await iterator.next();
+    await audit.stop({ force: true });
+    await expect(iterator.next()).rejects.toBeInstanceOf(
+      auditErrors.ErrorAuditNotRunning,
+    );
+  });
   test('event dispatch', async () => {
     const nodeId = testNodesUtils.generateRandomNodeId();
     const audit = await Audit.createAudit({

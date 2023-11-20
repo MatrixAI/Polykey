@@ -18,6 +18,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as auditErrors from './errors';
 import * as auditEvents from './events';
 import * as auditUtils from './utils';
@@ -68,6 +69,7 @@ class Audit {
       handler: (evt: AbstractEvent<unknown>) => Promise<void>;
     }
   > = new Map();
+  protected taskPromises: Set<PromiseCancellable<void>> = new Set();
   protected auditDbPath: LevelPath = [this.constructor.name];
   protected dbLastAuditEventIdPath: LevelPath = [
     this.constructor.name,
@@ -119,12 +121,18 @@ class Audit {
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  public async stop(): Promise<void> {
+  public async stop({ force = true }: { force?: boolean } = {}): Promise<void> {
     this.logger.info(`Stopping ${this.constructor.name}`);
     for (const [eventConstructor, { target, handler }] of this
       .eventHandlerMap) {
       target.removeEventListener(eventConstructor.name, handler);
     }
+    if (force) {
+      for (const promise of this.taskPromises) {
+        promise.cancel(new auditErrors.ErrorAuditNotRunning());
+      }
+    }
+    await Promise.all([...this.taskPromises]).catch(() => {});
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -226,8 +234,9 @@ class Audit {
       seek?: AuditEventId;
     } = {},
   ): AsyncGenerator<TopicSubPathToAuditEvent<T>> {
-    let blockP: Promise<void>;
-    let resolveBlockP: () => void;
+    let blockP: PromiseCancellable<void> | undefined;
+    let resolveBlockP: (() => void) | undefined;
+    let blockPSignal: AbortSignal | undefined;
     const handleEventAuditAuditEventSet = (
       evt: auditEvents.EventAuditAuditEventSet,
     ) => {
@@ -238,7 +247,7 @@ class Audit {
         }
       }
       if (isSupTopic) {
-        resolveBlockP();
+        resolveBlockP?.();
       }
     };
     try {
@@ -249,9 +258,14 @@ class Audit {
         handleEventAuditAuditEventSet,
       );
       while (true) {
-        const blockProm = utils.promise<void>();
-        blockP = blockProm.p;
-        resolveBlockP = blockProm.resolveP;
+        if (blockP != null) {
+          this.taskPromises.delete(blockP);
+        }
+        blockP = new PromiseCancellable((resolveP, _, signal) => {
+          resolveBlockP = resolveP;
+          blockPSignal = signal;
+        });
+        this.taskPromises.add(blockP);
 
         const iterator = this.getAuditEvents(topicPath, {
           seek: seekCursor,
@@ -263,13 +277,14 @@ class Audit {
           // Skip the first element if this is not the first run
           if (firstRunComplete && i === 0) {
             i++;
+            blockPSignal?.throwIfAborted();
             continue;
           }
           yield auditEvent;
           i++;
+          blockPSignal?.throwIfAborted();
         }
         firstRunComplete = true;
-
         await blockP;
       }
     } finally {
@@ -277,6 +292,10 @@ class Audit {
         auditEvents.EventAuditAuditEventSet.name,
         handleEventAuditAuditEventSet,
       );
+      resolveBlockP?.();
+      if (blockP != null) {
+        this.taskPromises.delete(blockP);
+      }
     }
   }
 
@@ -309,12 +328,41 @@ class Audit {
         return yield* getEvents(tran);
       });
     }
-    if (topicPath.length === 0) {
-      const iterator = tran.iterator<TopicSubPathToAuditEvent<T>>(
-        this.auditEventDbPath,
+
+    let resolveFinishedP: (() => void) | undefined;
+    let finishedPSignal: AbortSignal | undefined;
+    const finishedP = new PromiseCancellable<void>((resolveP, _, signal) => {
+      resolveFinishedP = resolveP;
+      finishedPSignal = signal;
+    });
+    this.taskPromises.add(finishedP);
+    try {
+      if (topicPath.length === 0) {
+        const iterator = tran.iterator<TopicSubPathToAuditEvent<T>>(
+          this.auditEventDbPath,
+          {
+            keys: false,
+            values: true,
+            valueAsBuffer: false,
+            reverse: order !== 'asc',
+            limit,
+          },
+        );
+        if (seek != null) {
+          iterator.seek(seek.toBuffer());
+        }
+        for await (const [, auditEvent] of iterator) {
+          yield auditEvent;
+          finishedPSignal?.throwIfAborted();
+        }
+        return;
+      }
+      const iterator = tran.iterator<void>(
+        [...this.auditTopicDbPath, topicPath.join('.')],
         {
-          keys: false,
-          values: true,
+          keyAsBuffer: true,
+          keys: true,
+          values: false,
           valueAsBuffer: false,
           reverse: order !== 'asc',
           limit,
@@ -323,35 +371,21 @@ class Audit {
       if (seek != null) {
         iterator.seek(seek.toBuffer());
       }
-      for await (const [, auditEvent] of iterator) {
-        yield auditEvent;
+      for await (const [keyPath] of iterator) {
+        const key = keyPath.at(-1)! as Buffer;
+        const event = await tran.get<TopicSubPathToAuditEvent<T>>([
+          ...this.auditEventDbPath,
+          key,
+        ]);
+        if (event != null) {
+          event.id = IdInternal.fromBuffer<AuditEventId>(key);
+          yield event;
+          finishedPSignal?.throwIfAborted();
+        }
       }
-      return;
-    }
-    const iterator = tran.iterator<void>(
-      [...this.auditTopicDbPath, topicPath.join('.')],
-      {
-        keyAsBuffer: true,
-        keys: true,
-        values: false,
-        valueAsBuffer: false,
-        reverse: order !== 'asc',
-        limit,
-      },
-    );
-    if (seek != null) {
-      iterator.seek(seek.toBuffer());
-    }
-    for await (const [keyPath] of iterator) {
-      const key = keyPath.at(-1)! as Buffer;
-      const event = await tran.get<TopicSubPathToAuditEvent<T>>([
-        ...this.auditEventDbPath,
-        key,
-      ]);
-      if (event != null) {
-        event.id = IdInternal.fromBuffer<AuditEventId>(key);
-        yield event;
-      }
+    } finally {
+      resolveFinishedP?.();
+      this.taskPromises.delete(finishedP);
     }
   }
 
