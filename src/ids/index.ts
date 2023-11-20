@@ -78,7 +78,7 @@ function decodeAuditEventId(
  * @param epoch
  * @param randomSource
  */
-function generateAuditEventIdFromEpoch(
+function generateAuditEventIdFromTimestamp(
   epoch: number,
   randomSource: (size: number) => Uint8Array = keysUtilsRandom.getRandomBytes,
 ): AuditEventId {
@@ -521,7 +521,7 @@ function decodeNotificationId(
 export {
   createPermIdGenerator,
   createAuditEventIdGenerator,
-  generateAuditEventIdFromEpoch,
+  generateAuditEventIdFromTimestamp,
   encodeAuditEventId,
   decodeAuditEventId,
   createNodeIdGenerator,

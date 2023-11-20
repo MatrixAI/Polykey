@@ -127,45 +127,47 @@ describe(Audit.name, () => {
       auditErrors.ErrorAuditNotRunning,
     );
   });
-  test('event dispatch', async () => {
-    const nodeId = testNodesUtils.generateRandomNodeId();
-    const audit = await Audit.createAudit({
-      db,
-      nodeConnectionManager: mockNodeConnectionManager,
-      logger,
-    });
-    const eventDetail: ConnectionData = {
-      remoteHost: '::' as Host,
-      remoteNodeId: nodeId,
-      remotePort: 0 as Port,
-    };
-    const auditEventData = {
-      ...eventDetail,
-      remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
-    };
-
-    const { p: eventP, resolveP: resolveEventP } = utils.promise();
-    audit.addEventListener(auditEvents.EventAuditAuditEventSet.name, () =>
-      resolveEventP(),
-    );
-
-    // @ts-ignore: kidnap protected
-    const handlerMap = audit.eventHandlerMap;
-    void handlerMap
-      .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
-      ?.handler(
-        new nodeEvents.EventNodeConnectionManagerConnectionReverse({
-          detail: eventDetail,
-        }),
-      );
-    await eventP;
-    const iterator = audit.getAuditEvents(['node']);
-    await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual({
-      ...auditEventData,
-      type: 'reverse',
-    });
-  });
   describe('AuditEvent', () => {
+    test('event dispatch', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+
+      const { p: eventP, resolveP: resolveEventP } = utils.promise();
+      audit.addEventListener(auditEvents.EventAuditAuditEventSet.name, () =>
+        resolveEventP(),
+      );
+
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      void handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await eventP;
+      const iterator = audit.getAuditEvents(['node']);
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+    });
     test('order', async () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
       const audit = await Audit.createAudit({
@@ -370,6 +372,125 @@ describe(Audit.name, () => {
       );
       await audit.stop();
     });
+    test('long running with limit', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      let iterator = audit.getAuditEventsLongRunning(['node'], { limit: 1 });
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionForward({
+            detail: eventDetail,
+          }),
+        );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.done)).resolves.toBe(true);
+      iterator = audit.getAuditEventsLongRunning(['node'], { limit: 3 });
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
+        },
+      );
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'reverse',
+        },
+      );
+      await expect(iterator.next().then((e) => e.done)).resolves.toBe(true);
+      await audit.stop();
+    });
+    test('long running with seekEnd', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      const auditEventData = {
+        ...eventDetail,
+        remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
+      };
+      const date = Date.now();
+      // @ts-ignore: kidnap protected
+      await audit.setAuditEvent(['node', 'connection', 'forward'], {
+        id: ids.generateAuditEventIdFromTimestamp(date),
+        data: {
+          ...auditEventData,
+          type: 'forward',
+        },
+      });
+      let iterator = audit.getAuditEventsLongRunning(['node'], {
+        seekEnd: date - 10,
+      });
+      await expect(iterator.next().then((e) => e.done)).resolves.toBe(true);
+      iterator = audit.getAuditEventsLongRunning(['node'], {
+        seekEnd: date,
+      });
+      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
+        {
+          ...auditEventData,
+          type: 'forward',
+        },
+      );
+      // Need to do this to bump the promise
+      // @ts-ignore: kidnap protected
+      await audit.setAuditEvent(['node', 'connection', 'forward'], {
+        id: ids.generateAuditEventIdFromTimestamp(date + 10),
+        data: {
+          ...auditEventData,
+          type: 'forward',
+        },
+      });
+      await expect(iterator.next().then((e) => e.done)).resolves.toBe(true);
+      await audit.stop();
+    });
     test('node connection topic', async () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
       const audit = await Audit.createAudit({
@@ -460,7 +581,7 @@ describe(Audit.name, () => {
       for (const iterDate of dates) {
         // @ts-ignore: kidnap protected
         await audit.setAuditEvent(['node', 'connection', 'reverse'], {
-          id: ids.generateAuditEventIdFromEpoch(iterDate),
+          id: ids.generateAuditEventIdFromTimestamp(iterDate),
           data: {
             ...auditEventData,
             type: 'reverse',
@@ -470,7 +591,7 @@ describe(Audit.name, () => {
       for (const iterDate of dates) {
         // @ts-ignore: kidnap protected
         await audit.setAuditEvent(['node', 'connection', 'forward'], {
-          id: ids.generateAuditEventIdFromEpoch(iterDate),
+          id: ids.generateAuditEventIdFromTimestamp(iterDate),
           data: {
             ...auditEventData,
             type: 'forward',
@@ -510,7 +631,7 @@ describe(Audit.name, () => {
       await expect(
         audit
           .getAuditMetric(['node', 'connection', 'inbound'], {
-            from: date1DayAgo,
+            seek: date1DayAgo,
           })
           .then((e) => e.data),
       ).resolves.toEqual({
@@ -523,7 +644,7 @@ describe(Audit.name, () => {
       await expect(
         audit
           .getAuditMetric(['node', 'connection', 'inbound'], {
-            to: date1MinuteAgo,
+            seekEnd: date1MinuteAgo,
           })
           .then((e) => e.data),
       ).resolves.toEqual({

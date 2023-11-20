@@ -15,9 +15,11 @@ type CallerTypes = HandlerTypes<AuditEventsGet>;
 
 type AuditEventsGetTypeOverride = <T extends TopicSubPath>(
   input: ClientRPCRequestParams<{
-    seek?: AuditEventIdEncoded;
+    seek?: AuditEventIdEncoded | number;
+    seekEnd?: AuditEventIdEncoded | number;
     order?: 'asc' | 'desc';
     limit?: number;
+    awaitFutureEvents?: boolean;
   }> & {
     path: T;
   },

@@ -110,10 +110,17 @@ describe('auditEventGet', () => {
     });
   });
   test('cancels', async () => {
-    const callerInterface = await rpcClient.methods.auditEventsGet({
+    let callerInterface = await rpcClient.methods.auditEventsGet({
       path: [],
     });
-    const reader = callerInterface.getReader();
+    let reader = callerInterface.getReader();
+    await reader.cancel();
+    await expect(reader.closed).toResolve();
+    callerInterface = await rpcClient.methods.auditEventsGet({
+      path: [],
+      awaitFutureEvents: true,
+    });
+    reader = callerInterface.getReader();
     await reader.cancel();
     await expect(reader.closed).toResolve();
   });
@@ -137,13 +144,33 @@ describe('auditEventGet', () => {
           detail: eventDetail,
         }),
       );
-    const callerInterface = await rpcClient.methods.auditEventsGet({
+    let callerInterface: any = await rpcClient.methods.auditEventsGet({
       path: ['node', 'connection', 'reverse'],
     });
-    const reader = callerInterface.getReader();
+    let reader = callerInterface.getReader();
     await expect(reader.read().then((e) => e.value!.data)).resolves.toEqual({
       ...auditEventData,
       type: 'reverse',
+    });
+    callerInterface = await rpcClient.methods.auditEventsGet({
+      path: ['node', 'connection'],
+      awaitFutureEvents: true,
+    });
+    reader = callerInterface.getReader();
+    await expect(reader.read().then((e) => e.value!.data)).resolves.toEqual({
+      ...auditEventData,
+      type: 'reverse',
+    });
+    await handlerMap
+      .get(nodesEvents.EventNodeConnectionManagerConnectionForward)
+      ?.handler(
+        new nodesEvents.EventNodeConnectionManagerConnectionForward({
+          detail: eventDetail,
+        }),
+      );
+    await expect(reader.read().then((e) => e.value!.data)).resolves.toEqual({
+      ...auditEventData,
+      type: 'forward',
     });
   });
 });

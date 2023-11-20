@@ -749,6 +749,7 @@ class PolykeyAgent {
         manifest: clientServerManifest({
           polykeyAgent: this,
           acl: this.acl,
+          audit: this.audit,
           certManager: this.certManager,
           db: this.db,
           discovery: this.discovery,

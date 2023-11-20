@@ -23,7 +23,6 @@ import * as auditErrors from './errors';
 import * as auditEvents from './events';
 import * as auditUtils from './utils';
 import * as nodesEvents from '../nodes/events';
-import * as ids from '../ids';
 import * as utils from '../utils';
 
 interface Audit extends CreateDestroyStartStop {}
@@ -230,8 +229,12 @@ class Audit {
     topicPath: T,
     {
       seek,
+      seekEnd,
+      limit,
     }: {
-      seek?: AuditEventId;
+      seek?: AuditEventId | Date | number;
+      seekEnd?: AuditEventId | Date | number;
+      limit?: number;
     } = {},
   ): AsyncGenerator<TopicSubPathToAuditEvent<T>> {
     let blockP: PromiseCancellable<void> | undefined;
@@ -251,12 +254,15 @@ class Audit {
       }
     };
     try {
+      let remainingLimit = limit;
       let seekCursor = seek;
       let firstRunComplete = false;
       this.addEventListener(
         auditEvents.EventAuditAuditEventSet.name,
         handleEventAuditAuditEventSet,
       );
+      // There should be new entries every loop,
+      // if not that means that the limit has been reached based on seekEnd or limit
       while (true) {
         if (blockP != null) {
           this.taskPromises.delete(blockP);
@@ -267,22 +273,45 @@ class Audit {
         });
         this.taskPromises.add(blockP);
 
+        let limit: number | undefined;
+        if (remainingLimit != null) {
+          limit = !firstRunComplete ? remainingLimit : remainingLimit + 1;
+        }
         const iterator = this.getAuditEvents(topicPath, {
           seek: seekCursor,
+          seekEnd,
           order: 'asc',
+          limit,
         });
         let i = 0;
         for await (const auditEvent of iterator) {
           seekCursor = auditEvent.id;
-          // Skip the first element if this is not the first run
+          // Skip the first element if this is not the first run as it is a duplicate
           if (firstRunComplete && i === 0) {
             i++;
             blockPSignal?.throwIfAborted();
             continue;
           }
           yield auditEvent;
-          i++;
           blockPSignal?.throwIfAborted();
+          i++;
+        }
+        // If only the first element was found after the initial loop, then we have reached the end
+        // if this is the first loop and there are no elements found, we have also reached the end
+        if ((firstRunComplete && i === 1) || i === 0) {
+          return;
+        }
+        if (remainingLimit != null) {
+          // The first element is a duplicate after the first run, so we ignore it.
+          if (!firstRunComplete) {
+            remainingLimit -= i;
+          } else {
+            remainingLimit -= i - 1;
+          }
+          // Return if the remaining limit is 0, we no longer need to yield any more events.
+          if (remainingLimit === 0) {
+            return;
+          }
         }
         firstRunComplete = true;
         await blockP;
@@ -304,10 +333,12 @@ class Audit {
     topicPath: T,
     {
       seek,
+      seekEnd,
       order = 'asc',
       limit,
     }: {
-      seek?: AuditEventId;
+      seek?: AuditEventId | Date | number;
+      seekEnd?: AuditEventId | Date | number;
       order?: 'asc' | 'desc';
       limit?: number;
     } = {},
@@ -319,6 +350,7 @@ class Audit {
           topicPath,
           {
             seek,
+            seekEnd,
             order,
             limit,
           },
@@ -328,6 +360,18 @@ class Audit {
         return yield* getEvents(tran);
       });
     }
+
+    const seekAuditEventId =
+      seek != null
+        ? auditUtils.extractFromSeek(seek, (size) => new Uint8Array(size))
+            .auditEventId
+        : undefined;
+    const seekEndAuditEventId =
+      seekEnd != null
+        ? auditUtils.extractFromSeek(seekEnd, (size) =>
+            new Uint8Array(size).fill(0xff),
+          ).auditEventId
+        : undefined;
 
     let resolveFinishedP: (() => void) | undefined;
     let finishedPSignal: AbortSignal | undefined;
@@ -346,11 +390,10 @@ class Audit {
             valueAsBuffer: false,
             reverse: order !== 'asc',
             limit,
+            gte: seekAuditEventId?.toBuffer(),
+            lte: seekEndAuditEventId?.toBuffer(),
           },
         );
-        if (seek != null) {
-          iterator.seek(seek.toBuffer());
-        }
         for await (const [, auditEvent] of iterator) {
           yield auditEvent;
           finishedPSignal?.throwIfAborted();
@@ -366,11 +409,10 @@ class Audit {
           valueAsBuffer: false,
           reverse: order !== 'asc',
           limit,
+          gte: seekAuditEventId?.toBuffer(),
+          lte: seekEndAuditEventId?.toBuffer(),
         },
       );
-      if (seek != null) {
-        iterator.seek(seek.toBuffer());
-      }
       for await (const [keyPath] of iterator) {
         const key = keyPath.at(-1)! as Buffer;
         const event = await tran.get<TopicSubPathToAuditEvent<T>>([
@@ -392,7 +434,10 @@ class Audit {
   @ready(new auditErrors.ErrorAuditNotRunning())
   public async getAuditMetric<T extends MetricPath>(
     metricPath: T,
-    options: { from?: Date | number; to?: Date | number } = {},
+    options: {
+      seek?: AuditEventId | Date | number;
+      seekEnd?: AuditEventId | Date | number;
+    } = {},
     tran?: DBTransaction,
   ): Promise<MetricPathToAuditMetric<T>> {
     if (tran == null) {
@@ -401,27 +446,25 @@ class Audit {
       );
     }
 
-    let fromEpoch =
-      options.from instanceof Date ? options.from.getTime() : options.from;
-    let toEpoch =
-      options.to instanceof Date ? options.to.getTime() : options.to;
-
-    let fromIdBuffer: Buffer | undefined;
-    if (fromEpoch != null) {
-      fromIdBuffer = ids
-        .generateAuditEventIdFromEpoch(
-          fromEpoch,
-          (size) => new Uint8Array(size),
-        )
-        .toBuffer();
+    let seekIdBuffer: Buffer | undefined;
+    let seekTimestamp: number | undefined;
+    if (options.seek != null) {
+      const seekData = auditUtils.extractFromSeek(
+        options.seek,
+        (size) => new Uint8Array(size),
+      );
+      seekIdBuffer = seekData.auditEventId.toBuffer();
+      seekTimestamp = seekData.timestamp;
     }
-    let toIdBuffer: Buffer | undefined;
-    if (toEpoch != null) {
-      toIdBuffer = ids
-        .generateAuditEventIdFromEpoch(toEpoch, (size) =>
-          new Uint8Array(size).fill(0xff),
-        )
-        .toBuffer();
+
+    let seekEndIdBuffer: Buffer | undefined;
+    let seekEndTimestamp: number | undefined;
+    if (options.seekEnd != null) {
+      const seekEndData = auditUtils.extractFromSeek(options.seekEnd, (size) =>
+        new Uint8Array(size).fill(0xff),
+      );
+      seekEndIdBuffer = seekEndData.auditEventId.toBuffer();
+      seekEndTimestamp = seekEndData.timestamp;
     }
 
     if (metricPath[0] === 'node') {
@@ -447,25 +490,25 @@ class Audit {
             keyAsBuffer: true,
             keys: true,
             values: false,
-            gte: fromIdBuffer,
-            lte: toIdBuffer,
+            gte: seekIdBuffer,
+            lte: seekEndIdBuffer,
           },
         )) {
           const key = keyPath.at(-1)! as Buffer;
           if (metric.data.total === 0) {
-            fromEpoch = sortableIdUtils.extractTs(key) * 1000;
+            seekTimestamp = sortableIdUtils.extractTs(key) * 1000;
           } else {
             lastKey = key;
           }
           metric.data.total += 1;
         }
-        if (fromEpoch != null) {
+        if (seekTimestamp != null) {
           if (lastKey != null) {
-            toEpoch = sortableIdUtils.extractTs(lastKey) * 1000;
+            seekEndTimestamp = sortableIdUtils.extractTs(lastKey) * 1000;
           } else {
-            toEpoch = Date.now();
+            seekEndTimestamp = Date.now();
           }
-          const timeframeTime = toEpoch - fromEpoch;
+          const timeframeTime = seekEndTimestamp - seekTimestamp;
           const timeframeMinutes = timeframeTime / 60_000;
           const timeframeHours = timeframeMinutes / 60;
           const timeframeDays = timeframeHours / 24;

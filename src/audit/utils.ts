@@ -3,14 +3,43 @@ import type {
   AuditEventNodeConnectionReverse,
 } from './types';
 import type * as nodesEvents from '../nodes/events';
+import type { AuditEventId } from '../ids';
+import { IdInternal } from '@matrixai/id';
+import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
 import * as nodesUtils from '../nodes/utils';
 import {
   createAuditEventIdGenerator,
   encodeAuditEventId,
   decodeAuditEventId,
+  generateAuditEventIdFromTimestamp,
 } from '../ids';
 
 // Events
+
+function extractFromSeek(
+  seek: AuditEventId | number | Date,
+  randomSource?: (size: number) => Uint8Array,
+): {
+  auditEventId: AuditEventId;
+  timestamp: number;
+} {
+  let auditEventId: AuditEventId;
+  let timestamp: number | undefined;
+  if (seek instanceof IdInternal) {
+    auditEventId = seek;
+    timestamp = sortableIdUtils.extractTs(seek.toBuffer()) * 1000;
+  } else if (typeof seek === 'number') {
+    timestamp = seek;
+    auditEventId = generateAuditEventIdFromTimestamp(seek, randomSource);
+  } else {
+    timestamp = seek.getTime();
+    auditEventId = generateAuditEventIdFromTimestamp(timestamp, randomSource);
+  }
+  return {
+    auditEventId,
+    timestamp,
+  };
+}
 
 // Nodes
 
@@ -69,6 +98,7 @@ const nodeConnectionOutboundMetricPath = [
 ] as const;
 
 export {
+  extractFromSeek,
   createAuditEventIdGenerator,
   encodeAuditEventId,
   decodeAuditEventId,

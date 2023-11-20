@@ -5,7 +5,9 @@ import type {
   MetricPathToAuditMetric,
 } from '../../audit/types';
 import type { Audit } from '../../audit';
+import type { AuditEventId, AuditEventIdEncoded } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as auditUtils from '../../audit/utils';
 
 class AuditMetricGet extends UnaryHandler<
   {
@@ -13,15 +15,19 @@ class AuditMetricGet extends UnaryHandler<
   },
   ClientRPCRequestParams<{
     path: MetricPath & Array<string>;
-    from?: number;
-    to?: number;
+    seek?: AuditEventIdEncoded | number;
+    seekEnd?: AuditEventIdEncoded | number;
   }>,
   ClientRPCResponseResult<AuditMetric>
 > {
   public handle = async <T extends MetricPath>(
-    input: ClientRPCRequestParams<{
-      from?: number;
-      to?: number;
+    {
+      path,
+      seek,
+      seekEnd,
+    }: ClientRPCRequestParams<{
+      seek?: AuditEventIdEncoded | number;
+      seekEnd?: AuditEventIdEncoded | number;
     }> & {
       path: T;
     },
@@ -30,9 +36,21 @@ class AuditMetricGet extends UnaryHandler<
     _ctx,
   ): Promise<ClientRPCResponseResult<MetricPathToAuditMetric<T>>> => {
     const { audit } = this.container;
-    return (await audit.getAuditMetric(input.path, {
-      from: input.from,
-      to: input.to,
+    let seek_: AuditEventId | number | undefined;
+    if (seek != null) {
+      seek_ =
+        typeof seek === 'string' ? auditUtils.decodeAuditEventId(seek) : seek;
+    }
+    let seekEnd_: AuditEventId | number | undefined;
+    if (seekEnd != null) {
+      seekEnd_ =
+        typeof seekEnd === 'string'
+          ? auditUtils.decodeAuditEventId(seekEnd)
+          : seekEnd;
+    }
+    return (await audit.getAuditMetric(path, {
+      seek: seek_,
+      seekEnd: seekEnd_,
     })) as any;
   };
 }

@@ -1,5 +1,6 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type { ContextTimedInput } from '@matrixai/contexts';
+import type { AuditEventIdEncoded } from '../../ids';
 import type { MetricPath, MetricPathToAuditMetric } from '../../audit/types';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type AuditMetricGet from '../handlers/AuditMetricGet';
@@ -9,8 +10,8 @@ type CallerTypes = HandlerTypes<AuditMetricGet>;
 
 type AuditMetricGetTypeOverride = <T extends MetricPath>(
   input: ClientRPCRequestParams<{
-    from?: number;
-    to?: number;
+    seek?: AuditEventIdEncoded | number;
+    seekEnd?: AuditEventIdEncoded | number;
   }> & {
     path: T;
   },
