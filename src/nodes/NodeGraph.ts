@@ -227,9 +227,7 @@ class NodeGraph {
     tran?: DBTransaction,
   ): Promise<NodeContacts | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getNode(nodeId, tran),
-      );
+      return this.db.withTransactionF((tran) => this.getNode(nodeId, tran));
     }
     const [bucketIndex] = this.bucketIndex(nodeId);
     const contacts: Record<NodeAddressKey, NodeData> = {};
@@ -241,7 +239,7 @@ class NodeGraph {
       ],
       {
         valueAsBuffer: false,
-      }
+      },
     )) {
       const nodeAddressKey = keyPath[0].toString();
       contacts[nodeAddressKey] = nodeData;

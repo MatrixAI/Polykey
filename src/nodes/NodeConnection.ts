@@ -465,7 +465,7 @@ class NodeConnection {
   }) {
     this.validatedNodeId = validatedNodeId;
     this.nodeId = nodeId;
-    this.host = networkUtils.toCanonicalIP(host);
+    this.host = networkUtils.toCanonicalHost(host);
     this.port = port;
     this.localHost = networkUtils.resolvesZeroIP(localHost);
     this.localPort = localPort;

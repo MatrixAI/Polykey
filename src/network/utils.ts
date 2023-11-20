@@ -226,7 +226,7 @@ function toCanonicalHost(host: string): Host {
 }
 
 function toCanonicalHostname(hostname: string): Hostname {
-  let hostname_ = hostname.trim()
+  let hostname_ = hostname.trim();
   hostname_ = hostname_.toLowerCase();
   if (hostname_.endsWith('.')) {
     hostname_ = hostname_.substring(0, hostname_.length - 1);
