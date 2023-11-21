@@ -744,5 +744,28 @@ describe(`NodeConnectionManager`, () => {
       // Hole punching was only attempted once
       expect(holePunchSpy).toHaveBeenCalledTimes(1);
     });
+    test('can list active connections', async () => {
+      await nodeConnectionManagerLocal.createConnection(
+        [nodeIdPeer1],
+        localHost,
+        portPeer1,
+      );
+      await nodeConnectionManagerLocal.createConnection(
+        [nodeIdPeer1],
+        localHost,
+        portPeer1,
+      );
+      await nodeConnectionManagerLocal.createConnection(
+        [nodeIdPeer2],
+        localHost,
+        portPeer2,
+      );
+
+      const result = await nodeConnectionManagerLocal.getClosestConnections(
+        nodeIdPeer2,
+        20,
+      );
+      expect(result).toHaveLength(2);
+    });
   });
 });

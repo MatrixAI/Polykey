@@ -245,39 +245,37 @@ function nodeDistance(nodeId1: NodeId, nodeId2: NodeId): bigint {
   return utils.bytes2BigInt(distance);
 }
 
+function nodeDistanceCmpFactory(targetNodeId: NodeId) {
+  const distances = {};
+  return (nodeId1: NodeId, nodeId2: NodeId) => {
+    const d1 = (distances[nodeId1] =
+      distances[nodeId1] ?? nodeDistance(targetNodeId, nodeId1));
+    const d2 = (distances[nodeId2] =
+      distances[nodeId2] ?? nodeDistance(targetNodeId, nodeId2));
+    if (d1 < d2) {
+      return -1;
+    } else if (d1 > d2) {
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+}
+
 function bucketSortByDistance(
   bucket: NodeBucket,
   nodeId: NodeId,
   order: 'asc' | 'desc' = 'asc',
 ): void {
-  const distances = {};
+  const nodeDistanceCmp = nodeDistanceCmpFactory(nodeId);
   if (order === 'asc') {
     bucket.sort(([nodeId1], [nodeId2]) => {
-      const d1 = (distances[nodeId1] =
-        distances[nodeId1] ?? nodeDistance(nodeId, nodeId1));
-      const d2 = (distances[nodeId2] =
-        distances[nodeId2] ?? nodeDistance(nodeId, nodeId2));
-      if (d1 < d2) {
-        return -1;
-      } else if (d1 > d2) {
-        return 1;
-      } else {
-        return 0;
-      }
+      return nodeDistanceCmp(nodeId1, nodeId2);
     });
   } else {
     bucket.sort(([nodeId1], [nodeId2]) => {
-      const d1 = (distances[nodeId1] =
-        distances[nodeId1] ?? nodeDistance(nodeId, nodeId1));
-      const d2 = (distances[nodeId2] =
-        distances[nodeId2] ?? nodeDistance(nodeId, nodeId2));
-      if (d1 > d2) {
-        return -1;
-      } else if (d1 < d2) {
-        return 1;
-      } else {
-        return 0;
-      }
+      // Invert the order
+      return nodeDistanceCmp(nodeId1, nodeId2) * -1;
     });
   }
 }
@@ -716,6 +714,7 @@ export {
   parseLastUpdatedBucketsDbKey,
   parseLastUpdatedBucketDbKey,
   nodeDistance,
+  nodeDistanceCmpFactory,
   bucketSortByDistance,
   generateRandomDistanceForBucket,
   xOrNodeId,
