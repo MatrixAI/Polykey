@@ -1,9 +1,9 @@
-import type { KeyPath } from '@matrixai/db';
+import type { DBTransaction, KeyPath, LevelPath } from "@matrixai/db";
 import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
 import type {
   NodeAddress,
-  NodeAddressKey,
+  NodeContactAddress,
   NodeBucket,
   NodeBucketIndex,
   NodeId,
@@ -25,6 +25,7 @@ import * as networkUtils from '../network/utils';
 import * as validationErrors from '../validation/errors';
 import config from '../config';
 import * as utils from '../utils';
+import { NodeContact, NodeContactAddressData } from "./types";
 
 const sepBuffer = dbUtils.sep;
 
@@ -74,13 +75,13 @@ function bucketIndex(sourceNode: NodeId, targetNode: NodeId): NodeBucketIndex {
 /**
  * Encodes NodeAddress to NodeAddressKey
  */
-function nodeAddressKey({ host, port }: NodeAddress): NodeAddressKey {
+function nodeContactAddress([host, port]: NodeAddress): NodeContactAddress {
   if (networkUtils.isHost(host)) {
     const host_ = networkUtils.toCanonicalHost(host);
-    return `${host_}-${port}` as NodeAddressKey;
+    return `${host_}-${port}` as NodeContactAddress;
   } else {
     const hostname = networkUtils.toCanonicalHostname(host);
-    return `${hostname}-${port}` as NodeAddressKey;
+    return `${hostname}-${port}` as NodeContactAddress;
   }
 }
 
@@ -110,35 +111,12 @@ function bucketDbKey(nodeId: NodeId): Buffer {
   return nodeId.toBuffer();
 }
 
-/**
- * Creates key for buckets indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketsDbKey(
-  bucketIndex: NodeBucketIndex,
-  lastUpdated: number,
-  nodeId: NodeId,
-): Buffer {
-  return Buffer.concat([
-    sepBuffer,
-    Buffer.from(bucketKey(bucketIndex)),
-    sepBuffer,
-    lastUpdatedBucketDbKey(lastUpdated, nodeId),
-  ]);
-}
-
-/**
- * Creates key for single bucket indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketDbKey(lastUpdated: number, nodeId: NodeId): Buffer {
-  return Buffer.concat([
-    Buffer.from(lexi.pack(lastUpdated, 'hex')),
-    Buffer.from('-'),
-    nodeId.toBuffer(),
-  ]);
-}
-
 function lastUpdatedKey(lastUpdated: number): Buffer {
   return Buffer.from(lexi.pack(lastUpdated, 'hex'));
+}
+
+function parseLastUpdatedKey(buffer: Buffer): number {
+  return lexi.unpack(buffer.toString());
 }
 
 function parseNodeAddressKey(keyBuffer: Buffer): NodeAddress {
@@ -159,8 +137,9 @@ function parseBucketsDbKey(keyPath: KeyPath): {
   bucketIndex: NodeBucketIndex;
   bucketKey: string;
   nodeId: NodeId;
+  nodeContactAddress: NodeContactAddress;
 } {
-  const [bucketKeyPath, nodeIdKey] = keyPath;
+  const [bucketKeyPath, nodeIdKey, nodeContactAddress] = keyPath;
   if (bucketKeyPath == null || nodeIdKey == null) {
     throw new TypeError('Buffer is not an NodeGraph buckets key');
   }
@@ -171,6 +150,7 @@ function parseBucketsDbKey(keyPath: KeyPath): {
     bucketIndex,
     bucketKey,
     nodeId,
+    nodeContactAddress: nodeContactAddress as NodeContactAddress,
   };
 }
 
@@ -742,16 +722,58 @@ const quicServerCrypto: QUICServerCrypto = {
   },
 };
 
+async function *collectNodeContacts(
+  levelPath: LevelPath,
+  tran: DBTransaction,
+  options: {
+    reverse?: boolean,
+    lt?: LevelPath,
+    gt?: LevelPath,
+    limit?: number,
+    pathAdjust?: KeyPath
+  } = {},
+): AsyncGenerator<[NodeId, NodeContact], void>{
+  let nodeId: NodeId | undefined = undefined;
+  let nodeContact: NodeContact = {};
+  let count = 0;
+  for await (const [
+    keyPath,
+    nodeContactAddressData,
+  ] of tran.iterator<NodeContactAddressData>(
+    levelPath,
+    {
+      reverse: options.reverse,
+      lt: options.lt,
+      gt: options.gt,
+      valueAsBuffer: false,
+    },
+  )) {
+    const { nodeId: nodeIdCurrent, nodeContactAddress } =
+      parseBucketsDbKey([...(options.pathAdjust ?? []), ...keyPath]);
+    if (!(nodeId == null || nodeIdCurrent.equals(nodeId))) {
+      // Yield and tear
+      yield [nodeId, nodeContact];
+      nodeContact = {};
+      count++;
+    }
+    // Accumulate addresses and data
+    nodeContact[nodeContactAddress] = nodeContactAddressData;
+    nodeId = nodeIdCurrent;
+    if (options.limit != null && count >= options.limit) return;
+  }
+  // Yield remaining data if it exists
+  if (nodeId != null) yield [nodeId, nodeContact];
+}
+
 export {
   sepBuffer,
-  nodeAddressKey,
+  nodeContactAddress,
   bucketIndex,
   bucketKey,
   bucketsDbKey,
   bucketDbKey,
-  lastUpdatedBucketsDbKey,
-  lastUpdatedBucketDbKey,
   lastUpdatedKey,
+  parseLastUpdatedKey,
   parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,
@@ -775,6 +797,7 @@ export {
   verifyClientCertificateChain,
   quicClientCrypto,
   quicServerCrypto,
+  collectNodeContacts,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids';
