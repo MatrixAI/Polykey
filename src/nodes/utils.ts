@@ -3,7 +3,7 @@ import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
 import type {
   NodeAddress,
-  NodeAddressKey,
+  NodeContactAddress,
   NodeBucket,
   NodeBucketIndex,
   NodeId,
@@ -73,7 +73,7 @@ function bucketIndex(sourceNode: NodeId, targetNode: NodeId): NodeBucketIndex {
 /**
  * Encodes NodeAddress to NodeAddressKey
  */
-function nodeAddressKey({ host, port }: NodeAddress): NodeAddressKey {
+function nodeContactAddress([host, port]: NodeAddress): NodeContactAddress {
   if (networkUtils.isHost(host)) {
     const host_ = networkUtils.toCanonicalHost(host);
     return `${host_}-${port}` as NodeAddressKey;
@@ -158,8 +158,9 @@ function parseBucketsDbKey(keyPath: KeyPath): {
   bucketIndex: NodeBucketIndex;
   bucketKey: string;
   nodeId: NodeId;
+  nodeContactAddress: NodeContactAddress;
 } {
-  const [bucketKeyPath, nodeIdKey] = keyPath;
+  const [bucketKeyPath, nodeIdKey, nodeContactAddress] = keyPath;
   if (bucketKeyPath == null || nodeIdKey == null) {
     throw new TypeError('Buffer is not an NodeGraph buckets key');
   }
@@ -170,6 +171,7 @@ function parseBucketsDbKey(keyPath: KeyPath): {
     bucketIndex,
     bucketKey,
     nodeId,
+    nodeContactAddress: nodeContactAddress as NodeContactAddress,
   };
 }
 
@@ -705,7 +707,7 @@ const quicServerCrypto: QUICServerCrypto = {
 
 export {
   sepBuffer,
-  nodeAddressKey,
+  nodeContactAddress,
   bucketIndex,
   bucketKey,
   bucketsDbKey,

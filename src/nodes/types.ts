@@ -43,36 +43,60 @@ type NodeGraphSpace = '0' | '1';
  */
 type NodeAddressScope = 'local' | 'global';
 
-/**
- * Node address.
- */
-type NodeAddress = {
-  /**
-   * Host can be a host IP address or a hostname string.
-   */
-  host: Host | Hostname;
-  /**
-   * Port of the node.
-   */
-  port: Port;
-};
+// /**
+//  * Node address.
+//  */
+// type NodeAddress = {
+//   /**
+//    * Host can be a host IP address or a hostname string.
+//    */
+//   host: Host | Hostname;
+//   /**
+//    * Port of the node.
+//    */
+//   port: Port;
+// };
+
+type NodeAddress = [Host|Hostname, Port];
 
 type NodeBucketIndex = number;
 
-type NodeBucket = Array<[NodeId, NodeData]>;
+type NodeBucket = Array<[NodeId, NodeContact]>;
 
 type NodeBucketMeta = {
   count: number;
 };
 
 /**
+ * Record of `NodeAddress` to `NodeData` for a single `NodeId`.
+ * Use `nodesUtils.parseNodeAddressKey` to parse
+ * `NodeAddressKey` to `NodeAddress`.
+ * Note that records don't have inherent order.
+ */
+type NodeContact = Record<NodeContactAddress, NodeContactAddressData>;
+
+type NodeContactAddress = Opaque<'NodeContactAddress', string>;
+
+/**
  * This is the record value stored in the NodeGraph.
  */
-type NodeData = {
+type NodeContactAddressData = {
   /**
-   * Unix timestamp of when it was last updated.
+   * Indicates how the contact address was connected on its
+   * last connection establishment. The ICE procedure concurrently
+   * uses all methods to try to connect, however, whichever one
+   * succeeded first should be indicated here. When sharing this
+   * information to other nodes, it can hint towards whether a
+   * contact does not require signalling or relaying.
    */
-  lastUpdated: number;
+  mode: 'direct' | 'signal' | 'relay';
+  /**
+   * Unix timestamp of when the connection was last active.
+   * This property should be set when the connection is first
+   * established, but it should also be updated as long as the
+   * connection is active.
+   */
+  connectedTime: number;
   /**
    * Scopes can be used to classify the address.
    * Multiple scopes is understood as set-union.
@@ -80,12 +104,27 @@ type NodeData = {
   scopes: Array<NodeAddressScope>;
 };
 
-// Cause otherwise we would need a special string to indicate the key
-// type NodeAddress = [Host | Hostname, Port];
 
-type NodeAddressKey = Opaque<'NodeAddressKey', string>;
 
-type NodeContacts = Record<NodeAddressKey, NodeData>;
+
+// ContactInfo is better
+// NodeContactInfo
+// NodeManager -> { ... }
+// getNodeContact
+// getNodeInfo
+// type NodeInfo -> all this information about the node
+// the contact information
+// but it's not informatio about the node itself
+// so i think it sa `NodeC
+// contacts of a signle onde
+
+// One single contact data?
+// type NodeContacts
+// NodeContact = { address => data }
+// NodeContactAddress
+// NodeContactAddressData = data
+
+
 
 // /**
 //  * This is the record value stored in the NodeGraph.
@@ -118,13 +157,18 @@ export type {
   NodeInfo,
   NodeAddressScope,
   NodeAddress,
-  NodeAddressKey,
-  NodeContacts,
+  // NodeAddressKey,
+  // NodeContacts,
+
+  NodeContact,
+  NodeContactAddress,
+  NodeContactAddressData,
+
   SeedNodes,
   NodeBucketIndex,
   NodeBucketMeta,
   NodeBucket,
-  NodeData,
+  // NodeData,
   NodeGraphSpace,
 };
 

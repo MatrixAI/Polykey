@@ -3,12 +3,12 @@ import type {
   NodeId,
   NodeAddress,
   NodeBucket,
-  NodeData,
-  NodeContacts,
+  NodeContact,
+  NodeContactAddress,
+  NodeContactAddressData,
   NodeBucketMeta,
   NodeBucketIndex,
   NodeGraphSpace,
-  NodeAddressKey,
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import Logger from '@matrixai/logger';
@@ -220,18 +220,22 @@ class NodeGraph {
     return await tran.lock(keyPath.join(''));
   }
 
-  // Getting a node now gets you all the addresses
+  /**
+   * Get a single `NodeContact`
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getNode(
+  public async getNodeContact(
     nodeId: NodeId,
-    tran?: DBTransaction,
-  ): Promise<NodeContacts | undefined> {
+    tran?: DBTransaction
+  ): Promise<NodeContact | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.getNode(nodeId, tran));
+      return this.db.withTransactionF((tran) =>
+        this.getNodeContact(nodeId, tran),
+      );
     }
     const [bucketIndex] = this.bucketIndex(nodeId);
-    const contacts: Record<NodeAddressKey, NodeData> = {};
-    for await (const [keyPath, nodeData] of tran.iterator<NodeData>(
+    const contact: NodeContact = {};
+    for await (const [keyPath, nodeContactAddressData] of tran.iterator<NodeContactAddressData>(
       [
         ...this.nodeGraphBucketsDbPath,
         nodesUtils.bucketKey(bucketIndex),
@@ -241,90 +245,106 @@ class NodeGraph {
         valueAsBuffer: false,
       },
     )) {
-      const nodeAddressKey = keyPath[0].toString();
-      contacts[nodeAddressKey] = nodeData;
+      const nodeContactAddress = keyPath[0].toString();
+      contact[nodeContactAddress] = nodeContactAddressData;
     }
-    return contacts;
+    return contact;
   }
 
-  // /**
-  //  * Gets the `NodeData` given a `NodeId`.
-  //  */
-  // @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  // public async getNode(
-  //   nodeId: NodeId,
-  //   tran?: DBTransaction,
-  // ): Promise<NodeData | undefined> {
-  //   const tranOrDb = tran ?? this.db;
-  //   const [bucketIndex] = this.bucketIndex(nodeId);
-  //   const bucketDomain = [
-  //     ...this.nodeGraphBucketsDbPath,
-  //     nodesUtils.bucketKey(bucketIndex),
-  //     nodesUtils.bucketDbKey(nodeId),
-  //   ];
-  //   return await tranOrDb.get<NodeData>(bucketDomain);
-  // }
-
   /**
-   * Get all `NodeData`.
+   * Get all `NodeContact`.
    *
-   * Results are sorted by `NodeBucketIndex` then `NodeId`.
+   * Results are sorted by `NodeBucketIndex` then `NodeId` then
+   * `NodeContactAddress`.
    * The `order` parameter applies to both, for example:
-   *   NodeBucketIndex asc, NodeID asc
-   *   NodeBucketIndex desc, NodeId desc
+   *   NodeBucketIndex asc, NodeID asc, NodeContactAddress asc
+   *   NodeBucketIndex desc, NodeId desc, NodeContactAddress desc
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async *getNodes(
+  public async *getNodeContacts(
     order: 'asc' | 'desc' = 'asc',
     tran?: DBTransaction,
-  ): AsyncGenerator<[NodeId, NodeData]> {
+  ): AsyncGenerator<[NodeId, NodeContact]> {
     if (tran == null) {
-      const getNodes = (tran) => this.getNodes(order, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
-        return yield* getNodes(tran);
+        return yield* this.getNodeContacts(order, tran);
       });
     }
-    for await (const [keyPath, nodeData] of tran.iterator<NodeData>(
-      this.nodeGraphBucketsDbPath,
+    let nodeId: NodeId | undefined;
+    let nodeContact: NodeContact = {};
+    for await (const [keyPath, nodeContactAddressData] of tran.iterator<NodeContactAddressData>(
+      [
+        ...this.nodeGraphBucketsDbPath,
+      ],
       {
         reverse: order !== 'asc',
         valueAsBuffer: false,
-      },
+      }
     )) {
-      const { nodeId } = nodesUtils.parseBucketsDbKey(keyPath);
-      yield [nodeId, nodeData];
+      const { nodeId: nodeIdCurrent, nodeContactAddress } = nodesUtils.parseBucketsDbKey(keyPath);
+      nodeContact[nodeContactAddress] = nodeContactAddressData;
+      if (nodeId == null || nodeIdCurrent.equals(nodeId)) {
+        nodeId = nodeIdCurrent;
+        continue;
+      } else {
+        nodeId = nodeIdCurrent;
+        yield [nodeIdCurrent, nodeContact];
+      }
     }
   }
 
   /**
-   * Sets a `NodeId` and `NodeAddress` to an appropriate bucket.
-   * If the `NodeId` already exists, it will be updated.
-   * It will increment the bucket count if it is a new record.
+   * Get a single `NodeContactAddressData`.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async getNodeContactAddressData(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    tran?: DBTransaction
+  ): Promise<NodeContactAddressData | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getNodeContactAddressData(nodeId, nodeAddress, tran),
+      );
+    }
+    const [bucketIndex] = this.bucketIndex(nodeId);
+    let nodeContactAddress: NodeContactAddress;
+    if (Array.isArray(nodeAddress)) {
+      nodeContactAddress = nodesUtils.nodeContactAddress(nodeAddress);
+    } else {
+      nodeContactAddress = nodeAddress;
+    }
+    return tran.get<NodeContactAddressData>([
+      ...this.nodeGraphBucketsDbPath,
+      nodesUtils.bucketKey(bucketIndex),
+      nodesUtils.bucketDbKey(nodeId),
+      nodeContactAddress
+    ]);
+  }
+
+  /**
+   * Sets a single `NodeContact` for a `NodeId`.
+   * This replaces the entire `NodeContact` for the `NodeId`.
+   * This will increment the bucket count if it is a new `NodeID`.
    *
    * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async setNode(
+  public async setNodeContact(
     nodeId: NodeId,
-    nodeAddress: NodeAddress,
-    lastUpdated: number = utils.getUnixtime(),
-    tran?: DBTransaction,
+    nodeContact: NodeContact,
+    tran?: DBTransaction
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, lastUpdated, tran),
+        this.setNodeContact(nodeId, nodeContact, tran),
       );
     }
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
     const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-    const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey, nodeIdKey];
-    const nodeData = await tran.get<NodeData>(bucketPath);
-    if (nodeData != null) {
-      // If the node already exists we want to remove the old `lastUpdated`
-      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
-      await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
-    } else {
+    const nodeContactPath = [...this.nodeGraphBucketsDbPath, bucketKey, nodeIdKey];
+    if (await tran.count(nodeContactPath) == 0)  {
       // It didn't exist, so we want to increment the bucket count
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       if (count >= this.nodeBucketLimit) {
@@ -332,11 +352,23 @@ class NodeGraph {
       }
       await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
     }
-    await tran.put(bucketPath, {
-      address: nodeAddress,
-      lastUpdated,
-    });
-    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
+    // Clear the entire contact if it exists
+    await tran.clear(nodeContactPath);
+    let connectedTimeMax = 0;
+    for (const nodeContactAddress in nodeContact) {
+      const nodeContactAddressData = nodeContact[nodeContactAddress];
+      await tran.put(
+        [...nodeContactPath, nodeContactAddress],
+        nodeContactAddressData
+      );
+      connectedTimeMax = Math.max(connectedTimeMax, nodeContactAddressData.connectedTime);
+    }
+    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(connectedTimeMax);
+
+    // I just realised that updates for every single node id
+    // and that is problematic
+
+
     await tran.put(
       [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
       nodeIdKey,
@@ -345,11 +377,91 @@ class NodeGraph {
   }
 
   /**
+   * Sets a single `NodeContactAddressData` for a `NodeId`.
+   * This will increment the bucket count if it is a new `NodeID`.
+   *
+   * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async setNodeContactAddressData(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    nodeContactAddressData: NodeContactAddressData,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setNodeContactAddressData(nodeId, nodeAddress, data, tran),
+      );
+    }
+    const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
+    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const nodeContactPath = [...this.nodeGraphBucketsDbPath, bucketKey, nodeIdKey];
+    if (await tran.count(nodeContactPath) == 0)  {
+      // It didn't exist, so we want to increment the bucket count
+      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+      if (count >= this.nodeBucketLimit) {
+        throw new nodesErrors.ErrorNodeGraphBucketLimit();
+      }
+      await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
+    }
+    let nodeContactAddress: NodeContactAddress;
+    if (Array.isArray(nodeAddress)) {
+      nodeContactAddress = nodesUtils.nodeContactAddress(nodeAddress);
+    } else {
+      nodeContactAddress = nodeAddress;
+    }
+    await tran.put(
+      [...nodeContactPath, nodeContactAddress],
+      nodeContactAddressData
+    );
+
+
+
+
+    // Otherwise we are always overwriting
+    // const nodeData = await tran.get<NodeData>(bucketPath);
+    // if (nodeData != null) {
+    //   // If the node already exists we want to remove the old `lastUpdated`
+    //   const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
+    //   await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
+    // } else {
+    //   // It didn't exist, so we want to increment the bucket count
+    //   const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+    //   if (count >= this.nodeBucketLimit) {
+    //     throw new nodesErrors.ErrorNodeGraphBucketLimit();
+    //   }
+    //   await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
+    // }
+    // await tran.put(bucketPath, {
+    //   address: nodeAddress,
+    //   lastUpdated,
+    // });
+
+    // We need to compare against the last udpated one
+
+    await tran.get(
+      [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
+    );
+
+    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
+    await tran.put(
+      [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
+      nodeIdKey,
+      true,
+    );
+  }
+
+
+  // ...
+
+  /**
    * Unsets a `NodeId` record.
    * It will decrement the bucket count if it existed.
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
+  public async unsetNodeContact(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
     }
@@ -366,6 +478,15 @@ class NodeGraph {
       const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
       await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
     }
+  }
+
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async unsetNodeContactAddress(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    tran?: DBTransaction
+  ): Promise<void> {
+
   }
 
   /**
