@@ -22,7 +22,6 @@ describe('nodesClosestLocalNode', () => {
     new StreamHandler(),
   ]);
   const password = 'password';
-  const crypto = tlsTestsUtils.createCrypto();
   const localHost = '127.0.0.1';
 
   let dataDir: string;
@@ -85,10 +84,7 @@ describe('nodesClosestLocalNode', () => {
         cert: tlsConfig.certChainPem,
         verifyPeer: false,
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicServerCrypto,
       logger,
     });
     const handleStream = async (
@@ -148,9 +144,7 @@ describe('nodesClosestLocalNode', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto: {
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicClientCrypto,
       config: {
         verifyPeer: false,
       },
@@ -176,7 +170,6 @@ describe('nodesClosestLocalNode', () => {
       await nodeGraph.setNode(nodeId, {
         host: 'localhost' as Host,
         port: 55555 as Port,
-        scopes: ['local'],
       });
       nodes.push(nodesUtils.encodeNodeId(nodeId));
     }

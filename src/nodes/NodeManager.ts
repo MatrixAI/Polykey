@@ -50,6 +50,12 @@ import config from '../config';
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
+// TODO: proper name
+type QueueType = {
+  nodeIdTarget: NodeId;
+  nodeIdSignaller: NodeId | undefined;
+};
+
 /**
  * NodeManager manages all operations involving nodes.
  * It encapsulates mutations to the NodeGraph.
@@ -335,10 +341,590 @@ class NodeManager {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  // So why do we need `NodeManager.pingNode`?
+  // New refactored methods
 
-  // We should be able to work with at the p2p level of nodes
-  // We should not be taking node addresses
+  // TODO: NM level acquire and with context functions, these will get an existing connection or do the find operation.
+  // - acquireConnection
+  // - withConnF
+  // - withConnG
+
+  // todo - findNode - This will be the main kademlia find method. It will...
+  // 1. return an existing connection,
+  // 2. resolve any hostnames
+  // 3. preform the find using the kademlia algrithm.
+  // a. requires get closest nodes to work.
+
+  /**
+   * Will do a Kademlia find node proceedure.
+   *
+   * Will attempt to fix regardless of existing connection.
+   * @param nodeId - NodeId of target to find.
+   * @param concurrencyLimit - Limit the number of concurrent connections
+   * @param limit
+   * @param ctx
+   * @returns true if the node was found.
+   */
+  // TODO:
+  //  1. extract out queue loop into helper function
+  //  2. add 2nd queue loop for direct connections from nodeGraph data
+  public async findNode(
+    nodeId: NodeId,
+    concurrencyLimit: number,
+    limit?: number,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<Array<NodeId> | undefined>;
+  @timedCancellable(true)
+  public async findNode(
+    nodeId: NodeId,
+    concurrencyLimit: number,
+    limit: number = this.nodeGraph.nodeBucketLimit,
+    @context ctx: ContextTimed,
+  ): Promise<Array<NodeId> | undefined> {
+    // Setting up intermediate signal
+    const abortController = new AbortController();
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortController.signal,
+    };
+    const handleAbort = () => {
+      abortController.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    // Start by getting the closest connections
+    // The queue needs to be
+    //  1. Ordered by closeness
+    //  2. each nodeId is unique
+    //  3. tracks who to signal through
+    const queue: Array<QueueType> = this.nodeConnectionManager
+      .getClosestConnections(nodeId)
+      .map((v) => {
+        return {
+          nodeIdTarget: v.nodeId,
+          nodeIdSignaller: undefined,
+        };
+      });
+
+    const nodesDistanceCmp = nodesUtils.nodeDistanceCmpFactory(nodeId);
+    const queueCmp = (a: QueueType, b: QueueType) =>
+      nodesDistanceCmp(a.nodeIdTarget, b.nodeIdTarget);
+    const rateLimit = new Semaphore(concurrencyLimit);
+
+    const contacted: Set<string> = new Set();
+    const found: Set<string> = new Set();
+    const chain: Map<string, string | undefined> = new Map();
+    let waitResolveP: (() => void) | undefined;
+    let running: number = 0;
+    let doneResolveP: (() => void) | undefined;
+    // Loop until contacted limit is reached
+    while (contacted.size <= limit) {
+      // If queue is empty, and we have a running connection then we wait for it to complete.
+      if (queue.length === 0 && rateLimit.count > 0) {
+        const { p, resolveP } = utils.promise();
+        waitResolveP = resolveP;
+        await p;
+        continue;
+      }
+
+      // Wait for a free concurrency slot
+      const [rateLimitReleaser] = await rateLimit.lock()();
+      this.logger.debug(`contacted: ${contacted.size}`);
+      if (contacted.has(nodeId.toString())) {
+        await rateLimitReleaser();
+        this.logger.debug('found node, ending');
+        break;
+      }
+      const nextNode = queue.shift();
+      // If queue exhausted or target found then end
+      if (nextNode == null) {
+        await rateLimitReleaser();
+        this.logger.debug('queue exhausted, ending');
+        break;
+      }
+
+      const { nodeIdTarget, nodeIdSignaller } = nextNode;
+
+      // Avoid pulling this into closure
+      void (async () => {
+        try {
+          running += 1;
+          // Attempt the connection
+          if (
+            !this.nodeConnectionManager.hasConnection(nodeIdTarget) &&
+            nodeIdSignaller != null
+          ) {
+            this.logger.debug(
+              `attempting connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )} via ${
+                nodeIdSignaller != null
+                  ? nodesUtils.encodeNodeId(nodeIdSignaller)
+                  : 'local'
+              }`,
+            );
+            await this.nodeConnectionManager.createConnectionPunch(
+              nodeIdTarget,
+              nodeIdSignaller,
+              newCtx,
+            );
+          } else {
+            this.logger.debug(
+              `using existing connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )}`,
+            );
+          }
+          const newClosestNodes = await this.nodeConnectionManager.withConnF(
+            nodeIdTarget,
+            async (conn) => {
+              const resultStream =
+                await conn.rpcClient.methods.nodesClosestActiveConnectionsGet({
+                  nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
+                });
+              // Collecting results
+              const results: Array<QueueType> = [];
+              for await (const result of resultStream) {
+                const nodeIdTargetNew = nodesUtils.decodeNodeId(result.nodeId);
+                if (nodeIdTargetNew == null) {
+                  utils.never('failed to decode nodeId');
+                }
+                results.push({
+                  nodeIdTarget: nodeIdTargetNew,
+                  nodeIdSignaller: nodeIdTarget,
+                });
+              }
+              return results;
+            },
+          );
+          // Add to contacted and remove from found
+          contacted.add(nodeIdTarget.toString());
+          found.delete(nodeIdTarget.toString());
+
+          // Filter out contacted, found or own Id, this will prevent duplicates
+          const newClosestNodesFiltered = newClosestNodes.filter((value) => {
+            const nodeIdString = value.nodeIdTarget.toString();
+            return !(
+              contacted.has(nodeIdString) ||
+              found.has(nodeIdString) ||
+              value.nodeIdTarget.equals(this.keyRing.getNodeId())
+            );
+          });
+          this.logger.debug(
+            `nodes new/total ${newClosestNodesFiltered.length}/${newClosestNodes.length}`,
+          );
+          // Adding list to found
+          for (const element of newClosestNodesFiltered) {
+            found.add(element.nodeIdTarget.toString());
+          }
+          // Add new nodes into the queue and sort
+          queue.push(...newClosestNodesFiltered);
+          queue.sort(queueCmp);
+          // Cull list,
+          queue.splice(20);
+        } catch (e) {
+          this.logger.debug(
+            `connection attempt to ${nodesUtils.encodeNodeId(
+              nodeIdTarget,
+            )} failed with ${e.name}(${e.message})`,
+          );
+          return;
+        } finally {
+          // Release the rateLimiter lock
+          await rateLimitReleaser();
+          if (waitResolveP != null) waitResolveP();
+          running--;
+          if (running === 0 && doneResolveP != null) doneResolveP();
+        }
+
+        chain.set(nodeIdTarget.toString(), nodeIdSignaller?.toString());
+        this.logger.debug(
+          `connection attempt to ${nodesUtils.encodeNodeId(
+            nodeIdTarget,
+          )} succeeded`,
+        );
+      })().catch((e) => console.error(e));
+    }
+    // After queue is done we want to signal and await clean up
+    // FIXME: this breaks right now? need to look deeper. I get a thrown null from somewhere.
+    // abortController.abort(Error('TMP IMP cancelling pending connections'));
+    ctx.signal.removeEventListener('abort', handleAbort);
+    if (running > 0) {
+      const { p, resolveP } = utils.promise();
+      doneResolveP = resolveP;
+      await p;
+    }
+
+    if (contacted.has(nodeId.toString())) {
+      const path: Array<NodeId> = [];
+      let current: string | undefined = nodeId.toString();
+      while (current != null) {
+        const nodeId = IdInternal.fromString<NodeId>(current);
+        path.unshift(nodeId);
+        current = chain.get(current);
+      }
+      return path;
+    } else {
+      // Connection was not made so no path was found
+      return undefined;
+    }
+  }
+
+  /**
+   * Will attempt to establish connection using `findNode` or use existing connection.
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNode(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNode(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    const path = await this.findNode(
+      nodeId,
+      3,
+      this.nodeGraph.nodeBucketLimit,
+      ctx,
+    );
+    return path == null;
+  }
+
+  /**
+   * Will attempt to make a direct connection without ICE.
+   * This will only succeed due to these conditions
+   * 1. connection already exists to target.
+   * 2. Nat already allows port due to already being punched.
+   * 3. Port is publicly accessible due to nat configuration .
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    try {
+      await this.nodeConnectionManager.createConnection(
+        [nodeId],
+        host,
+        port,
+        ctx,
+      );
+      return true;
+    } catch {
+      // TODO: stricter error checking
+      return false;
+    }
+  }
+
+  // RPC related methods
+
+  /**
+   * Connects to the target node, and retrieves its sigchain data.
+   * Verifies and returns the decoded chain as ChainData. Note: this will drop
+   * any unverifiable claims.
+   * For node1 -> node2 claims, the verification process also involves connecting
+   * to node2 to verify the claim (to retrieve its signing public key).
+   * @param targetNodeId Id of the node to connect request the chain data of.
+   * @param claimId If set then we get the claims newer that this claim Id.
+   * @param ctx
+   */
+  public requestChainData(
+    targetNodeId: NodeId,
+    claimId?: ClaimId,
+    ctx?: Partial<ContextTimed>,
+  ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
+  @timedCancellable(true)
+  public async requestChainData(
+    targetNodeId: NodeId,
+    claimId: ClaimId | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<Record<ClaimId, SignedClaim>> {
+    // Verify the node's chain with its own public key
+    return await this.nodeConnectionManager.withConnF(
+      targetNodeId,
+      async (connection) => {
+        const claims: Record<ClaimId, SignedClaim> = {};
+        const client = connection.getClient();
+        for await (const agentClaim of await client.methods.nodesClaimsGet({
+          claimIdEncoded:
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
+        })) {
+          if (ctx.signal.aborted) throw ctx.signal.reason;
+          // Need to re-construct each claim
+          const claimId: ClaimId = claimsUtils.decodeClaimId(
+            agentClaim.claimIdEncoded,
+          )!;
+          const signedClaimEncoded = agentClaim.signedTokenEncoded;
+          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
+          // Verifying the claim
+          const issPublicKey = keysUtils.publicKeyFromNodeId(
+            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+          );
+          const subPublicKey =
+            signedClaim.payload.typ === 'node'
+              ? keysUtils.publicKeyFromNodeId(
+                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+                )
+              : null;
+          const token = Token.fromSigned(signedClaim);
+          if (!token.verifyWithPublicKey(issPublicKey)) {
+            this.logger.warn('Failed to verify issuing node');
+            continue;
+          }
+          if (
+            subPublicKey != null &&
+            !token.verifyWithPublicKey(subPublicKey)
+          ) {
+            this.logger.warn('Failed to verify subject node');
+            continue;
+          }
+          claims[claimId] = signedClaim;
+        }
+        return claims;
+      },
+      ctx,
+    );
+  }
+
+  /**
+   * Call this function upon receiving a "claim node request" notification from
+   * another node.
+   */
+  public async claimNode(
+    targetNodeId: NodeId,
+    tran?: DBTransaction,
+    ctx?: ContextTimed, // FIXME, this needs to be a timed cancellable
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => {
+        return this.claimNode(targetNodeId, tran);
+      });
+    }
+    const [, claim] = await this.sigchain.addClaim(
+      {
+        typ: 'ClaimLinkNode',
+        iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        sub: nodesUtils.encodeNodeId(targetNodeId),
+      },
+      undefined,
+      async (token) => {
+        return this.nodeConnectionManager.withConnF(
+          targetNodeId,
+          async (conn) => {
+            // 2. create the agentClaim message to send
+            const halfSignedClaim = token.toSigned();
+            const halfSignedClaimEncoded =
+              claimsUtils.generateSignedClaim(halfSignedClaim);
+            const client = conn.getClient();
+            const stream = await client.methods.nodesCrossSignClaim();
+            const writer = stream.writable.getWriter();
+            const reader = stream.readable.getReader();
+            let fullySignedToken: Token<Claim>;
+            try {
+              await writer.write({
+                signedTokenEncoded: halfSignedClaimEncoded,
+              });
+              // 3. We expect to receive the doubly signed claim
+              const readStatus = await reader.read();
+              if (readStatus.done) {
+                throw new claimsErrors.ErrorEmptyStream();
+              }
+              const receivedClaim = readStatus.value;
+              // We need to re-construct the token from the message
+              const signedClaim = claimsUtils.parseSignedClaim(
+                receivedClaim.signedTokenEncoded,
+              );
+              fullySignedToken = Token.fromSigned(signedClaim);
+              // Check that the signatures are correct
+              const targetNodePublicKey =
+                keysUtils.publicKeyFromNodeId(targetNodeId);
+              if (
+                !fullySignedToken.verifyWithPublicKey(
+                  this.keyRing.keyPair.publicKey,
+                ) ||
+                !fullySignedToken.verifyWithPublicKey(targetNodePublicKey)
+              ) {
+                throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+              }
+
+              // Next stage is to process the claim for the other node
+              const readStatus2 = await reader.read();
+              if (readStatus2.done) {
+                throw new claimsErrors.ErrorEmptyStream();
+              }
+              const receivedClaimRemote = readStatus2.value;
+              // We need to re-construct the token from the message
+              const signedClaimRemote = claimsUtils.parseSignedClaim(
+                receivedClaimRemote.signedTokenEncoded,
+              );
+              // This is a singly signed claim,
+              // we want to verify it before signing and sending back
+              const signedTokenRemote = Token.fromSigned(signedClaimRemote);
+              if (!signedTokenRemote.verifyWithPublicKey(targetNodePublicKey)) {
+                throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+              }
+              signedTokenRemote.signWithPrivateKey(this.keyRing.keyPair);
+              // 4. X <- responds with double signing the X signed claim <- Y
+              const agentClaimedMessageRemote = claimsUtils.generateSignedClaim(
+                signedTokenRemote.toSigned(),
+              );
+              await writer.write({
+                signedTokenEncoded: agentClaimedMessageRemote,
+              });
+
+              // Check the stream is closed (should be closed by other side)
+              const finalResponse = await reader.read();
+              if (finalResponse.done != null) {
+                await writer.close();
+              }
+            } catch (e) {
+              await writer.abort(e);
+              throw e;
+            }
+            return fullySignedToken;
+          },
+          ctx,
+        );
+      },
+      tran,
+    );
+    // With the claim created we want to add it to the gestalt graph
+    const issNodeInfo = {
+      nodeId: this.keyRing.getNodeId(),
+    };
+    const subNodeInfo = {
+      nodeId: targetNodeId,
+    };
+    await this.gestaltGraph.linkNodeAndNode(issNodeInfo, subNodeInfo, {
+      claim: claim as SignedClaim<ClaimLinkNode>,
+      meta: {},
+    });
+  }
+
+  // TODO: make cancellable
+  public async *handleClaimNode(
+    requestingNodeId: NodeId,
+    input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
+    tran?: DBTransaction,
+  ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.handleClaimNode(requestingNodeId, input, tran),
+      );
+    }
+    const readStatus = await input.next();
+    // If nothing to read, end and destroy
+    if (readStatus.done) {
+      throw new claimsErrors.ErrorEmptyStream();
+    }
+    const receivedMessage = readStatus.value;
+    const signedClaim = claimsUtils.parseSignedClaim(
+      receivedMessage.signedTokenEncoded,
+    );
+    const token = Token.fromSigned(signedClaim);
+    // Verify if the token is signed
+    if (
+      !token.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(requestingNodeId),
+      )
+    ) {
+      throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+    }
+    // If verified, add your own signature to the received claim
+    token.signWithPrivateKey(this.keyRing.keyPair);
+    // Return the signed claim
+    const doublySignedClaim = token.toSigned();
+    const halfSignedClaimEncoded =
+      claimsUtils.generateSignedClaim(doublySignedClaim);
+    yield {
+      signedTokenEncoded: halfSignedClaimEncoded,
+    };
+
+    // Now we want to send our own claim signed
+    const halfSignedClaimProm = utils.promise<SignedTokenEncoded>();
+    const claimProm = this.sigchain.addClaim(
+      {
+        typ: 'ClaimLinkNode',
+        iss: nodesUtils.encodeNodeId(requestingNodeId),
+        sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+      },
+      undefined,
+      async (token) => {
+        const halfSignedClaim = token.toSigned();
+        const halfSignedClaimEncoded =
+          claimsUtils.generateSignedClaim(halfSignedClaim);
+        halfSignedClaimProm.resolveP(halfSignedClaimEncoded);
+        const readStatus = await input.next();
+        if (readStatus.done) {
+          throw new claimsErrors.ErrorEmptyStream();
+        }
+        const receivedClaim = readStatus.value;
+        // We need to re-construct the token from the message
+        const signedClaim = claimsUtils.parseSignedClaim(
+          receivedClaim.signedTokenEncoded,
+        );
+        const fullySignedToken = Token.fromSigned(signedClaim);
+        // Check that the signatures are correct
+        const requestingNodePublicKey =
+          keysUtils.publicKeyFromNodeId(requestingNodeId);
+        if (
+          !fullySignedToken.verifyWithPublicKey(
+            this.keyRing.keyPair.publicKey,
+          ) ||
+          !fullySignedToken.verifyWithPublicKey(requestingNodePublicKey)
+        ) {
+          throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+        }
+        // Ending the stream
+        return fullySignedToken;
+      },
+    );
+    yield {
+      signedTokenEncoded: await halfSignedClaimProm.p,
+    };
+    const [, claim] = await claimProm;
+    // With the claim created we want to add it to the gestalt graph
+    const issNodeInfo = {
+      nodeId: requestingNodeId,
+    };
+    const subNodeInfo = {
+      nodeId: this.keyRing.getNodeId(),
+    };
+    await this.gestaltGraph.linkNodeAndNode(issNodeInfo, subNodeInfo, {
+      claim: claim as SignedClaim<ClaimLinkNode>,
+      meta: {},
+    });
+  }
+
+  // End new refactored methods
 
   // /**
   //  * Determines whether a node in the Polykey network is online.
@@ -673,316 +1259,6 @@ class NodeManager {
    */
   public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
     return await this.nodeGraph.unsetNode(nodeId, tran);
-  }
-
-  /**
-   * Ping a node to see if it possible to connect to it.
-   * This will find the node's address locally and globally.
-   * If this returns true, a successful connection is made.
-   * A successful connection means the connection is authenticated.
-   * And that its certificate validates. So even if there was some
-   * response from that connection
-   */
-  public pingNode(nodeId: NodeId, ctx?: Partial<ContextTimedInput>);
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTimeoutTime,
-  )
-  public pingNode(
-    nodeId: NodeId,
-    @context ctx: ContextTimed,
-  ): Promise<boolean> {
-    // I think address resolution requires the NCM to do this too
-    // you have to do ice and whatever
-    // and you have to establish a connection
-    // once connected you don't really care - you can maintain a pool
-    // until it is not needed
-
-    // const addresses = await this.resolveNodeId(nodeId);
-    return this.nodeConnectionManager.connect(nodeId, addresses, ctx);
-  }
-
-  /**
-   * Connects to the target node, and retrieves its sigchain data.
-   * Verifies and returns the decoded chain as ChainData. Note: this will drop
-   * any unverifiable claims.
-   * For node1 -> node2 claims, the verification process also involves connecting
-   * to node2 to verify the claim (to retrieve its signing public key).
-   * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param claimId If set then we get the claims newer that this claim Id.
-   * @param ctx
-   */
-  // FIXME: this should be a generator/stream
-  public requestChainData(
-    targetNodeId: NodeId,
-    claimId?: ClaimId,
-    ctx?: Partial<ContextTimed>,
-  ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
-  @timedCancellable(true)
-  public async requestChainData(
-    targetNodeId: NodeId,
-    claimId: ClaimId | undefined,
-    @context ctx: ContextTimed,
-  ): Promise<Record<ClaimId, SignedClaim>> {
-    // Verify the node's chain with its own public key
-    return await this.nodeConnectionManager.withConnF(
-      targetNodeId,
-      async (connection) => {
-        const claims: Record<ClaimId, SignedClaim> = {};
-        const client = connection.getClient();
-        for await (const agentClaim of await client.methods.nodesClaimsGet({
-          claimIdEncoded:
-            claimId != null
-              ? claimsUtils.encodeClaimId(claimId)
-              : ('' as ClaimIdEncoded),
-        })) {
-          if (ctx.signal.aborted) throw ctx.signal.reason;
-          // Need to re-construct each claim
-          const claimId: ClaimId = claimsUtils.decodeClaimId(
-            agentClaim.claimIdEncoded,
-          )!;
-          const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
-          // Verifying the claim
-          const issPublicKey = keysUtils.publicKeyFromNodeId(
-            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-          );
-          const subPublicKey =
-            signedClaim.payload.typ === 'node'
-              ? keysUtils.publicKeyFromNodeId(
-                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-                )
-              : null;
-          const token = Token.fromSigned(signedClaim);
-          if (!token.verifyWithPublicKey(issPublicKey)) {
-            this.logger.warn('Failed to verify issuing node');
-            continue;
-          }
-          if (
-            subPublicKey != null &&
-            !token.verifyWithPublicKey(subPublicKey)
-          ) {
-            this.logger.warn('Failed to verify subject node');
-            continue;
-          }
-          claims[claimId] = signedClaim;
-        }
-        return claims;
-      },
-      ctx,
-    );
-  }
-
-  /**
-   * Call this function upon receiving a "claim node request" notification from
-   * another node.
-   */
-  public async claimNode(
-    targetNodeId: NodeId,
-    tran?: DBTransaction,
-    ctx?: ContextTimed, // FIXME, this needs to be a timed cancellable
-  ): Promise<void> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) => {
-        return this.claimNode(targetNodeId, tran);
-      });
-    }
-    const [, claim] = await this.sigchain.addClaim(
-      {
-        typ: 'ClaimLinkNode',
-        iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
-        sub: nodesUtils.encodeNodeId(targetNodeId),
-      },
-      undefined,
-      async (token) => {
-        return this.nodeConnectionManager.withConnF(
-          targetNodeId,
-          async (conn) => {
-            // 2. create the agentClaim message to send
-            const halfSignedClaim = token.toSigned();
-            const halfSignedClaimEncoded =
-              claimsUtils.generateSignedClaim(halfSignedClaim);
-            const client = conn.getClient();
-            const stream = await client.methods.nodesCrossSignClaim();
-            const writer = stream.writable.getWriter();
-            const reader = stream.readable.getReader();
-            let fullySignedToken: Token<Claim>;
-            try {
-              await writer.write({
-                signedTokenEncoded: halfSignedClaimEncoded,
-              });
-              // 3. We expect to receive the doubly signed claim
-              const readStatus = await reader.read();
-              if (readStatus.done) {
-                throw new claimsErrors.ErrorEmptyStream();
-              }
-              const receivedClaim = readStatus.value;
-              // We need to re-construct the token from the message
-              const signedClaim = claimsUtils.parseSignedClaim(
-                receivedClaim.signedTokenEncoded,
-              );
-              fullySignedToken = Token.fromSigned(signedClaim);
-              // Check that the signatures are correct
-              const targetNodePublicKey =
-                keysUtils.publicKeyFromNodeId(targetNodeId);
-              if (
-                !fullySignedToken.verifyWithPublicKey(
-                  this.keyRing.keyPair.publicKey,
-                ) ||
-                !fullySignedToken.verifyWithPublicKey(targetNodePublicKey)
-              ) {
-                throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-              }
-
-              // Next stage is to process the claim for the other node
-              const readStatus2 = await reader.read();
-              if (readStatus2.done) {
-                throw new claimsErrors.ErrorEmptyStream();
-              }
-              const receivedClaimRemote = readStatus2.value;
-              // We need to re-construct the token from the message
-              const signedClaimRemote = claimsUtils.parseSignedClaim(
-                receivedClaimRemote.signedTokenEncoded,
-              );
-              // This is a singly signed claim,
-              // we want to verify it before signing and sending back
-              const signedTokenRemote = Token.fromSigned(signedClaimRemote);
-              if (!signedTokenRemote.verifyWithPublicKey(targetNodePublicKey)) {
-                throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
-              }
-              signedTokenRemote.signWithPrivateKey(this.keyRing.keyPair);
-              // 4. X <- responds with double signing the X signed claim <- Y
-              const agentClaimedMessageRemote = claimsUtils.generateSignedClaim(
-                signedTokenRemote.toSigned(),
-              );
-              await writer.write({
-                signedTokenEncoded: agentClaimedMessageRemote,
-              });
-
-              // Check the stream is closed (should be closed by other side)
-              const finalResponse = await reader.read();
-              if (finalResponse.done != null) {
-                await writer.close();
-              }
-            } catch (e) {
-              await writer.abort(e);
-              throw e;
-            }
-            return fullySignedToken;
-          },
-          ctx,
-        );
-      },
-      tran,
-    );
-    // With the claim created we want to add it to the gestalt graph
-    const issNodeInfo = {
-      nodeId: this.keyRing.getNodeId(),
-    };
-    const subNodeInfo = {
-      nodeId: targetNodeId,
-    };
-    await this.gestaltGraph.linkNodeAndNode(issNodeInfo, subNodeInfo, {
-      claim: claim as SignedClaim<ClaimLinkNode>,
-      meta: {},
-    });
-  }
-
-  // TODO: make cancellable
-  public async *handleClaimNode(
-    requestingNodeId: NodeId,
-    input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
-    tran?: DBTransaction,
-  ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.handleClaimNode(requestingNodeId, input, tran),
-      );
-    }
-    const readStatus = await input.next();
-    // If nothing to read, end and destroy
-    if (readStatus.done) {
-      throw new claimsErrors.ErrorEmptyStream();
-    }
-    const receivedMessage = readStatus.value;
-    const signedClaim = claimsUtils.parseSignedClaim(
-      receivedMessage.signedTokenEncoded,
-    );
-    const token = Token.fromSigned(signedClaim);
-    // Verify if the token is signed
-    if (
-      !token.verifyWithPublicKey(
-        keysUtils.publicKeyFromNodeId(requestingNodeId),
-      )
-    ) {
-      throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
-    }
-    // If verified, add your own signature to the received claim
-    token.signWithPrivateKey(this.keyRing.keyPair);
-    // Return the signed claim
-    const doublySignedClaim = token.toSigned();
-    const halfSignedClaimEncoded =
-      claimsUtils.generateSignedClaim(doublySignedClaim);
-    yield {
-      signedTokenEncoded: halfSignedClaimEncoded,
-    };
-
-    // Now we want to send our own claim signed
-    const halfSignedClaimProm = utils.promise<SignedTokenEncoded>();
-    const claimProm = this.sigchain.addClaim(
-      {
-        typ: 'ClaimLinkNode',
-        iss: nodesUtils.encodeNodeId(requestingNodeId),
-        sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
-      },
-      undefined,
-      async (token) => {
-        const halfSignedClaim = token.toSigned();
-        const halfSignedClaimEncoded =
-          claimsUtils.generateSignedClaim(halfSignedClaim);
-        halfSignedClaimProm.resolveP(halfSignedClaimEncoded);
-        const readStatus = await input.next();
-        if (readStatus.done) {
-          throw new claimsErrors.ErrorEmptyStream();
-        }
-        const receivedClaim = readStatus.value;
-        // We need to re-construct the token from the message
-        const signedClaim = claimsUtils.parseSignedClaim(
-          receivedClaim.signedTokenEncoded,
-        );
-        const fullySignedToken = Token.fromSigned(signedClaim);
-        // Check that the signatures are correct
-        const requestingNodePublicKey =
-          keysUtils.publicKeyFromNodeId(requestingNodeId);
-        if (
-          !fullySignedToken.verifyWithPublicKey(
-            this.keyRing.keyPair.publicKey,
-          ) ||
-          !fullySignedToken.verifyWithPublicKey(requestingNodePublicKey)
-        ) {
-          throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-        }
-        // Ending the stream
-        return fullySignedToken;
-      },
-    );
-    yield {
-      signedTokenEncoded: await halfSignedClaimProm.p,
-    };
-    const [, claim] = await claimProm;
-    // With the claim created we want to add it to the gestalt graph
-    const issNodeInfo = {
-      nodeId: requestingNodeId,
-    };
-    const subNodeInfo = {
-      nodeId: this.keyRing.getNodeId(),
-    };
-    await this.gestaltGraph.linkNodeAndNode(issNodeInfo, subNodeInfo, {
-      claim: claim as SignedClaim<ClaimLinkNode>,
-      meta: {},
-    });
   }
 
   /**

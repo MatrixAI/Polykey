@@ -25,6 +25,7 @@ type NodeInfo =
       id: NodeId;
       graph: {
         data: NodeData;
+        nodesShortListElement;
         bucketIndex: NodeBucketIndex;
       };
       connection: NodeConnection;

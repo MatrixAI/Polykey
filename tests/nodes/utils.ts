@@ -1,10 +1,16 @@
 import type { NodeId } from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
+import type Logger from '@matrixai/logger';
+import type { KeyRing } from '@/keys';
+import type { Host, Port } from '@/network/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
+import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
+import * as testsUtils from '../utils';
 
 /**
  * Generate random `NodeId`
@@ -180,6 +186,84 @@ function createReasonConverters() {
   };
 }
 
+type NCMState = {
+  nodeId: NodeId;
+  keyRingDummy: KeyRing;
+  nodeConnectionManager: NodeConnectionManager;
+  port: Port;
+};
+
+async function nodeConnectionManagerFactory({
+  createOptions: {
+    connectionFindConcurrencyLimit,
+    connectionFindLocalTimeoutTime,
+    connectionIdleTimeoutTime,
+    connectionConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime,
+    rpcParserBufferSize,
+    rpcCallTimeoutTime,
+  } = {},
+  startOptions: { host, port, agentService },
+  logger,
+}: {
+  createOptions?: {
+    connectionFindConcurrencyLimit?: number;
+    connectionFindLocalTimeoutTime?: number;
+    connectionIdleTimeoutTime?: number;
+    connectionConnectTimeoutTime?: number;
+    connectionKeepAliveTimeoutTime?: number;
+    connectionKeepAliveIntervalTime?: number;
+    connectionHolePunchIntervalTime?: number;
+    rpcParserBufferSize?: number;
+    rpcCallTimeoutTime?: number;
+  };
+  startOptions: {
+    host?: Host;
+    port?: Port;
+    agentService: (nodeConnectionManager) => AgentServerManifest;
+  };
+  logger: Logger;
+}): Promise<NCMState> {
+  const keyPair = keysUtils.generateKeyPair();
+  const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+  const tlsConfig = await testsUtils.createTLSConfig(keyPair);
+  const keyRingDummy = {
+    getNodeId: () => nodeId,
+    keyPair: keyPair,
+  } as KeyRing;
+  const nodeConnectionManager = new NodeConnectionManager({
+    keyRing: keyRingDummy,
+    logger: logger,
+    tlsConfig: tlsConfig,
+    connectionFindConcurrencyLimit,
+    connectionFindLocalTimeoutTime,
+    connectionIdleTimeoutTime,
+    connectionConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime,
+    rpcParserBufferSize,
+    rpcCallTimeoutTime,
+  });
+
+  await nodeConnectionManager.start({
+    agentService: agentService(nodeConnectionManager),
+    host,
+    port,
+  });
+
+  return {
+    nodeId,
+    keyRingDummy,
+    nodeConnectionManager,
+    port: nodeConnectionManager.port,
+  };
+}
+
+export type { NCMState };
+
 export {
   generateRandomNodeId,
   generateRandomUnixtime,
@@ -191,4 +275,5 @@ export {
   sign,
   verify,
   createReasonConverters,
+  nodeConnectionManagerFactory,
 };

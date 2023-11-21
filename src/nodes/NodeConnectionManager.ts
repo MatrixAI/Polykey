@@ -1,7 +1,13 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { QUICConnection } from '@matrixai/quic';
-import type { NodeAddress, NodeId, NodeIdString, SeedNodes } from './types';
+import type {
+  NodeAddress,
+  NodeId,
+  NodeIdEncoded,
+  NodeIdString,
+  SeedNodes,
+} from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { CertificatePEM } from '../keys/types';
 import type {
@@ -12,13 +18,13 @@ import type {
   TLSConfig,
 } from '../network/types';
 import type { AgentServerManifest } from './agent/handlers';
-import { withF } from '@matrixai/resources';
 import {
   events as quicEvents,
   QUICServer,
   QUICSocket,
   utils as quicUtils,
 } from '@matrixai/quic';
+import { withF } from '@matrixai/resources';
 import { middleware as rpcMiddleware, RPCServer } from '@matrixai/rpc';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
@@ -50,9 +56,22 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
-type connectionsEntry = {
+type ConnectionsEntry = {
   activeConnection: string;
   connections: Record<string, ConnectionAndTimer>;
+};
+
+type ConnectionInfo = {
+  host: Host;
+  hostName: Hostname | undefined;
+  port: Port;
+  timeout: number | undefined;
+  primary: boolean;
+};
+
+type activeConnectionsInfo = {
+  nodeId: NodeId;
+  connections: Record<string, ConnectionInfo>;
 };
 
 /**
@@ -165,7 +184,7 @@ class NodeConnectionManager {
    * A nodeIdString is used for the key here since
    * NodeIds can't be used to properly retrieve a value from the map.
    */
-  protected connections: Map<NodeIdString, connectionsEntry> = new Map();
+  protected connections: Map<NodeIdString, ConnectionsEntry> = new Map();
 
   protected rpcServer: RPCServer;
 
@@ -1044,89 +1063,6 @@ class NodeConnectionManager {
 
   // // TODO: move to `NodeManager`
   // /**
-  //  * This gets a connection with a known address.
-  //  * @param targetNodeId Id of node we are creating connection to.
-  //  * @param address - The address to connect on if specified. If not provided we attempt a kademlia search.
-  //  * @param ctx
-  //  * @returns ConnectionAndLock that was created or exists in the connection map
-  //  */
-  // protected getConnectionWithAddresses(
-  //   targetNodeId: NodeId,
-  //   addresses: Array<NodeAddress>,
-  //   ctx?: Partial<ContextTimed>,
-  // ): PromiseCancellable<ConnectionAndTimer>;
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionConnectTimeoutTime,
-  // )
-  // protected async getConnectionWithAddresses(
-  //   targetNodeId: NodeId,
-  //   addresses: Array<NodeAddress>,
-  //   @context ctx: ContextTimed,
-  // ): Promise<ConnectionAndTimer> {
-  //   if (addresses.length === 0) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerNodeAddressRequired();
-  //   }
-  //   const targetNodeIdString = targetNodeId.toString() as NodeIdString;
-  //   const existingConnection = await this.getExistingConnection(targetNodeId);
-  //   if (existingConnection != null) return existingConnection;
-  //   const targetNodeIdEncoded = nodesUtils.encodeNodeId(targetNodeId);
-  //   let timeoutDivisions = 0;
-  //   const addressGroups: {
-  //     local: Array<NodeAddress>;
-  //     global: Array<NodeAddress>;
-  //   } = { local: [], global: [] };
-  //   for (const address of addresses) {
-  //     const scope = address.scopes.includes('local') ? 'local' : 'global';
-  //     // If this is the first time an addressGroup has had an address added, the timeout divisions must be incremented.
-  //     if (addressGroups[scope].length === 0) {
-  //       timeoutDivisions++;
-  //     }
-  //     addressGroups[scope].push(address);
-  //   }
-  //   this.logger.debug(`Getting NodeConnection for ${targetNodeIdEncoded}`);
-  //   return await this.connectionLocks
-  //     .withF([targetNodeIdString, Lock, ctx], async () => {
-  //       this.logger.debug(`acquired lock for ${targetNodeIdEncoded}`);
-  //       // Attempting a multi-connection for the target node using local addresses
-  //       const timeout = ctx.timer.getTimeout() / timeoutDivisions;
-  //       let results: Map<NodeIdString, ConnectionAndTimer> | undefined;
-  //       if (addressGroups.local.length !== 0) {
-  //         results = await this.establishMultiConnection(
-  //           [targetNodeId],
-  //           addressGroups.local,
-  //           {
-  //             signal: ctx.signal,
-  //             timer: timeout,
-  //           },
-  //         );
-  //       }
-  //       // If there are no results from the attempted local connections, attempt a multi-connection for the target node using external addresses
-  //       if (results == null || results.size === 0) {
-  //         results = await this.establishMultiConnection(
-  //           [targetNodeId],
-  //           addressGroups.global,
-  //           {
-  //             signal: ctx.signal,
-  //             timer: timeout,
-  //           },
-  //         );
-  //       }
-  //       // Should be a single result.
-  //       for (const [, connAndTimer] of results) {
-  //         return connAndTimer;
-  //       }
-  //       // Should throw before reaching here
-  //       utils.never();
-  //     })
-  //     .finally(() => {
-  //       this.logger.debug(`lock finished for ${targetNodeIdEncoded}`);
-  //     });
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
   //  * This will connect to the provided address looking for any of the listed nodes.
   //  * Locking is not handled at this level, it must be handled by the caller.
   //  * @param nodeIds
@@ -1240,59 +1176,6 @@ class NodeConnectionManager {
   //     );
   //   }
   //   return connectionsResults;
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Will attempt to find a connection via a Kademlia search.
-  //  * The connection will be established in the process.
-  //  * @param targetNodeId Id of the node we are tying to find
-  //  * @param pingTimeoutTime timeout for any ping attempts
-  //  * @param ctx
-  //  */
-  // public findNode(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime?: number,
-  //   ctx?: Partial<ContextTimed>,
-  // ): PromiseCancellable<NodeAddress | undefined>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(true)
-  // public async findNode(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime: number | undefined,
-  //   @context ctx: ContextTimed,
-  // ): Promise<NodeAddress | undefined> {
-  //   this.logger.debug(
-  //     `Finding address for ${nodesUtils.encodeNodeId(targetNodeId)}`,
-  //   );
-  //   // First check if we already have an existing ID -> address record
-  //   let address = (await this.nodeGraph.getNode(targetNodeId))?.address;
-  //   if (address != null) {
-  //     this.logger.debug(
-  //       `found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${
-  //         address.host
-  //       }:${address.port}`,
-  //     );
-  //     return address;
-  //   } else {
-  //     this.logger.debug(`attempting to find in the network`);
-  //   }
-  //   // Otherwise, attempt to locate it by contacting network
-  //   address = await this.getClosestGlobalNodes(
-  //     targetNodeId,
-  //     pingTimeoutTime ?? this.connectionConnectTimeoutTime,
-  //     ctx,
-  //   );
-  //   if (address != null) {
-  //     this.logger.debug(
-  //       `found address for ${nodesUtils.encodeNodeId(targetNodeId)} at ${
-  //         address.host
-  //       }:${address.port}`,
-  //     );
-  //   } else {
-  //     this.logger.debug(`no address found`);
-  //   }
-  //   return address;
   // }
   //
   // // TODO: move to `NodeManager`
@@ -1433,157 +1316,6 @@ class NodeConnectionManager {
   //     addresses.push(kademliaAddress.value);
   //   }
   //   return addresses;
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Attempts to locate a target node in the network (using Kademlia).
-  //  * Adds all discovered, active nodes to the current node's database (up to k
-  //  * discovered nodes).
-  //  * Once the target node is found, the method returns and stops trying to locate
-  //  * other nodes.
-  //  *
-  //  * Ultimately, attempts to perform a "DNS resolution" on the given target node
-  //  * ID (i.e. given a node ID, retrieves the node address, containing its IP and
-  //  * port).
-  //  * @param targetNodeId ID of the node attempting to be found (i.e. attempting
-  //  * to find its IP address and port)
-  //  * @param pingTimeoutTime
-  //  * @param ctx
-  //  * @returns whether the target node was located in the process
-  //  */
-  // public getClosestGlobalNodes(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime?: number,
-  //   ctx?: Partial<ContextTimed>,
-  // ): PromiseCancellable<NodeAddress | undefined>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(true)
-  // public async getClosestGlobalNodes(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime: number | undefined,
-  //   @context ctx: ContextTimed,
-  // ): Promise<NodeAddress | undefined> {
-  //   const localNodeId = this.keyRing.getNodeId();
-  //   // Let foundTarget: boolean = false;
-  //   let foundAddress: NodeAddress | undefined = undefined;
-  //   // Get the closest alpha nodes to the target node (set as shortlist)
-  //   const shortlist = await this.nodeGraph.getClosestNodes(
-  //     targetNodeId,
-  //     this.connectionFindConcurrencyLimit,
-  //   );
-  //   // If we have no nodes at all in our database (even after synchronising),
-  //   // then we should return nothing. We aren't going to find any others
-  //   if (shortlist.length === 0) {
-  //     this.logger.debug('Node graph was empty, No nodes to query');
-  //     return;
-  //   }
-  //   // Need to keep track of the nodes that have been contacted
-  //   // Not sufficient to simply check if there's already a pre-existing connection
-  //   // in nodeConnections - what if there's been more than 1 invocation of
-  //   // getClosestGlobalNodes()?
-  //   const contacted: Set<string> = new Set();
-  //   // Iterate until we've found and contacted k nodes
-  //   while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
-  //     if (ctx.signal?.aborted) return;
-  //     // Remove the node from the front of the array
-  //     const nextNode = shortlist.shift();
-  //     // If we have no nodes left in the shortlist, then stop
-  //     if (nextNode == null) {
-  //       break;
-  //     }
-  //     const [nextNodeId, nextNodeAddress] = nextNode;
-  //     this.logger.debug(
-  //       `asking ${nodesUtils.encodeNodeId(
-  //         nextNodeId,
-  //       )} for closes nodes to ${nodesUtils.encodeNodeId(targetNodeId)}`,
-  //     );
-  //     // Skip if the node has already been contacted
-  //     if (contacted.has(nextNodeId.toString())) continue;
-  //     // Connect to the node (check if pre-existing connection exists, otherwise
-  //     // create a new one)
-  //     if (
-  //       !(await this.pingNode(
-  //         nextNodeId,
-  //         [
-  //           {
-  //             host: nextNodeAddress.address.host,
-  //             port: nextNodeAddress.address.port,
-  //             scopes: ['global'],
-  //           },
-  //         ],
-  //         {
-  //           signal: ctx.signal,
-  //           timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
-  //         },
-  //       ))
-  //     ) {
-  //       continue;
-  //     }
-  //     contacted[nextNodeId] = true;
-  //     // Ask the node to get their own closest nodes to the target
-  //     let foundClosest: Array<[NodeId, NodeData]>;
-  //     try {
-  //       foundClosest = await this.getRemoteNodeClosestNodes(
-  //         nextNodeId,
-  //         targetNodeId,
-  //         { signal: ctx.signal },
-  //       );
-  //     } catch (e) {
-  //       if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
-  //       throw e;
-  //     }
-  //     if (foundClosest.length === 0) continue;
-  //     // Check to see if any of these are the target node. At the same time, add
-  //     // them to the shortlist
-  //     for (const [nodeId, nodeData] of foundClosest) {
-  //       if (ctx.signal?.aborted) return;
-  //       // Ignore any nodes that have been contacted or our own node
-  //       if (contacted[nodeId] || localNodeId.equals(nodeId)) {
-  //         continue;
-  //       }
-  //       if (
-  //         nodeId.equals(targetNodeId) &&
-  //         (await this.pingNode(
-  //           nodeId,
-  //           [
-  //             {
-  //               host: nodeData.address.host,
-  //               port: nodeData.address.port,
-  //               scopes: ['global'],
-  //             },
-  //           ],
-  //           {
-  //             signal: ctx.signal,
-  //             timer: pingTimeoutTime ?? this.connectionConnectTimeoutTime,
-  //           },
-  //         ))
-  //       ) {
-  //         foundAddress = nodeData.address;
-  //         // We have found the target node, so we can stop trying to look for it
-  //         // in the shortlist
-  //         break;
-  //       }
-  //       shortlist.push([nodeId, nodeData]);
-  //     }
-  //     // To make the number of jumps relatively short, should connect to the nodes
-  //     // closest to the target first, and ask if they know of any closer nodes
-  //     // than we can simply unshift the first (closest) element from the shortlist
-  //     const distance = (nodeId: NodeId) =>
-  //       nodesUtils.nodeDistance(targetNodeId, nodeId);
-  //     shortlist.sort(function ([nodeIdA], [nodeIdB]) {
-  //       const distanceA = distance(nodeIdA);
-  //       const distanceB = distance(nodeIdB);
-  //       if (distanceA > distanceB) {
-  //         return 1;
-  //       } else if (distanceA < distanceB) {
-  //         return -1;
-  //       } else {
-  //         return 0;
-  //       }
-  //     });
-  //   }
-  //   return foundAddress;
   // }
   //
   // // TODO: move to `NodeManager`
@@ -1755,6 +1487,45 @@ class NodeConnectionManager {
       host,
       port,
     };
+  }
+
+  /**
+   * Returns a list of active connections and their address information.
+   * TODO: take limit from config
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public getClosestConnections(
+    targetNodeId: NodeId,
+    limit: number = 20,
+  ): Array<activeConnectionsInfo> {
+    const nodeIds: Array<NodeId> = [];
+    for (const nodeIdString of this.connections.keys()) {
+      nodeIds.push(IdInternal.fromString<NodeId>(nodeIdString));
+    }
+    // Sort and draw limit
+    nodeIds.sort(nodesUtils.nodeDistanceCmpFactory(targetNodeId));
+    const nodesShortList = nodeIds.slice(0, limit);
+    // With the desired nodes we can format data
+    return nodesShortList.map((nodeId) => {
+      const nodeIdString = nodeId.toString() as NodeIdString;
+      const entry = this.connections.get(nodeIdString);
+      if (entry == null) utils.never('Connection should exist');
+      const entryRecord: activeConnectionsInfo = {
+        nodeId: nodeId,
+        connections: {},
+      };
+      for (const connAndTimer of Object.values(entry.connections)) {
+        const connection = connAndTimer.connection;
+        entryRecord.connections[connection.connectionId] = {
+          host: connection.host,
+          hostName: connection.hostname,
+          port: connection.port,
+          timeout: connAndTimer.timer?.getTimeout(),
+          primary: connection.connectionId === entry.activeConnection,
+        };
+      }
+      return entryRecord;
+    });
   }
 
   // // TODO: move to `NodeManager`
