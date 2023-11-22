@@ -6,6 +6,12 @@ import type { Opaque } from '../types';
 type PermissionId = Opaque<'PermissionId', Id>;
 type PermissionIdString = Opaque<'PermissionIdString', string>;
 
+// Audit
+
+type AuditEventId = Opaque<'AuditEventId', Id>;
+type AuditEventIdString = Opaque<'AuditEventIdString', string>;
+type AuditEventIdEncoded = Opaque<'AuditEventIdEncoded', string>;
+
 // Keys
 
 type CertId = Opaque<'CertId', Id>;
@@ -100,6 +106,9 @@ type NotificationIdEncoded = Opaque<'NotificationIdEncoded', string>;
 export type {
   PermissionId,
   PermissionIdString,
+  AuditEventId,
+  AuditEventIdString,
+  AuditEventIdEncoded,
   CertId,
   CertIdString,
   CertIdEncoded,

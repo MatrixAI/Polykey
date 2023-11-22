@@ -1,6 +1,7 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { DeepPartial, FileSystem } from './types';
+import type { OverrideRPClientType } from './client/types';
 import type { NodeId } from './ids/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -151,7 +152,9 @@ class PolykeyClient {
   protected logger: Logger;
   protected _nodeId: NodeId;
   protected _webSocketClient: WebSocketClient;
-  protected _rpcClient: RPCClient<typeof clientClientManifest>;
+  protected _rpcClient: OverrideRPClientType<
+    RPCClient<typeof clientClientManifest>
+  >;
 
   constructor({
     nodePath,
@@ -302,7 +305,7 @@ class PolykeyClient {
     });
     this._nodeId = nodeId_;
     this._webSocketClient = webSocketClient;
-    this._rpcClient = rpcClient;
+    this._rpcClient = rpcClient as typeof this._rpcClient;
     this.logger.info(`Started ${this.constructor.name}`);
   }
 

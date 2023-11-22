@@ -20,6 +20,8 @@ import type {
   GestaltLinkId,
   NotificationId,
   NotificationIdEncoded,
+  AuditEventId,
+  AuditEventIdEncoded,
 } from './types';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
@@ -30,6 +32,61 @@ function createPermIdGenerator(): () => PermissionId {
     randomSource: keysUtilsRandom.getRandomBytes,
   });
   return () => generator.get();
+}
+
+function createAuditEventIdGenerator(
+  lastAuditEventId?: AuditEventId,
+): () => AuditEventId {
+  const generator = new IdSortable<AuditEventId>({
+    lastId: lastAuditEventId,
+    randomSource: keysUtilsRandom.getRandomBytes,
+  });
+  return () => generator.get();
+}
+
+/**
+ * Encodes `AuditEventId` to `AuditEventIdEncoded`
+ */
+function encodeAuditEventId(auditEventId: AuditEventId): AuditEventIdEncoded {
+  return auditEventId.toBuffer().toString('hex') as AuditEventIdEncoded;
+}
+
+/**
+ * Decodes `AuditEventIdEncoded` to `AuditEventId`
+ */
+function decodeAuditEventId(
+  auditEventIdEncoded: unknown,
+): AuditEventId | undefined {
+  if (typeof auditEventIdEncoded !== 'string') {
+    return;
+  }
+  const auditEventIdBuffer = Buffer.from(auditEventIdEncoded, 'hex');
+  const auditEventId = IdInternal.fromBuffer<AuditEventId>(auditEventIdBuffer);
+  if (auditEventId == null) {
+    return;
+  }
+  // All `AuditEventId` are 16 bytes long
+  if (auditEventId.length !== 16) {
+    return;
+  }
+  return auditEventId;
+}
+
+/**
+ * Generates an auditId from an epoch timestamp.
+ *
+ * @param epoch
+ * @param randomSource
+ */
+function generateAuditEventIdFromTimestamp(
+  epoch: number,
+  randomSource: (size: number) => Uint8Array = keysUtilsRandom.getRandomBytes,
+): AuditEventId {
+  const generator = new IdSortable<AuditEventId>({
+    timeSource: () => () => epoch,
+    randomSource,
+  });
+  return generator.get();
 }
 
 /**
@@ -463,6 +520,10 @@ function decodeNotificationId(
 
 export {
   createPermIdGenerator,
+  createAuditEventIdGenerator,
+  generateAuditEventIdFromTimestamp,
+  encodeAuditEventId,
+  decodeAuditEventId,
   createNodeIdGenerator,
   isNodeId,
   assertNodeId,

@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
 import type ACL from '../../acl/ACL';
+import type Audit from '../../audit/Audit';
 import type KeyRing from '../../keys/KeyRing';
 import type CertManager from '../../keys/CertManager';
 import type SessionManager from '../../sessions/SessionManager';
@@ -82,6 +83,8 @@ import VaultsSecretsNewDir from './VaultsSecretsNewDir';
 import VaultsSecretsRename from './VaultsSecretsRename';
 import VaultsSecretsStat from './VaultsSecretsStat';
 import VaultsVersion from './VaultsVersion';
+import AuditEventsGet from './AuditEventsGet';
+import AuditMetricGet from './AuditMetricGet';
 
 /**
  * Server manifest factory.
@@ -96,6 +99,7 @@ const serverManifest = (container: {
   identitiesManager: IdentitiesManager;
   discovery: Discovery;
   acl: ACL;
+  audit: Audit;
   notificationsManager: NotificationsManager;
   nodeManager: NodeManager;
   nodeConnectionManager: NodeConnectionManager;
@@ -109,6 +113,8 @@ const serverManifest = (container: {
     agentStatus: new AgentStatus(container),
     agentStop: new AgentStop(container),
     agentUnlock: new AgentUnlock(container),
+    auditEventsGet: new AuditEventsGet(container),
+    auditMetricGet: new AuditMetricGet(container),
     gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentity(container),
     gestaltsActionsGetByNode: new GestaltsActionsGetByNode(container),
     gestaltsActionsSetByIdentity: new GestaltsActionsSetByIdentity(container),

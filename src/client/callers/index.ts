@@ -2,6 +2,8 @@ import agentLockAll from './agentLockAll';
 import agentStatus from './agentStatus';
 import agentStop from './agentStop';
 import agentUnlock from './agentUnlock';
+import auditEventsGet from './auditEventsGet';
+import auditMetricGet from './auditMetricGet';
 import gestaltsActionsGetByIdentity from './gestaltsActionsGetByIdentity';
 import gestaltsActionsGetByNode from './gestaltsActionsGetByNode';
 import gestaltsActionsSetByIdentity from './gestaltsActionsSetByIdentity';
@@ -75,6 +77,8 @@ const clientManifest = {
   agentStatus,
   agentStop,
   agentUnlock,
+  auditEventsGet,
+  auditMetricGet,
   gestaltsActionsGetByIdentity,
   gestaltsActionsGetByNode,
   gestaltsActionsSetByIdentity,
@@ -148,6 +152,7 @@ export {
   agentStatus,
   agentStop,
   agentUnlock,
+  auditEventsGet,
   gestaltsActionsGetByIdentity,
   gestaltsActionsGetByNode,
   gestaltsActionsSetByIdentity,
