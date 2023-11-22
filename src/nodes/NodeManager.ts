@@ -360,20 +360,38 @@ class NodeManager {
    * Will attempt to fix regardless of existing connection.
    * @param nodeId - NodeId of target to find.
    * @param concurrencyLimit - Limit the number of concurrent connections
+   * @param limit
    * @param ctx
    * @returns true if the node was found.
    */
   public async findNode(
     nodeId: NodeId,
     concurrencyLimit: number,
+    limit?: number,
     ctx?: Partial<ContextTimedInput>,
-  ): Promise<boolean>;
+  ): Promise<Array<NodeId> | undefined>;
   @timedCancellable(true)
   public async findNode(
     nodeId: NodeId,
     concurrencyLimit: number,
+    limit: number = this.nodeGraph.nodeBucketLimit,
     @context ctx: ContextTimed,
-  ): Promise<boolean> {
+  ): Promise<Array<NodeId> | undefined> {
+    // Setting up intermediate signal
+    const abortController = new AbortController();
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortController.signal,
+    };
+    const handleAbort = () => {
+      abortController.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
     // Start by getting the closest connections
     // The queue needs to be
     //  1. Ordered by closeness
@@ -395,33 +413,69 @@ class NodeManager {
 
     const contacted: Set<string> = new Set();
     const found: Set<string> = new Set();
+    const chain: Map<string, string | undefined> = new Map();
+    let waitResolveP: (() => void) | undefined;
+    let running: number = 0;
+    let doneResolveP: (() => void) | undefined;
     // Loop until contacted limit is reached
-    while (contacted.size <= this.nodeGraph.nodeBucketLimit) {
+    while (contacted.size <= limit) {
+      // If queue is empty, and we have a running connection then we wait for it to complete.
+      if (queue.length === 0 && rateLimit.count > 0) {
+        const { p, resolveP } = utils.promise();
+        waitResolveP = resolveP;
+        await p;
+        continue;
+      }
+
       // Wait for a free concurrency slot
-      const [rateLimitReleaser] = await rateLimit.lock(ctx)();
+      const [rateLimitReleaser] = await rateLimit.lock()();
+      this.logger.debug(`contacted: ${contacted.size}`);
+      if (contacted.has(nodeId.toString())) {
+        await rateLimitReleaser();
+        this.logger.debug('found node, ending');
+        break;
+      }
       const nextNode = queue.shift();
       // If queue exhausted or target found then end
-      if (nextNode == null || contacted.has(nodeId.toString())) {
+      if (nextNode == null) {
         await rateLimitReleaser();
+        this.logger.debug('queue exhausted, ending');
         break;
       }
 
       const { nodeIdTarget, nodeIdSignaller } = nextNode;
+
       // Avoid pulling this into closure
       void (async () => {
         try {
+          running += 1;
           // Attempt the connection
           if (
             !this.nodeConnectionManager.hasConnection(nodeIdTarget) &&
             nodeIdSignaller != null
           ) {
+            this.logger.debug(
+              `attempting connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )} via ${
+                nodeIdSignaller != null
+                  ? nodesUtils.encodeNodeId(nodeIdSignaller)
+                  : 'local'
+              }`,
+            );
             await this.nodeConnectionManager.createConnectionPunch(
               nodeIdTarget,
               nodeIdSignaller,
-              ctx,
+              newCtx,
+            );
+          } else {
+            this.logger.debug(
+              `using existing connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )}`,
             );
           }
-          const newclosestNodes = await this.nodeConnectionManager.withConnF(
+          const newClosestNodes = await this.nodeConnectionManager.withConnF(
             nodeIdTarget,
             async (conn) => {
               const resultStream =
@@ -445,13 +499,20 @@ class NodeManager {
           );
           // Add to contacted and remove from found
           contacted.add(nodeIdTarget.toString());
-          contacted.delete(nodeIdTarget.toString());
+          found.delete(nodeIdTarget.toString());
 
-          // Filter out contacted or found, this will prevent duplicates
-          const newClosestNodesFiltered = newclosestNodes.filter((value) => {
+          // Filter out contacted, found or own Id, this will prevent duplicates
+          const newClosestNodesFiltered = newClosestNodes.filter((value) => {
             const nodeIdString = value.nodeIdTarget.toString();
-            return !(contacted.has(nodeIdString) || found.has(nodeIdString));
+            return !(
+              contacted.has(nodeIdString) ||
+              found.has(nodeIdString) ||
+              value.nodeIdTarget.equals(this.keyRing.getNodeId())
+            );
           });
+          this.logger.debug(
+            `nodes new/total ${newClosestNodesFiltered.length}/${newClosestNodes.length}`,
+          );
           // Adding list to found
           for (const element of newClosestNodesFiltered) {
             found.add(element.nodeIdTarget.toString());
@@ -462,18 +523,51 @@ class NodeManager {
           // Cull list,
           queue.splice(20);
         } catch (e) {
-          console.error(e);
+          this.logger.debug(
+            `connection attempt to ${nodesUtils.encodeNodeId(
+              nodeIdTarget,
+            )} failed with ${e.name}(${e.message})`,
+          );
           return;
         } finally {
           // Release the rateLimiter lock
           await rateLimitReleaser();
+          if (waitResolveP != null) waitResolveP();
+          running--;
+          if (running === 0 && doneResolveP != null) doneResolveP();
         }
-      })();
+
+        chain.set(nodeIdTarget.toString(), nodeIdSignaller?.toString());
+        this.logger.debug(
+          `connection attempt to ${nodesUtils.encodeNodeId(
+            nodeIdTarget,
+          )} succeeded`,
+        );
+      })().catch((e) => console.error(e));
+    }
+    // After queue is done we want to signal and await clean up
+    // FIXME: this breaks right now? need to look deeper. I get a thrown null from somewhere.
+    // abortController.abort(Error('TMP IMP cancelling pending connections'));
+    ctx.signal.removeEventListener('abort', handleAbort);
+    if (running > 0) {
+      const { p, resolveP } = utils.promise();
+      doneResolveP = resolveP;
+      await p;
     }
 
-    // After queue is done we want to signal and await clean up;
-    await rateLimit.waitForUnlock();
-    return contacted.has(nodeId.toString());
+    if (contacted.has(nodeId.toString())) {
+      const path: Array<NodeId> = [];
+      let current: string | undefined = nodeId.toString();
+      while (current != null) {
+        const nodeId = IdInternal.fromString<NodeId>(current);
+        path.unshift(nodeId);
+        current = chain.get(current);
+      }
+      return path;
+    } else {
+      // Connection was not made so no path was found
+      return undefined;
+    }
   }
 
   // RPC related methods
