@@ -364,6 +364,9 @@ class NodeManager {
    * @param ctx
    * @returns true if the node was found.
    */
+  // TODO:
+  //  1. extract out queue loop into helper function
+  //  2. add 2nd queue loop for direct connections from nodeGraph data
   public async findNode(
     nodeId: NodeId,
     concurrencyLimit: number,
@@ -567,6 +570,75 @@ class NodeManager {
     } else {
       // Connection was not made so no path was found
       return undefined;
+    }
+  }
+
+  /**
+   * Will attempt to establish connection using `findNode` or use existing connection.
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNode(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNode(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    const path = await this.findNode(
+      nodeId,
+      3,
+      this.nodeGraph.nodeBucketLimit,
+      ctx,
+    );
+    return path == null;
+  }
+
+  /**
+   * Will attempt to make a direct connection without ICE.
+   * This will only succeed due to these conditions
+   * 1. connection already exists to target.
+   * 2. Nat already allows port due to already being punched.
+   * 3. Port is publicly accessible due to nat configuration .
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    try {
+      await this.nodeConnectionManager.createConnection(
+        [nodeId],
+        host,
+        port,
+        ctx,
+      );
+      return true;
+    } catch {
+      // TODO: stricter error checking
+      return false;
     }
   }
 
@@ -1187,35 +1259,6 @@ class NodeManager {
    */
   public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
     return await this.nodeGraph.unsetNode(nodeId, tran);
-  }
-
-  /**
-   * Ping a node to see if it possible to connect to it.
-   * This will find the node's address locally and globally.
-   * If this returns true, a successful connection is made.
-   * A successful connection means the connection is authenticated.
-   * And that its certificate validates. So even if there was some
-   * response from that connection
-   */
-  public pingNode(nodeId: NodeId, ctx?: Partial<ContextTimedInput>);
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
-    true,
-    (nodeConnectionManager: NodeConnectionManager) =>
-      nodeConnectionManager.connectionConnectTimeoutTime,
-  )
-  public pingNode(
-    nodeId: NodeId,
-    @context ctx: ContextTimed,
-  ): Promise<boolean> {
-    // I think address resolution requires the NCM to do this too
-    // you have to do ice and whatever
-    // and you have to establish a connection
-    // once connected you don't really care - you can maintain a pool
-    // until it is not needed
-
-    // const addresses = await this.resolveNodeId(nodeId);
-    return this.nodeConnectionManager.connect(nodeId, addresses, ctx);
   }
 
   /**
