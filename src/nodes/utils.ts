@@ -76,10 +76,10 @@ function bucketIndex(sourceNode: NodeId, targetNode: NodeId): NodeBucketIndex {
 function nodeContactAddress([host, port]: NodeAddress): NodeContactAddress {
   if (networkUtils.isHost(host)) {
     const host_ = networkUtils.toCanonicalHost(host);
-    return `${host_}-${port}` as NodeAddressKey;
+    return `${host_}-${port}` as NodeContactAddress;
   } else {
     const hostname = networkUtils.toCanonicalHostname(host);
-    return `${hostname}-${port}` as NodeAddressKey;
+    return `${hostname}-${port}` as NodeContactAddress;
   }
 }
 

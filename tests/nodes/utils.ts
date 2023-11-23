@@ -1,4 +1,4 @@
-import type { NodeId } from '@/nodes/types';
+import type {NodeAddress, NodeAddressScope, NodeContactAddressData, NodeId} from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import type Logger from '@matrixai/logger';
 import type { KeyRing } from '@/keys';
@@ -9,6 +9,8 @@ import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
+import {hostArb, hostnameArb, portArb} from "../network/utils";
+import * as nodesUtils from "@/nodes/utils";
 import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
 import * as testsUtils from '../utils';
 
@@ -99,7 +101,8 @@ async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
 
 const nodeIdArb = fc
   .int8Array({ minLength: 32, maxLength: 32 })
-  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
+  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)))
+  .noShrink();
 
 const nodeIdArrayArb = (length: number) =>
   fc.array(nodeIdArb, { maxLength: length, minLength: length }).noShrink();
@@ -116,6 +119,27 @@ const uniqueNodeIdArb = (length: number) =>
       }
       return false;
     });
+
+const nodeAddressArb = fc.tuple(fc.oneof( hostArb, hostnameArb), portArb);
+
+const nodeContactAddressArb = nodeAddressArb
+  .map(value => nodesUtils.nodeContactAddress(value));
+
+const scopeArb = fc.constantFrom('global', 'local' ) as fc.Arbitrary<NodeAddressScope>;
+
+const scopesArb = fc.uniqueArray(scopeArb)
+
+const nodeContactAddressDataArb = fc.record({
+  mode: fc.constantFrom('direct', 'signal', 'relay'),
+  connectedTime: fc.integer({min: 0}),
+  scopes: scopesArb,
+}) as fc.Arbitrary<NodeContactAddressData>;
+
+const nodeContactPair = fc.record({
+  nodeContactAddress: nodeContactAddressArb,
+  nodeContactAddressData: nodeContactAddressDataArb,
+});
+
 
 /**
  * Signs using the 256-bit HMAC key
@@ -272,6 +296,12 @@ export {
   nodeIdArb,
   nodeIdArrayArb,
   uniqueNodeIdArb,
+  nodeAddressArb,
+  nodeContactAddressArb,
+  scopeArb,
+  scopesArb,
+  nodeContactAddressDataArb,
+  nodeContactPair,
   sign,
   verify,
   createReasonConverters,
