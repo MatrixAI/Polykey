@@ -79,6 +79,11 @@ function fromEventNodeConnectionManagerConnectionForward(
 
 const nodeGraphTopicPath = ['node', 'graph'] as const;
 
+const topicPaths = [
+  nodeConnectionForwardTopicPath,
+  nodeConnectionReverseTopicPath,
+] as const;
+
 // Metrics
 
 // Nodes
@@ -97,6 +102,12 @@ const nodeConnectionOutboundMetricPath = [
   'outbound',
 ] as const;
 
+const metricPaths = [
+  nodeConnectionMetricPath,
+  nodeConnectionInboundMetricPath,
+  nodeConnectionOutboundMetricPath,
+] as const;
+
 export {
   extractFromSeek,
   createAuditEventIdGenerator,
@@ -107,7 +118,9 @@ export {
   nodeConnectionForwardTopicPath,
   fromEventNodeConnectionManagerConnectionForward,
   nodeGraphTopicPath,
+  topicPaths,
   nodeConnectionMetricPath,
   nodeConnectionInboundMetricPath,
   nodeConnectionOutboundMetricPath,
+  metricPaths,
 };

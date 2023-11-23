@@ -23,7 +23,6 @@ import * as auditErrors from './errors';
 import * as auditEvents from './events';
 import * as auditUtils from './utils';
 import * as nodesEvents from '../nodes/events';
-import * as utils from '../utils';
 
 interface Audit extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -522,7 +521,8 @@ class Audit {
         return metric as any;
       }
     }
-    utils.never();
+    // Throw in case user does not abide by type safety
+    throw new auditErrors.ErrorAuditMetricPathMissing();
   }
 }
 

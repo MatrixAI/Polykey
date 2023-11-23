@@ -6,6 +6,8 @@ import type {
   nodeConnectionOutboundMetricPath,
   nodeConnectionForwardTopicPath,
   nodeConnectionMetricPath,
+  topicPaths,
+  metricPaths,
 } from './utils';
 
 // Events
@@ -52,9 +54,7 @@ type AuditEventToAuditEventSerialized<T extends AuditEvent> = T & {
   id: AuditEventIdEncoded;
 };
 
-type TopicPath =
-  // Nodes
-  typeof nodeConnectionReverseTopicPath | typeof nodeConnectionForwardTopicPath;
+type TopicPath = (typeof topicPaths)[number];
 
 type TopicSubPath<T = TopicPath> =
   | (T extends readonly [...infer Head, infer Tail]
@@ -99,10 +99,7 @@ type AuditEventNodeConnectionForward = AuditEventNodeConnectionBase &
 
 // Metrics
 
-type MetricPath =
-  | typeof nodeConnectionMetricPath
-  | typeof nodeConnectionInboundMetricPath
-  | typeof nodeConnectionOutboundMetricPath;
+type MetricPath = (typeof metricPaths)[number];
 
 type MetricPathToAuditMetric<T extends MetricPath> =
   // Nodes

@@ -18,13 +18,8 @@ class ErrorAuditDestroyed<T> extends ErrorAudit<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorAuditNodeIdMissing<T> extends ErrorAudit<T> {
-  static description = 'Could not find NodeId';
-  exitCode = sysexits.NOUSER;
-}
-
-class ErrorAuditVaultIdMissing<T> extends ErrorAudit<T> {
-  static description = 'Could not find VaultId';
+class ErrorAuditMetricPathMissing<T> extends ErrorAudit<T> {
+  static description = 'Could not find AuditMetric Pzath';
   exitCode = sysexits.DATAERR;
 }
 
@@ -38,7 +33,6 @@ export {
   ErrorAuditRunning,
   ErrorAuditNotRunning,
   ErrorAuditDestroyed,
-  ErrorAuditNodeIdMissing,
-  ErrorAuditVaultIdMissing,
+  ErrorAuditMetricPathMissing,
   ErrorAuditNodeIdExists,
 };
