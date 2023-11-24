@@ -135,10 +135,19 @@ const nodeContactAddressDataArb = fc.record({
   scopes: scopesArb,
 }) as fc.Arbitrary<NodeContactAddressData>;
 
-const nodeContactPair = fc.record({
+const nodeContactPairArb = fc.record({
   nodeContactAddress: nodeContactAddressArb,
   nodeContactAddressData: nodeContactAddressDataArb,
 });
+
+const nodeContactArb = fc.dictionary(
+  nodeContactAddressArb,
+  nodeContactAddressDataArb,
+  {
+    minKeys: 1,
+    maxKeys: 5,
+  },
+).noShrink();
 
 
 /**
@@ -301,7 +310,8 @@ export {
   scopeArb,
   scopesArb,
   nodeContactAddressDataArb,
-  nodeContactPair,
+  nodeContactPairArb,
+  nodeContactArb,
   sign,
   verify,
   createReasonConverters,

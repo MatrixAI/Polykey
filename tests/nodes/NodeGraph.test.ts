@@ -2,6 +2,7 @@ import type {
   NodeContactAddress,
   NodeContact,
   NodeContactAddressData,
+  NodeId,
 } from '@/nodes/types';
 import type { Key } from '@/keys/types';
 import os from 'os';
@@ -15,8 +16,9 @@ import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as utils from '@/utils';
+import { encodeNodeId } from '@/ids';
 import * as testNodesUtils from './utils';
-import { generateNodeIdForBucket } from './utils';
+import { generateNodeIdForBucket, nodeContactArb } from './utils';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -84,7 +86,7 @@ describe(`${NodeGraph.name} test`, () => {
   });
 
   describe('setNodeContact', () => {
-    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPair], {
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
       numRuns: 20,
     })('should set with single address', async (nodeId, nodeContactPair) => {
       const nodeContact = {
@@ -96,8 +98,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -116,8 +118,8 @@ describe(`${NodeGraph.name} test`, () => {
       [
         testNodesUtils.nodeIdArb,
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 10 },
     )(
@@ -180,10 +182,39 @@ describe(`${NodeGraph.name} test`, () => {
         ),
       ).rejects.toThrow(nodesErrors.ErrorNodeGraphBucketLimit);
     });
-    test.todo('should update last used time');
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        testNodesUtils.nodeContactAddressArb,
+        testNodesUtils.nodeContactAddressDataArb,
+        testNodesUtils.nodeContactAddressDataArb,
+      ],
+      { numRuns: 20 },
+    )(
+      'should update bucket lastUpdatedTime',
+      async (
+        nodeId,
+        nodeContactAddress,
+        nodeContactAddressData1,
+        nodeContactAddressData2,
+      ) => {
+        await nodeGraph.setNodeContact(nodeId, {
+          [nodeContactAddress]: nodeContactAddressData1,
+        });
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+          nodeContactAddressData1.connectedTime,
+        );
+        await nodeGraph.setNodeContact(nodeId, {
+          [nodeContactAddress]: nodeContactAddressData2,
+        });
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+          nodeContactAddressData2.connectedTime,
+        );
+      },
+    );
   });
   describe('getNodeContact', () => {
-    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPair], {
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
       numRuns: 20,
     })('should get with single address', async (nodeId, nodeContactPair1) => {
       const nodeContact = {
@@ -196,8 +227,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -219,8 +250,8 @@ describe(`${NodeGraph.name} test`, () => {
       [
         testNodesUtils.nodeIdArb,
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 10 },
     )(
@@ -245,8 +276,45 @@ describe(`${NodeGraph.name} test`, () => {
       },
     );
   });
+  describe('getNodeContacts', () => {
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        testNodesUtils.nodeIdArb,
+        testNodesUtils.nodeContactArb,
+        testNodesUtils.nodeContactArb,
+      ],
+      { numRuns: 1 },
+    )(
+      'should get all nodeContacts',
+      async (nodeId1, nodeId2, nodeContact1, nodeContact2) => {
+        await nodeGraph.setNodeContact(nodeId1, nodeContact1);
+        await nodeGraph.setNodeContact(nodeId2, nodeContact2);
+
+        const results: Array<[NodeId, NodeContact]> = [];
+        for await (const result of nodeGraph.getNodeContacts()) {
+          results.push(result);
+        }
+        expect(results.length).toBe(2);
+        for (const [nodeId, nodeContact] of results) {
+          if (nodeId1.equals(nodeId)) {
+            expect(Object.keys(nodeContact).length).toBe(
+              Object.keys(nodeContact1).length,
+            );
+            expect(nodeContact).toMatchObject(nodeContact1);
+          }
+          if (nodeId2.equals(nodeId)) {
+            expect(Object.keys(nodeContact).length).toBe(
+              Object.keys(nodeContact2).length,
+            );
+            expect(nodeContact).toMatchObject(nodeContact2);
+          }
+        }
+      },
+    );
+  });
   describe('setNodeContactAddressData', () => {
-    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPair], {
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
       numRuns: 20,
     })('should set with single address', async (nodeId, nodeContactPair) => {
       await nodeGraph.setNodeContactAddressData(
@@ -258,8 +326,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -281,8 +349,8 @@ describe(`${NodeGraph.name} test`, () => {
       [
         testNodesUtils.nodeIdArb,
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 10 },
     )(
@@ -347,10 +415,53 @@ describe(`${NodeGraph.name} test`, () => {
         ),
       ).rejects.toThrow(nodesErrors.ErrorNodeGraphBucketLimit);
     });
-    test.todo('should update last used time');
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        testNodesUtils.nodeContactAddressArb,
+        testNodesUtils.nodeContactAddressArb,
+        testNodesUtils.nodeContactAddressDataArb,
+        testNodesUtils.nodeContactAddressDataArb,
+      ],
+      { numRuns: 20 },
+    )(
+      'should update bucket lastUpdatedTime',
+      async (
+        nodeId,
+        nodeContactAddress1,
+        nodeContactAddress2,
+        nodeContactAddressData1,
+        nodeContactAddressData2,
+      ) => {
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodeContactAddress1,
+          nodeContactAddressData1,
+        );
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+          nodeContactAddressData1.connectedTime,
+        );
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodeContactAddress1,
+          nodeContactAddressData2,
+        );
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+          nodeContactAddressData2.connectedTime,
+        );
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodeContactAddress2,
+          nodeContactAddressData1,
+        );
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+          nodeContactAddressData1.connectedTime,
+        );
+      },
+    );
   });
   describe('getNodeContactAddressData', () => {
-    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPair], {
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
       numRuns: 20,
     })('should get with single address', async (nodeId, nodeContactPair) => {
       const nodeContact = {
@@ -369,8 +480,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -402,8 +513,8 @@ describe(`${NodeGraph.name} test`, () => {
       [
         testNodesUtils.nodeIdArb,
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 10 },
     )(
@@ -439,7 +550,7 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb.noShrink(),
-        testNodesUtils.nodeContactPair.noShrink(),
+        testNodesUtils.nodeContactPairArb.noShrink(),
       ],
       { numRuns: 20 },
     )(
@@ -464,8 +575,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -490,14 +601,30 @@ describe(`${NodeGraph.name} test`, () => {
       },
     );
     test.todo('should decrement bucket count');
-    test.todo('should update last updated times');
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb.noShrink(),
+        testNodesUtils.nodeContactPairArb.noShrink(),
+      ],
+      { numRuns: 20 },
+    )('should delete lastUpdatedTime', async (nodeId, nodeContactPair) => {
+      const nodeContact = {
+        [nodeContactPair.nodeContactAddress]:
+          nodeContactPair.nodeContactAddressData,
+      };
+      await nodeGraph.setNodeContact(nodeId, nodeContact);
+
+      expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+      await nodeGraph.unsetNodeContact(nodeId);
+      expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeUndefined();
+    });
   });
   describe('unsetNodeContactAddress', () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -539,8 +666,8 @@ describe(`${NodeGraph.name} test`, () => {
     test.prop(
       [
         testNodesUtils.nodeIdArb,
-        testNodesUtils.nodeContactPair,
-        testNodesUtils.nodeContactPair,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
       ],
       { numRuns: 20 },
     )(
@@ -619,7 +746,38 @@ describe(`${NodeGraph.name} test`, () => {
         ),
       ).toBe(0);
     });
-    test.todo('should update last updated times');
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        testNodesUtils.nodeContactPairArb,
+        testNodesUtils.nodeContactPairArb,
+      ],
+      { numRuns: 20 },
+    )(
+      'should delete lastUpdatedTime',
+      async (nodeId, nodeContactPair1, nodeContactPair2) => {
+        const nodeContact = {
+          [nodeContactPair1.nodeContactAddress]:
+            nodeContactPair1.nodeContactAddressData,
+          [nodeContactPair2.nodeContactAddress]:
+            nodeContactPair2.nodeContactAddressData,
+        };
+        await nodeGraph.setNodeContact(nodeId, nodeContact);
+
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+        await nodeGraph.unsetNodeContactAddress(
+          nodeId,
+          nodeContactPair1.nodeContactAddress,
+        );
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+        await nodeGraph.unsetNodeContactAddress(
+          nodeId,
+          nodeContactPair2.nodeContactAddress,
+        );
+        // Only removed after all addresses are removed
+        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeUndefined();
+      },
+    );
   });
 
   // Test('get, set and unset node IDs', async () => {

@@ -109,35 +109,12 @@ function bucketDbKey(nodeId: NodeId): Buffer {
   return nodeId.toBuffer();
 }
 
-/**
- * Creates key for buckets indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketsDbKey(
-  bucketIndex: NodeBucketIndex,
-  lastUpdated: number,
-  nodeId: NodeId,
-): Buffer {
-  return Buffer.concat([
-    sepBuffer,
-    Buffer.from(bucketKey(bucketIndex)),
-    sepBuffer,
-    lastUpdatedBucketDbKey(lastUpdated, nodeId),
-  ]);
-}
-
-/**
- * Creates key for single bucket indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketDbKey(lastUpdated: number, nodeId: NodeId): Buffer {
-  return Buffer.concat([
-    Buffer.from(lexi.pack(lastUpdated, 'hex')),
-    Buffer.from('-'),
-    nodeId.toBuffer(),
-  ]);
-}
-
 function lastUpdatedKey(lastUpdated: number): Buffer {
   return Buffer.from(lexi.pack(lastUpdated, 'hex'));
+}
+
+function parseLastUpdatedKey(buffer: Buffer): number {
+  return lexi.unpack(buffer.toString());
 }
 
 function parseNodeAddressKey(keyBuffer: Buffer): NodeAddress {
@@ -712,9 +689,8 @@ export {
   bucketKey,
   bucketsDbKey,
   bucketDbKey,
-  lastUpdatedBucketsDbKey,
-  lastUpdatedBucketDbKey,
   lastUpdatedKey,
+  parseLastUpdatedKey,
   parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,

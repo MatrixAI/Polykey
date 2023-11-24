@@ -270,12 +270,14 @@ class NodeGraph {
     tran?: DBTransaction,
   ): AsyncGenerator<[NodeId, NodeContact]> {
     if (tran == null) {
+      // Lambda generators don't grab the `this` context, so we need to bind it
+      const getNodeContacts = this.getNodeContacts.bind(this);
       return yield* this.db.withTransactionG(async function* (tran) {
-        return yield* this.getNodeContacts(order, tran);
+        return yield* getNodeContacts(order, tran);
       });
     }
-    let nodeId: NodeId | undefined;
-    const nodeContact: NodeContact = {};
+    let nodeId: NodeId | undefined = undefined;
+    let nodeContact: NodeContact = {};
     for await (const [
       keyPath,
       nodeContactAddressData,
@@ -288,15 +290,16 @@ class NodeGraph {
     )) {
       const { nodeId: nodeIdCurrent, nodeContactAddress } =
         nodesUtils.parseBucketsDbKey(keyPath);
-      nodeContact[nodeContactAddress] = nodeContactAddressData;
-      if (nodeId == null || nodeIdCurrent.equals(nodeId)) {
-        nodeId = nodeIdCurrent;
-        continue;
-      } else {
-        nodeId = nodeIdCurrent;
-        yield [nodeIdCurrent, nodeContact];
+      if (!(nodeId == null || nodeIdCurrent.equals(nodeId))) {
+        // Yield and tear
+        yield [nodeId, nodeContact];
+        nodeContact = {};
       }
+      nodeContact[nodeContactAddress] = nodeContactAddressData;
+      nodeId = nodeIdCurrent;
     }
+    // Yield remaining data if it exists
+    if (nodeId != null) yield [nodeId, nodeContact];
   }
 
   /**
@@ -347,7 +350,6 @@ class NodeGraph {
       );
     }
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
     const nodeContactPath = [
       ...this.nodeGraphBucketsDbPath,
@@ -376,16 +378,7 @@ class NodeGraph {
         nodeContactAddressData.connectedTime,
       );
     }
-    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(connectedTimeMax);
-
-    // I just realised that updates for every single node id
-    // and that is problematic
-
-    await tran.put(
-      [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
-      nodeIdKey,
-      true,
-    );
+    await this.setLastUpdatedTime(nodeId, connectedTimeMax, tran);
   }
 
   /**
@@ -437,19 +430,11 @@ class NodeGraph {
       [...nodeContactPath, nodeContactAddress],
       nodeContactAddressData,
     );
-    // We need to compare against the last updated one
-
-    // TODO: update the last-updated time
-    // const lastUpdated = await tran.get(
-    //   [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
-    // );
-    // const connectedTimeMax = Math.max(connectedTimeMax, nodeContactAddressData.connectedTime);
-    // const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
-    // await tran.put(
-    //   [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
-    //   nodeIdKey,
-    //   true,
-    // );
+    await this.setLastUpdatedTime(
+      nodeId,
+      nodeContactAddressData.connectedTime,
+      tran,
+    );
   }
 
   /**
@@ -467,7 +452,6 @@ class NodeGraph {
       );
     }
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
     const nodeContactPath = [
       ...this.nodeGraphBucketsDbPath,
@@ -481,7 +465,7 @@ class NodeGraph {
     await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
     // Clear the records
     await tran.clear(nodeContactPath);
-    // TODO: clear last updated data for node and update it for the bucket.
+    await this.delLastUpdatedTime(nodeId, tran);
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
@@ -502,7 +486,6 @@ class NodeGraph {
     } else {
       nodeContactAddress = nodeAddress;
     }
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
     const nodeContactPath = [
       ...this.nodeGraphBucketsDbPath,
@@ -530,15 +513,103 @@ class NodeGraph {
       nodesUtils.bucketDbKey(nodeId),
       nodeContactAddress,
     ]);
-    // TODO: remove last updated data for address
 
-    // if last address then clear node from bucket and decrement count
+    // If last address then clear node from bucket and decrement count
     if (addressCount === 1) {
       await tran.clear(nodeContactPath);
-      // Todo: last updated data for node
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
+      await this.delLastUpdatedTime(nodeId, tran);
     }
+  }
+
+  /**
+   * Sets the `lastUpdatedTime` for a NodeId, replaces the old value if it exists
+   */
+  protected async setLastUpdatedTime(
+    nodeId: NodeId,
+    lastUpdatedTime: number,
+    tran?: DBTransaction,
+  ) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setLastUpdatedTime(nodeId, lastUpdatedTime, tran),
+      );
+    }
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdatedTime);
+
+    // Lookup the old time and delete it
+    const oldLastUpdatedKey = await tran.get(
+      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    if (oldLastUpdatedKey != null) {
+      await tran.del([
+        ...lastUpdatedPath,
+        'time',
+        oldLastUpdatedKey,
+        nodeIdKey,
+      ]);
+    }
+    // Set the new values
+    // TODO: do we use the MAX of the two, or the new one?
+    await tran.put(
+      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+      newLastUpdatedKey,
+      true,
+    );
+    await tran.put(
+      [...lastUpdatedPath, 'time', newLastUpdatedKey, nodeIdKey],
+      nodeIdKey,
+      true,
+    );
+  }
+
+  /**
+   * Deletes the lastUpdateTime for a NodeId
+   */
+  protected async delLastUpdatedTime(nodeId: NodeId, tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.delLastUpdatedTime(nodeId, tran),
+      );
+    }
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+
+    // Look up the existing time
+    const oldLastUpdatedKey = await tran.get(
+      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    // And delete the values
+    await tran.del([...lastUpdatedPath, 'nodeId', nodeIdKey]);
+    if (oldLastUpdatedKey == null) return;
+    await tran.del([...lastUpdatedPath, 'time', oldLastUpdatedKey, nodeIdKey]);
+  }
+
+  public async getLastUpdatedTime(nodeId: NodeId, tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getLastUpdatedTime(nodeId, tran),
+      );
+    }
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+
+    // Look up the existing time
+    const oldLastUpdatedKey = await tran.get(
+      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    // Convert and return
+    if (oldLastUpdatedKey == null) return;
+    return nodesUtils.parseLastUpdatedKey(oldLastUpdatedKey);
   }
 
   // ...
