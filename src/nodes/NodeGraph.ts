@@ -271,9 +271,9 @@ class NodeGraph {
   ): AsyncGenerator<[NodeId, NodeContact]> {
     if (tran == null) {
       // Lambda generators don't grab the `this` context, so we need to bind it
-      const getNodeContacts = this.getNodeContacts.bind(this);
+      const getNodeContacts = (tran) => this.getNodeContacts(order, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
-        return yield* getNodeContacts(order, tran);
+        return yield* getNodeContacts(tran);
       });
     }
     let nodeId: NodeId | undefined = undefined;
@@ -295,6 +295,7 @@ class NodeGraph {
         yield [nodeId, nodeContact];
         nodeContact = {};
       }
+      // Accumulate addresses and data
       nodeContact[nodeContactAddress] = nodeContactAddressData;
       nodeId = nodeIdCurrent;
     }
@@ -555,7 +556,6 @@ class NodeGraph {
       ]);
     }
     // Set the new values
-    // TODO: do we use the MAX of the two, or the new one?
     await tran.put(
       [...lastUpdatedPath, 'nodeId', nodeIdKey],
       newLastUpdatedKey,
@@ -616,13 +616,17 @@ class NodeGraph {
 
   /**
    * Gets a bucket.
-
+   *
    * The bucket's node IDs is sorted lexicographically by default
    * Alternatively you can acquire them sorted by lastUpdated timestamp
    * or by distance to the own NodeId.
    *
+   * @param bucketIndex
+   * @param sort
+   * @param order
    * @param limit Limit the number of nodes returned, note that `-1` means
    *              no limit, but `Infinity` means `0`.
+   * @param tran
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
@@ -646,7 +650,12 @@ class NodeGraph {
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     const bucket: NodeBucket = [];
     if (sort === 'nodeId' || sort === 'distance') {
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
+      let nodeId: NodeId | undefined = undefined;
+      let nodeContact: NodeContact = {};
+      for await (const [
+        keyPath,
+        nodeContactAddressData,
+      ] of tran.iterator<NodeContactAddressData>(
         [...this.nodeGraphBucketsDbPath, bucketKey],
         {
           reverse: order !== 'asc',
@@ -654,35 +663,36 @@ class NodeGraph {
           limit,
         },
       )) {
-        const nodeId = nodesUtils.parseBucketDbKey(key[0] as Buffer);
-        bucket.push([nodeId, nodeData]);
+        const { nodeId: nodeIdCurrent, nodeContactAddress } =
+          nodesUtils.parseBucketsDbKey(['', ...keyPath]);
+        if (!(nodeId == null || nodeIdCurrent.equals(nodeId))) {
+          // Yield and tear
+          bucket.push([nodeId, nodeContact]);
+          nodeContact = {};
+        }
+        // Accumulate addresses and data
+        nodeContact[nodeContactAddress] = nodeContactAddressData;
+        nodeId = nodeIdCurrent;
       }
+      if (nodeId != null) bucket.push([nodeId, nodeContact]);
       if (sort === 'distance') {
         nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
       }
     } else if (sort === 'lastUpdated') {
-      const bucketDbIterator = tran.iterator<NodeData>(
-        [...this.nodeGraphBucketsDbPath, bucketKey],
-        { valueAsBuffer: false },
-      );
-      try {
-        for await (const [, nodeIdBuffer] of tran.iterator(
-          [...this.nodeGraphLastUpdatedDbPath, bucketKey],
-          {
-            reverse: order !== 'asc',
-            limit,
-          },
-        )) {
-          const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
-          bucketDbIterator.seek(nodeIdBuffer);
-          // eslint-disable-next-line
-          const iteratorResult = await bucketDbIterator.next();
-          if (iteratorResult == null) utils.never();
-          const [, nodeData] = iteratorResult;
-          bucket.push([nodeId, nodeData]);
-        }
-      } finally {
-        await bucketDbIterator.destroy();
+      for await (const [, nodeIdBuffer] of tran.iterator(
+        [...this.nodeGraphLastUpdatedDbPath, bucketKey, 'time'],
+        {
+          reverse: order !== 'asc',
+          limit,
+        },
+      )) {
+        const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
+        const nodeContact = await this.getNodeContact(
+          IdInternal.fromBuffer<NodeId>(nodeIdBuffer),
+          tran,
+        );
+        if (nodeContact == null) utils.never();
+        bucket.push([nodeId, nodeContact]);
       }
     }
     return bucket;
@@ -712,83 +722,17 @@ class NodeGraph {
         return yield* getBuckets(tran);
       });
     }
-    const nodeIdOwn = this.keyRing.getNodeId();
-    let bucketIndex: NodeBucketIndex | undefined = undefined;
-    let bucket: NodeBucket = [];
-    if (sort === 'nodeId' || sort === 'distance') {
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
-        this.nodeGraphBucketsDbPath,
-        {
-          reverse: order !== 'asc',
-          valueAsBuffer: false,
-        },
-      )) {
-        const { bucketIndex: bucketIndex_, nodeId } =
-          nodesUtils.parseBucketsDbKey(key);
-        if (bucketIndex == null) {
-          // First entry of the first bucket
-          bucketIndex = bucketIndex_;
-          bucket.push([nodeId, nodeData]);
-        } else if (bucketIndex === bucketIndex_) {
-          // Subsequent entries of the same bucket
-          bucket.push([nodeId, nodeData]);
-        } else if (bucketIndex !== bucketIndex_) {
-          // New bucket
-          if (sort === 'distance') {
-            nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
-          }
-          yield [bucketIndex, bucket];
-          bucketIndex = bucketIndex_;
-          bucket = [[nodeId, nodeData]];
-        }
-      }
-      // Yield the last bucket if it exists
-      if (bucketIndex != null) {
-        if (sort === 'distance') {
-          nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
-        }
-        yield [bucketIndex, bucket];
-      }
-    } else if (sort === 'lastUpdated') {
-      const bucketsDbIterator = tran.iterator<NodeData>(
-        this.nodeGraphBucketsDbPath,
-        { valueAsBuffer: false },
+
+    for (let i = 0; i < this.nodeIdBits; i++) {
+      const bucketIndex = order === 'asc' ? i : this.nodeIdBits - i;
+      const nodeBucket = await this.getBucket(
+        bucketIndex,
+        sort,
+        order,
+        undefined,
+        tran,
       );
-      try {
-        for await (const [key] of tran.iterator(
-          this.nodeGraphLastUpdatedDbPath,
-          {
-            reverse: order !== 'asc',
-          },
-        )) {
-          const { bucketIndex: bucketIndex_, nodeId } =
-            nodesUtils.parseLastUpdatedBucketsDbKey(key);
-          bucketsDbIterator.seek([key[0], key[2]]);
-          // eslint-disable-next-line
-          const iteratorResult = await bucketsDbIterator.next();
-          if (iteratorResult == null) utils.never();
-          const [, nodeData] = iteratorResult;
-          if (bucketIndex == null) {
-            // First entry of the first bucket
-            bucketIndex = bucketIndex_;
-            bucket.push([nodeId, nodeData]);
-          } else if (bucketIndex === bucketIndex_) {
-            // Subsequent entries of the same bucket
-            bucket.push([nodeId, nodeData]);
-          } else if (bucketIndex !== bucketIndex_) {
-            // New bucket
-            yield [bucketIndex, bucket];
-            bucketIndex = bucketIndex_;
-            bucket = [[nodeId, nodeData]];
-          }
-        }
-        // Yield the last bucket if it exists
-        if (bucketIndex != null) {
-          yield [bucketIndex, bucket];
-        }
-      } finally {
-        await bucketsDbIterator.destroy();
-      }
+      if (nodeBucket.length > 0) yield [bucketIndex, nodeBucket];
     }
   }
 

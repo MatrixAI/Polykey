@@ -3,6 +3,7 @@ import type {
   NodeContact,
   NodeContactAddressData,
   NodeId,
+  NodeIdString,
 } from '@/nodes/types';
 import type { Key } from '@/keys/types';
 import os from 'os';
@@ -10,15 +11,16 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { test } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import NodeGraph from '@/nodes/NodeGraph';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
 import * as nodesErrors from '@/nodes/errors';
+import * as nodesUtils from '@/nodes/utils';
 import * as utils from '@/utils';
 import { encodeNodeId } from '@/ids';
 import * as testNodesUtils from './utils';
-import { generateNodeIdForBucket, nodeContactArb } from './utils';
+import { nodeContactArb } from './utils';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -147,12 +149,12 @@ describe(`${NodeGraph.name} test`, () => {
       };
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(0);
       await nodeGraph.setNodeContact(
-        generateNodeIdForBucket(keyRing.getNodeId(), 100, 0),
+        testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, 0),
         nodeContact,
       );
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(1);
       await nodeGraph.setNodeContact(
-        generateNodeIdForBucket(keyRing.getNodeId(), 100, 1),
+        testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, 1),
         nodeContact,
       );
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(2);
@@ -167,13 +169,13 @@ describe(`${NodeGraph.name} test`, () => {
       };
       for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
         await nodeGraph.setNodeContact(
-          generateNodeIdForBucket(keyRing.getNodeId(), 100, i),
+          testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, i),
           nodeContact,
         );
       }
       await expect(
         nodeGraph.setNodeContact(
-          generateNodeIdForBucket(
+          testNodesUtils.generateNodeIdForBucket(
             keyRing.getNodeId(),
             100,
             nodeGraph.nodeBucketLimit,
@@ -377,13 +379,13 @@ describe(`${NodeGraph.name} test`, () => {
       };
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(0);
       await nodeGraph.setNodeContactAddressData(
-        generateNodeIdForBucket(keyRing.getNodeId(), 100, 0),
+        testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, 0),
         nodeContactAddress,
         nodeContactAddressData,
       );
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(1);
       await nodeGraph.setNodeContactAddressData(
-        generateNodeIdForBucket(keyRing.getNodeId(), 100, 1),
+        testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, 1),
         nodeContactAddress,
         nodeContactAddressData,
       );
@@ -398,14 +400,14 @@ describe(`${NodeGraph.name} test`, () => {
       };
       for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
         await nodeGraph.setNodeContactAddressData(
-          generateNodeIdForBucket(keyRing.getNodeId(), 100, i),
+          testNodesUtils.generateNodeIdForBucket(keyRing.getNodeId(), 100, i),
           nodeContactAddress,
           nodeContactAddressData,
         );
       }
       await expect(
         nodeGraph.setNodeContactAddressData(
-          generateNodeIdForBucket(
+          testNodesUtils.generateNodeIdForBucket(
             keyRing.getNodeId(),
             100,
             nodeGraph.nodeBucketLimit,
@@ -779,6 +781,190 @@ describe(`${NodeGraph.name} test`, () => {
       },
     );
   });
+  describe('getBucket', () => {
+    test.prop(
+      [
+        fc.integer({ min: 20, max: 254 }).noShrink(),
+        fc
+          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
+          .noShrink(),
+      ],
+      { numRuns: 1 },
+    )('can get a bucket', async (bucketIndex, nodeContacts) => {
+      // Fill a bucket with data
+      const nodeIds: Map<string, NodeContact> = new Map();
+      for (let i = 0; i < nodeContacts.length; i++) {
+        const nodeId = testNodesUtils.generateNodeIdForBucket(
+          keyRing.getNodeId(),
+          bucketIndex,
+          i,
+        );
+        nodeIds.set(encodeNodeId(nodeId), nodeContacts[i]);
+        await nodeGraph.setNodeContact(nodeId, nodeContacts[i]);
+      }
+
+      // Getting the bucket
+      const bucket = await nodeGraph.getBucket(bucketIndex);
+      expect(bucket.length).toBe(nodeContacts.length);
+      for (const [nodeId, nodeContact] of bucket) {
+        expect(nodeContact).toMatchObject(nodeIds.get(encodeNodeId(nodeId))!);
+      }
+    });
+    test.prop(
+      [
+        fc.integer({ min: 20, max: 254 }).noShrink(),
+        fc
+          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
+          .noShrink(),
+      ],
+      { numRuns: 1 },
+    )(
+      'can get a bucket ordered by distance',
+      async (bucketIndex, nodeContacts) => {
+        // Fill a bucket with data
+        const nodeIdsContact: Map<string, NodeContact> = new Map();
+        const nodeIds: Array<NodeId> = [];
+        for (let i = 0; i < nodeContacts.length; i++) {
+          const nodeId = testNodesUtils.generateNodeIdForBucket(
+            keyRing.getNodeId(),
+            bucketIndex,
+            i,
+          );
+          nodeIds.push(nodeId);
+          nodeIdsContact.set(encodeNodeId(nodeId), nodeContacts[i]);
+          await nodeGraph.setNodeContact(nodeId, nodeContacts[i]);
+        }
+
+        // Getting the bucket
+        const bucket = await nodeGraph.getBucket(bucketIndex, 'distance');
+
+        // Checking data
+        expect(bucket.length).toBe(nodeContacts.length);
+        for (const [nodeId, nodeContact] of bucket) {
+          expect(nodeContact).toMatchObject(
+            nodeIdsContact.get(encodeNodeId(nodeId))!,
+          );
+        }
+
+        // Checking order
+        const nodeId = keyRing.getNodeId();
+        nodeIds.sort((nodeIdA, nodeIdB) => {
+          const distA = nodesUtils.nodeDistance(nodeId, nodeIdA);
+          const distB = nodesUtils.nodeDistance(nodeId, nodeIdB);
+          if (distA < distB) {
+            return -1;
+          } else if (distA > distB) {
+            return 1;
+          } else {
+            return 0;
+          }
+        });
+
+        // Should have same sorted order
+        for (let i = 0; i < bucket.length; i++) {
+          expect(nodeIds[i].equals(bucket[i][0])).toBeTrue();
+        }
+      },
+    );
+    test.prop(
+      [
+        fc.integer({ min: 20, max: 254 }).noShrink(),
+        fc
+          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
+          .noShrink(),
+      ],
+      { numRuns: 1 },
+    )(
+      'can get a bucket ordered by lastUpdatedTime',
+      async (bucketIndex, nodeContacts) => {
+        // Fill a bucket with data
+        const nodeIdsContact: Map<string, NodeContact> = new Map();
+        const nodeIds: Array<{
+          nodeId: NodeId;
+          lastUpdated: number;
+        }> = [];
+        for (let i = 0; i < nodeContacts.length; i++) {
+          const nodeId = testNodesUtils.generateNodeIdForBucket(
+            keyRing.getNodeId(),
+            bucketIndex,
+            i,
+          );
+          let lastUpdated = 0;
+          const nodeContact = nodeContacts[i];
+          for (const addressData of Object.values(nodeContact)) {
+            if (lastUpdated < addressData.connectedTime) {
+              lastUpdated = addressData.connectedTime;
+            }
+          }
+          nodeIds.push({
+            nodeId,
+            lastUpdated,
+          });
+          nodeIdsContact.set(encodeNodeId(nodeId), nodeContacts[i]);
+          await nodeGraph.setNodeContact(nodeId, nodeContacts[i]);
+        }
+
+        // Getting the bucket
+        const bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated');
+
+        // Checking data
+        expect(bucket.length).toBe(nodeContacts.length);
+        for (const [nodeId, nodeContact] of bucket) {
+          expect(nodeContact).toMatchObject(
+            nodeIdsContact.get(encodeNodeId(nodeId))!,
+          );
+        }
+
+        // Checking order
+        nodeIds.sort((nodeA, nodeB) => {
+          if (nodeA.lastUpdated < nodeB.lastUpdated) {
+            return -1;
+          } else if (nodeA.lastUpdated > nodeB.lastUpdated) {
+            return 1;
+          } else {
+            return 0;
+          }
+        });
+
+        // Should have same sorted order
+        for (let i = 0; i < bucket.length; i++) {
+          expect(nodeIds[i].nodeId.equals(bucket[i][0])).toBeTrue();
+        }
+      },
+    );
+  });
+  describe('getBuckets', () => {
+    test.prop(
+      [
+        fc
+          .uniqueArray(fc.integer({ min: 0, max: 255 }), { minLength: 1 })
+          .noShrink(),
+        testNodesUtils.nodeContactArb,
+      ],
+      { numRuns: 1 },
+    )('get all buckets', async (buckets, nodeContact) => {
+      const nodeId = keyRing.getNodeId();
+      for (const bucket of buckets) {
+        await nodeGraph.setNodeContact(
+          testNodesUtils.generateNodeIdForBucket(nodeId, bucket, 0),
+          nodeContact,
+        );
+      }
+
+      const results: Array<number> = [];
+      for await (const [index, nodeBucket] of nodeGraph.getBuckets()) {
+        results.push(index);
+        expect(nodeBucket.length).toBe(1);
+      }
+      expect(results.length).toBe(buckets.length);
+      for (const bucketIndex of buckets) {
+        expect(results).toContain(bucketIndex);
+      }
+    });
+  });
+  // TODO
+  describe('resetBuckets', () => {});
+  describe('getClosestNodes', () => {});
 
   // Test('get, set and unset node IDs', async () => {
   //   let nodeId1: NodeId;
