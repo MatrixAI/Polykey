@@ -1,22 +1,6 @@
 import type { DB, DBTransaction } from '@matrixai/db';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimedInput } from '@matrixai/contexts';
-import type NodeConnectionManager from './NodeConnectionManager';
-import type NodeGraph from './NodeGraph';
-import type {
-  NodeId,
-  NodeAddress,
-  NodeBucket,
-  NodeBucketIndex,
-  NodeData,
-  NodeInfo,
-} from './types';
-import type {
-  AgentRPCRequestParams,
-  AgentRPCResponseResult,
-  AgentClaimMessage,
-} from './agent/types';
 import type KeyRing from '../keys/KeyRing';
 import type Sigchain from '../sigchain/Sigchain';
 import type TaskManager from '../tasks/TaskManager';
@@ -31,11 +15,23 @@ import type {
   SignedClaim,
 } from '../claims/types';
 import type { ClaimLinkNode } from '../claims/payloads';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  AgentClaimMessage,
+} from './agent/types';
+import type { NodeId, NodeAddress, NodeBucket, NodeBucketIndex } from './types';
+import type NodeConnectionManager from './NodeConnectionManager';
+import type NodeGraph from './NodeGraph';
+import type { ResourceAcquire } from '@matrixai/resources';
+import type nodeConnection from '@/nodes/NodeConnection';
+import type NodeConnection from '@/nodes/NodeConnection';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { withF } from '@matrixai/resources';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
@@ -341,18 +337,92 @@ class NodeManager {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  // New refactored methods
+  // TODO New refactored methods
 
-  // TODO: NM level acquire and with context functions, these will get an existing connection or do the find operation.
-  // - acquireConnection
-  // - withConnF
-  // - withConnG
+  /**
+   * For usage with withF, to acquire a connection
+   * This unique acquire function structure of returning the ResourceAcquire
+   * itself is such that we can pass targetNodeId as a parameter (as opposed to
+   * an acquire function with no parameters).
+   * @param nodeId Id of target node to communicate with
+   * @param ctx
+   * @returns ResourceAcquire Resource API for use in with contexts
+   */
+  public acquireConnection(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): ResourceAcquire<nodeConnection> {
+    if (this.keyRing.getNodeId().equals(nodeId)) {
+      this.logger.warn('Attempting connection to our own NodeId');
+      throw Error('TMP IMP own nodeId');
+    }
+    return async () => {
+      // Checking if connection already exists
+      if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+        // Establish the connection
+        const path = await this.findNode(nodeId, undefined, undefined, ctx);
+        if (path == null) throw Error('TMP IMP connection not made');
+      }
+      return await this.nodeConnectionManager.acquireConnection(nodeId)();
+    };
+  }
 
-  // todo - findNode - This will be the main kademlia find method. It will...
-  // 1. return an existing connection,
-  // 2. resolve any hostnames
-  // 3. preform the find using the kademlia algrithm.
-  // a. requires get closest nodes to work.
+  /**
+   * Perform some function on another node over the network with a connection.
+   * Will either retrieve an existing connection, or create a new one if it
+   * doesn't exist.
+   * for use with normal arrow function
+   * @param nodeId Id of target node to communicate with
+   * @param f Function to handle communication
+   * @param ctx
+   */
+  public withConnF<T>(
+    nodeId: NodeId,
+    f: (conn: NodeConnection) => Promise<T>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<T>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async withConnF<T>(
+    nodeId: NodeId,
+    f: (conn: NodeConnection) => Promise<T>,
+    @context ctx: ContextTimed,
+  ) {
+    return await withF(
+      [await this.acquireConnection(nodeId, ctx)],
+      async ([conn]) => {
+        return await f(conn);
+      },
+    );
+  }
+
+  /**
+   * Perform some function on another node over the network with a connection.
+   * Will either retrieve an existing connection, or create a new one if it
+   * doesn't exist.
+   * for use with a generator function
+   * @param nodeId Id of target node to communicate with
+   * @param g Generator function to handle communication
+   * @param ctx
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async *withConnG<T, TReturn, TNext>(
+    nodeId: NodeId,
+    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+    ctx?: Partial<ContextTimedInput>,
+  ) {
+    const acquire = await this.acquireConnection(nodeId, ctx);
+    const [release, conn] = await acquire();
+    let caughtError;
+    try {
+      if (conn == null) utils.never();
+      return yield* g(conn);
+    } catch (e) {
+      caughtError = e;
+      throw e;
+    } finally {
+      await release(caughtError);
+    }
+  }
 
   /**
    * Will do a Kademlia find node proceedure.
@@ -369,14 +439,14 @@ class NodeManager {
   //  2. add 2nd queue loop for direct connections from nodeGraph data
   public async findNode(
     nodeId: NodeId,
-    concurrencyLimit: number,
+    concurrencyLimit?: number,
     limit?: number,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<Array<NodeId> | undefined>;
   @timedCancellable(true)
   public async findNode(
     nodeId: NodeId,
-    concurrencyLimit: number,
+    concurrencyLimit: number = 3,
     limit: number = this.nodeGraph.nodeBucketLimit,
     @context ctx: ContextTimed,
   ): Promise<Array<NodeId> | undefined> {
@@ -666,7 +736,7 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    return await this.nodeConnectionManager.withConnF(
+    return await this.withConnF(
       targetNodeId,
       async (connection) => {
         const claims: Record<ClaimId, SignedClaim> = {};
@@ -718,10 +788,16 @@ class NodeManager {
    * Call this function upon receiving a "claim node request" notification from
    * another node.
    */
-  public async claimNode(
+  public claimNode(
     targetNodeId: NodeId,
     tran?: DBTransaction,
-    ctx?: ContextTimed, // FIXME, this needs to be a timed cancellable
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async claimNode(
+    targetNodeId: NodeId,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => {
@@ -736,7 +812,7 @@ class NodeManager {
       },
       undefined,
       async (token) => {
-        return this.nodeConnectionManager.withConnF(
+        return this.withConnF(
           targetNodeId,
           async (conn) => {
             // 2. create the agentClaim message to send
@@ -829,7 +905,6 @@ class NodeManager {
     });
   }
 
-  // TODO: make cancellable
   public async *handleClaimNode(
     requestingNodeId: NodeId,
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
@@ -924,48 +999,9 @@ class NodeManager {
     });
   }
 
-  // End new refactored methods
+  // Node graph wrappers
 
-  // /**
-  //  * Determines whether a node in the Polykey network is online.
-  //  *
-  //  * @param nodeId - NodeId of the node we're pinging
-  //  * @param addresses - Optional Host and Port we want to ping
-  //  * @param ctx
-  //  * @return true if online, false if offline
-  //  */
-  // public pingNode(
-  //   nodeId: NodeId,
-  //   addresses?: Array<NodeAddress>,
-  //   ctx?: Partial<ContextTimedInput>,
-  // ): PromiseCancellable<boolean>;
-  // @timedCancellable(
-  //   true,
-  //   (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
-  // )
-  // public async pingNode(
-  //   nodeId: NodeId,
-  //   addresses: Array<NodeAddress> | undefined,
-  //   @context ctx: ContextTimed,
-  // ): Promise<boolean> {
-  //   // We need to attempt a connection using the proxies
-  //   // For now we will just do a forward connect + relay message
-  //   // const targetAddresses =
-  //   //   addresses ??
-  //   //   (await this.nodeConnectionManager.findNodeAll(
-  //   //     nodeId,
-  //   //     this.connectionConnectTimeoutTime,
-  //   //     ctx,
-  //   //   ));
-  //   // if (targetAddresses == null) {
-  //   //   return false;
-  //   // }
-  //   return await this.nodeConnectionManager.pingNode(
-  //     nodeId,
-  //     targetAddresses,
-  //     ctx,
-  //   );
-  // }
+  // TODO: End new refactored methods
 
   // As a management system for nodes we should at least for the CRUD layer for this
 
@@ -1213,7 +1249,7 @@ class NodeManager {
         // We just add the new node anyway without checking the old one
         const bucket = await this.nodeGraph.getBucket(
           bucketIndex,
-          'lastUpdated',
+          'contacted',
           'asc',
           1,
           tran,
@@ -1313,7 +1349,7 @@ class NodeManager {
     // Iterating over existing nodes
     const bucket = await this.nodeGraph.getBucket(
       bucketIndex,
-      'lastUpdated',
+      'contacted',
       'asc',
       this.nodeGraph.nodeBucketLimit,
       tran,

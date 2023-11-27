@@ -1,35 +1,6 @@
-import type NodeConnection from './NodeConnection';
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Opaque } from '../types';
-
-/**
- * Information about a node currently in the `NodeManager`.
- * If you have a `NodeConnection` this means we have an active connection.
- * However the connection may not be active once you try to use it.
- */
-type NodeInfo =
-  | {
-      id: NodeId;
-      graph: {
-        data: NodeData;
-        bucketIndex: NodeBucketIndex;
-      };
-    }
-  | {
-      id: NodeId;
-      addresses: Array<NodeAddress>;
-      connection: NodeConnection;
-    }
-  | {
-      id: NodeId;
-      graph: {
-        data: NodeData;
-        nodesShortListElement;
-        bucketIndex: NodeBucketIndex;
-      };
-      connection: NodeConnection;
-    };
 
 /**
  * Key indicating which space the NodeGraph is in
@@ -43,21 +14,7 @@ type NodeGraphSpace = '0' | '1';
  */
 type NodeAddressScope = 'local' | 'global';
 
-// /**
-//  * Node address.
-//  */
-// type NodeAddress = {
-//   /**
-//    * Host can be a host IP address or a hostname string.
-//    */
-//   host: Host | Hostname;
-//   /**
-//    * Port of the node.
-//    */
-//   port: Port;
-// };
-
-type NodeAddress = [Host|Hostname, Port];
+type NodeAddress = [Host | Hostname, Port];
 
 type NodeBucketIndex = number;
 
@@ -104,42 +61,6 @@ type NodeContactAddressData = {
   scopes: Array<NodeAddressScope>;
 };
 
-
-
-
-// ContactInfo is better
-// NodeContactInfo
-// NodeManager -> { ... }
-// getNodeContact
-// getNodeInfo
-// type NodeInfo -> all this information about the node
-// the contact information
-// but it's not informatio about the node itself
-// so i think it sa `NodeC
-// contacts of a signle onde
-
-// One single contact data?
-// type NodeContacts
-// NodeContact = { address => data }
-// NodeContactAddress
-// NodeContactAddressData = data
-
-
-
-// /**
-//  * This is the record value stored in the NodeGraph.
-//  */
-// type NodeData = {
-//   /**
-//    * The address of the node.
-//    */
-//   address: NodeAddress;
-//   /**
-//    * Unix timestamp of when it was last updated.
-//    */
-//   lastUpdated: number;
-// };
-
 type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
 enum ConnectionErrorCode {
@@ -154,21 +75,15 @@ export type {
   NodeId,
   NodeIdString,
   NodeIdEncoded,
-  NodeInfo,
   NodeAddressScope,
   NodeAddress,
-  // NodeAddressKey,
-  // NodeContacts,
-
   NodeContact,
   NodeContactAddress,
   NodeContactAddressData,
-
   SeedNodes,
   NodeBucketIndex,
   NodeBucketMeta,
   NodeBucket,
-  // NodeData,
   NodeGraphSpace,
 };
 

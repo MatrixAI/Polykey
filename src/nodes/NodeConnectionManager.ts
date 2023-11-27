@@ -1,13 +1,6 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { QUICConnection } from '@matrixai/quic';
-import type {
-  NodeAddress,
-  NodeId,
-  NodeIdEncoded,
-  NodeIdString,
-  SeedNodes,
-} from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { CertificatePEM } from '../keys/types';
 import type {
@@ -18,6 +11,7 @@ import type {
   TLSConfig,
 } from '../network/types';
 import type { AgentServerManifest } from './agent/handlers';
+import type { NodeId, NodeIdString, SeedNodes } from './types';
 import {
   events as quicEvents,
   QUICServer,
@@ -581,13 +575,12 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
-   * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public async acquireConnection(
+  public acquireConnection(
     targetNodeId: NodeId,
-  ): Promise<ResourceAcquire<NodeConnection>> {
+  ): ResourceAcquire<NodeConnection> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
     }
@@ -1442,9 +1435,15 @@ class NodeConnectionManager {
   public async handleNodesConnectionSignalInitial(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
-    address: NodeAddress,
+    address: {
+      host: Host;
+      port: Port;
+    },
     requestSignature: string,
-  ): Promise<NodeAddress> {
+  ): Promise<{
+    host: Host;
+    port: Port;
+  }> {
     // Need to get the connection details of the requester and add it to the message.
     // Then send the message to the target.
     // This would only function with existing connections

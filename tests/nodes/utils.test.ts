@@ -161,7 +161,7 @@ describe('nodes/utils', () => {
       const lastUpdated = utils.getUnixtime();
       const nodeId = testNodesUtils.generateRandomNodeId();
       const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-      const lastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
+      const lastUpdatedKey = nodesUtils.connectedKey(lastUpdated);
       data.push({
         bucketIndex,
         bucketKey,

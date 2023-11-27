@@ -203,13 +203,13 @@ describe(`${NodeGraph.name} test`, () => {
         await nodeGraph.setNodeContact(nodeId, {
           [nodeContactAddress]: nodeContactAddressData1,
         });
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData1.connectedTime,
         );
         await nodeGraph.setNodeContact(nodeId, {
           [nodeContactAddress]: nodeContactAddressData2,
         });
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData2.connectedTime,
         );
       },
@@ -440,7 +440,7 @@ describe(`${NodeGraph.name} test`, () => {
           nodeContactAddress1,
           nodeContactAddressData1,
         );
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData1.connectedTime,
         );
         await nodeGraph.setNodeContactAddressData(
@@ -448,7 +448,7 @@ describe(`${NodeGraph.name} test`, () => {
           nodeContactAddress1,
           nodeContactAddressData2,
         );
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData2.connectedTime,
         );
         await nodeGraph.setNodeContactAddressData(
@@ -456,7 +456,7 @@ describe(`${NodeGraph.name} test`, () => {
           nodeContactAddress2,
           nodeContactAddressData1,
         );
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBe(
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData1.connectedTime,
         );
       },
@@ -638,9 +638,9 @@ describe(`${NodeGraph.name} test`, () => {
       };
       await nodeGraph.setNodeContact(nodeId, nodeContact);
 
-      expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+      expect(await nodeGraph.getConnectedTime(nodeId)).toBeDefined();
       await nodeGraph.unsetNodeContact(nodeId);
-      expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeUndefined();
+      expect(await nodeGraph.getConnectedTime(nodeId)).toBeUndefined();
     });
   });
   describe('unsetNodeContactAddress', () => {
@@ -788,18 +788,18 @@ describe(`${NodeGraph.name} test`, () => {
         };
         await nodeGraph.setNodeContact(nodeId, nodeContact);
 
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBeDefined();
         await nodeGraph.unsetNodeContactAddress(
           nodeId,
           nodeContactPair1.nodeContactAddress,
         );
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeDefined();
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBeDefined();
         await nodeGraph.unsetNodeContactAddress(
           nodeId,
           nodeContactPair2.nodeContactAddress,
         );
         // Only removed after all addresses are removed
-        expect(await nodeGraph.getLastUpdatedTime(nodeId)).toBeUndefined();
+        expect(await nodeGraph.getConnectedTime(nodeId)).toBeUndefined();
       },
     );
   });
@@ -927,7 +927,7 @@ describe(`${NodeGraph.name} test`, () => {
         }
 
         // Getting the bucket
-        const bucket = await nodeGraph.getBucket(bucketIndex, 'lastUpdated');
+        const bucket = await nodeGraph.getBucket(bucketIndex, 'connected');
 
         // Checking data
         expect(bucket.length).toBe(nodeContacts.length);

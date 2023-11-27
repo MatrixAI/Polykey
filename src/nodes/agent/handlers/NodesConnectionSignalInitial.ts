@@ -50,15 +50,14 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     if (remotePort == null || typeof remotePort !== 'number') {
       never('Missing or invalid remotePort');
     }
-    const address: NodeAddress = {
-      host: remoteHost as Host,
-      port: remotePort as Port,
-    };
     const targetAddress =
       await nodeConnectionManager.handleNodesConnectionSignalInitial(
         requestingNodeId,
         targetNodeId,
-        address,
+        {
+          host: remoteHost as Host,
+          port: remotePort as Port,
+        },
         input.signature,
       );
     return {

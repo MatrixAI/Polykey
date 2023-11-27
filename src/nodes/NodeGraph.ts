@@ -102,16 +102,17 @@ class NodeGraph {
    */
   protected nodeGraphMetaDbPath: LevelPath;
   /**
-   * Buckets stores `lexi(NodeBucketIndex)/NodeId/(Host|Hostname)-Port` -> `NodeData`.
+   * Buckets stores `lexi(NodeBucketIndex)/NodeId/nodeContactAddress` -> `NodeContactAddressData`.
    *
-   * Hosts are canoncialized to be consistent.
-   * In some cases, we do not have an exact `Host`, but instead a `Hostname`.
+   * nodeContactAddress are canoncialized to be consistent.
    */
   protected nodeGraphBucketsDbPath: LevelPath;
   /**
-   * Last updated stores `lexi(NodeBucketIndex)/lexi(lastUpdated)-NodeId` -> `NodeId`.
+   * Last updated stores
+   * `lexi(NodeBucketIndex)/"time"/lexi(connectedTime)/nodeId` -> `nodeId`.
+   * `lexi(NodeBucketIndex)/"nodeId"/nodeId` -> `lexi(connectedTime)`.
    */
-  protected nodeGraphLastUpdatedDbPath: LevelPath;
+  protected nodeGraphConnectedDbPath: LevelPath;
 
   constructor({
     db,
@@ -151,12 +152,12 @@ class NodeGraph {
     // The BucketIndex can range from 0 to NodeId bit-size minus 1
     // So 256 bits means 256 buckets of 0 to 255
     this.nodeGraphBucketsDbPath = [...this.nodeGraphDbPath, 'buckets' + space];
-    // Last updated sublevel: `!lastUpdated<space>!<lexi(NodeBucketIndex)>!<lexi(lastUpdated)>-<NodeId> -> NodeId`
-    // This is used as a sorted index of the NodeId by `lastUpdated` timestamp
-    // The `NodeId` must be appended in the key in order to disambiguate `NodeId` with same `lastUpdated` timestamp
-    this.nodeGraphLastUpdatedDbPath = [
+    // Last updated sublevel: `!connected<space>!<lexi(NodeBucketIndex)>!<lexi(contected)>-<NodeId> -> NodeId`
+    // This is used as a sorted index of the NodeId by `connected` timestamp
+    // The `NodeId` must be appended in the key in order to disambiguate `NodeId` with same `connected` timestamp
+    this.nodeGraphConnectedDbPath = [
       ...this.nodeGraphDbPath,
-      'lastUpdated' + space,
+      'connected' + space,
     ];
     this.space = space;
     this.logger.info(`Started ${this.constructor.name}`);
@@ -359,7 +360,7 @@ class NodeGraph {
         nodeContactAddressData.connectedTime,
       );
     }
-    await this.setLastUpdatedTime(nodeId, connectedTimeMax, tran);
+    await this.setConnectedTime(nodeId, connectedTimeMax, tran);
   }
 
   /**
@@ -410,7 +411,7 @@ class NodeGraph {
       [...nodeContactPath, nodeContactAddress],
       nodeContactAddressData,
     );
-    await this.setLastUpdatedTime(
+    await this.setConnectedTime(
       nodeId,
       nodeContactAddressData.connectedTime,
       tran,
@@ -445,7 +446,7 @@ class NodeGraph {
     await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
     // Clear the records
     await tran.clear(nodeContactPath);
-    await this.delLastUpdatedTime(nodeId, tran);
+    await this.delConnectedTime(nodeId, tran);
   }
 
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
@@ -499,87 +500,85 @@ class NodeGraph {
       await tran.clear(nodeContactPath);
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
       await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
-      await this.delLastUpdatedTime(nodeId, tran);
+      await this.delConnectedTime(nodeId, tran);
     }
   }
 
   /**
-   * Sets the `lastUpdatedTime` for a NodeId, replaces the old value if it exists
+   * Sets the `connectedTime` for a NodeId, replaces the old value if it exists
    */
-  protected async setLastUpdatedTime(
+  protected async setConnectedTime(
     nodeId: NodeId,
-    lastUpdatedTime: number,
+    connectedTime: number,
     tran: DBTransaction,
-    path: LevelPath = this.nodeGraphLastUpdatedDbPath,
+    path: LevelPath = this.nodeGraphConnectedDbPath,
   ) {
     const [, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...path, bucketKey];
+    const connectedPath = [...path, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdatedTime);
+    const newConnectedKey = nodesUtils.connectedKey(connectedTime);
 
     // Lookup the old time and delete it
-    const oldLastUpdatedKey = await tran.get(
-      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+    const oldConnectedKey = await tran.get(
+      [...connectedPath, 'nodeId', nodeIdKey],
       true,
     );
-    if (oldLastUpdatedKey != null) {
-      await tran.del([
-        ...lastUpdatedPath,
-        'time',
-        oldLastUpdatedKey,
-        nodeIdKey,
-      ]);
+    if (oldConnectedKey != null) {
+      await tran.del([...connectedPath, 'time', oldConnectedKey, nodeIdKey]);
     }
     // Set the new values
     await tran.put(
-      [...lastUpdatedPath, 'nodeId', nodeIdKey],
-      newLastUpdatedKey,
+      [...connectedPath, 'nodeId', nodeIdKey],
+      newConnectedKey,
       true,
     );
     await tran.put(
-      [...lastUpdatedPath, 'time', newLastUpdatedKey, nodeIdKey],
+      [...connectedPath, 'time', newConnectedKey, nodeIdKey],
       nodeIdKey,
       true,
     );
   }
 
   /**
-   * Deletes the lastUpdateTime for a NodeId
+   * Deletes the `connectedTime` for a NodeId
    */
-  protected async delLastUpdatedTime(nodeId: NodeId, tran: DBTransaction) {
+  protected async delConnectedTime(nodeId: NodeId, tran: DBTransaction) {
     const [, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const lastConnectedPath = [...this.nodeGraphConnectedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
 
     // Look up the existing time
-    const oldLastUpdatedKey = await tran.get(
-      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+    const oldConnectedKey = await tran.get(
+      [...lastConnectedPath, 'nodeId', nodeIdKey],
       true,
     );
     // And delete the values
-    await tran.del([...lastUpdatedPath, 'nodeId', nodeIdKey]);
-    if (oldLastUpdatedKey == null) return;
-    await tran.del([...lastUpdatedPath, 'time', oldLastUpdatedKey, nodeIdKey]);
+    await tran.del([...lastConnectedPath, 'nodeId', nodeIdKey]);
+    if (oldConnectedKey == null) return;
+    await tran.del([...lastConnectedPath, 'time', oldConnectedKey, nodeIdKey]);
   }
 
-  public async getLastUpdatedTime(nodeId: NodeId, tran?: DBTransaction) {
+  /**
+   * Gets the `connectedTime` for a node
+   */
+  public async getConnectedTime(nodeId: NodeId, tran?: DBTransaction) {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.getLastUpdatedTime(nodeId, tran),
+        this.getConnectedTime(nodeId, tran),
       );
     }
     const [, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+    const connectedPath = [...this.nodeGraphConnectedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
 
     // Look up the existing time
-    const oldLastUpdatedKey = await tran.get(
-      [...lastUpdatedPath, 'nodeId', nodeIdKey],
+    const oldConnectedKey = await tran.get(
+      [...connectedPath, 'nodeId', nodeIdKey],
       true,
     );
     // Convert and return
-    if (oldLastUpdatedKey == null) return;
-    return nodesUtils.parseLastUpdatedKey(oldLastUpdatedKey);
+    if (oldConnectedKey == null) return;
+    return nodesUtils.parseConnectedKey(oldConnectedKey);
   }
 
   // ...
@@ -588,7 +587,7 @@ class NodeGraph {
    * Gets a bucket.
    *
    * The bucket's node IDs is sorted lexicographically by default
-   * Alternatively you can acquire them sorted by lastUpdated timestamp
+   * Alternatively you can acquire them sorted by connected timestamp
    * or by distance to the own NodeId.
    *
    * @param bucketIndex
@@ -601,7 +600,7 @@ class NodeGraph {
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
     bucketIndex: NodeBucketIndex,
-    sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
+    sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
     limit?: number,
     tran?: DBTransaction,
@@ -634,9 +633,9 @@ class NodeGraph {
       if (sort === 'distance') {
         nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
       }
-    } else if (sort === 'lastUpdated') {
+    } else if (sort === 'connected') {
       for await (const [, nodeIdBuffer] of tran.iterator(
-        [...this.nodeGraphLastUpdatedDbPath, bucketKey, 'time'],
+        [...this.nodeGraphConnectedDbPath, bucketKey, 'time'],
         {
           reverse: order !== 'asc',
           limit,
@@ -663,12 +662,12 @@ class NodeGraph {
    *   NodeBucketIndex desc, NodeId desc
    *   NodeBucketIndex asc, distance asc
    *   NodeBucketIndex desc, distance desc
-   *   NodeBucketIndex asc, lastUpdated asc
-   *   NodeBucketIndex desc, lastUpdated desc
+   *   NodeBucketIndex asc, connected asc
+   *   NodeBucketIndex desc, connected desc
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getBuckets(
-    sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
+    sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
     tran?: DBTransaction,
   ): AsyncGenerator<[NodeBucketIndex, NodeBucket]> {
@@ -708,14 +707,14 @@ class NodeGraph {
       ...this.nodeGraphDbPath,
       'buckets' + spaceNew,
     ];
-    const nodeGraphLastUpdatedDbPathNew = [
+    const nodeGraphConnectedDbPathNew = [
       ...this.nodeGraphDbPath,
-      'lastUpdated' + spaceNew,
+      'connected' + spaceNew,
     ];
     // Clear the new space (in case it wasn't cleaned properly last time)
     await tran.clear(nodeGraphMetaDbPathNew);
     await tran.clear(nodeGraphBucketsDbPathNew);
-    await tran.clear(nodeGraphLastUpdatedDbPathNew);
+    await tran.clear(nodeGraphConnectedDbPathNew);
     // Iterating over all entries across all buckets
     for await (const [nodeId, nodeContact] of nodesUtils.collectNodeContacts(
       [...this.nodeGraphBucketsDbPath],
@@ -754,18 +753,18 @@ class NodeGraph {
         );
       }
       // Set the new values
-      const newLastUpdatedKey = nodesUtils.lastUpdatedKey(connectedTimeMax);
+      const newConnectedKey = nodesUtils.connectedKey(connectedTimeMax);
       await tran.put(
-        [...nodeGraphLastUpdatedDbPathNew, bucketKeyNew, 'nodeId', nodeIdKey],
-        newLastUpdatedKey,
+        [...nodeGraphConnectedDbPathNew, bucketKeyNew, 'nodeId', nodeIdKey],
+        newConnectedKey,
         true,
       );
       await tran.put(
         [
-          ...nodeGraphLastUpdatedDbPathNew,
+          ...nodeGraphConnectedDbPathNew,
           bucketKeyNew,
           'time',
-          newLastUpdatedKey,
+          newConnectedKey,
           nodeIdKey,
         ],
         nodeIdKey,
@@ -777,12 +776,12 @@ class NodeGraph {
     // Clear old space
     await tran.clear(this.nodeGraphMetaDbPath);
     await tran.clear(this.nodeGraphBucketsDbPath);
-    await tran.clear(this.nodeGraphLastUpdatedDbPath);
+    await tran.clear(this.nodeGraphConnectedDbPath);
     // Swap the spaces
     this.space = spaceNew;
     this.nodeGraphMetaDbPath = nodeGraphMetaDbPathNew;
     this.nodeGraphBucketsDbPath = nodeGraphBucketsDbPathNew;
-    this.nodeGraphLastUpdatedDbPath = nodeGraphLastUpdatedDbPathNew;
+    this.nodeGraphConnectedDbPath = nodeGraphConnectedDbPathNew;
   }
 
   /**
@@ -991,8 +990,8 @@ class NodeGraph {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.nodesTotal(tran));
     }
-    // `nodeGraphLastUpdatedDbPath` will contain 2 entries for each `NodeId` within the `NodeGraph`
-    return (await tran.count(this.nodeGraphLastUpdatedDbPath)) / 2;
+    // `nodeGraphConnectedDbPath` will contain 2 entries for each `NodeId` within the `NodeGraph`
+    return (await tran.count(this.nodeGraphConnectedDbPath)) / 2;
   }
 }
 

@@ -1,4 +1,9 @@
-import type {NodeAddress, NodeAddressScope, NodeContactAddressData, NodeId} from '@/nodes/types';
+import type {
+  NodeAddress,
+  NodeAddressScope,
+  NodeContactAddressData,
+  NodeId,
+} from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
 import type Logger from '@matrixai/logger';
 import type { KeyRing } from '@/keys';
@@ -9,8 +14,8 @@ import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
-import {hostArb, hostnameArb, portArb} from "../network/utils";
-import * as nodesUtils from "@/nodes/utils";
+import * as nodesUtils from '@/nodes/utils';
+import { hostArb, hostnameArb, portArb } from '../network/utils';
 import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
 import * as testsUtils from '../utils';
 
@@ -120,18 +125,22 @@ const uniqueNodeIdArb = (length: number) =>
       return false;
     });
 
-const nodeAddressArb = fc.tuple(fc.oneof( hostArb, hostnameArb), portArb);
+const nodeAddressArb = fc.tuple(fc.oneof(hostArb, hostnameArb), portArb);
 
-const nodeContactAddressArb = nodeAddressArb
-  .map(value => nodesUtils.nodeContactAddress(value));
+const nodeContactAddressArb = nodeAddressArb.map((value) =>
+  nodesUtils.nodeContactAddress(value),
+);
 
-const scopeArb = fc.constantFrom('global', 'local' ) as fc.Arbitrary<NodeAddressScope>;
+const scopeArb = fc.constantFrom(
+  'global',
+  'local',
+) as fc.Arbitrary<NodeAddressScope>;
 
-const scopesArb = fc.uniqueArray(scopeArb)
+const scopesArb = fc.uniqueArray(scopeArb);
 
 const nodeContactAddressDataArb = fc.record({
   mode: fc.constantFrom('direct', 'signal', 'relay'),
-  connectedTime: fc.integer({min: 0}),
+  connectedTime: fc.integer({ min: 0 }),
   scopes: scopesArb,
 }) as fc.Arbitrary<NodeContactAddressData>;
 
@@ -140,20 +149,19 @@ const nodeContactPairArb = fc.record({
   nodeContactAddressData: nodeContactAddressDataArb,
 });
 
-const nodeContactArb = fc.dictionary(
-  nodeContactAddressArb,
-  nodeContactAddressDataArb,
-  {
+const nodeContactArb = fc
+  .dictionary(nodeContactAddressArb, nodeContactAddressDataArb, {
     minKeys: 1,
     maxKeys: 5,
-  },
-).noShrink();
+  })
+  .noShrink();
 
-const nodeIdContactPairArb = fc.record({
-  nodeId: nodeIdArb,
-  nodeContact: nodeContactArb,
-}).noShrink();
-
+const nodeIdContactPairArb = fc
+  .record({
+    nodeId: nodeIdArb,
+    nodeContact: nodeContactArb,
+  })
+  .noShrink();
 
 /**
  * Signs using the 256-bit HMAC key

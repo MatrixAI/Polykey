@@ -107,6 +107,7 @@ describe(`NodeConnectionManager`, () => {
   });
 
   describe('with NodeManager', () => {
+    let basePath: string;
     let keyRing: KeyRing;
     let db: DB;
     let acl: ACL;
@@ -118,7 +119,8 @@ describe(`NodeConnectionManager`, () => {
     let nodeManager: NodeManager;
 
     beforeEach(async () => {
-      const keysPath = path.join(dataDir, 'keys');
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
       keyRing = await KeyRing.createKeyRing({
         password,
         keysPath,
@@ -127,7 +129,7 @@ describe(`NodeConnectionManager`, () => {
         strictMemoryLock: false,
         logger: logger.getChild(KeyRing.name),
       });
-      const dbPath = path.join(dataDir, 'db');
+      const dbPath = path.join(basePath, 'db');
       db = await DB.createDB({
         dbPath,
         logger: logger.getChild(DB.name),
@@ -191,6 +193,10 @@ describe(`NodeConnectionManager`, () => {
       await db.stop();
       await keyRing.stop();
       await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
+      });
     });
 
     test('stopping NodeManager should cancel all tasks', async () => {
@@ -212,6 +218,117 @@ describe(`NodeConnectionManager`, () => {
       );
     });
 
+    describe('with 1 peer', () => {
+      let basePath: string;
+      let keyRingPeer: KeyRing;
+      let dbPeer: DB;
+      let aclPeer: ACL;
+      let sigchainPeer: Sigchain;
+      let gestaltGraphPeer: GestaltGraph;
+      let nodeGraphPeer: NodeGraph;
+      let nodeConnectionManagerPeer: NodeConnectionManager;
+      let taskManagerPeer: TaskManager;
+      let nodeManagerPeer: NodeManager;
+
+      beforeEach(async () => {
+        basePath = path.join(dataDir, 'peer');
+        const keysPath = path.join(basePath, 'keys');
+        keyRingPeer = await KeyRing.createKeyRing({
+          password,
+          keysPath,
+          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+          passwordMemLimit: keysUtils.passwordMemLimits.min,
+          strictMemoryLock: false,
+          logger: logger.getChild(KeyRing.name),
+        });
+        const dbPath = path.join(basePath, 'db');
+        dbPeer = await DB.createDB({
+          dbPath,
+          logger: logger.getChild(DB.name),
+        });
+        aclPeer = await ACL.createACL({
+          db: dbPeer,
+          logger: logger.getChild(ACL.name),
+        });
+        sigchainPeer = await Sigchain.createSigchain({
+          db: dbPeer,
+          keyRing: keyRingPeer,
+          logger: logger.getChild(Sigchain.name),
+        });
+        gestaltGraphPeer = await GestaltGraph.createGestaltGraph({
+          db: dbPeer,
+          acl: aclPeer,
+          logger: logger.getChild(GestaltGraph.name),
+        });
+        nodeGraphPeer = await NodeGraph.createNodeGraph({
+          db: dbPeer,
+          keyRing: keyRingPeer,
+          logger: logger.getChild(NodeGraph.name),
+        });
+        nodeConnectionManagerPeer = new NodeConnectionManager({
+          keyRing: keyRingPeer,
+          tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+          logger: logger.getChild(NodeConnectionManager.name),
+        });
+        await nodeConnectionManagerPeer.start({
+          agentService: {} as AgentServerManifest,
+          host: localHost,
+        });
+        taskManagerPeer = await TaskManager.createTaskManager({
+          db: dbPeer,
+          logger: logger.getChild(TaskManager.name),
+        });
+
+        nodeManagerPeer = new NodeManager({
+          db: dbPeer,
+          keyRing: keyRingPeer,
+          gestaltGraph: gestaltGraphPeer,
+          nodeGraph: nodeGraphPeer,
+          nodeConnectionManager: nodeConnectionManagerPeer,
+          sigchain: sigchainPeer,
+          taskManager: taskManagerPeer,
+          logger: logger.getChild(NodeManager.name),
+        });
+
+        await nodeManagerPeer.start();
+      });
+      afterEach(async () => {
+        await taskManagerPeer.stopProcessing();
+        await taskManagerPeer.stopTasks();
+        await nodeManagerPeer.stop();
+        await nodeConnectionManagerPeer.stop();
+        await nodeGraphPeer.stop();
+        await gestaltGraphPeer.stop();
+        await sigchainPeer.stop();
+        await aclPeer.stop();
+        await dbPeer.stop();
+        await keyRingPeer.stop();
+        await taskManagerPeer.stop();
+        await fs.promises.rm(basePath, {
+          force: true,
+          recursive: true,
+        });
+      });
+
+      test('asd', async () => {});
+      test.todo('acquire Connection');
+      test.todo('withConnF');
+      test.todo('withConnG');
+      test.todo('pingNode success');
+      test.todo('pingNode success with existing connection');
+      test.todo('pingNode fail');
+      test.todo('pingNodeAddress success');
+      test.todo('pingNodeAddress success with existing connection');
+      test.todo('pingNodeAddress fail');
+      test.todo('requestChainData');
+      test.todo('claimNode');
+      test.todo('');
+      test.todo('');
+      test.todo('');
+      test.todo('');
+      test.todo('');
+      test.todo('');
+    });
     describe('with peers in network', () => {
       // Will create 6 peers forming a simple network
       let ncmPeers: Array<NCMState>;

@@ -1,32 +1,30 @@
-import type { ContextTimed } from '@matrixai/contexts';
+import type { X509Certificate } from '@peculiar/x509';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { NodeId } from './types';
+import type { QUICSocket, QUICConnection } from '@matrixai/quic';
 import type { Host, Hostname, Port, TLSConfig } from '../network/types';
 import type { Certificate } from '../keys/types';
-import type { QUICSocket, QUICConnection } from '@matrixai/quic';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
-import type { X509Certificate } from '@peculiar/x509';
+import type { NodeId } from './types';
 import type agentClientManifest from './agent/callers';
 import Logger from '@matrixai/logger';
 import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
 import { status } from '@matrixai/async-init';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { errors as contextErrors } from '@matrixai/contexts';
 import { AbstractEvent, EventAll } from '@matrixai/events';
 import {
   QUICClient,
   events as quicEvents,
   errors as quicErrors,
 } from '@matrixai/quic';
-import { RPCClient } from '@matrixai/rpc';
-import { middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
-import { errors as contextErrors } from '@matrixai/contexts';
+import { RPCClient, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
+import { ConnectionErrorReason, ConnectionErrorCode } from './types';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import { ConnectionErrorReason, ConnectionErrorCode } from './types';
-import * as networkUtils from '../network/utils';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils';
 import config from '../config';
+import * as networkUtils from '../network/utils';
 
 type AgentClientManifest = typeof agentClientManifest;
 

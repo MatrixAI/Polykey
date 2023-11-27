@@ -1,4 +1,4 @@
-import type { DBTransaction, KeyPath, LevelPath } from "@matrixai/db";
+import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
 import type {
@@ -11,6 +11,7 @@ import type {
 } from './types';
 import type { Key, Certificate, CertificatePEM } from '../keys/types';
 import type { Host, Hostname, Port } from '../network/types';
+import type { NodeContact, NodeContactAddressData } from './types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -25,7 +26,6 @@ import * as networkUtils from '../network/utils';
 import * as validationErrors from '../validation/errors';
 import config from '../config';
 import * as utils from '../utils';
-import { NodeContact, NodeContactAddressData } from "./types";
 
 const sepBuffer = dbUtils.sep;
 
@@ -111,11 +111,11 @@ function bucketDbKey(nodeId: NodeId): Buffer {
   return nodeId.toBuffer();
 }
 
-function lastUpdatedKey(lastUpdated: number): Buffer {
+function connectedKey(lastUpdated: number): Buffer {
   return Buffer.from(lexi.pack(lastUpdated, 'hex'));
 }
 
-function parseLastUpdatedKey(buffer: Buffer): number {
+function parseConnectedKey(buffer: Buffer): number {
   return lexi.unpack(buffer.toString());
 }
 
@@ -722,34 +722,33 @@ const quicServerCrypto: QUICServerCrypto = {
   },
 };
 
-async function *collectNodeContacts(
+async function* collectNodeContacts(
   levelPath: LevelPath,
   tran: DBTransaction,
   options: {
-    reverse?: boolean,
-    lt?: LevelPath,
-    gt?: LevelPath,
-    limit?: number,
-    pathAdjust?: KeyPath
+    reverse?: boolean;
+    lt?: LevelPath;
+    gt?: LevelPath;
+    limit?: number;
+    pathAdjust?: KeyPath;
   } = {},
-): AsyncGenerator<[NodeId, NodeContact], void>{
+): AsyncGenerator<[NodeId, NodeContact], void> {
   let nodeId: NodeId | undefined = undefined;
   let nodeContact: NodeContact = {};
   let count = 0;
   for await (const [
     keyPath,
     nodeContactAddressData,
-  ] of tran.iterator<NodeContactAddressData>(
-    levelPath,
-    {
-      reverse: options.reverse,
-      lt: options.lt,
-      gt: options.gt,
-      valueAsBuffer: false,
-    },
-  )) {
-    const { nodeId: nodeIdCurrent, nodeContactAddress } =
-      parseBucketsDbKey([...(options.pathAdjust ?? []), ...keyPath]);
+  ] of tran.iterator<NodeContactAddressData>(levelPath, {
+    reverse: options.reverse,
+    lt: options.lt,
+    gt: options.gt,
+    valueAsBuffer: false,
+  })) {
+    const { nodeId: nodeIdCurrent, nodeContactAddress } = parseBucketsDbKey([
+      ...(options.pathAdjust ?? []),
+      ...keyPath,
+    ]);
     if (!(nodeId == null || nodeIdCurrent.equals(nodeId))) {
       // Yield and tear
       yield [nodeId, nodeContact];
@@ -772,8 +771,8 @@ export {
   bucketKey,
   bucketsDbKey,
   bucketDbKey,
-  lastUpdatedKey,
-  parseLastUpdatedKey,
+  connectedKey,
+  parseConnectedKey,
   parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,
