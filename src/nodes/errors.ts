@@ -15,6 +15,11 @@ class ErrorNodeManagerNodeIdOwn<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeManagerConnectionFailed<T> extends ErrorNodeManager<T> {
+  static description = 'Failed to find or establish a connection';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
 class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
@@ -194,6 +199,7 @@ export {
   ErrorNodeManager,
   ErrorNodeManagerNotRunning,
   ErrorNodeManagerNodeIdOwn,
+  ErrorNodeManagerConnectionFailed,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,

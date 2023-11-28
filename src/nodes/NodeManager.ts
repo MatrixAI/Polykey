@@ -354,14 +354,16 @@ class NodeManager {
   ): ResourceAcquire<nodeConnection> {
     if (this.keyRing.getNodeId().equals(nodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
-      throw Error('TMP IMP own nodeId');
+      throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
     }
     return async () => {
       // Checking if connection already exists
       if (!this.nodeConnectionManager.hasConnection(nodeId)) {
         // Establish the connection
         const path = await this.findNode(nodeId, undefined, undefined, ctx);
-        if (path == null) throw Error('TMP IMP connection not made');
+        if (path == null) {
+          throw new nodesErrors.ErrorNodeManagerConnectionFailed();
+        }
       }
       return await this.nodeConnectionManager.acquireConnection(nodeId)();
     };
@@ -409,7 +411,7 @@ class NodeManager {
     nodeId: NodeId,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimedInput>,
-  ) {
+  ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = await this.acquireConnection(nodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError;
@@ -668,7 +670,7 @@ class NodeManager {
       this.nodeGraph.nodeBucketLimit,
       ctx,
     );
-    return path == null;
+    return path != null;
   }
 
   /**

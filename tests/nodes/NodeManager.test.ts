@@ -18,7 +18,7 @@ import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSi
 import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
 import * as nodesUtils from '@/nodes/utils';
 import { TaskManager } from '@/tasks';
-import { NodeManager } from '@/nodes';
+import { NodeConnection, NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
 import { Sigchain } from '@/sigchain';
 import { KeyRing } from '@/keys';
@@ -157,6 +157,7 @@ describe(`NodeConnectionManager`, () => {
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
         logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
       });
       await nodeConnectionManager.start({
         agentService: {} as AgentServerManifest,
@@ -177,10 +178,8 @@ describe(`NodeConnectionManager`, () => {
         taskManager,
         logger: logger.getChild(NodeManager.name),
       });
-
       await nodeManager.start();
     });
-
     afterEach(async () => {
       await taskManager.stopProcessing();
       await taskManager.stopTasks();
@@ -217,294 +216,621 @@ describe(`NodeConnectionManager`, () => {
         'NodeManager.refreshBucketHandler',
       );
     });
+  });
+  describe('with 1 peer', () => {
+    let basePath: string;
+    let keyRing: KeyRing;
+    let db: DB;
+    let acl: ACL;
+    let sigchain: Sigchain;
+    let gestaltGraph: GestaltGraph;
+    let nodeGraph: NodeGraph;
+    let nodeConnectionManager: NodeConnectionManager;
+    let taskManager: TaskManager;
+    let nodeManager: NodeManager;
 
-    describe('with 1 peer', () => {
-      let basePath: string;
-      let keyRingPeer: KeyRing;
-      let dbPeer: DB;
-      let aclPeer: ACL;
-      let sigchainPeer: Sigchain;
-      let gestaltGraphPeer: GestaltGraph;
-      let nodeGraphPeer: NodeGraph;
-      let nodeConnectionManagerPeer: NodeConnectionManager;
-      let taskManagerPeer: TaskManager;
-      let nodeManagerPeer: NodeManager;
+    let basePathPeer: string;
+    let keyRingPeer: KeyRing;
+    let dbPeer: DB;
+    let aclPeer: ACL;
+    let sigchainPeer: Sigchain;
+    let gestaltGraphPeer: GestaltGraph;
+    let nodeGraphPeer: NodeGraph;
+    let nodeConnectionManagerPeer: NodeConnectionManager;
+    let taskManagerPeer: TaskManager;
+    let nodeManagerPeer: NodeManager;
 
-      beforeEach(async () => {
-        basePath = path.join(dataDir, 'peer');
-        const keysPath = path.join(basePath, 'keys');
-        keyRingPeer = await KeyRing.createKeyRing({
-          password,
-          keysPath,
-          passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-          passwordMemLimit: keysUtils.passwordMemLimits.min,
-          strictMemoryLock: false,
-          logger: logger.getChild(KeyRing.name),
-        });
-        const dbPath = path.join(basePath, 'db');
-        dbPeer = await DB.createDB({
-          dbPath,
-          logger: logger.getChild(DB.name),
-        });
-        aclPeer = await ACL.createACL({
-          db: dbPeer,
-          logger: logger.getChild(ACL.name),
-        });
-        sigchainPeer = await Sigchain.createSigchain({
-          db: dbPeer,
-          keyRing: keyRingPeer,
-          logger: logger.getChild(Sigchain.name),
-        });
-        gestaltGraphPeer = await GestaltGraph.createGestaltGraph({
-          db: dbPeer,
-          acl: aclPeer,
-          logger: logger.getChild(GestaltGraph.name),
-        });
-        nodeGraphPeer = await NodeGraph.createNodeGraph({
-          db: dbPeer,
-          keyRing: keyRingPeer,
-          logger: logger.getChild(NodeGraph.name),
-        });
-        nodeConnectionManagerPeer = new NodeConnectionManager({
-          keyRing: keyRingPeer,
-          tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
-          logger: logger.getChild(NodeConnectionManager.name),
-        });
-        await nodeConnectionManagerPeer.start({
-          agentService: {} as AgentServerManifest,
-          host: localHost,
-        });
-        taskManagerPeer = await TaskManager.createTaskManager({
-          db: dbPeer,
-          logger: logger.getChild(TaskManager.name),
-        });
-
-        nodeManagerPeer = new NodeManager({
-          db: dbPeer,
-          keyRing: keyRingPeer,
-          gestaltGraph: gestaltGraphPeer,
-          nodeGraph: nodeGraphPeer,
-          nodeConnectionManager: nodeConnectionManagerPeer,
-          sigchain: sigchainPeer,
-          taskManager: taskManagerPeer,
-          logger: logger.getChild(NodeManager.name),
-        });
-
-        await nodeManagerPeer.start();
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
+      keyRing = await KeyRing.createKeyRing({
+        password,
+        keysPath,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
       });
-      afterEach(async () => {
-        await taskManagerPeer.stopProcessing();
-        await taskManagerPeer.stopTasks();
-        await nodeManagerPeer.stop();
-        await nodeConnectionManagerPeer.stop();
-        await nodeGraphPeer.stop();
-        await gestaltGraphPeer.stop();
-        await sigchainPeer.stop();
-        await aclPeer.stop();
-        await dbPeer.stop();
-        await keyRingPeer.stop();
-        await taskManagerPeer.stop();
-        await fs.promises.rm(basePath, {
-          force: true,
-          recursive: true,
-        });
+      const dbPath = path.join(basePath, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManager.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
       });
 
-      test('asd', async () => {});
-      test.todo('acquire Connection');
-      test.todo('withConnF');
-      test.todo('withConnG');
-      test.todo('pingNode success');
-      test.todo('pingNode success with existing connection');
-      test.todo('pingNode fail');
-      test.todo('pingNodeAddress success');
-      test.todo('pingNodeAddress success with existing connection');
-      test.todo('pingNodeAddress fail');
-      test.todo('requestChainData');
-      test.todo('claimNode');
-      test.todo('');
-      test.todo('');
-      test.todo('');
-      test.todo('');
-      test.todo('');
-      test.todo('');
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+
+      basePathPeer = path.join(dataDir, 'peer');
+      const keysPathPeer = path.join(basePathPeer, 'keys');
+      keyRingPeer = await KeyRing.createKeyRing({
+        password,
+        keysPath: keysPathPeer,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPathPeer = path.join(basePathPeer, 'db');
+      dbPeer = await DB.createDB({
+        dbPath: dbPathPeer,
+        logger: logger.getChild(DB.name),
+      });
+      aclPeer = await ACL.createACL({
+        db: dbPeer,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchainPeer = await Sigchain.createSigchain({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraphPeer = await GestaltGraph.createGestaltGraph({
+        db: dbPeer,
+        acl: aclPeer,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraphPeer = await NodeGraph.createNodeGraph({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManagerPeer = new NodeConnectionManager({
+        keyRing: keyRingPeer,
+        tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManagerPeer.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManagerPeer = await TaskManager.createTaskManager({
+        db: dbPeer,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManagerPeer = new NodeManager({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        gestaltGraph: gestaltGraphPeer,
+        nodeGraph: nodeGraphPeer,
+        nodeConnectionManager: nodeConnectionManagerPeer,
+        sigchain: sigchainPeer,
+        taskManager: taskManagerPeer,
+        logger: logger.getChild(NodeManager.name),
+      });
+
+      await nodeManagerPeer.start();
     });
-    describe('with peers in network', () => {
-      // Will create 6 peers forming a simple network
-      let ncmPeers: Array<NCMState>;
-      async function link(a: number, b: number) {
-        const ncmA = ncmPeers[a];
-        const ncmB = ncmPeers[b];
-        await ncmA.nodeConnectionManager.createConnection(
-          [ncmB.nodeId],
-          localHost,
-          ncmB.port,
-        );
-      }
-      async function quickLink(structure: Array<Array<number>>) {
-        const linkPs: Array<Promise<void>> = [];
-        for (const chain of structure) {
-          for (let i = 1; i < chain.length; i++) {
-            linkPs.push(link(chain[i - 1], chain[i]));
-          }
-        }
-        await Promise.all(linkPs);
-      }
+    afterEach(async () => {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
+      await nodeManager.stop();
+      await nodeConnectionManager.stop();
+      await nodeGraph.stop();
+      await gestaltGraph.stop();
+      await sigchain.stop();
+      await acl.stop();
+      await db.stop();
+      await keyRing.stop();
+      await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
+      });
 
-      beforeEach(async () => {
-        ncmPeers = [];
-        const createPs: Array<Promise<void>> = [];
-        for (let i = 0; i < 5; i++) {
-          const peerP = nodesTestUtils
-            .nodeConnectionManagerFactory({
-              createOptions: {
-                connectionConnectTimeoutTime: timeoutTime,
-              },
-              startOptions: {
-                host: localHost,
-                agentService: (nodeConnectionManager) =>
-                  ({
-                    nodesConnectionSignalFinal: new NodesConnectionSignalFinal({
+      await taskManagerPeer.stopProcessing();
+      await taskManagerPeer.stopTasks();
+      await nodeManagerPeer.stop();
+      await nodeConnectionManagerPeer.stop();
+      await nodeGraphPeer.stop();
+      await gestaltGraphPeer.stop();
+      await sigchainPeer.stop();
+      await aclPeer.stop();
+      await dbPeer.stop();
+      await keyRingPeer.stop();
+      await taskManagerPeer.stop();
+      await fs.promises.rm(basePathPeer, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    describe('context functions', () => {
+      test('acquire Connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        const [resourceReleaser, nodeConnection] =
+          await nodeManager.acquireConnection(nodeId)();
+        expect(nodeConnection).toBeInstanceOf(NodeConnection);
+        expect(nodeConnectionManager.hasConnection(nodeId)).toBeTrue();
+        await resourceReleaser();
+      });
+      test('acquire Connection fails', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(nodeManager.acquireConnection(nodeId)()).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerConnectionFailed,
+        );
+      });
+      test('withConnF', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+
+        await nodeManager.withConnF(nodeId, async (conn) => {
+          expect(conn).toBeInstanceOf(NodeConnection);
+        });
+      });
+      test('withConnG', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+
+        const gen = nodeManager.withConnG(
+          nodeId,
+          async function* (
+            conn,
+          ): AsyncGenerator<undefined, undefined, undefined> {
+            expect(conn).toBeInstanceOf(NodeConnection);
+          },
+        );
+
+        for await (const _ of gen) {
+          // Consume until done, should not throw
+        }
+      });
+    });
+    describe('pinging', () => {
+      test('pingNode success', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeTrue();
+      });
+      test('pingNode success with existing connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeTrue();
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeTrue();
+      });
+      test('pingNode fail', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeFalse();
+      });
+      test('pingNodeAddress success', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+      });
+      test('pingNodeAddress success with existing connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+        expect(nodeConnectionManager.connectionsActive()).toBe(1);
+      });
+      test('pingNodeAddress fail', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(nodeId, localHost, 50000 as Port, {
+            timer: timeoutTime,
+          }),
+        ).resolves.toBeFalse();
+        await expect(
+          nodeManager.pingNodeAddress(
+            keyRing.getNodeId(),
+            localHost,
+            nodeConnectionManagerPeer.port,
+            { timer: timeoutTime },
+          ),
+        ).resolves.toBeFalse();
+      });
+    });
+    test.todo('requestChainData');
+    test.todo('claimNode');
+    test.todo('');
+  });
+  describe('with peers in network', () => {
+    let basePath: string;
+    let keyRing: KeyRing;
+    let db: DB;
+    let acl: ACL;
+    let sigchain: Sigchain;
+    let gestaltGraph: GestaltGraph;
+    let nodeGraph: NodeGraph;
+    let nodeConnectionManager: NodeConnectionManager;
+    let taskManager: TaskManager;
+    let nodeManager: NodeManager;
+
+    // Will create 6 peers forming a simple network
+    let ncmPeers: Array<NCMState>;
+    async function link(a: number, b: number) {
+      const ncmA = ncmPeers[a];
+      const ncmB = ncmPeers[b];
+      await ncmA.nodeConnectionManager.createConnection(
+        [ncmB.nodeId],
+        localHost,
+        ncmB.port,
+      );
+    }
+    async function quickLink(structure: Array<Array<number>>) {
+      const linkPs: Array<Promise<void>> = [];
+      for (const chain of structure) {
+        for (let i = 1; i < chain.length; i++) {
+          linkPs.push(link(chain[i - 1], chain[i]));
+        }
+      }
+      await Promise.all(linkPs);
+    }
+
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
+      keyRing = await KeyRing.createKeyRing({
+        password,
+        keysPath,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPath = path.join(basePath, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManager.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+
+      ncmPeers = [];
+      const createPs: Array<Promise<void>> = [];
+      for (let i = 0; i < 5; i++) {
+        const peerP = nodesTestUtils
+          .nodeConnectionManagerFactory({
+            createOptions: {
+              connectionConnectTimeoutTime: timeoutTime,
+            },
+            startOptions: {
+              host: localHost,
+              agentService: (nodeConnectionManager) =>
+                ({
+                  nodesConnectionSignalFinal: new NodesConnectionSignalFinal({
+                    nodeConnectionManager,
+                    logger,
+                  }),
+                  nodesConnectionSignalInitial:
+                    new NodesConnectionSignalInitial({
                       nodeConnectionManager,
-                      logger,
                     }),
-                    nodesConnectionSignalInitial:
-                      new NodesConnectionSignalInitial({
-                        nodeConnectionManager,
-                      }),
-                    nodesClosestActiveConnectionsGet:
-                      new NodesClosestActiveConnectionsGet({
-                        nodeConnectionManager,
-                      }),
-                  }) as AgentServerManifest,
-              },
-              logger: logger.getChild(`${NodeConnectionManager.name}Peer${i}`),
-            })
-            .then((peer) => {
-              ncmPeers[i] = peer;
-            });
-          createPs.push(peerP);
-        }
-        await Promise.all(createPs);
-      });
-      afterEach(async () => {
-        const destroyPs: Array<Promise<void>> = [];
-        for (const ncmPeer of ncmPeers) {
-          destroyPs.push(ncmPeer.nodeConnectionManager.stop({ force: true }));
-        }
-        await Promise.all(destroyPs);
+                  nodesClosestActiveConnectionsGet:
+                    new NodesClosestActiveConnectionsGet({
+                      nodeConnectionManager,
+                    }),
+                }) as AgentServerManifest,
+            },
+            logger: logger.getChild(`${NodeConnectionManager.name}Peer${i}`),
+          })
+          .then((peer) => {
+            ncmPeers[i] = peer;
+          });
+        createPs.push(peerP);
+      }
+      await Promise.all(createPs);
+    });
+    afterEach(async () => {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
+      await nodeManager.stop();
+      await nodeConnectionManager.stop();
+      await nodeGraph.stop();
+      await gestaltGraph.stop();
+      await sigchain.stop();
+      await acl.stop();
+      await db.stop();
+      await keyRing.stop();
+      await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
       });
 
-      test('connection found in chain graph', async () => {
-        // Structure is an acyclic graph
-        // 0 -> 1 -> 2 -> 3 -> 4
-        await quickLink([[0, 1, 2, 3, 4]]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+      const destroyPs: Array<Promise<void>> = [];
+      for (const ncmPeer of ncmPeers) {
+        destroyPs.push(ncmPeer.nodeConnectionManager.stop({ force: true }));
+      }
+      await Promise.all(destroyPs);
+    });
 
-        const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(5);
-      });
-      test('connection found in MST graph', async () => {
-        // Structure is an acyclic graph
-        // 0 -> 1 -> 2
-        // 3 -> 1 -> 4
-        await quickLink([
-          [0, 1, 2],
-          [3, 1, 4],
-        ]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+    test('connection found in chain graph', async () => {
+      // Structure is an acyclic graph
+      // 0 -> 1 -> 2 -> 3 -> 4
+      await quickLink([[0, 1, 2, 3, 4]]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(3);
-      });
-      test('connection found in cyclic graph', async () => {
-        // Structure is a ring with a branch
-        // 0 -> 1 -> 2 -> 3 -> 0
-        // 4 -> 2
-        await quickLink([
-          [0, 1, 2, 3, 0],
-          [4, 2],
-        ]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+      const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
+      expect(path).toBeDefined();
+      expect(path!.length).toBe(5);
+    });
+    test('connection found in MST graph', async () => {
+      // Structure is an acyclic graph
+      // 0 -> 1 -> 2
+      // 3 -> 1 -> 4
+      await quickLink([
+        [0, 1, 2],
+        [3, 1, 4],
+      ]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(4);
-      });
-      test('finding self will do exhaustive search and not find self', async () => {
-        // Structure is branching
-        // 0 -> 1 -> 2 -> 3
-        // 1 -> 4
-        await quickLink([
-          [0, 1, 2, 3],
-          [1, 4],
-        ]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+      const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
+      expect(path).toBeDefined();
+      expect(path!.length).toBe(3);
+    });
+    test('connection found in cyclic graph', async () => {
+      // Structure is a ring with a branch
+      // 0 -> 1 -> 2 -> 3 -> 0
+      // 4 -> 2
+      await quickLink([
+        [0, 1, 2, 3, 0],
+        [4, 2],
+      ]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        const path = await nodeManager.findNode(keyRing.getNodeId(), 3);
-        expect(path).toBeUndefined();
-        // All connections made
-        expect(nodeConnectionManager.connectionsActive()).toBe(5);
-      });
-      test('finding self will hit limit and not find self', async () => {
-        // Structure is a chain
-        // 0 -> 1 -> 2 -> 3 -> 4
-        await quickLink([[0, 1, 2, 3, 4]]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+      const path = await nodeManager.findNode(ncmPeers[4].nodeId, 3);
+      expect(path).toBeDefined();
+      expect(path!.length).toBe(4);
+    });
+    test('finding self will do exhaustive search and not find self', async () => {
+      // Structure is branching
+      // 0 -> 1 -> 2 -> 3
+      // 1 -> 4
+      await quickLink([
+        [0, 1, 2, 3],
+        [1, 4],
+      ]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        const path = await nodeManager.findNode(keyRing.getNodeId(), 3, 3);
-        expect(path).toBeUndefined();
-        // All connections made
-        expect(nodeConnectionManager.connectionsActive()).toBe(4);
-      });
-      test('connection found in two attempts', async () => {
-        // Structure is a chain
-        // 0 -> 1 -> 2 -> 3 -> 4
-        await quickLink([[0, 1, 2, 3, 4]]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
+      const path = await nodeManager.findNode(keyRing.getNodeId(), 3);
+      expect(path).toBeUndefined();
+      // All connections made
+      expect(nodeConnectionManager.connectionsActive()).toBe(5);
+    });
+    test('finding self will hit limit and not find self', async () => {
+      // Structure is a chain
+      // 0 -> 1 -> 2 -> 3 -> 4
+      await quickLink([[0, 1, 2, 3, 4]]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        const path = await nodeManager.findNode(ncmPeers[4].nodeId, 1, 3);
-        expect(path).toBeUndefined();
-        // Should have initial connection + 3 new ones
-        expect(nodeConnectionManager.connectionsActive()).toBe(4);
+      const path = await nodeManager.findNode(keyRing.getNodeId(), 3, 3);
+      expect(path).toBeUndefined();
+      // All connections made
+      expect(nodeConnectionManager.connectionsActive()).toBe(4);
+    });
+    test('connection found in two attempts', async () => {
+      // Structure is a chain
+      // 0 -> 1 -> 2 -> 3 -> 4
+      await quickLink([[0, 1, 2, 3, 4]]);
+      // Creating first connection to 0;
+      await nodeConnectionManager.createConnection(
+        [ncmPeers[0].nodeId],
+        localHost,
+        ncmPeers[0].port,
+      );
 
-        // 2nd attempt continues where we left off due to existing connections
-        const path2 = await nodeManager.findNode(ncmPeers[4].nodeId, 1, 3);
-        expect(path2).toBeDefined();
-        expect(path2!.length).toBe(2);
-      });
+      const path = await nodeManager.findNode(ncmPeers[4].nodeId, 1, 3);
+      expect(path).toBeUndefined();
+      // Should have initial connection + 3 new ones
+      expect(nodeConnectionManager.connectionsActive()).toBe(4);
+
+      // 2nd attempt continues where we left off due to existing connections
+      const path2 = await nodeManager.findNode(ncmPeers[4].nodeId, 1, 3);
+      expect(path2).toBeDefined();
+      expect(path2!.length).toBe(2);
     });
   });
 });
