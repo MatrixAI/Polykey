@@ -10,7 +10,6 @@ import type {
   SeedNodes,
 } from './types';
 import type { Key, Certificate, CertificatePEM } from '../keys/types';
-import type { Host, Hostname, Port } from '../network/types';
 import type { NodeContact, NodeContactAddressData } from './types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
@@ -119,13 +118,17 @@ function parseConnectedKey(buffer: Buffer): number {
   return lexi.unpack(buffer.toString());
 }
 
+function parseNodeContactAddress(nodeContactAddress: string): NodeAddress {
+  // Take the last occurrence of `-` because the hostname may contain `-`
+  const lastDashIndex = nodeContactAddress.lastIndexOf('-');
+  const hostOrHostname = nodeContactAddress.slice(0, lastDashIndex);
+  const port = nodeContactAddress.slice(lastDashIndex + 1);
+  return [hostOrHostname, parseInt(port, 10)] as NodeAddress;
+}
+
 function parseNodeAddressKey(keyBuffer: Buffer): NodeAddress {
   const key = keyBuffer.toString();
-  // Take the last occurrence of `-` because the hostname may contain `-`
-  const lastDashIndex = key.lastIndexOf('-');
-  const hostOrHostname = key.slice(0, lastDashIndex);
-  const port = key.slice(lastDashIndex + 1);
-  return { host: hostOrHostname, port: parseInt(port, 10) } as NodeAddress;
+  return parseNodeContactAddress(key);
 }
 
 /**
@@ -228,7 +231,7 @@ function nodeDistance(nodeId1: NodeId, nodeId2: NodeId): bigint {
 
 function nodeDistanceCmpFactory(targetNodeId: NodeId) {
   const distances = {};
-  return (nodeId1: NodeId, nodeId2: NodeId) => {
+  return (nodeId1: NodeId, nodeId2: NodeId): -1 | 0 | 1 => {
     const d1 = (distances[nodeId1] =
       distances[nodeId1] ?? nodeDistance(targetNodeId, nodeId1));
     const d2 = (distances[nodeId2] =
@@ -773,6 +776,7 @@ export {
   bucketDbKey,
   connectedKey,
   parseConnectedKey,
+  parseNodeContactAddress,
   parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,

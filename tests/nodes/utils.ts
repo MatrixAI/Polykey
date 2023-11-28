@@ -234,12 +234,12 @@ function createReasonConverters() {
 
 type NCMState = {
   nodeId: NodeId;
-  keyRingDummy: KeyRing;
   nodeConnectionManager: NodeConnectionManager;
   port: Port;
 };
 
 async function nodeConnectionManagerFactory({
+  keyRing,
   createOptions: {
     connectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime,
@@ -254,6 +254,7 @@ async function nodeConnectionManagerFactory({
   startOptions: { host, port, agentService },
   logger,
 }: {
+  keyRing: KeyRing;
   createOptions?: {
     connectionFindConcurrencyLimit?: number;
     connectionFindLocalTimeoutTime?: number;
@@ -272,15 +273,10 @@ async function nodeConnectionManagerFactory({
   };
   logger: Logger;
 }): Promise<NCMState> {
-  const keyPair = keysUtils.generateKeyPair();
-  const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-  const tlsConfig = await testsUtils.createTLSConfig(keyPair);
-  const keyRingDummy = {
-    getNodeId: () => nodeId,
-    keyPair: keyPair,
-  } as KeyRing;
+  const nodeId = keyRing.getNodeId();
+  const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
   const nodeConnectionManager = new NodeConnectionManager({
-    keyRing: keyRingDummy,
+    keyRing: keyRing,
     logger: logger,
     tlsConfig: tlsConfig,
     connectionFindConcurrencyLimit,
@@ -302,7 +298,6 @@ async function nodeConnectionManagerFactory({
 
   return {
     nodeId,
-    keyRingDummy,
     nodeConnectionManager,
     port: nodeConnectionManager.port,
   };

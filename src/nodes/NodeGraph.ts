@@ -901,7 +901,7 @@ class NodeGraph {
     // We can just use `lexi<NodeBucketIndex>` to start from
     // Less than `lexi<NodeBucketIndex:101>` gets us buckets 100 and lower
     // Greater than `lexi<NodeBucketIndex:99>` gets us buckets 100 and greater
-    if (nodes.length < limit) {
+    if (nodes.length < limit && bucketIndexFirst !== 0) {
       // Just before target bucket
       const bucketIdKey = Buffer.from(
         nodesUtils.bucketKey(bucketIndexFirst - 1),

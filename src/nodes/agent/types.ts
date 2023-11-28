@@ -8,6 +8,7 @@ import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '@/network/types';
+import type { NodeContact } from '@/nodes/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;
@@ -32,7 +33,9 @@ type AddressMessage = {
   port: number;
 };
 
-type NodeAddressMessage = NodeIdMessage & AddressMessage;
+type NodeContactMessage = NodeIdMessage & {
+  nodeContact: NodeContact;
+};
 
 type ActiveConnectionDataMessage = {
   nodeId: NodeIdEncoded;
@@ -81,7 +84,7 @@ export type {
   AgentClaimMessage,
   NodeIdMessage,
   AddressMessage,
-  NodeAddressMessage,
+  NodeContactMessage,
   ActiveConnectionDataMessage,
   HolePunchRequestMessage,
   HolePunchSignalMessage,
