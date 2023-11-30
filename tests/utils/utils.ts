@@ -3,7 +3,6 @@ import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import { promise } from '@/utils';
 import * as networkErrors from '@/network/errors';
-import * as utils from '@/utils';
 
 function generateRandomNodeId(): NodeId {
   const random = keysUtils.getRandomBytes(16).toString('hex');

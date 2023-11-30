@@ -8,7 +8,6 @@ import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Semaphore } from '@matrixai/async-locks';
-import { IdInternal } from '@matrixai/id';
 import * as keysUtils from '@/keys/utils';
 import * as nodesErrors from '@/nodes/errors';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';

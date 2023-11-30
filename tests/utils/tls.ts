@@ -7,9 +7,7 @@ import type {
   PrivateKeyPEM,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
-import type { ClientCryptoOps, ServerCryptoOps } from '@matrixai/quic';
 import * as keysUtils from '@/keys/utils';
-import * as testNodesUtils from '../nodes/utils';
 
 async function createTLSConfig(
   keyPair: KeyPair,

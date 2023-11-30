@@ -1,5 +1,4 @@
 import type {
-  NodeAddress,
   NodeAddressScope,
   NodeContactAddressData,
   NodeId,

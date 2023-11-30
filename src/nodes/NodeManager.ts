@@ -25,11 +25,8 @@ import type {
   NodeAddress,
   NodeBucket,
   NodeBucketIndex,
-  NodeIdString,
-  NodeContact,
   NodeContactAddressData,
   NodeIdEncoded,
-  NodeContactAddress,
 } from './types';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
@@ -54,20 +51,6 @@ import * as claimsErrors from '../claims/errors';
 import * as utils from '../utils/utils';
 import config from '../config';
 import * as networkUtils from '../network/utils';
-
-type SomeType =
-  | {
-      type: 'direct';
-      result: {
-        nodeId: NodeId;
-        host: Host;
-        port: Port;
-      };
-    }
-  | {
-      type: 'signal';
-      result: Array<NodeId>;
-    };
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
@@ -274,7 +257,13 @@ class NodeManager {
     }
 
     // Attempt a findNode operation looking for ourselves
-    await this.findNode(this.keyRing.getNodeId(), undefined, undefined, ctx);
+    await this.findNode(
+      this.keyRing.getNodeId(),
+      undefined,
+      undefined,
+      undefined,
+      ctx,
+    );
 
     // Getting the closest node from the `NodeGraph`
     let bucketIndex: number | undefined;
@@ -440,7 +429,13 @@ class NodeManager {
       // Checking if connection already exists
       if (!this.nodeConnectionManager.hasConnection(nodeId)) {
         // Establish the connection
-        const result = await this.findNode(nodeId, undefined, undefined, ctx);
+        const result = await this.findNode(
+          nodeId,
+          undefined,
+          undefined,
+          undefined,
+          ctx,
+        );
         if (result == null) {
           throw new nodesErrors.ErrorNodeManagerConnectionFailed();
         }
@@ -512,6 +507,7 @@ class NodeManager {
    *
    * Will attempt to fix regardless of existing connection.
    * @param nodeId - NodeId of target to find.
+   * @param pingTimeoutTime
    * @param concurrencyLimit - Limit the number of concurrent connections
    * @param limit
    * @param ctx
@@ -519,6 +515,7 @@ class NodeManager {
    */
   public findNode(
     nodeId: NodeId,
+    pingTimeoutTime?: number,
     concurrencyLimit?: number,
     limit?: number,
     ctx?: Partial<ContextTimedInput>,
@@ -526,6 +523,7 @@ class NodeManager {
   @timedCancellable(true)
   public async findNode(
     nodeId: NodeId,
+    pingTimeoutTime: number = 2000,
     concurrencyLimit: number = 3,
     limit: number = this.nodeGraph.nodeBucketLimit,
     @context ctx: ContextTimed,
@@ -558,6 +556,7 @@ class NodeManager {
     const findBySignal = this.findNodeBySignal(
       nodeId,
       connectionsQueue,
+      pingTimeoutTime,
       newCtx,
     ).then((nodeAddress) => {
       if (nodeAddress != null) {
@@ -576,6 +575,7 @@ class NodeManager {
     const findByDirect = this.findNodeByDirect(
       nodeId,
       connectionsQueue,
+      pingTimeoutTime,
       newCtx,
     ).then((nodeAddress) => {
       if (nodeAddress != null) {
@@ -610,17 +610,20 @@ class NodeManager {
    *
    * @param nodeId
    * @param nodeConnectionsQueue
+   * @param pingTimeoutTime
    * @param ctx
    */
   public findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @timedCancellable(true)
   public async findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime: number = 2000,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     // Setting up intermediate signal
@@ -669,7 +672,10 @@ class NodeManager {
               await this.nodeConnectionManager.createConnectionPunch(
                 nodeIdTarget,
                 nodeIdSignaller,
-                newCtx,
+                {
+                  timer: pingTimeoutTime,
+                  signal: newCtx.signal,
+                },
               );
             // If connection succeeds add it to the chain
             chain.set(nodeIdTarget.toString(), nodeIdSignaller?.toString());
@@ -727,12 +733,14 @@ class NodeManager {
   public findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeAddress | undefined>;
   @timedCancellable(true)
   public async findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime: number = 2000,
     @context ctx: ContextTimed,
   ): Promise<NodeAddress | undefined> {
     // Setting up intermediate signal
@@ -802,7 +810,7 @@ class NodeManager {
               ) {
                 const connectP = this.nodeConnectionManager
                   .createConnection([nodeIdTarget], host as Host, port, {
-                    timer: newCtx.timer,
+                    timer: pingTimeoutTime,
                     signal: abortControllerMultiConn.signal,
                   })
                   .then((v) => {
@@ -933,7 +941,13 @@ class NodeManager {
     nodeId: NodeId,
     @context ctx: ContextTimed,
   ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
-    return await this.findNode(nodeId, 3, this.nodeGraph.nodeBucketLimit, ctx);
+    return await this.findNode(
+      nodeId,
+      2000,
+      3,
+      this.nodeGraph.nodeBucketLimit,
+      ctx,
+    );
   }
 
   /**
@@ -1805,7 +1819,7 @@ class NodeManager {
     // We then need to start a findNode procedure
     await this.findNode(
       bucketRandomNodeId,
-      // PingTimeoutTime,
+      pingTimeoutTime,
       undefined,
       undefined,
       ctx,
