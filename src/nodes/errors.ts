@@ -179,6 +179,11 @@ class ErrorNodePermissionDenied<T> extends ErrorNodes<T> {
   exitCode = sysexits.NOHOST;
 }
 
+class ErrorNodeLookupNotFound<T> extends ErrorNodes<T> {
+  static description = 'No seednodes were found for the given cluster hostname';
+  exitCode = sysexits.NOHOST;
+}
+
 export {
   ErrorNodes,
   ErrorNodeManager,
@@ -213,4 +218,5 @@ export {
   ErrorNodeConnectionManagerRequestRateExceeded,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
+  ErrorNodeLookupNotFound,
 };

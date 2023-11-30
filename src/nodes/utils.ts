@@ -1,7 +1,9 @@
 import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
+import type { Hostname, Port } from '../network/types';
 import type { Certificate, CertificatePEM } from '../keys/types';
 import type { KeyPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
+import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
 import { CryptoError } from '@matrixai/quic/dist/native';
@@ -391,13 +393,51 @@ function parseRemoteCertsChain(remoteCertChain: Array<Uint8Array>) {
   return { nodeId, certChain };
 }
 
-function parseNetwork(data: any): SeedNodes {
+/**
+ * Returns the associated hostname for a network. (`testnet.polykey.com`, etc.)
+ */
+function parseNetwork(data: any): Hostname {
   if (typeof data !== 'string' || !(data in config.network)) {
     throw new validationErrors.ErrorParse(
       `Network must be one of ${Object.keys(config.network).join(', ')}`,
     );
   }
   return config.network[data];
+}
+
+/**
+ * Takes in a hostname/domain and performs a DNS resolution for related seednode services.
+ */
+async function resolveSeednodes(
+  hostname: Hostname,
+  resolveSrv: (
+    hostname: string,
+  ) => Promise<Array<{ name: string; port: number }>> = dns.promises.resolveSrv,
+): Promise<SeedNodes> {
+  const seednodes: SeedNodes = {};
+  try {
+    const seednodeRecords = await resolveSrv(`_polykey_agent._udp.${hostname}`);
+    for (const seednodeRecord of seednodeRecords) {
+      // NodeId is apart of the name: $(nodeId).${hostname}
+      const nodeId = seednodeRecord.name.replace(
+        /\..*/g,
+        '',
+      ) as ids.NodeIdEncoded;
+      seednodes[nodeId] = {
+        host: seednodeRecord.name as Hostname,
+        port: seednodeRecord.port as Port,
+        scopes: ['global'],
+      };
+    }
+  } catch (e) {
+    throw new nodesErrors.ErrorNodeLookupNotFound(
+      `No seednodes could be found for for ${hostname}`,
+      {
+        cause: e,
+      },
+    );
+  }
+  return seednodes;
 }
 
 /**
@@ -649,6 +689,7 @@ export {
   codeToReason,
   parseRemoteCertsChain,
   parseNetwork,
+  resolveSeednodes,
   parseSeedNodes,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
