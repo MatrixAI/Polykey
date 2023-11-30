@@ -806,7 +806,7 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const rateLimiter = new Semaphore(3);
-        const path = await nodeManager.findNodeBySignal(
+        const result = await nodeManager.findNodeBySignal(
           ncmPeers[4].nodeId,
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -816,8 +816,10 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(5);
+        expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('connection found in MST graph', async () => {
         // Structure is an acyclic graph
@@ -835,7 +837,7 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const rateLimiter = new Semaphore(3);
-        const path = await nodeManager.findNodeBySignal(
+        const result = await nodeManager.findNodeBySignal(
           ncmPeers[4].nodeId,
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -845,8 +847,10 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(3);
+        expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('connection found in cyclic graph', async () => {
         // Structure is a ring with a branch
@@ -864,7 +868,7 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const rateLimiter = new Semaphore(3);
-        const path = await nodeManager.findNodeBySignal(
+        const result = await nodeManager.findNodeBySignal(
           ncmPeers[4].nodeId,
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -874,8 +878,10 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(path).toBeDefined();
-        expect(path!.length).toBe(4);
+        expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('finding self will do exhaustive search and not find self', async () => {
         // Structure is branching
@@ -974,7 +980,6 @@ describe(`NodeConnectionManager`, () => {
         expect(path2).toBeDefined();
         expect(path2!.length).toBe(2);
       });
-
       test.todo('handles failing connections');
     });
     describe('using direct connections only', () => {
@@ -1008,6 +1013,9 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('connection found in MST graph', async () => {
         // Structure is an acyclic graph
@@ -1043,6 +1051,9 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('connection found in cyclic graph', async () => {
         // Structure is an acyclic graph
@@ -1078,6 +1089,9 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
+        const [host, port] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
       test('finding self will do exhaustive search and not find self', async () => {
         // Structure is an acyclic graph
@@ -1222,14 +1236,14 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const result = await nodeManager.findNode(ncmPeers[4].nodeId);
-        expect(result).toMatchObject({
-          type: 'direct',
-          result: {
-            nodeId: expect.any(IdInternal),
-            host: localHost,
-            port: expect.any(Number),
+        expect(result).toMatchObject([
+          [localHost, ncmPeers[4].nodeConnectionManager.port],
+          {
+            mode: 'direct',
+            connectedTime: expect.any(Number),
+            scopes: expect.any(Array),
           },
-        });
+        ]);
       });
       test('connection found with shortcut', async () => {
         // Structure is an acyclic graph
@@ -1247,14 +1261,14 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const result = await nodeManager.findNode(ncmPeers[4].nodeId);
-        expect(result).toMatchObject({
-          type: 'direct',
-          result: {
-            nodeId: expect.any(IdInternal),
-            host: localHost,
-            port: expect.any(Number),
+        expect(result).toMatchObject([
+          [localHost, ncmPeers[4].nodeConnectionManager.port],
+          {
+            mode: 'direct',
+            connectedTime: expect.any(Number),
+            scopes: expect.any(Array),
           },
-        });
+        ]);
       });
       test.todo('handles failing connections');
     });
