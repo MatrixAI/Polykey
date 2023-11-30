@@ -490,7 +490,7 @@ describe(`NodeConnectionManager`, () => {
         );
         await expect(
           nodeManager.pingNode(nodeId, { timer: timeoutTime }),
-        ).resolves.toBeTrue();
+        ).resolves.toBeDefined();
       });
       test('pingNode success with existing connection', async () => {
         const nodeId = keyRingPeer.getNodeId();
@@ -508,16 +508,16 @@ describe(`NodeConnectionManager`, () => {
         );
         await expect(
           nodeManager.pingNode(nodeId, { timer: timeoutTime }),
-        ).resolves.toBeTrue();
+        ).resolves.toBeDefined();
         await expect(
           nodeManager.pingNode(nodeId, { timer: timeoutTime }),
-        ).resolves.toBeTrue();
+        ).resolves.toBeDefined();
       });
       test('pingNode fail', async () => {
         const nodeId = keyRingPeer.getNodeId();
         await expect(
           nodeManager.pingNode(nodeId, { timer: timeoutTime }),
-        ).resolves.toBeFalse();
+        ).resolves.toBeUndefined();
       });
       test('pingNodeAddress success', async () => {
         const nodeId = keyRingPeer.getNodeId();
@@ -974,6 +974,8 @@ describe(`NodeConnectionManager`, () => {
         expect(path2).toBeDefined();
         expect(path2!.length).toBe(2);
       });
+
+      test.todo('handles failing connections');
     });
     describe('using direct connections only', () => {
       test('connection found in chain graph', async () => {
@@ -1195,6 +1197,7 @@ describe(`NodeConnectionManager`, () => {
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });
+      test.todo('handles failing connections');
     });
     describe('using hybrid connections', () => {
       test('connection found in chain graph', async () => {
@@ -1253,6 +1256,7 @@ describe(`NodeConnectionManager`, () => {
           },
         });
       });
+      test.todo('handles failing connections');
     });
   });
 });

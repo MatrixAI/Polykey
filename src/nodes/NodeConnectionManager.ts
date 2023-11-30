@@ -230,7 +230,10 @@ class NodeConnectionManager {
     connectionAndTimer.timer = null;
     void stream.closedP.finally(() => {
       connectionAndTimer.usageCount -= 1;
-      if (connectionAndTimer.usageCount <= 0 && !this.isStickyNode(nodeId)) {
+      if (
+        connectionAndTimer.usageCount <= 0 &&
+        !this.isStickyConnection(nodeId)
+      ) {
         this.logger.debug(
           `creating TTL for ${nodesUtils.encodeNodeId(nodeId)}`,
         );
@@ -611,7 +614,7 @@ class NodeConnectionManager {
           connectionAndTimer.usageCount -= 1;
           if (
             connectionAndTimer.usageCount <= 0 &&
-            !this.isStickyNode(targetNodeId)
+            !this.isStickyConnection(targetNodeId)
           ) {
             this.logger.debug(
               `creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`,
@@ -776,7 +779,7 @@ class NodeConnectionManager {
 
     // Creating TTL timeout.
     // We don't create a TTL for seed nodes.
-    const timeToLiveTimer = !this.isStickyNode(nodeId)
+    const timeToLiveTimer = !this.isStickyConnection(nodeId)
       ? new Timer({
           handler: async () =>
             await this.destroyConnection(nodeId, false, connectionId),
@@ -888,9 +891,10 @@ class NodeConnectionManager {
   // TODO: placeholder for now.
   /**
    *  Checks if a node is considered sticky or not.
+   *  This is decided by the distance metric,
    * @param _nodeId
    */
-  protected isStickyNode(_nodeId: NodeId): boolean {
+  protected isStickyConnection(_nodeId: NodeId): boolean {
     return false;
   }
 
