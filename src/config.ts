@@ -1,32 +1,7 @@
 import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import type { NodeAddress } from './nodes/types';
-import type { Host, Port } from './network/types';
 import { getDefaultNodePath } from './utils';
 // @ts-ignore package.json is outside rootDir
 import { version } from '../package.json';
-
-/**
- * Configuration for testnet node addresses.
- * Extracted here to enforce types properly.
- */
-const testnet: Record<string, NodeAddress> = {
-  v7v9ptvcdbdf8p4upok3prpmu3938ns8v4g45dib7sm5hqvvehv70: {
-    host: 'testnet.polykey.com' as Host,
-    port: 1314 as Port,
-    scopes: ['global'],
-  },
-  v270ktdd3cs3mp1r3q3dkmick92bn927mii9or4sgroeogd1peqb0: {
-    host: 'testnet.polykey.com' as Host,
-    port: 1314 as Port,
-    scopes: ['global'],
-  },
-};
-
-/**
- * Configuration for main net node addresses.
- * Extracted here to enforce types properly.
- */
-const mainnet: Record<string, NodeAddress> = {};
 
 /**
  * Polykey static configuration
@@ -91,8 +66,7 @@ const config = {
   },
   /**
    * This is not used by the `PolykeyAgent` which defaults to `{}`
-   * In the future this will be replaced by `mainnet.polykey.com` and `testnet.polykey.com`.
-   * Along with the domain we will have the root public key too.
+   * In the future this will have the root public key too.
    *
    * Information that is pre-configured during distribution:
    *
@@ -110,8 +84,8 @@ const config = {
    * providing an extra level of confidence. However this is not required.
    */
   network: {
-    mainnet: mainnet,
-    testnet: testnet,
+    mainnet: 'mainnet.polykey.com',
+    testnet: 'testnet.polykey.com',
   },
   /**
    * Default system configuration.
