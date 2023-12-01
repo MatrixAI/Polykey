@@ -7,8 +7,8 @@ import type { SignedTokenEncoded } from '../../tokens/types';
 import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
-import type { Host, Hostname, Port } from '@/network/types';
-import type { NodeContact } from '@/nodes/types';
+import type { Host, Hostname, Port } from '../../network/types';
+import type { NodeContact } from '../../nodes/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;

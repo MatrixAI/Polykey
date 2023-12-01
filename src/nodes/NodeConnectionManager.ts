@@ -63,7 +63,7 @@ type ConnectionInfo = {
   primary: boolean;
 };
 
-type activeConnectionsInfo = {
+type ActiveConnectionsInfo = {
   nodeId: NodeId;
   connections: Record<string, ConnectionInfo>;
 };
@@ -644,7 +644,7 @@ class NodeConnectionManager {
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T> {
     return await withF(
-      [await this.acquireConnection(targetNodeId)],
+      [this.acquireConnection(targetNodeId)],
       async ([conn]) => {
         return await f(conn);
       },
@@ -664,7 +664,7 @@ class NodeConnectionManager {
     targetNodeId: NodeId,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(targetNodeId);
+    const acquire = this.acquireConnection(targetNodeId);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -1053,336 +1053,6 @@ class NodeConnectionManager {
     });
   }
 
-  // End of refactoring method
-
-  // TODO: this is all the old code that is either no longer needed, or needs to
-  //  be re-created in some form in the `NodeConnectionManager`.
-
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * This will connect to the provided address looking for any of the listed nodes.
-  //  * Locking is not handled at this level, it must be handled by the caller.
-  //  * @param nodeIds
-  //  * @param addresses
-  //  * @param ctx
-  //  * @protected
-  //  */
-  // protected establishMultiConnection(
-  //   nodeIds: Array<NodeId>,
-  //   addresses: Array<NodeAddress>,
-  //   ctx?: Partial<ContextTimedInput>,
-  // ): PromiseCancellable<Map<NodeIdString, ConnectionAndTimer>>;
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionConnectTimeoutTime,
-  // )
-  // protected async establishMultiConnection(
-  //   nodeIds: Array<NodeId>,
-  //   addresses: Array<NodeAddress>,
-  //   @context ctx: ContextTimed,
-  // ): Promise<Map<NodeIdString, ConnectionAndTimer>> {
-  //   const nodesEncoded = nodeIds.map((v) => nodesUtils.encodeNodeId(v));
-  //   this.logger.debug(`getting multi-connection for ${nodesEncoded}`);
-  //   if (nodeIds.length === 0) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerNodeIdRequired();
-  //   }
-  //   if (addresses.length === 0) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerNodeAddressRequired();
-  //   }
-  //   const connectionsResults: Map<NodeIdString, ConnectionAndTimer> = new Map();
-  //   // 1. short circuit any existing connections
-  //   const nodesShortlist: Set<NodeIdString> = new Set();
-  //   for (const nodeId of nodeIds) {
-  //     const nodeIdString = nodeId.toString() as NodeIdString;
-  //     const connAndTimer = this.connections.get(nodeIdString);
-  //     if (connAndTimer == null) {
-  //       nodesShortlist.add(nodeIdString);
-  //       continue;
-  //     }
-  //     this.logger.debug(
-  //       `found existing connection for ${nodesUtils.encodeNodeId(nodeId)}`,
-  //     );
-  //     connectionsResults.set(nodeIdString, connAndTimer);
-  //   }
-  //   // 2. resolve the addresses into a full list. Any host names need to be resolved.
-  //   // If we have existing nodes then we have existing addresses
-  //   const existingAddresses: Set<string> = new Set();
-  //   for (const [, connAndTimer] of connectionsResults) {
-  //     const address = `${connAndTimer.connection.host}|${connAndTimer.connection.port}`;
-  //     existingAddresses.add(address);
-  //   }
-  //   const resolvedAddresses = await networkUtils.resolveHostnames(
-  //     addresses,
-  //     existingAddresses,
-  //   );
-  //   if (ctx.signal.aborted) return connectionsResults;
-  //   // 3. Concurrently attempt connections
-  //   // Abort signal for cleaning up
-  //   const abortController = new AbortController();
-  //   const signal = abortController.signal;
-  //
-  //   ctx.signal.addEventListener(
-  //     'abort',
-  //     () => {
-  //       abortController.abort(ctx.signal.reason);
-  //     },
-  //     { once: true },
-  //   );
-  //
-  //   const nodesShortlistArray: Array<NodeId> = [];
-  //   for (const nodeIdString of nodesShortlist) {
-  //     nodesShortlistArray.push(IdInternal.fromString<NodeId>(nodeIdString));
-  //   }
-  //   const cleanUpReason = Symbol('CleanUpReason');
-  //   this.logger.debug(
-  //     `attempting connections for ${nodesShortlistArray.map((v) =>
-  //       nodesUtils.encodeNodeId(v),
-  //     )}`,
-  //   );
-  //   const connProms = resolvedAddresses.map((address) =>
-  //     this.establishSingleConnection(
-  //       nodesShortlistArray,
-  //       address,
-  //       connectionsResults,
-  //       { timer: ctx.timer, signal },
-  //     ).finally(() => {
-  //       if (connectionsResults.size === nodeIds.length) {
-  //         // We have found all nodes, clean up remaining connections
-  //         abortController.abort(cleanUpReason);
-  //       }
-  //     }),
-  //   );
-  //   // We race the connections with timeout
-  //   try {
-  //     this.logger.debug(`awaiting connections`);
-  //     await Promise.allSettled(connProms);
-  //     this.logger.debug(`awaiting connections resolved`);
-  //   } finally {
-  //     // Cleaning up
-  //     this.logger.debug(`cleaning up`);
-  //     abortController.abort(cleanUpReason);
-  //     await Promise.allSettled(connProms);
-  //   }
-  //   if (connectionsResults.size === 0) {
-  //     throw new nodesErrors.ErrorNodeConnectionManagerMultiConnectionFailed(
-  //       undefined,
-  //       {
-  //         cause: new AggregateError(await Promise.allSettled(connProms)),
-  //       },
-  //     );
-  //   }
-  //   return connectionsResults;
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Will attempt to find a connection via MDNS.
-  //  * @param targetNodeId Id of the node we are tying to find
-  //  */
-  // public findNodeLocal(
-  //   targetNodeId: NodeId,
-  //   ctx?: Partial<ContextTimedInput>,
-  // ): PromiseCancellable<Array<NodeAddress>>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionFindLocalTimeoutTime,
-  // )
-  // public async findNodeLocal(
-  //   targetNodeId: NodeId,
-  //   @context ctx: ContextTimed,
-  // ): Promise<Array<NodeAddress>> {
-  //   const encodedNodeId = nodesUtils.encodeNodeId(targetNodeId);
-  //   this.logger.debug(`Finding local addresses for ${encodedNodeId}`);
-  //   const addresses: Array<NodeAddress> = [];
-  //   if (this.mdns == null) {
-  //     return addresses;
-  //   }
-  //   // First check if we already have an existing MDNS Service
-  //   const mdnsOptions = { type: 'polykey', protocol: 'udp' } as const;
-  //   let service: ServicePOJO | void = this.mdns.networkServices.get(
-  //     mdnsUtils.toFqdn({ name: encodedNodeId, ...mdnsOptions }),
-  //   );
-  //   if (service == null) {
-  //     // Setup promises
-  //     const { p: endedP, resolveP: resolveEndedP } = utils.promise<void>();
-  //     const abortHandler = () => {
-  //       resolveEndedP();
-  //     };
-  //     ctx.signal.addEventListener('abort', abortHandler, { once: true });
-  //     ctx.timer.catch(() => {}).finally(() => abortHandler());
-  //     const { p: serviceP, resolveP: resolveServiceP } =
-  //       utils.promise<ServicePOJO>();
-  //     const handleEventMDNSService = (evt: mdnsEvents.EventMDNSService) => {
-  //       if (evt.detail.name === encodedNodeId) {
-  //         resolveServiceP(evt.detail);
-  //       }
-  //     };
-  //     this.mdns.addEventListener(
-  //       mdnsEvents.EventMDNSService.name,
-  //       handleEventMDNSService,
-  //       { once: true },
-  //     );
-  //     // Abort and restart query in case already running
-  //     this.mdns.stopQuery(mdnsOptions);
-  //     this.mdns.startQuery(mdnsOptions);
-  //     // Race promises to find node or timeout
-  //     service = await Promise.race([serviceP, endedP]);
-  //     this.mdns.removeEventListener(
-  //       mdnsEvents.EventMDNSService.name,
-  //       handleEventMDNSService,
-  //     );
-  //     this.mdns.stopQuery(mdnsOptions);
-  //     ctx.signal.removeEventListener('abort', abortHandler);
-  //   }
-  //   // If the service is not found, just return no addresses
-  //   if (service == null) {
-  //     return addresses;
-  //   }
-  //   for (const host_ of service.hosts) {
-  //     let host: string;
-  //     switch (this.quicSocket.type) {
-  //       case 'ipv4':
-  //         if (quicUtils.isIPv4(host_)) {
-  //           host = host_;
-  //         } else if (quicUtils.isIPv4MappedIPv6(host_)) {
-  //           host = quicUtils.fromIPv4MappedIPv6(host_);
-  //         } else {
-  //           continue;
-  //         }
-  //         break;
-  //       case 'ipv6':
-  //         if (quicUtils.isIPv6(host_)) host = host_;
-  //         else continue;
-  //         break;
-  //       case 'ipv4&ipv6':
-  //         host = host_;
-  //         break;
-  //       default:
-  //         continue;
-  //     }
-  //     addresses.push({
-  //       host: host as Host,
-  //       port: service.port as Port,
-  //       scopes: ['local'],
-  //     });
-  //     this.logger.debug(
-  //       `found address for ${nodesUtils.encodeNodeId(
-  //         targetNodeId,
-  //       )} at ${host}:${service.port}`,
-  //     );
-  //   }
-  //   return addresses;
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Will attempt to find a connection via a Kademlia search or MDNS.
-  //  * The connection may be established in the process.
-  //  * @param targetNodeId Id of the node we are tying to find
-  //  * @param pingTimeoutTime timeout for any ping attempts
-  //  * @param ctx
-  //  */
-  // public findNodeAll(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime?: number,
-  //   ctx?: Partial<ContextTimed>,
-  // ): PromiseCancellable<Array<NodeAddress>>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(true)
-  // public async findNodeAll(
-  //   targetNodeId: NodeId,
-  //   pingTimeoutTime: number | undefined,
-  //   @context ctx: ContextTimed,
-  // ): Promise<Array<NodeAddress>> {
-  //   const [localAddresses, kademliaAddress] = await Promise.allSettled([
-  //     this.findNodeLocal(targetNodeId, {
-  //       signal: ctx.signal,
-  //       timer: this.connectionFindLocalTimeoutTime,
-  //     }),
-  //     this.findNode(targetNodeId, pingTimeoutTime, ctx),
-  //   ]);
-  //   const addresses =
-  //     localAddresses.status === 'fulfilled' ? localAddresses.value : [];
-  //   if (
-  //     kademliaAddress.status === 'fulfilled' &&
-  //     kademliaAddress.value != null
-  //   ) {
-  //     addresses.push(kademliaAddress.value);
-  //   }
-  //   return addresses;
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Performs an RPC request to retrieve the closest nodes relative to the given
-  //  * target node ID.
-  //  * @param nodeId the node ID to search on
-  //  * @param targetNodeId the node ID to find other nodes closest to it
-  //  * @param ctx
-  //  */
-  // public getRemoteNodeClosestNodes(
-  //   nodeId: NodeId,
-  //   targetNodeId: NodeId,
-  //   ctx?: Partial<ContextTimed>,
-  // ): PromiseCancellable<Array<[NodeId, NodeData]>>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionConnectTimeoutTime,
-  // )
-  // public async getRemoteNodeClosestNodes(
-  //   nodeId: NodeId,
-  //   targetNodeId: NodeId,
-  //   @context ctx: ContextTimed,
-  // ): Promise<Array<[NodeId, NodeData]>> {
-  //   try {
-  //     // Send through client
-  //     return await this.withConnF(
-  //       nodeId,
-  //       async (connection) => {
-  //         const client = connection.getClient();
-  //         const closestNodes = await client.methods.nodesClosestLocalNodesGet(
-  //           { nodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId) },
-  //           ctx,
-  //         );
-  //         const localNodeId = this.keyRing.getNodeId();
-  //         const nodes: Array<[NodeId, NodeData]> = [];
-  //         for await (const result of closestNodes) {
-  //           const nodeId = nodesUtils.decodeNodeId(result.nodeIdEncoded);
-  //           // If the nodeId is not valid we don't add it to the list of nodes
-  //           // Our own nodeId is considered not valid here
-  //           if (nodeId != null && !localNodeId.equals(nodeId)) {
-  //             nodes.push([
-  //               nodeId,
-  //               {
-  //                 address: {
-  //                   host: result.host as Host | Hostname,
-  //                   port: result.port as Port,
-  //                   scopes: ['global'],
-  //                 },
-  //                 // Not really needed
-  //                 // But if it's needed then we need to add the information to the proto definition
-  //                 lastUpdated: 0,
-  //               },
-  //             ]);
-  //           }
-  //         }
-  //         return nodes;
-  //       },
-  //       ctx,
-  //     );
-  //   } catch (e) {
-  //     if (nodesUtils.isConnectionError(e)) {
-  //       return [];
-  //     }
-  //     throw e;
-  //   }
-  // }
-
   /**
    * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
    *
@@ -1451,7 +1121,7 @@ class NodeConnectionManager {
     // Need to get the connection details of the requester and add it to the message.
     // Then send the message to the target.
     // This would only function with existing connections
-    const existingConnection = await this.getConnection(targetNodeId);
+    const existingConnection = this.getConnection(targetNodeId);
     if (existingConnection == null) {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
@@ -1500,7 +1170,7 @@ class NodeConnectionManager {
   public getClosestConnections(
     targetNodeId: NodeId,
     limit: number = 20,
-  ): Array<activeConnectionsInfo> {
+  ): Array<ActiveConnectionsInfo> {
     const nodeIds: Array<NodeId> = [];
     for (const nodeIdString of this.connections.keys()) {
       nodeIds.push(IdInternal.fromString<NodeId>(nodeIdString));
@@ -1513,7 +1183,7 @@ class NodeConnectionManager {
       const nodeIdString = nodeId.toString() as NodeIdString;
       const entry = this.connections.get(nodeIdString);
       if (entry == null) utils.never('Connection should exist');
-      const entryRecord: activeConnectionsInfo = {
+      const entryRecord: ActiveConnectionsInfo = {
         nodeId: nodeId,
         connections: {},
       };
@@ -1530,80 +1200,6 @@ class NodeConnectionManager {
       return entryRecord;
     });
   }
-
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Checks if a connection can be made to the target. Returns true if the
-  //  * connection can be authenticated, it's certificate matches the nodeId and
-  //  * the addresses match if provided. Otherwise, returns false.
-  //  * @param nodeId - NodeId of the target
-  //  * @param addresses - Contains the Hosts and Ports of the target node
-  //  * @param ctx
-  //  */
-  // public pingNode(
-  //   nodeId: NodeId,
-  //   addresses: Array<NodeAddress>,
-  //   ctx?: Partial<ContextTimedInput>,
-  // ): PromiseCancellable<boolean>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionConnectTimeoutTime,
-  // )
-  // public async pingNode(
-  //   nodeId: NodeId,
-  //   addresses: Array<NodeAddress>,
-  //   @context ctx: ContextTimed,
-  // ): Promise<boolean> {
-  //   try {
-  //     await this.getConnectionWithAddresses(nodeId, addresses, ctx);
-  //     return true;
-  //   } catch {
-  //     return false;
-  //   }
-  // }
-  //
-  // // TODO: move to `NodeManager`
-  // /**
-  //  * Used to start connections to multiple nodes and hosts at the same time.
-  //  * The main use-case is to connect to multiple seed nodes on the same hostname.
-  //  * @param nodeIds
-  //  * @param addresses
-  //  * @param ctx
-  //  */
-  // public getMultiConnection(
-  //   nodeIds: Array<NodeId>,
-  //   addresses: Array<NodeAddress>,
-  //   ctx?: Partial<ContextTimedInput>,
-  // ): PromiseCancellable<Array<NodeId>>;
-  // @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  // @timedCancellable(
-  //   true,
-  //   (nodeConnectionManager: NodeConnectionManager) =>
-  //     nodeConnectionManager.connectionConnectTimeoutTime,
-  // )
-  // public async getMultiConnection(
-  //   nodeIds: Array<NodeId>,
-  //   addresses: Array<NodeAddress>,
-  //   @context ctx: ContextTimed,
-  // ): Promise<Array<NodeId>> {
-  //   const locks: Array<LockRequest<Lock>> = nodeIds.map((nodeId) => {
-  //     return [nodeId.toString(), Lock, ctx];
-  //   });
-  //   return await this.connectionLocks.withF(...locks, async () => {
-  //     const results = await this.establishMultiConnection(
-  //       nodeIds,
-  //       addresses,
-  //       ctx,
-  //     );
-  //     const resultsArray: Array<NodeId> = [];
-  //     for (const [nodeIdString] of results) {
-  //       resultsArray.push(IdInternal.fromString<NodeId>(nodeIdString));
-  //     }
-  //     return resultsArray;
-  //   });
-  // }
 }
 
 export default NodeConnectionManager;

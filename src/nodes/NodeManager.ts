@@ -1,6 +1,7 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyRing from '../keys/KeyRing';
 import type Sigchain from '../sigchain/Sigchain';
 import type TaskManager from '../tasks/TaskManager';
@@ -15,6 +16,7 @@ import type {
   SignedClaim,
 } from '../claims/types';
 import type { ClaimLinkNode } from '../claims/payloads';
+import type NodeConnection from '../nodes/NodeConnection';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -30,9 +32,6 @@ import type {
 } from './types';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type { ResourceAcquire } from '@matrixai/resources';
-import type nodeConnection from '@/nodes/NodeConnection';
-import type NodeConnection from '@/nodes/NodeConnection';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
@@ -146,12 +145,12 @@ class NodeManager {
   public readonly gcBucketHandlerId =
     `${this.tasksPath}.${this.gcBucketHandler.name}` as TaskHandlerId;
 
+  // FIXME: This is not being used?
+  //  Maybe it was only used for the old `syncNodeGraph` logic?
   protected pingAndSetNodeHandler: TaskHandler = async (
     ctx,
     _taskInfo,
     nodeIdEncoded: string,
-    host: Host,
-    port: Port,
   ) => {
     const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
     if (nodeId == null) {
@@ -246,6 +245,7 @@ class NodeManager {
           [nodeId],
           host,
           port,
+          { timer: pingTimeoutTime, signal: ctx.signal },
         );
       }),
     );
@@ -420,7 +420,7 @@ class NodeManager {
   public acquireConnection(
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
-  ): ResourceAcquire<nodeConnection> {
+  ): ResourceAcquire<NodeConnection> {
     if (this.keyRing.getNodeId().equals(nodeId)) {
       this.logger.warn('Attempting connection to our own NodeId');
       throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
@@ -465,7 +465,7 @@ class NodeManager {
     @context ctx: ContextTimed,
   ) {
     return await withF(
-      [await this.acquireConnection(nodeId, ctx)],
+      [this.acquireConnection(nodeId, ctx)],
       async ([conn]) => {
         return await f(conn);
       },
@@ -487,7 +487,7 @@ class NodeManager {
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
     ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = await this.acquireConnection(nodeId, ctx);
+    const acquire = this.acquireConnection(nodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError;
     try {
@@ -560,7 +560,6 @@ class NodeManager {
       newCtx,
     ).then((nodeAddress) => {
       if (nodeAddress != null) {
-        console.log('found by signal');
         return [
           nodeAddress,
           {
@@ -579,7 +578,6 @@ class NodeManager {
       newCtx,
     ).then((nodeAddress) => {
       if (nodeAddress != null) {
-        console.log('found by direct');
         return [
           nodeAddress,
           {
@@ -594,11 +592,10 @@ class NodeManager {
 
     try {
       return await Promise.any([findBySignal, findByDirect]);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // FIXME: check error type and throw if not connection related failure
       return;
     } finally {
-      console.log('cleaning up');
       abortController.abort(Error('TMP IMP cancelling pending connections'));
       await Promise.allSettled([findBySignal, findByDirect]);
       ctx.signal.removeEventListener('abort', handleAbort);
@@ -713,20 +710,21 @@ class NodeManager {
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningSignal) {
-      await pendingP.catch((e) => console.error(e));
+      // FIXME: don't wholesale ignore error here
+      await pendingP.catch(() => {});
     }
 
-    // Connection was not made so no path was found
+    // Connection was not made
     if (connectionMade == null) return undefined;
-    // Otherwise return the path
-    const path: Array<NodeId> = [];
-    let current: string | undefined = nodeId.toString();
-    while (current != null) {
-      const nodeId = IdInternal.fromString<NodeId>(current);
-      path.unshift(nodeId);
-      current = chain.get(current);
-    }
-    console.log(path);
+    // We can get the path taken with this code
+    // const path: Array<NodeId> = [];
+    // let current: string | undefined = nodeId.toString();
+    // while (current != null) {
+    //   const nodeId = IdInternal.fromString<NodeId>(current);
+    //   path.unshift(nodeId);
+    //   current = chain.get(current);
+    // }
+    // console.log(path);
     return connectionMade;
   }
 
@@ -831,7 +829,6 @@ class NodeManager {
           nodeConnectionsQueue.contactedNode(nodeIdTarget);
           // If connection was our target then we're done
           if (nodeId.toString() === nodeIdTarget.toString()) {
-            console.log('FOUND!');
             connectionMade = true;
             return true;
           }
@@ -857,7 +854,8 @@ class NodeManager {
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningDirect) {
-      await pendingP.catch((e) => console.error(e));
+      // FIXME: don't wholesale ignore error here
+      await pendingP.catch(() => {});
     }
 
     if (!connectionMade) return undefined;
@@ -913,13 +911,10 @@ class NodeManager {
           nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
         }
       })();
-
-      console.log(
-        await Promise.allSettled([
-          closestConnectionsRequestP,
-          closestNodesRequestP,
-        ]),
-      );
+      await Promise.allSettled([
+        closestConnectionsRequestP,
+        closestNodesRequestP,
+      ]);
     });
   }
 
@@ -1995,7 +1990,7 @@ class NodeManager {
    *
    */
   public syncNodeGraph(
-    initialNodes: Array<[NodeId, [Host, Port]]>,
+    initialNodes: Array<[NodeId, NodeAddress]>,
     pingTimeoutTime?: number,
     blocking?: boolean,
     ctx?: Partial<ContextTimedInput>,
@@ -2003,7 +1998,7 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(true)
   public async syncNodeGraph(
-    initialNodes: Array<[NodeId, [Host, Port]]>,
+    initialNodes: Array<[NodeId, NodeAddress]>,
     pingTimeoutTime: number | undefined,
     blocking: boolean = false,
     @context ctx: ContextTimed,

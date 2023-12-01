@@ -462,7 +462,7 @@ function lexiUnpackBuffer(b: Buffer): number {
  * Used to yield to the event loop to allow other micro tasks to process
  */
 async function yieldMicro() {
-  return await new Promise((r) => queueMicrotask(r));
+  return await new Promise<void>((r) => queueMicrotask(r));
 }
 
 export {

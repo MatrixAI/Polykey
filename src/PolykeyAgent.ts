@@ -1,7 +1,7 @@
 import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
-import type { SeedNodes } from './nodes/types';
+import type { NodeAddress, NodeId, SeedNodes } from './nodes/types';
 import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
@@ -344,10 +344,7 @@ class PolykeyAgent {
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
-        nodeGraph,
         tlsConfig,
-        mdns,
-        seedNodes: optionsDefaulted.seedNodes,
         connectionFindConcurrencyLimit:
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
@@ -385,6 +382,11 @@ class PolykeyAgent {
         const setNodeProm = nodeManager.setNode(
           nodeId,
           optionsDefaulted.seedNodes[nodeIdEncoded],
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
           true,
         );
         setNodeProms.push(setNodeProm);
@@ -504,6 +506,7 @@ class PolykeyAgent {
         agentServicePort: optionsDefaulted.agentServicePort,
         workers: optionsDefaulted.workers,
         ipv6Only: optionsDefaulted.ipv6Only,
+        seedNodes: optionsDefaulted.seedNodes,
       },
       fresh,
     });
@@ -681,6 +684,7 @@ class PolykeyAgent {
         groups: Array<string>;
         port: number;
       };
+      seedNodes: SeedNodes;
     }>;
     workers?: number;
     fresh?: boolean;
@@ -698,6 +702,7 @@ class PolykeyAgent {
           groups: config.defaultsSystem.mdnsGroups,
           port: config.defaultsSystem.mdnsPort,
         },
+        seedNodes: config.defaultsUser.seedNodes,
       });
       // Register event handlers
       this.certManager.addEventListener(
@@ -779,7 +784,7 @@ class PolykeyAgent {
         host: optionsDefaulted.agentServiceHost,
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
-        manifest: agentServerManifest({
+        agentService: agentServerManifest({
           acl: this.acl,
           db: this.db,
           keyRing: this.keyRing,
@@ -793,7 +798,19 @@ class PolykeyAgent {
         }),
       });
       await this.nodeGraph.start({ fresh });
-      await this.nodeManager.syncNodeGraph(false);
+      const seedNodeEntries = Object.entries(
+        optionsDefaulted.seedNodes as SeedNodes,
+      );
+      if (seedNodeEntries.length > 0) {
+        const initialNodes = seedNodeEntries.map(
+          ([nodeIdEncoded, nodeAddress]) => {
+            const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+            if (nodeId == null) utils.never('nodeId should be defined');
+            return [nodeId, nodeAddress] as [NodeId, NodeAddress];
+          },
+        );
+        await this.nodeManager.syncNodeGraph(initialNodes, undefined, false);
+      }
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });

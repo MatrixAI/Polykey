@@ -343,11 +343,6 @@ function refreshBucketsDelayJitter(
  *
  */
 const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
-  if (reason != null) {
-    console.error(reason);
-    const messageBuf = reason?.data?.reason;
-    if (messageBuf != null) console.log(Buffer.from(messageBuf).toString());
-  }
   // We're only going to handle RPC errors for now, these include
   // ErrorRPCHandlerFailed
   // ErrorRPCMessageLength

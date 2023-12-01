@@ -1,16 +1,15 @@
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  NodeAddressMessage,
   NodeIdMessage,
 } from '../types';
 import type NodeConnectionManager from '../../NodeConnectionManager';
+import type { NodeId } from '../../../ids';
 import type { ActiveConnectionDataMessage } from '../types';
-import type { NodeId } from '@/ids';
 import { ServerHandler } from '@matrixai/rpc';
-import * as validation from '@/validation';
-import * as utils from '@/utils';
-import * as ids from '@/ids';
+import * as utils from '../../../utils';
+import * as ids from '../../../ids';
+import * as validation from '../../../validation';
 import * as nodesUtils from '../../utils';
 
 /**

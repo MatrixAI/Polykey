@@ -404,34 +404,31 @@ function resolvesZeroIP(ip: Host): Host {
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
   existingAddresses: Set<string> = new Set(),
-): Promise<Array<{ host: Host; port: Port; scopes: Array<NodeAddressScope> }>> {
+): Promise<Array<{ host: Host; port: Port }>> {
   const final: Array<{
     host: Host;
     port: Port;
-    scopes: Array<NodeAddressScope>;
   }> = [];
-  for (const address of addresses) {
-    if (isHost(address.host)) {
-      if (existingAddresses.has(`${address.host}|${address.port}`)) continue;
+  for (const [host, port] of addresses) {
+    if (isHost(host)) {
+      if (existingAddresses.has(`${host}|${port}`)) continue;
       final.push({
-        host: address.host,
-        port: address.port,
-        scopes: address.scopes,
+        host: host,
+        port: port,
       });
-      existingAddresses.add(`${address.host}|${address.port}`);
+      existingAddresses.add(`${host}|${port}`);
       continue;
     }
-    const resolvedAddresses = await resolveHostname(address.host);
+    const resolvedAddresses = await resolveHostname(host);
     for (const resolvedHost of resolvedAddresses) {
       const newAddress = {
         host: resolvedHost,
-        port: address.port,
-        scopes: address.scopes,
+        port: port,
       };
       if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
-      if (existingAddresses.has(`${resolvedHost}|${address.port}`)) continue;
+      if (existingAddresses.has(`${resolvedHost}|${port}`)) continue;
       final.push(newAddress);
-      existingAddresses.add(`${resolvedHost}|${address.port}`);
+      existingAddresses.add(`${resolvedHost}|${port}`);
     }
   }
   return final;

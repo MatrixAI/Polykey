@@ -10,6 +10,7 @@ import type {
   MAC,
 } from '@/keys/types';
 import type CertManager from '@/keys/CertManager';
+import type { KeyRing } from '@/keys';
 import { fc } from '@fast-check/jest';
 import { IterableX as Iterable } from 'ix/iterable';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
@@ -21,6 +22,7 @@ import * as asymmetric from '@/keys/utils/asymmetric';
 import * as jwk from '@/keys/utils/jwk';
 import * as x509 from '@/keys/utils/x509';
 import * as utils from '@/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testsIdsUtils from '../ids/utils';
 
 const bufferArb = (constraints?: fc.IntArrayConstraints) => {
@@ -352,6 +354,18 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
   }
 }
 
+/**
+ * Creates a fake KeyRing that only provides the `keyPair` and `getNodeId()`
+ */
+function createDummyKeyRing() {
+  const keyPair = keysUtils.generateKeyPair();
+  const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+  return {
+    keyPair,
+    getNodeId: () => nodeId,
+  } as KeyRing;
+}
+
 export {
   bufferArb,
   keyArb,
@@ -369,6 +383,7 @@ export {
   RenewCertWithNewKeyPairCommand,
   ResetCertWithCurrentKeyPairCommand,
   ResetCertWithNewKeyPairCommand,
+  createDummyKeyRing,
 };
 
 export type { CertManagerModel, CertManagerCommand };

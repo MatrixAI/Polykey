@@ -215,6 +215,18 @@ describe(`NodeConnectionManager`, () => {
         'NodeManager.refreshBucketHandler',
       );
     });
+    test.todo('general tests for adding new nodes');
+    // Previously these tests were
+    // 'should add a node when bucket has room'
+    // 'should update a node if node exists'
+    // 'should not add node if bucket is full and old node is alive'
+    // 'should add node if bucket is full, old node is alive and force is set'
+    // 'should add node if bucket is full and old node is dead'
+    // 'should add node when an incoming connection is established'
+    // 'should not add nodes to full bucket if pings succeeds'
+    // 'should add nodes to full bucket if pings fail'
+    // 'should not block when bucket is full'
+    // 'should update deadline when updating a bucket'
   });
   describe('with 1 peer', () => {
     let basePath: string;
@@ -565,7 +577,10 @@ describe(`NodeConnectionManager`, () => {
     });
     test.todo('requestChainData');
     test.todo('claimNode');
-    test.todo('');
+
+    // TODO: These require mdns integration with `NodeManager`.
+    test.todo('findNodeByMdns');
+    test.todo('findNode with mdns');
   });
   describe('with peers in network', () => {
     let basePath: string;
@@ -762,8 +777,6 @@ describe(`NodeConnectionManager`, () => {
       ncmPeers.sort((a, b) => {
         return nodeDistanceCmp(a.nodeId, b.nodeId);
       });
-
-      console.log(ncmPeers.map((v) => nodesUtils.encodeNodeId(v.nodeId)));
     });
     afterEach(async () => {
       await taskManager.stopProcessing();
@@ -792,7 +805,7 @@ describe(`NodeConnectionManager`, () => {
       await Promise.all(destroyPs);
     });
 
-    describe('using signalled connections only', () => {
+    describe('findNode by signalled connections', () => {
       test('connection found in chain graph', async () => {
         // Structure is an acyclic graph
         // 0 -> 1 -> 2 -> 3 -> 4
@@ -979,9 +992,9 @@ describe(`NodeConnectionManager`, () => {
         expect(path2).toBeDefined();
         expect(path2!.length).toBe(2);
       });
-      test.todo('handles failing connections');
+      test.todo('handles offline nodes');
     });
-    describe('using direct connections only', () => {
+    describe('findNode by direct connections', () => {
       test('connection found in chain graph', async () => {
         // Structure is an acyclic graph
         // 0 -> 1 -> 2 -> 3 -> 4
@@ -1210,9 +1223,9 @@ describe(`NodeConnectionManager`, () => {
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });
-      test.todo('handles failing connections');
+      test.todo('handles offline nodes');
     });
-    describe('using hybrid connections', () => {
+    describe('findNode by both', () => {
       test('connection found in chain graph', async () => {
         // Structure is an acyclic graph
         // connections
@@ -1269,7 +1282,11 @@ describe(`NodeConnectionManager`, () => {
           },
         ]);
       });
-      test.todo('handles failing connections');
+      test.todo('handles offline nodes');
     });
+    test.todo('network entry with syncNodeGraph');
+    test.todo('network entry with syncNodeGraph handles offline nodes');
+    test.todo('refresh buckets');
+    test.todo('nodeGraph entry is updated when connection is made');
   });
 });

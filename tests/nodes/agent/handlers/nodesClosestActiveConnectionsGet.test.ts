@@ -9,7 +9,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as keysUtils from '@/keys/utils';
 import NodesClosestActiveConnectionsGet from '@/nodes/agent/handlers/NodesClosestActiveConnectionsGet';
 import * as nodesUtils from '@/nodes/utils';
-import { Hostname } from '@/network/types';
 import * as testsUtils from '../../../utils';
 import NodeConnectionManager from '../../../../src/nodes/NodeConnectionManager';
 
@@ -23,7 +22,6 @@ describe('nodesClosestLocalNode', () => {
   let nodeIdLocal: NodeId;
   let keyRingDummyLocal: KeyRing;
   let nodeConnectionManagerLocal: NodeConnectionManager;
-  let portLocal: Port;
 
   let nodeIdPeer1: NodeId;
   let keyRingDummyPeer1: KeyRing;
@@ -75,7 +73,6 @@ describe('nodesClosestLocalNode', () => {
         host: localHost,
       }),
     ]);
-    portLocal = nodeConnectionManagerLocal.port;
     portPeer1 = nodeConnectionManagerPeer1.port;
   });
   afterEach(async () => {
@@ -88,7 +85,7 @@ describe('nodesClosestLocalNode', () => {
     const connection = await nodeConnectionManagerLocal.createConnection(
       [nodeIdPeer1],
       localHost,
-      nodeConnectionManagerPeer1.port,
+      portPeer1,
     );
 
     // Let's add some fake data.

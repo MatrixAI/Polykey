@@ -6,7 +6,6 @@ import type {
 } from '../types';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type { Host, Port } from '../../../network/types';
-import type { NodeAddress } from '../../../nodes/types';
 import type { JSONValue } from '../../../types';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';

@@ -2,7 +2,6 @@ import type { DB } from '@matrixai/db';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  NodeAddressMessage,
   NodeContactMessage,
   NodeIdMessage,
 } from '../types';
@@ -47,7 +46,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
     );
     // Get all local nodes that are closest to the target node from the request
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
-      AgentRPCResponseResult<NodeAddressMessage>
+      AgentRPCResponseResult<NodeContactMessage>
     > {
       const closestNodes = await nodeGraph.getClosestNodes(
         nodeId,

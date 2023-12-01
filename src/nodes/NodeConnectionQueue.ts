@@ -4,7 +4,6 @@ import type { Semaphore } from '@matrixai/async-locks';
 import type { ContextCancellable } from '@matrixai/contexts';
 import * as nodesUtils from './utils';
 import * as utils from '../utils';
-import { signalPromise } from '../utils';
 
 // Temp utility class for tracking shared queue
 export class NodeConnectionQueue {
@@ -132,7 +131,6 @@ export class NodeConnectionQueue {
   ): Promise<boolean> {
     // Checking if hit limit
     if (this.nodesContacted.size >= this.limit) {
-      console.log('limit reached, ending');
       return true;
     }
     // If queue is empty then we need to wait for alternative sources
@@ -140,27 +138,23 @@ export class NodeConnectionQueue {
 
     // If queue still empty then we've run out of nodes to contact
     if (queue.length === 0) {
-      console.log('exhausted queue, ending');
       return true;
     }
     // Wait for a free concurrency slot
     const [rateLimitReleaser] = await rateLimit.lock()();
     if (this.connectionMade) {
       await rateLimitReleaser();
-      console.log('found node, ending');
       return true;
     }
     const nextNode = queue.shift();
     // If queue exhausted or target found then end
     if (nextNode == null) {
       await rateLimitReleaser();
-      console.log('queue exhausted, ending');
       return true;
     }
     const [nodeIdTarget, data] = nextNode;
 
     // Running the function
-    // TODO track connection attempt proms in a set to await completion
     const attempt = f(nodeIdTarget, data)
       .then(
         (result) => {
@@ -171,7 +165,6 @@ export class NodeConnectionQueue {
       .finally(async () => {
         // Release the rateLimiter lock
         await rateLimitReleaser();
-        // TODO: logic for handling when connection has ended.
         nodesRunning.delete(attempt);
       });
     nodesRunning.add(attempt);

@@ -25,7 +25,7 @@ class NodesGetAll extends ServerHandler<
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { nodeGraph } = this.container;
     for await (const [index, bucket] of nodeGraph.getBuckets()) {
-      for (const [id, info] of bucket) {
+      for (const [id, nodeContact] of bucket) {
         const encodedId = nodesUtils.encodeNodeId(id);
         // For every node in every bucket, add it to our message
         if (ctx.signal.aborted) {
@@ -34,8 +34,7 @@ class NodesGetAll extends ServerHandler<
         yield {
           bucketIndex: index,
           nodeIdEncoded: encodedId,
-          host: info.address.host,
-          port: info.address.port,
+          nodeContact,
         };
       }
     }

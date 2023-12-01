@@ -1,6 +1,5 @@
 import type { Host, Port } from '@/network/types';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { NodeId } from '@/ids';
 import type { KeyRing } from '@/keys';
 import type { NCMState } from './utils';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
@@ -12,8 +11,8 @@ import * as nodesErrors from '@/nodes/errors';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
 import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
-import * as nodesUtils from '@/nodes/utils';
 import * as nodesTestUtils from './utils';
+import * as keysTestUtils from '../keys/utils';
 import * as testsUtils from '../utils';
 
 describe(`NodeConnectionManager`, () => {
@@ -82,6 +81,7 @@ describe(`NodeConnectionManager`, () => {
 
     beforeEach(async () => {
       ncmLocal = await nodesTestUtils.nodeConnectionManagerFactory({
+        keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
           connectionIdleTimeoutTime: 1000,
           connectionConnectTimeoutTime: timeoutTime,
@@ -94,6 +94,7 @@ describe(`NodeConnectionManager`, () => {
       });
 
       ncmPeer1 = await nodesTestUtils.nodeConnectionManagerFactory({
+        keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
           connectionConnectTimeoutTime: timeoutTime,
         },
@@ -596,6 +597,7 @@ describe(`NodeConnectionManager`, () => {
 
     beforeEach(async () => {
       ncmLocal = await nodesTestUtils.nodeConnectionManagerFactory({
+        keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
           connectionConnectTimeoutTime: timeoutTime,
         },
@@ -607,6 +609,7 @@ describe(`NodeConnectionManager`, () => {
       });
 
       ncmPeer1 = await nodesTestUtils.nodeConnectionManagerFactory({
+        keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
           connectionConnectTimeoutTime: timeoutTime,
         },
@@ -627,6 +630,7 @@ describe(`NodeConnectionManager`, () => {
       });
 
       ncmPeer2 = await nodesTestUtils.nodeConnectionManagerFactory({
+        keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
           connectionConnectTimeoutTime: timeoutTime,
         },
@@ -757,11 +761,13 @@ describe(`NodeConnectionManager`, () => {
         ncmPeer2.port,
       );
 
-      const result = await ncmLocal.nodeConnectionManager.getClosestConnections(
+      const result = ncmLocal.nodeConnectionManager.getClosestConnections(
         ncmPeer2.nodeId,
         20,
       );
       expect(result).toHaveLength(2);
     });
+    test.todo('signalling is non-blocking');
+    test.todo('signalling is rate limited');
   });
 });
