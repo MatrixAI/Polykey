@@ -910,7 +910,9 @@ class NodeConnectionManager {
   /**
    * Will determine how long to keep a node around for.
    *
-   * Timeout is scaled linearly from 1 min to 2 hours based on it's bucket
+   * Timeout is scaled linearly from 1 min to 2 hours based on it's bucket.
+   * The value will be symmetric for two nodes,
+   * they will assign the same timeout for each other.
    */
   protected getStickyTimeoutValue(nodeId: NodeId, primary: boolean): number {
     const min = this.connectionIdleTimeoutTimeMin;

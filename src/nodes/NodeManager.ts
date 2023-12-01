@@ -72,9 +72,14 @@ class NodeManager {
    */
   public readonly connectionConnectTimeoutTime: number;
 
-  public readonly refreshBucketDelay: number;
+  public readonly refreshBucketDelayTime: number;
   public readonly refreshBucketDelayJitter: number;
-  public readonly retrySeedConnectionsDelay: number;
+  /**
+   * Interval used to reestablish connections to maintain network health.
+   * Will trigger a refreshBucket for bucket 255 if it is missing connections.
+   * Will always trigger a findNode(this.keyRing.getNodeId()).
+   */
+  public readonly retryConnectionsDelayTime: number;
   public readonly tasksPath = this.constructor.name;
 
   protected db: DB;
@@ -106,18 +111,21 @@ class NodeManager {
       ctx,
     );
     // When completed reschedule the task
-    const jitter = nodesUtils.refreshBucketsDelayJitter(
-      this.refreshBucketDelay,
-      this.refreshBucketDelayJitter,
-    );
-    await this.taskManager.scheduleTask({
-      delay: this.refreshBucketDelay + jitter,
-      handlerId: this.refreshBucketHandlerId,
-      lazy: true,
-      parameters: [bucketIndex],
-      path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
-      priority: 0,
-    });
+    // if refreshBucketDelay is 0 then it's considered disabled
+    if (this.refreshBucketDelayTime > 0) {
+      const jitter = nodesUtils.refreshBucketsDelayJitter(
+        this.refreshBucketDelayTime,
+        this.refreshBucketDelayJitter,
+      );
+      await this.taskManager.scheduleTask({
+        delay: this.refreshBucketDelayTime + jitter,
+        handlerId: this.refreshBucketHandlerId,
+        lazy: true,
+        parameters: [bucketIndex],
+        path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        priority: 0,
+      });
+    }
   };
 
   public readonly refreshBucketHandlerId =
@@ -145,90 +153,46 @@ class NodeManager {
   public readonly gcBucketHandlerId =
     `${this.tasksPath}.${this.gcBucketHandler.name}` as TaskHandlerId;
 
-  // FIXME: This is not being used?
-  //  Maybe it was only used for the old `syncNodeGraph` logic?
-  protected pingAndSetNodeHandler: TaskHandler = async (
-    ctx,
-    _taskInfo,
-    nodeIdEncoded: string,
-  ) => {
-    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-    if (nodeId == null) {
-      this.logger.error(
-        `pingAndSetNodeHandler received invalid NodeId: ${nodeIdEncoded}`,
-      );
-      utils.never();
+  protected checkConnectionsHandler: TaskHandler = async (ctx, taskInfo) => {
+    this.logger.debug('Checking connections');
+    let connectionCount = 0;
+    for (const connection of this.nodeConnectionManager.listConnections()) {
+      if (connection.primary) {
+        const [bucketId] = this.nodeGraph.bucketIndex(connection.nodeId);
+        if (bucketId === 255) connectionCount++;
+      }
     }
-    const pingResult = await this.pingNode(nodeId, {
-      signal: ctx.signal,
-    });
-    if (pingResult != null) {
-      const [nodeAddress, nodeContactAddressData] = pingResult;
-      await this.setNode(
-        nodeId,
-        nodeAddress,
-        nodeContactAddressData,
-        false,
-        false,
-        2000,
+    if (connectionCount > 0) {
+      this.logger.debug('triggering bucket refresh for bucket 255');
+      await this.updateRefreshBucketDelay(255, 0);
+    }
+    try {
+      this.logger.debug(
+        'triggering fidNode for self to populate closest nodes',
+      );
+      await this.findNode(
+        this.keyRing.getNodeId(),
+        undefined,
+        undefined,
+        undefined,
         ctx,
       );
+    } finally {
+      this.logger.debug('Checked connections');
+      // Re-schedule this task
+      await this.taskManager.scheduleTask({
+        delay: taskInfo.delay,
+        deadline: taskInfo.deadline,
+        handlerId: this.checkConnectionsHandlerId,
+        lazy: true,
+        path: [this.tasksPath, this.checkConnectionsHandlerId],
+        priority: taskInfo.priority,
+      });
     }
   };
 
-  public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.tasksPath}.${this.pingAndSetNodeHandler.name}` as TaskHandlerId;
-
-  // TODO: need to rethink how this is done
-  // protected checkSeedConnectionsHandler: TaskHandler = async (
-  //   ctx,
-  //   taskInfo,
-  // ) => {
-  //   this.logger.debug('Checking seed connections');
-  //   // Check for existing seed node connections
-  //   const seedNodes = this.nodeConnectionManager.getSeedNodes();
-  //   const allInactive = !seedNodes
-  //     .map((nodeId) => this.nodeConnectionManager.hasConnection(nodeId))
-  //     .reduce((a, b) => a || b, false);
-  //   try {
-  //     if (allInactive) {
-  //       this.logger.debug(
-  //         'No active seed connections were found, retrying network entry',
-  //       );
-  //       // If no seed node connections exist then we redo syncNodeGraph
-  //       await this.syncNodeGraph(true, undefined, ctx);
-  //     } else {
-  //       // Doing this concurrently, we don't care about the results
-  //       await Promise.allSettled(
-  //         seedNodes.map((nodeId) => {
-  //           // Retry any failed seed node connections
-  //           if (!this.nodeConnectionManager.hasConnection(nodeId)) {
-  //             this.logger.debug(
-  //               `Re-establishing seed connection for ${nodesUtils.encodeNodeId(
-  //                 nodeId,
-  //               )}`,
-  //             );
-  //             return this.pingNode(nodeId, undefined, ctx);
-  //           }
-  //         }),
-  //       );
-  //     }
-  //   } finally {
-  //     this.logger.debug('Checked seed connections');
-  //     // Re-schedule this task
-  //     await this.taskManager.scheduleTask({
-  //       delay: taskInfo.delay,
-  //       deadline: taskInfo.deadline,
-  //       handlerId: this.checkSeedConnectionsHandlerId,
-  //       lazy: true,
-  //       path: [this.tasksPath, this.checkSeedConnectionsHandlerId],
-  //       priority: taskInfo.priority,
-  //     });
-  //   }
-  // };
-  //
-  // public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
-  //   `${this.tasksPath}.${this.checkSeedConnectionsHandler.name}` as TaskHandlerId;
+  public readonly checkConnectionsHandlerId: TaskHandlerId =
+    `${this.tasksPath}.${this.checkConnectionsHandler.name}` as TaskHandlerId;
 
   protected syncNodeGraphHandler: TaskHandler = async (
     ctx: ContextTimed,
@@ -311,10 +275,10 @@ class NodeManager {
     nodeConnectionManager,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
-    refreshBucketDelay = config.defaultsSystem.nodesRefreshBucketIntervalTime,
+    refreshBucketDelayTime = config.defaultsSystem.nodesRefreshBucketIntervalTime,
     refreshBucketDelayJitter = config.defaultsSystem
       .nodesRefreshBucketIntervalTimeJitter,
-    retrySeedConnectionsDelay = 120000, // 2 minutes
+    retryConnectionsDelayTime = 120000, // 2 minutes
     logger,
   }: {
     db: DB;
@@ -325,9 +289,9 @@ class NodeManager {
     nodeGraph: NodeGraph;
     nodeConnectionManager: NodeConnectionManager;
     connectionConnectTimeoutTime?: number;
-    refreshBucketDelay?: number;
+    refreshBucketDelayTime?: number;
     refreshBucketDelayJitter?: number;
-    retrySeedConnectionsDelay?: number;
+    retryConnectionsDelayTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -339,9 +303,9 @@ class NodeManager {
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
-    this.refreshBucketDelay = refreshBucketDelay;
+    this.refreshBucketDelayTime = refreshBucketDelayTime;
     this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
-    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
+    this.retryConnectionsDelayTime = retryConnectionsDelayTime;
   }
 
   public async start() {
@@ -355,26 +319,24 @@ class NodeManager {
       this.gcBucketHandler,
     );
     this.taskManager.registerHandler(
-      this.pingAndSetNodeHandlerId,
-      this.pingAndSetNodeHandler,
+      this.checkConnectionsHandlerId,
+      this.checkConnectionsHandler,
     );
-    // TODO
-    // this.taskManager.registerHandler(
-    //   this.checkSeedConnectionsHandlerId,
-    //   this.checkSeedConnectionsHandler,
-    // );
     this.taskManager.registerHandler(
       this.syncNodeGraphHandlerId,
       this.syncNodeGraphHandler,
     );
     await this.setupRefreshBucketTasks();
-    // TODO
-    // await this.taskManager.scheduleTask({
-    //   delay: this.retrySeedConnectionsDelay,
-    //   handlerId: this.checkSeedConnectionsHandlerId,
-    //   lazy: true,
-    //   path: [this.tasksPath, this.checkSeedConnectionsHandlerId],
-    // });
+    // Can be disabled with 0 delay, only use for testing
+    if (this.retryConnectionsDelayTime > 0) {
+      await this.taskManager.scheduleTask({
+        delay: this.retryConnectionsDelayTime,
+        handlerId: this.checkConnectionsHandlerId,
+        lazy: true,
+        path: [this.tasksPath, this.checkConnectionsHandlerId],
+      });
+    }
+
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
       nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
@@ -401,9 +363,7 @@ class NodeManager {
     await Promise.allSettled(taskPs);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
-    this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
-    // TODO
-    // this.taskManager.deregisterHandler(this.checkSeedConnectionsHandlerId);
+    this.taskManager.deregisterHandler(this.checkConnectionsHandlerId);
     this.taskManager.deregisterHandler(this.syncNodeGraphHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
@@ -1521,7 +1481,7 @@ class NodeManager {
       // Updating the refreshBucket timer
       await this.updateRefreshBucketDelay(
         bucketIndex,
-        this.refreshBucketDelay,
+        this.refreshBucketDelayTime,
         true,
         tran,
       );
@@ -1555,7 +1515,7 @@ class NodeManager {
         // Updating the refreshBucket timer
         await this.updateRefreshBucketDelay(
           bucketIndex,
-          this.refreshBucketDelay,
+          this.refreshBucketDelayTime,
           true,
           tran,
         );
@@ -1848,9 +1808,9 @@ class NodeManager {
               performance.now() +
               performance.timeOrigin -
               task.created.getTime() +
-              this.refreshBucketDelay +
+              this.refreshBucketDelayTime +
               nodesUtils.refreshBucketsDelayJitter(
-                this.refreshBucketDelay,
+                this.refreshBucketDelayTime,
                 this.refreshBucketDelayJitter,
               );
             await this.taskManager.updateTask(task.id, { delay }, tran);
@@ -1874,18 +1834,19 @@ class NodeManager {
       bucketIndex++
     ) {
       const exists = existingTasks[bucketIndex];
-      if (!exists) {
+      // Can be disabled with 0 delay, only use for testing
+      if (!exists && this.refreshBucketDelayTime > 0) {
         // Create a new task
         this.logger.debug(
           `Creating refreshBucket task for bucket ${bucketIndex}`,
         );
         const jitter = nodesUtils.refreshBucketsDelayJitter(
-          this.refreshBucketDelay,
+          this.refreshBucketDelayTime,
           this.refreshBucketDelayJitter,
         );
         await this.taskManager.scheduleTask({
           handlerId: this.refreshBucketHandlerId,
-          delay: this.refreshBucketDelay + jitter,
+          delay: this.refreshBucketDelayTime + jitter,
           lazy: true,
           parameters: [bucketIndex],
           path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
@@ -1899,7 +1860,7 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async updateRefreshBucketDelay(
     bucketIndex: number,
-    delay: number = this.refreshBucketDelay,
+    delay: number = this.refreshBucketDelayTime,
     lazy: boolean = true,
     tran?: DBTransaction,
   ): Promise<Task> {
