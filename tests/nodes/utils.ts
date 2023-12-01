@@ -250,7 +250,8 @@ async function nodeConnectionManagerFactory({
   createOptions: {
     connectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime,
-    connectionIdleTimeoutTime,
+    connectionIdleTimeoutTimeMin,
+    connectionIdleTimeoutTimeScale,
     connectionConnectTimeoutTime,
     connectionKeepAliveTimeoutTime,
     connectionKeepAliveIntervalTime,
@@ -265,7 +266,8 @@ async function nodeConnectionManagerFactory({
   createOptions?: {
     connectionFindConcurrencyLimit?: number;
     connectionFindLocalTimeoutTime?: number;
-    connectionIdleTimeoutTime?: number;
+    connectionIdleTimeoutTimeMin?: number;
+    connectionIdleTimeoutTimeScale?: number;
     connectionConnectTimeoutTime?: number;
     connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
@@ -288,7 +290,8 @@ async function nodeConnectionManagerFactory({
     tlsConfig: tlsConfig,
     connectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime,
-    connectionIdleTimeoutTime,
+    connectionIdleTimeoutTimeMin,
+    connectionIdleTimeoutTimeScale,
     connectionConnectTimeoutTime,
     connectionKeepAliveTimeoutTime,
     connectionKeepAliveIntervalTime,

@@ -446,7 +446,8 @@ describe('gestaltsDiscoveryByIdentity', () => {
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -623,7 +624,8 @@ describe('gestaltsDiscoveryByNode', () => {
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1235,7 +1237,8 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1610,7 +1613,8 @@ describe('gestaltsGestaltTrustByNode', () => {
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

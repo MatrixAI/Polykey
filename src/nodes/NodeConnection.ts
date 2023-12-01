@@ -170,7 +170,7 @@ class NodeConnection {
       tlsConfig,
       connectionKeepAliveIntervalTime,
       connectionKeepAliveTimeoutTime = config.defaultsSystem
-        .nodesConnectionIdleTimeoutTime,
+        .nodesConnectionIdleTimeoutTimeMin,
       quicSocket,
       manifest,
       logger,
@@ -202,7 +202,7 @@ class NodeConnection {
       manifest,
       connectionKeepAliveIntervalTime,
       connectionKeepAliveTimeoutTime = config.defaultsSystem
-        .nodesConnectionIdleTimeoutTime,
+        .nodesConnectionIdleTimeoutTimeMin,
       quicSocket,
       logger = new Logger(this.name),
     }: {

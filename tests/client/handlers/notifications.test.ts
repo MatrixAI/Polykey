@@ -107,7 +107,8 @@ describe('notificationsClear', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -262,7 +263,8 @@ describe('notificationsRead', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -643,7 +645,8 @@ describe('notificationsSend', () => {
       nodeGraph,
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

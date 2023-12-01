@@ -186,7 +186,7 @@ const config = {
      */
     nodesConnectionFindLocalTimeoutTime: 1_500, // 1.5 seconds
     /**
-     * Timeout for idle node connections.
+     * Minimum timeout for idle node connections.
      *
      * A node connection is idle, if nothing is using the connection. A
      * connection is being used when its resource counter is above 0.
@@ -201,7 +201,13 @@ const config = {
      *
      * This should always be greater than the keep alive timeout.
      */
-    nodesConnectionIdleTimeoutTime: 60_000, // 60 seconds
+    nodesConnectionIdleTimeoutTimeMin: 60_000, // 60 seconds
+    /**
+     * Scale factor for timeout for idle node connections
+     *
+     * This scales
+     */
+    nodesConnectionIdleTimeoutTimeScale: 7_200_000, // 2 hours
     /**
      * Timeout for establishing a node connection.
      *

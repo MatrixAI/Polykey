@@ -100,9 +100,14 @@ class NodeConnectionManager {
   public readonly connectionFindLocalTimeoutTime: number;
 
   /**
-   * Time to wait to garbage collect un-used node connections.
+   * Minimum time to wait to garbage collect un-used node connections.
    */
-  public readonly connectionIdleTimeoutTime: number;
+  public readonly connectionIdleTimeoutTimeMin: number;
+
+  /**
+   * Scaling factor to apply to Idle timeout
+   */
+  public readonly connectionIdleTimeoutTimeScale: number;
 
   /**
    * Time used to establish `NodeConnection`
@@ -230,17 +235,19 @@ class NodeConnectionManager {
     connectionAndTimer.timer = null;
     void stream.closedP.finally(() => {
       connectionAndTimer.usageCount -= 1;
-      if (
-        connectionAndTimer.usageCount <= 0 &&
-        !this.isStickyConnection(nodeId)
-      ) {
+      if (connectionAndTimer.usageCount <= 0) {
+        const delay = this.getStickyTimeoutValue(
+          nodeId,
+          connectionsEntry.activeConnection ===
+            connectionAndTimer.connection.connectionId,
+        );
         this.logger.debug(
           `creating TTL for ${nodesUtils.encodeNodeId(nodeId)}`,
         );
         connectionAndTimer.timer = new Timer({
           handler: async () =>
             await this.destroyConnection(nodeId, false, connectionId),
-          delay: this.connectionIdleTimeoutTime,
+          delay,
         });
       }
     });
@@ -337,8 +344,10 @@ class NodeConnectionManager {
       .nodesConnectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime = config.defaultsSystem
       .nodesConnectionFindLocalTimeoutTime,
-    connectionIdleTimeoutTime = config.defaultsSystem
-      .nodesConnectionIdleTimeoutTime,
+    connectionIdleTimeoutTimeMin = config.defaultsSystem
+      .nodesConnectionIdleTimeoutTimeMin,
+    connectionIdleTimeoutTimeScale = config.defaultsSystem
+      .nodesConnectionIdleTimeoutTimeScale,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
     connectionKeepAliveTimeoutTime = config.defaultsSystem
@@ -356,7 +365,8 @@ class NodeConnectionManager {
     tlsConfig: TLSConfig;
     connectionFindConcurrencyLimit?: number;
     connectionFindLocalTimeoutTime?: number;
-    connectionIdleTimeoutTime?: number;
+    connectionIdleTimeoutTimeMin?: number;
+    connectionIdleTimeoutTimeScale?: number;
     connectionConnectTimeoutTime?: number;
     connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
@@ -370,7 +380,8 @@ class NodeConnectionManager {
     this.tlsConfig = tlsConfig;
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
     this.connectionFindLocalTimeoutTime = connectionFindLocalTimeoutTime;
-    this.connectionIdleTimeoutTime = connectionIdleTimeoutTime;
+    this.connectionIdleTimeoutTimeMin = connectionIdleTimeoutTimeMin;
+    this.connectionIdleTimeoutTimeScale = connectionIdleTimeoutTimeScale;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
     this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
@@ -612,17 +623,20 @@ class NodeConnectionManager {
           // Decrement usage count and set up TTL if needed.
           // We're only setting up TTLs for non-seed nodes.
           connectionAndTimer.usageCount -= 1;
-          if (
-            connectionAndTimer.usageCount <= 0 &&
-            !this.isStickyConnection(targetNodeId)
-          ) {
+          if (connectionAndTimer.usageCount <= 0) {
             this.logger.debug(
               `creating TTL for ${nodesUtils.encodeNodeId(targetNodeId)}`,
+            );
+
+            const delay = this.getStickyTimeoutValue(
+              targetNodeId,
+              connectionsEntry.activeConnection ===
+                connectionAndTimer.connection.connectionId,
             );
             connectionAndTimer.timer = new Timer({
               handler: async () =>
                 await this.destroyConnection(targetNodeId, false),
-              delay: this.connectionIdleTimeoutTime,
+              delay,
             });
           }
         },
@@ -778,18 +792,10 @@ class NodeConnectionManager {
     );
 
     // Creating TTL timeout.
-    // We don't create a TTL for seed nodes.
-    const timeToLiveTimer = !this.isStickyConnection(nodeId)
-      ? new Timer({
-          handler: async () =>
-            await this.destroyConnection(nodeId, false, connectionId),
-          delay: this.connectionIdleTimeoutTime,
-        })
-      : null;
     // Add to map
     const newConnAndTimer: ConnectionAndTimer = {
       connection: nodeConnection,
-      timer: timeToLiveTimer,
+      timer: null,
       usageCount: 0,
     };
 
@@ -798,6 +804,11 @@ class NodeConnectionManager {
     let entry = this.connections.get(nodeIdString);
     if (entry == null) {
       // Creating a new entry
+      newConnAndTimer.timer = new Timer({
+        handler: async () =>
+          await this.destroyConnection(nodeId, false, connectionId),
+        delay: this.getStickyTimeoutValue(nodeId, true),
+      });
       entry = {
         activeConnection: connectionId,
         connections: {
@@ -806,6 +817,14 @@ class NodeConnectionManager {
       };
       this.connections.set(nodeIdString, entry);
     } else {
+      newConnAndTimer.timer = new Timer({
+        handler: async () =>
+          await this.destroyConnection(nodeId, false, connectionId),
+        delay: this.getStickyTimeoutValue(
+          nodeId,
+          entry.activeConnection > connectionId,
+        ),
+      });
       // Updating existing entry
       entry.connections[connectionId] = newConnAndTimer;
       // If the new connection ID is less than the old then replace it
@@ -888,14 +907,22 @@ class NodeConnectionManager {
     await Promise.all(destroyPs);
   }
 
-  // TODO: placeholder for now.
   /**
-   *  Checks if a node is considered sticky or not.
-   *  This is decided by the distance metric,
-   * @param _nodeId
+   * Will determine how long to keep a node around for.
+   *
+   * Timeout is scaled linearly from 1 min to 2 hours based on it's bucket
    */
-  protected isStickyConnection(_nodeId: NodeId): boolean {
-    return false;
+  protected getStickyTimeoutValue(nodeId: NodeId, primary: boolean): number {
+    const min = this.connectionIdleTimeoutTimeMin;
+    if (!primary) return min;
+    const max = this.connectionIdleTimeoutTimeScale;
+    // Determine the bucket
+    const bucketIndex = nodesUtils.bucketIndex(
+      this.keyRing.getNodeId(),
+      nodeId,
+    );
+    const factor = 1 - bucketIndex / 255;
+    return min + factor * max;
   }
 
   /**

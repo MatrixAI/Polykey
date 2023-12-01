@@ -76,7 +76,8 @@ type PolykeyAgentOptions = {
     rpcParserBufferSize: number;
   };
   nodes: {
-    connectionIdleTimeoutTime: number;
+    connectionIdleTimeoutTimeMin: number;
+    connectionIdleTimeoutTimeScale: number;
     connectionFindConcurrencyLimit: number;
     connectionConnectTimeoutTime: number;
     connectionKeepAliveTimeoutTime: number;
@@ -160,8 +161,10 @@ class PolykeyAgent {
         rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
       },
       nodes: {
-        connectionIdleTimeoutTime:
-          config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+        connectionIdleTimeoutTimeMin:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTimeMin,
+        connectionIdleTimeoutTimeScale:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTimeScale,
         connectionFindConcurrencyLimit:
           config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
@@ -349,8 +352,10 @@ class PolykeyAgent {
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
           optionsDefaulted.nodes.connectionFindLocalTimeoutTime,
-        connectionIdleTimeoutTime:
-          optionsDefaulted.nodes.connectionIdleTimeoutTime,
+        connectionIdleTimeoutTimeMin:
+          optionsDefaulted.nodes.connectionIdleTimeoutTimeMin,
+        connectionIdleTimeoutTimeScale:
+          optionsDefaulted.nodes.connectionIdleTimeoutTimeScale,
         connectionConnectTimeoutTime:
           optionsDefaulted.nodes.connectionConnectTimeoutTime,
         connectionKeepAliveTimeoutTime:

@@ -1,7 +1,7 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { Address, Host, Hostname, Port } from './types';
-import type { NodeAddress, NodeAddressScope } from '../nodes/types';
+import type { NodeAddress } from '../nodes/types';
 import type { JSONValue } from '../types';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';

@@ -157,7 +157,8 @@ describe('Discovery', () => {
       nodeGraph,
       tlsConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

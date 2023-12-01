@@ -40,7 +40,8 @@ describe('nodesClosestLocalNode', () => {
       keyRing: keyRingDummyLocal,
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: tlsConfigLocal,
-      connectionIdleTimeoutTime: 1000,
+      connectionIdleTimeoutTimeMin: 1000,
+      connectionIdleTimeoutTimeScale: 0,
       connectionConnectTimeoutTime: timeoutTime,
     });
 

@@ -5,7 +5,7 @@ import type {
   NodesAddMessage,
 } from '../types';
 import type { NodeId } from '../../ids';
-import type { Host, Hostname, Port } from '../../network/types';
+import type { Host, Port } from '../../network/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids';

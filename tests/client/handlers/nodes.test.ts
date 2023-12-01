@@ -104,7 +104,8 @@ describe('nodesAdd', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -318,7 +319,8 @@ describe('nodesClaim', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -481,7 +483,8 @@ describe('nodesFind', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     await nodeConnectionManager.start({ host: localhost as Host });
@@ -614,7 +617,8 @@ describe('nodesPing', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -762,7 +766,8 @@ describe('nodesGetAll', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -911,7 +916,8 @@ describe('nodesListConnections', () => {
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
