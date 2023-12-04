@@ -167,10 +167,15 @@ describe('nodesClosestLocalNode', () => {
     const nodes: Array<NodeIdEncoded> = [];
     for (let i = 0; i < 10; i++) {
       const nodeId = testNodesUtils.generateRandomNodeId();
-      await nodeGraph.setNode(nodeId, {
-        host: 'localhost' as Host,
-        port: 55555 as Port,
-      });
+      await nodeGraph.setNodeContactAddressData(
+        nodeId,
+        ['localhost' as Host, 55555 as Port],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
       nodes.push(nodesUtils.encodeNodeId(nodeId));
     }
     const nodeIdEncoded = nodesUtils.encodeNodeId(

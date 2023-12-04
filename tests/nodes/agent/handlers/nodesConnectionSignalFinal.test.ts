@@ -14,7 +14,6 @@ describe('nodesHolePunchRequest', () => {
   const logger = new Logger('nodesHolePunchRequest test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const crypto = tlsTestsUtils.createCrypto();
   const localHost = '127.0.0.1';
 
   let keyPair: KeyPair;
@@ -58,10 +57,7 @@ describe('nodesHolePunchRequest', () => {
         verifyPeer: true,
         verifyCallback: async () => undefined,
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicServerCrypto,
       logger,
     });
     const handleStream = async (
@@ -121,9 +117,7 @@ describe('nodesHolePunchRequest', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto: {
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicClientCrypto,
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,

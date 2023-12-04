@@ -2,6 +2,7 @@ import type { Notification, SignedNotification } from '@/notifications/types';
 import type { NodeId } from '@/ids';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { Host } from '@/network/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -34,7 +35,6 @@ describe('notificationsSend', () => {
     new StreamHandler(),
   ]);
   const password = 'password';
-  const crypto = tlsTestsUtils.createCrypto();
   const localHost = '127.0.0.1' as Host;
 
   let dataDir: string;
@@ -122,7 +122,6 @@ describe('notificationsSend', () => {
     nodeConnectionManager = new NodeConnectionManager({
       tlsConfig: tlsConfigClient,
       keyRing,
-      nodeGraph,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -139,7 +138,10 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localHost });
+    await nodeConnectionManager.start({
+      host: localHost,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -174,10 +176,7 @@ describe('notificationsSend', () => {
           return undefined;
         },
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicServerCrypto,
       logger,
     });
     const handleStream = async (
@@ -237,9 +236,7 @@ describe('notificationsSend', () => {
       logger,
     });
     quicClient = await QUICClient.createQUICClient({
-      crypto: {
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicClientCrypto,
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,

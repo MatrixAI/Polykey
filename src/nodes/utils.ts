@@ -1,16 +1,18 @@
 import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
+import type { Key, Certificate, CertificatePEM } from '../keys/types';
+import type { Hostname, Port } from '../network/types';
 import type {
   NodeAddress,
+  NodeContact,
   NodeContactAddress,
+  NodeContactAddressData,
   NodeBucket,
   NodeBucketIndex,
   NodeId,
   SeedNodes,
 } from './types';
-import type { Key, Certificate, CertificatePEM } from '../keys/types';
-import type { NodeContact, NodeContactAddressData } from './types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -434,11 +436,10 @@ async function resolveSeednodes(
         /\..*/g,
         '',
       ) as ids.NodeIdEncoded;
-      seednodes[nodeId] = {
-        host: seednodeRecord.name as Hostname,
-        port: seednodeRecord.port as Port,
-        scopes: ['global'],
-      };
+      seednodes[nodeId] = [
+        seednodeRecord.name as Hostname,
+        seednodeRecord.port as Port,
+      ];
     }
   } catch (e) {
     throw new nodesErrors.ErrorNodeLookupNotFound(

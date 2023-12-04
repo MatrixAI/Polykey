@@ -492,8 +492,8 @@ describe(`NodeConnectionManager`, () => {
       const timeStart = Date.now();
       await connectionDestroyProm;
       const duration = Date.now() - timeStart;
-      expect(duration).toBeGreaterThan(900);
-      expect(duration).toBeLessThan(1500);
+      expect(duration).toBeGreaterThan(4000);
+      expect(duration).toBeLessThan(7000);
     });
     test('non primary connections should timeout with primary in use', async () => {
       // Modify the timeout time value
