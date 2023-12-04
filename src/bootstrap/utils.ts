@@ -195,7 +195,6 @@ async function bootstrapState({
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager: {} as any, // No connections are attempted
         nodeManager,
         keyRing,
         logger: logger.getChild(NotificationsManager.name),
@@ -206,7 +205,7 @@ async function bootstrapState({
       db,
       gestaltGraph,
       keyRing,
-      nodeConnectionManager: {} as any, // No connections are attempted
+      nodeManager: {} as any, // No connections are attempted
       vaultsPath,
       notificationsManager,
       logger: logger.getChild(VaultManager.name),

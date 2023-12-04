@@ -10,6 +10,21 @@ class ErrorNodeManagerNotRunning<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeManagerNodeIdOwn<T> extends ErrorNodeManager<T> {
+  static description = 'NodeId is the same as the current node';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeManagerConnectionFailed<T> extends ErrorNodeManager<T> {
+  static description = 'Failed to find or establish a connection';
+  exitCode = sysexits.TEMPFAIL;
+}
+
+class ErrorNodeManagerFindNodeFailed<T> extends ErrorNodeManager<T> {
+  static description = 'Failed to find node';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
 class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
@@ -32,8 +47,8 @@ class ErrorNodeGraphNodeIdNotFound<T> extends ErrorNodeGraph<T> {
   exitCode = sysexits.NOUSER;
 }
 
-class ErrorNodeGraphOversizedBucket<T> extends ErrorNodeGraph<T> {
-  static description: 'Bucket invalidly contains more nodes than capacity';
+class ErrorNodeGraphBucketLimit<T> extends ErrorNodeGraph<T> {
+  static description: 'Node graph bucket limit reached';
   exitCode = sysexits.USAGE;
 }
 
@@ -188,12 +203,15 @@ export {
   ErrorNodes,
   ErrorNodeManager,
   ErrorNodeManagerNotRunning,
+  ErrorNodeManagerNodeIdOwn,
+  ErrorNodeManagerConnectionFailed,
+  ErrorNodeManagerFindNodeFailed,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
   ErrorNodeGraphDestroyed,
   ErrorNodeGraphNodeIdNotFound,
-  ErrorNodeGraphOversizedBucket,
+  ErrorNodeGraphBucketLimit,
   ErrorNodeGraphSameNodeId,
   ErrorNodeGraphBucketIndex,
   ErrorNodeConnection,

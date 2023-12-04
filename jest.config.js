@@ -1,7 +1,4 @@
-const os = require('os');
 const path = require('path');
-const fs = require('fs');
-const process = require('process');
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('./tsconfig');
 
@@ -16,10 +13,6 @@ const globals = {
   projectDir: __dirname,
   // Absolute directory to the test root
   testDir: path.join(__dirname, 'tests'),
-  // Default global data directory
-  dataDir: fs.mkdtempSync(
-    path.join(os.tmpdir(), 'polykey-test-global-'),
-  ),
   // Default asynchronous test timeout
   defaultTimeout: 20000,
   failedConnectionTimeout: 50000,
@@ -29,8 +22,8 @@ const globals = {
 
 // The `globalSetup` and `globalTeardown` cannot access the `globals`
 // They run in their own process context
-// They can receive process environment
-process.env['GLOBAL_DATA_DIR'] = globals.dataDir;
+// They can however receive the process environment
+// Use `process.env` to set variables
 
 module.exports = {
   testEnvironment: 'node',

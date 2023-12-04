@@ -4,6 +4,7 @@ import type { Key } from '@/keys/types';
 import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -154,10 +155,10 @@ describe('Discovery', () => {
     const tlsConfig = await createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       tlsConfig,
       connectionConnectTimeoutTime: 2000,
-      connectionIdleTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -173,6 +174,7 @@ describe('Discovery', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
+      agentService: {} as AgentServerManifest,
     });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
@@ -206,11 +208,15 @@ describe('Discovery', () => {
     nodeIdA = nodeA.keyRing.getNodeId();
     nodeIdB = nodeB.keyRing.getNodeId();
     await testNodesUtils.nodesConnect(nodeA, nodeB);
-    await nodeGraph.setNode(nodeA.keyRing.getNodeId(), {
-      host: nodeA.agentServiceHost,
-      port: nodeA.agentServicePort,
-      scopes: ['global'],
-    });
+    await nodeGraph.setNodeContactAddressData(
+      nodeA.keyRing.getNodeId(),
+      [nodeA.agentServiceHost, nodeA.agentServicePort],
+      {
+        mode: 'direct',
+        connectedTime: 0,
+        scopes: ['global'],
+      },
+    );
     await nodeB.acl.setNodeAction(nodeA.keyRing.getNodeId(), 'claim');
     await nodeA.nodeManager.claimNode(nodeB.keyRing.getNodeId());
     nodeA.identitiesManager.registerProvider(testProvider);

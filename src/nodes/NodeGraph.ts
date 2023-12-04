@@ -1,9 +1,11 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   NodeId,
   NodeAddress,
   NodeBucket,
-  NodeData,
+  NodeContact,
+  NodeContactAddress,
+  NodeContactAddressData,
   NodeBucketMeta,
   NodeBucketIndex,
   NodeGraphSpace,
@@ -18,11 +20,23 @@ import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
-import { getUnixtime, never } from '../utils';
+import * as utils from '../utils';
+import config from '../config';
 
 /**
- * NodeGraph is an implementation of Kademlia for maintaining peer to peer information
- * It is a database of fixed-size buckets, where each bucket contains NodeId -> NodeData
+ * NodeGraph is an implementation of Kademlia for maintaining peer to peer
+ * information about Polkey nodes.
+ *
+ * It is a database of fixed-size buckets, where each bucket
+ * contains NodeId -> NodeData. The bucket index is a prefix key.
+ * This means the data is ordered in terms of bucket index, and then node ID.
+ * From lowest to highest.
+ *
+ * The NodeGraph is partitioned into 2 spaces. The reason to do this is allow
+ * transactional resetting of the buckets if the own node ID changes.
+ *
+ * When the node ID changes, either due to key renewal or reset, we remap all
+ * existing records to the other space, and then we swap the active space key.
  */
 interface NodeGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -42,12 +56,14 @@ class NodeGraph {
     db,
     keyRing,
     nodeIdBits = 256,
+    nodeBucketLimit = config.defaultsSystem.nodesGraphBucketLimit,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
     keyRing: KeyRing;
     nodeIdBits?: number;
+    nodeBucketLimit?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NodeGraph> {
@@ -56,6 +72,7 @@ class NodeGraph {
       db,
       keyRing,
       nodeIdBits,
+      nodeBucketLimit,
       logger,
     });
     await nodeGraph.start({ fresh });
@@ -64,39 +81,57 @@ class NodeGraph {
   }
 
   /**
-   * Bit size of the NodeIds
-   * This equals the number of buckets
+   * Bit size of the node IDs.
+   * This is also the total number of buckets.
    */
   public readonly nodeIdBits: number;
+
   /**
-   * Max number of nodes in each k-bucket
+   * Max number of nodes in each bucket.
    */
-  public readonly nodeBucketLimit: number = 20;
+  public readonly nodeBucketLimit: number;
 
   protected logger: Logger;
   protected db: DB;
   protected keyRing: KeyRing;
   protected space: NodeGraphSpace;
+
   protected nodeGraphDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Meta stores the `keyof NodeBucketMeta` -> `NodeBucketMeta[keyof NodeBucketMeta]`.
+   */
   protected nodeGraphMetaDbPath: LevelPath;
+  /**
+   * Buckets stores `lexi(NodeBucketIndex)/NodeId/nodeContactAddress` -> `NodeContactAddressData`.
+   *
+   * nodeContactAddress are canoncialized to be consistent.
+   */
   protected nodeGraphBucketsDbPath: LevelPath;
-  protected nodeGraphLastUpdatedDbPath: LevelPath;
+  /**
+   * Last updated stores
+   * `lexi(NodeBucketIndex)/"time"/lexi(connectedTime)/nodeId` -> `nodeId`.
+   * `lexi(NodeBucketIndex)/"nodeId"/nodeId` -> `lexi(connectedTime)`.
+   */
+  protected nodeGraphConnectedDbPath: LevelPath;
 
   constructor({
     db,
     keyRing,
     nodeIdBits,
+    nodeBucketLimit,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     nodeIdBits: number;
+    nodeBucketLimit: number;
     logger: Logger;
   }) {
     this.logger = logger;
     this.db = db;
     this.keyRing = keyRing;
     this.nodeIdBits = nodeIdBits;
+    this.nodeBucketLimit = nodeBucketLimit;
   }
 
   public async start({
@@ -108,7 +143,7 @@ class NodeGraph {
         await tran.clear(this.nodeGraphDbPath);
       }
       // Space key is used to create a swappable sublevel
-      // when remapping the buckets during `this.refreshBuckets`
+      // when remapping the buckets during `this.resetBuckets`
       return await this.setupSpace(tran);
     });
     // Bucket metadata sublevel: `!meta<space>!<lexi(NodeBucketIndex)>!<key> -> value`
@@ -117,12 +152,12 @@ class NodeGraph {
     // The BucketIndex can range from 0 to NodeId bit-size minus 1
     // So 256 bits means 256 buckets of 0 to 255
     this.nodeGraphBucketsDbPath = [...this.nodeGraphDbPath, 'buckets' + space];
-    // Last updated sublevel: `!lastUpdated<space>!<lexi(NodeBucketIndex)>!<lexi(lastUpdated)>-<NodeId> -> NodeId`
-    // This is used as a sorted index of the NodeId by `lastUpdated` timestamp
-    // The `NodeId` must be appended in the key in order to disambiguate `NodeId` with same `lastUpdated` timestamp
-    this.nodeGraphLastUpdatedDbPath = [
+    // Last updated sublevel: `!connected<space>!<lexi(NodeBucketIndex)>!<lexi(contected)>-<NodeId> -> NodeId`
+    // This is used as a sorted index of the NodeId by `connected` timestamp
+    // The `NodeId` must be appended in the key in order to disambiguate `NodeId` with same `connected` timestamp
+    this.nodeGraphConnectedDbPath = [
       ...this.nodeGraphDbPath,
-      'lastUpdated' + space,
+      'connected' + space,
     ];
     this.space = space;
     this.logger.info(`Started ${this.constructor.name}`);
@@ -135,8 +170,6 @@ class NodeGraph {
 
   public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
-    // If the DB was stopped, the existing sublevel `this.nodeGraphDb` will not be valid
-    // Therefore we recreate the sublevel here
     await this.db.clear(this.nodeGraphDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
@@ -145,7 +178,7 @@ class NodeGraph {
    * Sets up the space key
    * The space string is suffixed to the `buckets` and `meta` sublevels
    * This is used to allow swapping of sublevels when remapping buckets
-   * during `this.refreshBuckets`
+   * during `this.resetBuckets`
    */
   protected async setupSpace(tran: DBTransaction): Promise<NodeGraphSpace> {
     let space = await tran.get<NodeGraphSpace>([
@@ -160,6 +193,25 @@ class NodeGraph {
     return space;
   }
 
+  /**
+   * Derive the bucket index of the k-buckets from the new `NodeId`
+   * The bucket key is the string encoded version of bucket index
+   * that preserves lexicographic order
+   */
+  public bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
+    const nodeIdOwn = this.keyRing.getNodeId();
+    if (nodeId.equals(nodeIdOwn)) {
+      throw new nodesErrors.ErrorNodeGraphSameNodeId();
+    }
+    const bucketIndex = nodesUtils.bucketIndex(nodeIdOwn, nodeId);
+    const bucketKey = nodesUtils.bucketKey(bucketIndex);
+    return [bucketIndex, bucketKey];
+  }
+
+  /**
+   * Locks the bucket index for exclusive operations.
+   * This allows you sequence operations for any bucket.
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async lockBucket(bucketIndex: number, tran: DBTransaction) {
     const keyPath = [
@@ -169,225 +221,433 @@ class NodeGraph {
     return await tran.lock(keyPath.join(''));
   }
 
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getNode(
-    nodeId: NodeId,
-    tran?: DBTransaction,
-  ): Promise<NodeData | undefined> {
-    const tranOrDb = tran ?? this.db;
-
-    const [bucketIndex] = this.bucketIndex(nodeId);
-    const bucketDomain = [
-      ...this.nodeGraphBucketsDbPath,
-      nodesUtils.bucketKey(bucketIndex),
-      nodesUtils.bucketDbKey(nodeId),
-    ];
-    return await tranOrDb.get<NodeData>(bucketDomain);
-  }
-
   /**
-   * Get all nodes.
-   * Nodes are always sorted by `NodeBucketIndex` first
-   * Then secondly by the node IDs
-   * The `order` parameter applies to both, for example possible sorts:
-   *   NodeBucketIndex asc, NodeID asc
-   *   NodeBucketIndex desc, NodeId desc
+   * Get a single `NodeContact`
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async *getNodes(
-    order: 'asc' | 'desc' = 'asc',
+  public async getNodeContact(
+    nodeId: NodeId,
     tran?: DBTransaction,
-  ): AsyncGenerator<[NodeId, NodeData]> {
+  ): Promise<NodeContact | undefined> {
     if (tran == null) {
-      const getNodes = (tran) => this.getNodes(order, tran);
-      return yield* this.db.withTransactionG(async function* (tran) {
-        return yield* getNodes(tran);
-      });
+      return this.db.withTransactionF((tran) =>
+        this.getNodeContact(nodeId, tran),
+      );
     }
-
-    for await (const [keyPath, nodeData] of tran.iterator<NodeData>(
-      this.nodeGraphBucketsDbPath,
+    const [bucketIndex] = this.bucketIndex(nodeId);
+    const contact: NodeContact = {};
+    for await (const [
+      keyPath,
+      nodeContactAddressData,
+    ] of tran.iterator<NodeContactAddressData>(
+      [
+        ...this.nodeGraphBucketsDbPath,
+        nodesUtils.bucketKey(bucketIndex),
+        nodesUtils.bucketDbKey(nodeId),
+      ],
       {
-        reverse: order !== 'asc',
         valueAsBuffer: false,
       },
     )) {
-      const { nodeId } = nodesUtils.parseBucketsDbKey(keyPath);
-      yield [nodeId, nodeData];
+      const nodeContactAddress = keyPath[0].toString();
+      contact[nodeContactAddress] = nodeContactAddressData;
     }
+    if (Object.keys(contact).length === 0) return undefined;
+    return contact;
   }
 
   /**
-   * Will add a node to the node graph and increment the bucket count.
-   * If the node already existed it will be updated.
-   * @param nodeId NodeId to add to the NodeGraph
-   * @param nodeAddress Address information to add
-   * @param tran
+   * Get all `NodeContact`.
+   *
+   * Results are sorted by `NodeBucketIndex` then `NodeId` then
+   * `NodeContactAddress`.
+   * The `order` parameter applies to both, for example:
+   *   NodeBucketIndex asc, NodeID asc, NodeContactAddress asc
+   *   NodeBucketIndex desc, NodeId desc, NodeContactAddress desc
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async setNode(
+  public async *getNodeContacts(
+    order: 'asc' | 'desc' = 'asc',
+    tran?: DBTransaction,
+  ): AsyncGenerator<[NodeId, NodeContact]> {
+    if (tran == null) {
+      // Lambda generators don't grab the `this` context, so we need to bind it
+      const getNodeContacts = (tran) => this.getNodeContacts(order, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* getNodeContacts(tran);
+      });
+    }
+    return yield* nodesUtils.collectNodeContacts(
+      [...this.nodeGraphBucketsDbPath],
+      tran,
+      { reverse: order !== 'asc' },
+    );
+  }
+
+  /**
+   * Get a single `NodeContactAddressData`.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async getNodeContactAddressData(
     nodeId: NodeId,
-    nodeAddress: NodeAddress,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    tran?: DBTransaction,
+  ): Promise<NodeContactAddressData | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getNodeContactAddressData(nodeId, nodeAddress, tran),
+      );
+    }
+    const [bucketIndex] = this.bucketIndex(nodeId);
+    let nodeContactAddress: NodeContactAddress;
+    if (Array.isArray(nodeAddress)) {
+      nodeContactAddress = nodesUtils.nodeContactAddress(nodeAddress);
+    } else {
+      nodeContactAddress = nodeAddress;
+    }
+    return tran.get<NodeContactAddressData>([
+      ...this.nodeGraphBucketsDbPath,
+      nodesUtils.bucketKey(bucketIndex),
+      nodesUtils.bucketDbKey(nodeId),
+      nodeContactAddress,
+    ]);
+  }
+
+  /**
+   * Sets a single `NodeContact` for a `NodeId`.
+   * This replaces the entire `NodeContact` for the `NodeId`.
+   * This will increment the bucket count if it is a new `NodeID`.
+   *
+   * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async setNodeContact(
+    nodeId: NodeId,
+    nodeContact: NodeContact,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.setNode(nodeId, nodeAddress, tran),
+        this.setNodeContact(nodeId, nodeContact, tran),
       );
     }
-
     const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-    const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey, nodeIdKey];
-    const nodeData = await tran.get<NodeData>(bucketPath);
-    if (nodeData != null) {
-      this.logger.debug(
-        `Updating node ${nodesUtils.encodeNodeId(
-          nodeId,
-        )} in bucket ${bucketIndex}`,
-      );
-      // If the node already exists we want to remove the old `lastUpdated`
-      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
-      await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
-    } else {
-      this.logger.debug(
-        `Adding node ${nodesUtils.encodeNodeId(
-          nodeId,
-        )} to bucket ${bucketIndex}`,
-      );
+    const nodeContactPath = [
+      ...this.nodeGraphBucketsDbPath,
+      bucketKey,
+      nodeIdKey,
+    ];
+    if ((await tran.count(nodeContactPath)) === 0) {
       // It didn't exist, so we want to increment the bucket count
       const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+      if (count >= this.nodeBucketLimit) {
+        throw new nodesErrors.ErrorNodeGraphBucketLimit();
+      }
       await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
     }
-    const lastUpdated = getUnixtime();
-    await tran.put(bucketPath, {
-      address: nodeAddress,
-      lastUpdated,
-    });
-    const newLastUpdatedKey = nodesUtils.lastUpdatedKey(lastUpdated);
+    // Clear the entire contact if it exists
+    await tran.clear(nodeContactPath);
+    let connectedTimeMax = 0;
+    for (const nodeContactAddress in nodeContact) {
+      const nodeContactAddressData = nodeContact[nodeContactAddress];
+      await tran.put(
+        [...nodeContactPath, nodeContactAddress],
+        nodeContactAddressData,
+      );
+      connectedTimeMax = Math.max(
+        connectedTimeMax,
+        nodeContactAddressData.connectedTime,
+      );
+    }
+    await this.setConnectedTime(nodeId, connectedTimeMax, tran);
+  }
+
+  /**
+   * Sets a single `NodeContactAddressData` for a `NodeId`.
+   * This will increment the bucket count if it is a new `NodeID`.
+   *
+   * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async setNodeContactAddressData(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    nodeContactAddressData: NodeContactAddressData,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setNodeContactAddressData(
+          nodeId,
+          nodeAddress,
+          nodeContactAddressData,
+          tran,
+        ),
+      );
+    }
+    const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const nodeContactPath = [
+      ...this.nodeGraphBucketsDbPath,
+      bucketKey,
+      nodeIdKey,
+    ];
+    if ((await tran.count(nodeContactPath)) === 0) {
+      // It didn't exist, so we want to increment the bucket count
+      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+      if (count >= this.nodeBucketLimit) {
+        throw new nodesErrors.ErrorNodeGraphBucketLimit();
+      }
+      await this.setBucketMetaProp(bucketIndex, 'count', count + 1, tran);
+    }
+    let nodeContactAddress: NodeContactAddress;
+    if (Array.isArray(nodeAddress)) {
+      nodeContactAddress = nodesUtils.nodeContactAddress(nodeAddress);
+    } else {
+      nodeContactAddress = nodeAddress;
+    }
     await tran.put(
-      [...lastUpdatedPath, newLastUpdatedKey, nodeIdKey],
+      [...nodeContactPath, nodeContactAddress],
+      nodeContactAddressData,
+    );
+    await this.setConnectedTime(
+      nodeId,
+      nodeContactAddressData.connectedTime,
+      tran,
+    );
+  }
+
+  /**
+   * Unsets a `NodeId` record.
+   * It will decrement the bucket count if it existed.
+   */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async unsetNodeContact(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unsetNodeContact(nodeId, tran),
+      );
+    }
+    const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const nodeContactPath = [
+      ...this.nodeGraphBucketsDbPath,
+      bucketKey,
+      nodeIdKey,
+    ];
+    // Skip if node doesn't exist
+    if ((await tran.count(nodeContactPath)) === 0) return;
+    // Decrement the bucket count
+    const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+    await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
+    // Clear the records
+    await tran.clear(nodeContactPath);
+    await this.delConnectedTime(nodeId, tran);
+  }
+
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  public async unsetNodeContactAddress(
+    nodeId: NodeId,
+    nodeAddress: NodeAddress | NodeContactAddress,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unsetNodeContactAddress(nodeId, nodeAddress, tran),
+      );
+    }
+    const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
+    let nodeContactAddress: NodeContactAddress;
+    if (Array.isArray(nodeAddress)) {
+      nodeContactAddress = nodesUtils.nodeContactAddress(nodeAddress);
+    } else {
+      nodeContactAddress = nodeAddress;
+    }
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const nodeContactPath = [
+      ...this.nodeGraphBucketsDbPath,
+      bucketKey,
+      nodeIdKey,
+    ];
+
+    // Skip if node doesn't exist
+    const addressCount = await tran.count(nodeContactPath);
+    if (addressCount === 0) return;
+
+    // Skip if no data
+    const data = tran.get<NodeContactAddressData>([
+      ...this.nodeGraphBucketsDbPath,
+      nodesUtils.bucketKey(bucketIndex),
+      nodesUtils.bucketDbKey(nodeId),
+      nodeContactAddress,
+    ]);
+    if (data == null) return;
+
+    // Remove data
+    await tran.del([
+      ...this.nodeGraphBucketsDbPath,
+      nodesUtils.bucketKey(bucketIndex),
+      nodesUtils.bucketDbKey(nodeId),
+      nodeContactAddress,
+    ]);
+
+    // If last address then clear node from bucket and decrement count
+    if (addressCount === 1) {
+      await tran.clear(nodeContactPath);
+      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
+      await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
+      await this.delConnectedTime(nodeId, tran);
+    }
+  }
+
+  /**
+   * Sets the `connectedTime` for a NodeId, replaces the old value if it exists
+   */
+  protected async setConnectedTime(
+    nodeId: NodeId,
+    connectedTime: number,
+    tran: DBTransaction,
+    path: LevelPath = this.nodeGraphConnectedDbPath,
+  ) {
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const connectedPath = [...path, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+    const newConnectedKey = nodesUtils.connectedKey(connectedTime);
+
+    // Lookup the old time and delete it
+    const oldConnectedKey = await tran.get(
+      [...connectedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    if (oldConnectedKey != null) {
+      await tran.del([...connectedPath, 'time', oldConnectedKey, nodeIdKey]);
+    }
+    // Set the new values
+    await tran.put(
+      [...connectedPath, 'nodeId', nodeIdKey],
+      newConnectedKey,
+      true,
+    );
+    await tran.put(
+      [...connectedPath, 'time', newConnectedKey, nodeIdKey],
       nodeIdKey,
       true,
     );
   }
 
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async getOldestNode(
-    bucketIndex: number,
-    limit: number = 1,
-    tran?: DBTransaction,
-  ): Promise<Array<NodeId>> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getOldestNode(bucketIndex, limit, tran),
-      );
-    }
-    const bucketKey = nodesUtils.bucketKey(bucketIndex);
-    // Remove the oldest entry in the bucket
-    const oldestNodeIds: Array<NodeId> = [];
-    for await (const [keyPath] of tran.iterator(
-      [...this.nodeGraphLastUpdatedDbPath, bucketKey],
-      { limit },
-    )) {
-      const { nodeId } = nodesUtils.parseLastUpdatedBucketDbKey(keyPath);
-      oldestNodeIds.push(nodeId);
-    }
-    return oldestNodeIds;
-  }
-
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
-    }
-
-    const [bucketIndex, bucketKey] = this.bucketIndex(nodeId);
-    const bucketPath = [...this.nodeGraphBucketsDbPath, bucketKey];
-    const lastUpdatedPath = [...this.nodeGraphLastUpdatedDbPath, bucketKey];
+  /**
+   * Deletes the `connectedTime` for a NodeId
+   */
+  protected async delConnectedTime(nodeId: NodeId, tran: DBTransaction) {
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const lastConnectedPath = [...this.nodeGraphConnectedDbPath, bucketKey];
     const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-    const nodeData = await tran.get<NodeData>([...bucketPath, nodeIdKey]);
-    if (nodeData != null) {
-      this.logger.debug(
-        `Removing node ${nodesUtils.encodeNodeId(
-          nodeId,
-        )} from bucket ${bucketIndex}`,
-      );
-      const count = await this.getBucketMetaProp(bucketIndex, 'count', tran);
-      await this.setBucketMetaProp(bucketIndex, 'count', count - 1, tran);
-      await tran.del([...bucketPath, nodeIdKey]);
-      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
-      await tran.del([...lastUpdatedPath, lastUpdatedKey, nodeIdKey]);
-    }
+
+    // Look up the existing time
+    const oldConnectedKey = await tran.get(
+      [...lastConnectedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    // And delete the values
+    await tran.del([...lastConnectedPath, 'nodeId', nodeIdKey]);
+    if (oldConnectedKey == null) return;
+    await tran.del([...lastConnectedPath, 'time', oldConnectedKey, nodeIdKey]);
   }
 
   /**
-   * Gets a bucket
+   * Gets the `connectedTime` for a node
+   */
+  public async getConnectedTime(nodeId: NodeId, tran?: DBTransaction) {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getConnectedTime(nodeId, tran),
+      );
+    }
+    const [, bucketKey] = this.bucketIndex(nodeId);
+    const connectedPath = [...this.nodeGraphConnectedDbPath, bucketKey];
+    const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
+
+    // Look up the existing time
+    const oldConnectedKey = await tran.get(
+      [...connectedPath, 'nodeId', nodeIdKey],
+      true,
+    );
+    // Convert and return
+    if (oldConnectedKey == null) return;
+    return nodesUtils.parseConnectedKey(oldConnectedKey);
+  }
+
+  // ...
+
+  /**
+   * Gets a bucket.
+   *
    * The bucket's node IDs is sorted lexicographically by default
-   * Alternatively you can acquire them sorted by lastUpdated timestamp
-   * or by distance to the own NodeId
+   * Alternatively you can acquire them sorted by connected timestamp
+   * or by distance to the own NodeId.
+   *
+   * @param bucketIndex
+   * @param sort
+   * @param order
+   * @param limit Limit the number of nodes returned, note that `-1` means
+   *              no limit, but `Infinity` means `0`.
+   * @param tran
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
     bucketIndex: NodeBucketIndex,
-    sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
+    sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
+    limit?: number,
     tran?: DBTransaction,
   ): Promise<NodeBucket> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.getBucket(bucketIndex, sort, order, tran),
+        this.getBucket(bucketIndex, sort, order, limit, tran),
       );
     }
-
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
       throw new nodesErrors.ErrorNodeGraphBucketIndex(
         `bucketIndex must be between 0 and ${this.nodeIdBits - 1} inclusive`,
       );
     }
+    const nodeIdOwn = this.keyRing.getNodeId();
     const bucketKey = nodesUtils.bucketKey(bucketIndex);
     const bucket: NodeBucket = [];
     if (sort === 'nodeId' || sort === 'distance') {
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
+      for await (const result of nodesUtils.collectNodeContacts(
         [...this.nodeGraphBucketsDbPath, bucketKey],
+        tran,
         {
           reverse: order !== 'asc',
-          valueAsBuffer: false,
+          limit,
+          pathAdjust: [''],
         },
       )) {
-        const nodeId = nodesUtils.parseBucketDbKey(key[0] as Buffer);
-        bucket.push([nodeId, nodeData]);
+        bucket.push(result);
       }
       if (sort === 'distance') {
-        nodesUtils.bucketSortByDistance(
-          bucket,
-          this.keyRing.getNodeId(),
-          order,
-        );
+        nodesUtils.bucketSortByDistance(bucket, nodeIdOwn, order);
       }
-    } else if (sort === 'lastUpdated') {
-      const bucketDbIterator = tran.iterator<NodeData>(
-        [...this.nodeGraphBucketsDbPath, bucketKey],
-        { valueAsBuffer: false },
-      );
-      try {
-        for await (const [, nodeIdBuffer] of tran.iterator(
-          [...this.nodeGraphLastUpdatedDbPath, bucketKey],
-          {
-            reverse: order !== 'asc',
-          },
-        )) {
-          const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
-          bucketDbIterator.seek(nodeIdBuffer);
-          // eslint-disable-next-line
-          const iteratorResult = await bucketDbIterator.next();
-          if (iteratorResult == null) never();
-          const [, nodeData] = iteratorResult;
-          bucket.push([nodeId, nodeData]);
-        }
-      } finally {
-        await bucketDbIterator.destroy();
+    } else if (sort === 'connected') {
+      for await (const [, nodeIdBuffer] of tran.iterator(
+        [...this.nodeGraphConnectedDbPath, bucketKey, 'time'],
+        {
+          reverse: order !== 'asc',
+          limit,
+        },
+      )) {
+        const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
+        const nodeContact = await this.getNodeContact(
+          IdInternal.fromBuffer<NodeId>(nodeIdBuffer),
+          tran,
+        );
+        if (nodeContact == null) utils.never();
+        bucket.push([nodeId, nodeContact]);
       }
     }
     return bucket;
@@ -402,12 +662,12 @@ class NodeGraph {
    *   NodeBucketIndex desc, NodeId desc
    *   NodeBucketIndex asc, distance asc
    *   NodeBucketIndex desc, distance desc
-   *   NodeBucketIndex asc, lastUpdated asc
-   *   NodeBucketIndex desc, lastUpdated desc
+   *   NodeBucketIndex asc, connected asc
+   *   NodeBucketIndex desc, connected desc
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getBuckets(
-    sort: 'nodeId' | 'distance' | 'lastUpdated' = 'nodeId',
+    sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
     tran?: DBTransaction,
   ): AsyncGenerator<[NodeBucketIndex, NodeBucket]> {
@@ -418,175 +678,95 @@ class NodeGraph {
       });
     }
 
-    let bucketIndex: NodeBucketIndex | undefined = undefined;
-    let bucket: NodeBucket = [];
-    if (sort === 'nodeId' || sort === 'distance') {
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
-        this.nodeGraphBucketsDbPath,
-        {
-          reverse: order !== 'asc',
-          valueAsBuffer: false,
-        },
-      )) {
-        const { bucketIndex: bucketIndex_, nodeId } =
-          nodesUtils.parseBucketsDbKey(key);
-        if (bucketIndex == null) {
-          // First entry of the first bucket
-          bucketIndex = bucketIndex_;
-          bucket.push([nodeId, nodeData]);
-        } else if (bucketIndex === bucketIndex_) {
-          // Subsequent entries of the same bucket
-          bucket.push([nodeId, nodeData]);
-        } else if (bucketIndex !== bucketIndex_) {
-          // New bucket
-          if (sort === 'distance') {
-            nodesUtils.bucketSortByDistance(
-              bucket,
-              this.keyRing.getNodeId(),
-              order,
-            );
-          }
-          yield [bucketIndex, bucket];
-          bucketIndex = bucketIndex_;
-          bucket = [[nodeId, nodeData]];
-        }
-      }
-      // Yield the last bucket if it exists
-      if (bucketIndex != null) {
-        if (sort === 'distance') {
-          nodesUtils.bucketSortByDistance(
-            bucket,
-            this.keyRing.getNodeId(),
-            order,
-          );
-        }
-        yield [bucketIndex, bucket];
-      }
-    } else if (sort === 'lastUpdated') {
-      const bucketsDbIterator = tran.iterator<NodeData>(
-        this.nodeGraphBucketsDbPath,
-        { valueAsBuffer: false },
+    for (let i = 0; i < this.nodeIdBits; i++) {
+      const bucketIndex = order === 'asc' ? i : this.nodeIdBits - i;
+      const nodeBucket = await this.getBucket(
+        bucketIndex,
+        sort,
+        order,
+        undefined,
+        tran,
       );
-      try {
-        for await (const [key] of tran.iterator(
-          this.nodeGraphLastUpdatedDbPath,
-          {
-            reverse: order !== 'asc',
-          },
-        )) {
-          const { bucketIndex: bucketIndex_, nodeId } =
-            nodesUtils.parseLastUpdatedBucketsDbKey(key);
-          bucketsDbIterator.seek([key[0], key[2]]);
-          // eslint-disable-next-line
-          const iteratorResult = await bucketsDbIterator.next();
-          if (iteratorResult == null) never();
-          const [, nodeData] = iteratorResult;
-          if (bucketIndex == null) {
-            // First entry of the first bucket
-            bucketIndex = bucketIndex_;
-            bucket.push([nodeId, nodeData]);
-          } else if (bucketIndex === bucketIndex_) {
-            // Subsequent entries of the same bucket
-            bucket.push([nodeId, nodeData]);
-          } else if (bucketIndex !== bucketIndex_) {
-            // New bucket
-            yield [bucketIndex, bucket];
-            bucketIndex = bucketIndex_;
-            bucket = [[nodeId, nodeData]];
-          }
-        }
-        // Yield the last bucket if it exists
-        if (bucketIndex != null) {
-          yield [bucketIndex, bucket];
-        }
-      } finally {
-        await bucketsDbIterator.destroy();
-      }
+      if (nodeBucket.length > 0) yield [bucketIndex, nodeBucket];
     }
   }
 
+  /**
+   * Resets the bucket according to the new node ID.
+   * Run this after new node ID is generated via renewal or reset.
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async resetBuckets(
-    nodeIdOwn: NodeId,
-    tran?: DBTransaction,
-  ): Promise<void> {
+  public async resetBuckets(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.resetBuckets(nodeIdOwn, tran),
-      );
+      return this.db.withTransactionF((tran) => this.resetBuckets(tran));
     }
-
-    const logger = this.logger.getChild('resetBuckets');
     // Setup new space
     const spaceNew = this.space === '0' ? '1' : '0';
-    logger.debug('new space: ' + spaceNew);
     const nodeGraphMetaDbPathNew = [...this.nodeGraphDbPath, 'meta' + spaceNew];
     const nodeGraphBucketsDbPathNew = [
       ...this.nodeGraphDbPath,
       'buckets' + spaceNew,
     ];
-    const nodeGraphLastUpdatedDbPathNew = [
+    const nodeGraphConnectedDbPathNew = [
       ...this.nodeGraphDbPath,
-      'index' + spaceNew,
+      'connected' + spaceNew,
     ];
     // Clear the new space (in case it wasn't cleaned properly last time)
     await tran.clear(nodeGraphMetaDbPathNew);
     await tran.clear(nodeGraphBucketsDbPathNew);
-    await tran.clear(nodeGraphLastUpdatedDbPathNew);
+    await tran.clear(nodeGraphConnectedDbPathNew);
     // Iterating over all entries across all buckets
-
-    for await (const [key, nodeData] of tran.iterator<NodeData>(
-      this.nodeGraphBucketsDbPath,
-      { valueAsBuffer: false },
+    for await (const [nodeId, nodeContact] of nodesUtils.collectNodeContacts(
+      [...this.nodeGraphBucketsDbPath],
+      tran,
     )) {
-      // The key is a combined bucket key and node ID
-      const { bucketIndex: bucketIndexOld, nodeId } =
-        nodesUtils.parseBucketsDbKey(key);
-      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
       const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
-      // If the new own node ID is one of the existing node IDs, it is just dropped
-      // We only map to the new bucket if it isn't one of the existing node IDs
+      const nodeIdOwn = this.keyRing.getNodeId();
       if (nodeId.equals(nodeIdOwn)) {
-        logger.debug(
-          `nodeId ${nodeIdEncoded} from bucket ${bucketIndexOld} was identical to new NodeId and was dropped.`,
-        );
         continue;
       }
       const bucketIndexNew = nodesUtils.bucketIndex(nodeIdOwn, nodeId);
       const bucketKeyNew = nodesUtils.bucketKey(bucketIndexNew);
       const metaPathNew = [...nodeGraphMetaDbPathNew, bucketKeyNew];
       const bucketPathNew = [...nodeGraphBucketsDbPathNew, bucketKeyNew];
-      const indexPathNew = [...nodeGraphLastUpdatedDbPathNew, bucketKeyNew];
       const countNew = (await tran.get<number>([...metaPathNew, 'count'])) ?? 0;
       if (countNew < this.nodeBucketLimit) {
+        // If the new bucket is not filled up, the node is moved to the new bucket
         await tran.put([...metaPathNew, 'count'], countNew + 1);
       } else {
-        let oldestIndexKey: KeyPath | undefined = undefined;
-        let oldestNodeId: NodeId | undefined = undefined;
-        for await (const [key] of tran.iterator(indexPathNew, {
-          limit: 1,
-        })) {
-          oldestIndexKey = key;
-          ({ nodeId: oldestNodeId } =
-            nodesUtils.parseLastUpdatedBucketDbKey(key));
-        }
-        await tran.del([
-          ...bucketPathNew,
-          nodesUtils.bucketDbKey(oldestNodeId!),
-        ]);
-        await tran.del([...indexPathNew, ...oldestIndexKey!]);
+        // TODO
+        // If the new bucket is already filled up, the oldest node is dropped
+        // skipping for now
+        continue;
       }
-      if (bucketIndexOld !== bucketIndexNew) {
-        logger.debug(
-          `nodeId ${nodeIdEncoded} moved ${bucketIndexOld}=>${bucketIndexNew}`,
+      // Adding in node
+      let connectedTimeMax = 0;
+      for (const nodeContactAddress in nodeContact) {
+        const nodeContactAddressData = nodeContact[nodeContactAddress];
+        await tran.put(
+          [...bucketPathNew, nodeIdKey, nodeContactAddress],
+          nodeContactAddressData,
         );
-      } else {
-        logger.debug(`nodeId ${nodeIdEncoded} unchanged ${bucketIndexOld}`);
+        connectedTimeMax = Math.max(
+          connectedTimeMax,
+          nodeContactAddressData.connectedTime,
+        );
       }
-      await tran.put([...bucketPathNew, nodeIdKey], nodeData);
-      const lastUpdatedKey = nodesUtils.lastUpdatedKey(nodeData.lastUpdated);
+      // Set the new values
+      const newConnectedKey = nodesUtils.connectedKey(connectedTimeMax);
       await tran.put(
-        [...indexPathNew, lastUpdatedKey, nodeIdKey],
+        [...nodeGraphConnectedDbPathNew, bucketKeyNew, 'nodeId', nodeIdKey],
+        newConnectedKey,
+        true,
+      );
+      await tran.put(
+        [
+          ...nodeGraphConnectedDbPathNew,
+          bucketKeyNew,
+          'time',
+          newConnectedKey,
+          nodeIdKey,
+        ],
         nodeIdKey,
         true,
       );
@@ -596,14 +776,18 @@ class NodeGraph {
     // Clear old space
     await tran.clear(this.nodeGraphMetaDbPath);
     await tran.clear(this.nodeGraphBucketsDbPath);
-    await tran.clear(this.nodeGraphLastUpdatedDbPath);
+    await tran.clear(this.nodeGraphConnectedDbPath);
     // Swap the spaces
     this.space = spaceNew;
     this.nodeGraphMetaDbPath = nodeGraphMetaDbPathNew;
     this.nodeGraphBucketsDbPath = nodeGraphBucketsDbPathNew;
-    this.nodeGraphLastUpdatedDbPath = nodeGraphLastUpdatedDbPathNew;
+    this.nodeGraphConnectedDbPath = nodeGraphConnectedDbPathNew;
   }
 
+  /**
+   * Get a bucket meta POJO.
+   * This will provide default values for missing properties.
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucketMeta(
     bucketIndex: NodeBucketIndex,
@@ -634,6 +818,10 @@ class NodeGraph {
     };
   }
 
+  /**
+   * Get a single bucket meta property.
+   * This will provide default values for missing properties.
+   */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucketMetaProp<Key extends keyof NodeBucketMeta>(
     bucketIndex: NodeBucketIndex,
@@ -645,7 +833,6 @@ class NodeGraph {
         this.getBucketMetaProp(bucketIndex, key, tran),
       );
     }
-
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
       throw new nodesErrors.ErrorNodeGraphBucketIndex(
         `bucketIndex must be between 0 and ${this.nodeIdBits - 1} inclusive`,
@@ -666,20 +853,14 @@ class NodeGraph {
   }
 
   /**
-   * Finds the set of nodes (of size k) known by the current node (i.e. in its
-   * buckets' database) that have the smallest distance to the target node (i.e.
-   * are closest to the target node).
-   * i.e. FIND_NODE RPC from Kademlia spec
+   * Gets the closest nodes (closest based on Kademlia XOR operator) to a
+   * given node ID. The returned results will be sorted by distance in
+   * ascending order. If the given node ID already exists in the node graph,
+   * then it will be the first result.
    *
-   * Used by the RPC service.
-   *
-   * @param nodeId the node ID to find other nodes closest to it
-   * @param limit the number of the closest nodes to return (by default, returns
-   * according to the maximum number of nodes per bucket)
-   * @param tran
-   * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
-   * current node has less than k nodes in all of its buckets, in which case it
-   * returns all nodes it has knowledge of)
+   * @param limit - Defaults to the bucket limit.
+   * @returns The `NodeBucket` which could have less than `limit` nodes if the
+   *          node graph has less than the requested limit.
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestNodes(
@@ -692,7 +873,6 @@ class NodeGraph {
         this.getClosestNodes(nodeId, limit, tran),
       );
     }
-
     // Buckets map to the target node in the following way;
     // 1. 0, 1, ..., T-1 -> T
     // 2. T -> 0, 1, ..., T-1
@@ -701,95 +881,92 @@ class NodeGraph {
     // 1. T
     // 2. iterate over 0 ---> T-1
     // 3. iterate over T+1 ---> K
-    // Need to work out the relevant bucket to start from
-    const localNodeId = this.keyRing.getNodeId();
-    const startingBucket = localNodeId.equals(nodeId)
+    // If our own node ID, start at bucket 0
+    // Otherwise find the bucket that the given node ID belongs to
+    const nodeIdOwn = this.keyRing.getNodeId();
+    const bucketIndexFirst = nodeIdOwn.equals(nodeId)
       ? 0
-      : nodesUtils.bucketIndex(localNodeId, nodeId);
+      : nodesUtils.bucketIndex(nodeIdOwn, nodeId);
     // Getting the whole target's bucket first
-    const nodeIds: NodeBucket = await this.getBucket(
-      startingBucket,
+    const nodes: NodeBucket = await this.getBucket(
+      bucketIndexFirst,
+      undefined,
       undefined,
       undefined,
       tran,
     );
     // We need to iterate over the key stream
     // When streaming we want all nodes in the starting bucket
-    // The keys takes the form `!(lexpack bucketId)!(nodeId)`
-    // We can just use `!(lexpack bucketId)` to start from
-    // Less than `!(bucketId 101)!` gets us buckets 100 and lower
-    // greater than `!(bucketId 99)!` gets up buckets 100 and greater
-    if (nodeIds.length < limit) {
+    // The keys takes the form `lexi<NodeBucketIndex>/NodeId`
+    // We can just use `lexi<NodeBucketIndex>` to start from
+    // Less than `lexi<NodeBucketIndex:101>` gets us buckets 100 and lower
+    // Greater than `lexi<NodeBucketIndex:99>` gets us buckets 100 and greater
+    if (nodes.length < limit && bucketIndexFirst !== 0) {
       // Just before target bucket
-      const bucketIdKey = Buffer.from(nodesUtils.bucketKey(startingBucket));
-      const remainingLimit = limit - nodeIds.length;
+      const bucketIdKey = Buffer.from(
+        nodesUtils.bucketKey(bucketIndexFirst - 1),
+      );
+      const remainingLimit = limit - nodes.length;
       // Iterate over lower buckets
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
+      for await (const nodeEntry of nodesUtils.collectNodeContacts(
         this.nodeGraphBucketsDbPath,
+        tran,
         {
           lt: [bucketIdKey, ''],
           limit: remainingLimit,
-          valueAsBuffer: false,
         },
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key);
-        nodeIds.push([info.nodeId, nodeData]);
+        nodes.push(nodeEntry);
       }
     }
-    if (nodeIds.length < limit) {
+    if (nodes.length < limit) {
       // Just after target bucket
-      const bucketId = Buffer.from(nodesUtils.bucketKey(startingBucket + 1));
-      const remainingLimit = limit - nodeIds.length;
+      const bucketId = Buffer.from(nodesUtils.bucketKey(bucketIndexFirst));
+      const remainingLimit = limit - nodes.length;
       // Iterate over ids further away
-      tran.iterator(this.nodeGraphBucketsDbPath, {
-        gt: [bucketId, ''],
-        limit: remainingLimit,
-      });
-      for await (const [key, nodeData] of tran.iterator<NodeData>(
+      for await (const nodeEntry of nodesUtils.collectNodeContacts(
         this.nodeGraphBucketsDbPath,
+        tran,
         {
           gt: [bucketId, ''],
           limit: remainingLimit,
-          valueAsBuffer: false,
         },
       )) {
-        const info = nodesUtils.parseBucketsDbKey(key);
-        nodeIds.push([info.nodeId, nodeData]);
+        nodes.push(nodeEntry);
       }
     }
     // If no nodes were found, return nothing
-    if (nodeIds.length === 0) return [];
+    if (nodes.length === 0) return [];
     // Need to get the whole of the last bucket
-    const lastBucketIndex = nodesUtils.bucketIndex(
-      this.keyRing.getNodeId(),
-      nodeIds[nodeIds.length - 1][0],
+    const bucketIndexLast = nodesUtils.bucketIndex(
+      nodeIdOwn,
+      nodes[nodes.length - 1][0],
     );
     const lastBucket = await this.getBucket(
-      lastBucketIndex,
+      bucketIndexLast,
+      undefined,
       undefined,
       undefined,
       tran,
     );
     // Pop off elements of the same bucket to avoid duplicates
-    let element = nodeIds.pop();
+    let element = nodes.pop();
     while (
       element != null &&
-      nodesUtils.bucketIndex(this.keyRing.getNodeId(), element[0]) ===
-        lastBucketIndex
+      nodesUtils.bucketIndex(nodeIdOwn, element[0]) === bucketIndexLast
     ) {
-      element = nodeIds.pop();
+      element = nodes.pop();
     }
-    if (element != null) nodeIds.push(element);
+    if (element != null) nodes.push(element);
     // Adding last bucket to the list
-    nodeIds.push(...lastBucket);
-
-    nodesUtils.bucketSortByDistance(nodeIds, nodeId, 'asc');
-    return nodeIds.slice(0, limit);
+    nodes.push(...lastBucket);
+    nodesUtils.bucketSortByDistance(nodes, nodeId, 'asc');
+    return nodes.slice(0, limit);
   }
 
   /**
-   * Sets a bucket meta property
-   * This is protected because users cannot directly manipulate bucket meta
+   * Sets a single bucket meta property.
+   * Bucket meta properties cannot be mutated outside.
    */
   protected async setBucketMetaProp<Key extends keyof NodeBucketMeta>(
     bucketIndex: NodeBucketIndex,
@@ -807,28 +984,14 @@ class NodeGraph {
   }
 
   /**
-   * Derive the bucket index of the k-buckets from the new `NodeId`
-   * The bucket key is the string encoded version of bucket index
-   * that preserves lexicographic order
-   */
-  public bucketIndex(nodeId: NodeId): [NodeBucketIndex, string] {
-    const nodeIdOwn = this.keyRing.getNodeId();
-    if (nodeId.equals(nodeIdOwn)) {
-      throw new nodesErrors.ErrorNodeGraphSameNodeId();
-    }
-    const bucketIndex = nodesUtils.bucketIndex(nodeIdOwn, nodeId);
-    const bucketKey = nodesUtils.bucketKey(bucketIndex);
-    return [bucketIndex, bucketKey];
-  }
-
-  /**
    * Returns to total number of nodes in the `NodeGraph`
    */
   public async nodesTotal(tran?: DBTransaction): Promise<number> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.nodesTotal(tran));
     }
-    return await tran.count(this.nodeGraphBucketsDbPath);
+    // `nodeGraphConnectedDbPath` will contain 2 entries for each `NodeId` within the `NodeGraph`
+    return (await tran.count(this.nodeGraphConnectedDbPath)) / 2;
   }
 }
 

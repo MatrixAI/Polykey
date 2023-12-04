@@ -1,8 +1,18 @@
-import type { NodeBucket, NodeBucketIndex, NodeId, SeedNodes } from './types';
-import type { Hostname, Port } from '../network/types';
-import type { Certificate, CertificatePEM } from '../keys/types';
-import type { KeyPath } from '@matrixai/db';
+import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
+import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
+import type { Key, Certificate, CertificatePEM } from '../keys/types';
+import type { Hostname, Port } from '../network/types';
+import type {
+  NodeAddress,
+  NodeContact,
+  NodeContactAddress,
+  NodeContactAddressData,
+  NodeBucket,
+  NodeBucketIndex,
+  NodeId,
+  SeedNodes,
+} from './types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -64,6 +74,19 @@ function bucketIndex(sourceNode: NodeId, targetNode: NodeId): NodeBucketIndex {
 }
 
 /**
+ * Encodes NodeAddress to NodeAddressKey
+ */
+function nodeContactAddress([host, port]: NodeAddress): NodeContactAddress {
+  if (networkUtils.isHost(host)) {
+    const host_ = networkUtils.toCanonicalHost(host);
+    return `${host_}-${port}` as NodeContactAddress;
+  } else {
+    const hostname = networkUtils.toCanonicalHostname(host);
+    return `${hostname}-${port}` as NodeContactAddress;
+  }
+}
+
+/**
  * Encodes bucket index to bucket sublevel key
  */
 function bucketKey(bucketIndex: NodeBucketIndex): string {
@@ -89,35 +112,25 @@ function bucketDbKey(nodeId: NodeId): Buffer {
   return nodeId.toBuffer();
 }
 
-/**
- * Creates key for buckets indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketsDbKey(
-  bucketIndex: NodeBucketIndex,
-  lastUpdated: number,
-  nodeId: NodeId,
-): Buffer {
-  return Buffer.concat([
-    sepBuffer,
-    Buffer.from(bucketKey(bucketIndex)),
-    sepBuffer,
-    lastUpdatedBucketDbKey(lastUpdated, nodeId),
-  ]);
-}
-
-/**
- * Creates key for single bucket indexed by lastUpdated sublevel
- */
-function lastUpdatedBucketDbKey(lastUpdated: number, nodeId: NodeId): Buffer {
-  return Buffer.concat([
-    Buffer.from(lexi.pack(lastUpdated, 'hex')),
-    Buffer.from('-'),
-    nodeId.toBuffer(),
-  ]);
-}
-
-function lastUpdatedKey(lastUpdated: number): Buffer {
+function connectedKey(lastUpdated: number): Buffer {
   return Buffer.from(lexi.pack(lastUpdated, 'hex'));
+}
+
+function parseConnectedKey(buffer: Buffer): number {
+  return lexi.unpack(buffer.toString());
+}
+
+function parseNodeContactAddress(nodeContactAddress: string): NodeAddress {
+  // Take the last occurrence of `-` because the hostname may contain `-`
+  const lastDashIndex = nodeContactAddress.lastIndexOf('-');
+  const hostOrHostname = nodeContactAddress.slice(0, lastDashIndex);
+  const port = nodeContactAddress.slice(lastDashIndex + 1);
+  return [hostOrHostname, parseInt(port, 10)] as NodeAddress;
+}
+
+function parseNodeAddressKey(keyBuffer: Buffer): NodeAddress {
+  const key = keyBuffer.toString();
+  return parseNodeContactAddress(key);
 }
 
 /**
@@ -129,8 +142,9 @@ function parseBucketsDbKey(keyPath: KeyPath): {
   bucketIndex: NodeBucketIndex;
   bucketKey: string;
   nodeId: NodeId;
+  nodeContactAddress: NodeContactAddress;
 } {
-  const [bucketKeyPath, nodeIdKey] = keyPath;
+  const [bucketKeyPath, nodeIdKey, nodeContactAddress] = keyPath;
   if (bucketKeyPath == null || nodeIdKey == null) {
     throw new TypeError('Buffer is not an NodeGraph buckets key');
   }
@@ -141,6 +155,7 @@ function parseBucketsDbKey(keyPath: KeyPath): {
     bucketIndex,
     bucketKey,
     nodeId,
+    nodeContactAddress: nodeContactAddress as NodeContactAddress,
   };
 }
 
@@ -216,39 +231,37 @@ function nodeDistance(nodeId1: NodeId, nodeId2: NodeId): bigint {
   return utils.bytes2BigInt(distance);
 }
 
+function nodeDistanceCmpFactory(targetNodeId: NodeId) {
+  const distances = {};
+  return (nodeId1: NodeId, nodeId2: NodeId): -1 | 0 | 1 => {
+    const d1 = (distances[nodeId1] =
+      distances[nodeId1] ?? nodeDistance(targetNodeId, nodeId1));
+    const d2 = (distances[nodeId2] =
+      distances[nodeId2] ?? nodeDistance(targetNodeId, nodeId2));
+    if (d1 < d2) {
+      return -1;
+    } else if (d1 > d2) {
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+}
+
 function bucketSortByDistance(
   bucket: NodeBucket,
   nodeId: NodeId,
   order: 'asc' | 'desc' = 'asc',
 ): void {
-  const distances = {};
+  const nodeDistanceCmp = nodeDistanceCmpFactory(nodeId);
   if (order === 'asc') {
     bucket.sort(([nodeId1], [nodeId2]) => {
-      const d1 = (distances[nodeId1] =
-        distances[nodeId1] ?? nodeDistance(nodeId, nodeId1));
-      const d2 = (distances[nodeId2] =
-        distances[nodeId2] ?? nodeDistance(nodeId, nodeId2));
-      if (d1 < d2) {
-        return -1;
-      } else if (d1 > d2) {
-        return 1;
-      } else {
-        return 0;
-      }
+      return nodeDistanceCmp(nodeId1, nodeId2);
     });
   } else {
     bucket.sort(([nodeId1], [nodeId2]) => {
-      const d1 = (distances[nodeId1] =
-        distances[nodeId1] ?? nodeDistance(nodeId, nodeId1));
-      const d2 = (distances[nodeId2] =
-        distances[nodeId2] ?? nodeDistance(nodeId, nodeId2));
-      if (d1 > d2) {
-        return -1;
-      } else if (d1 < d2) {
-        return 1;
-      } else {
-        return 0;
-      }
+      // Invert the order
+      return nodeDistanceCmp(nodeId1, nodeId2) * -1;
     });
   }
 }
@@ -423,11 +436,10 @@ async function resolveSeednodes(
         /\..*/g,
         '',
       ) as ids.NodeIdEncoded;
-      seednodes[nodeId] = {
-        host: seednodeRecord.name as Hostname,
-        port: seednodeRecord.port as Port,
-        scopes: ['global'],
-      };
+      seednodes[nodeId] = [
+        seednodeRecord.name as Hostname,
+        seednodeRecord.port as Port,
+      ];
     }
   } catch (e) {
     throw new nodesErrors.ErrorNodeLookupNotFound(
@@ -665,20 +677,109 @@ async function verifyClientCertificateChain(
   return undefined;
 }
 
+/**
+ * QUIC Client Crypto
+ * This uses the keys utilities which uses `allocUnsafeSlow`.
+ * This ensures that the underlying buffer is not shared.
+ * Also all node buffers satisfy the `ArrayBuffer` interface.
+ */
+const quicClientCrypto: QUICClientCrypto = {
+  ops: {
+    async randomBytes(data: ArrayBuffer): Promise<void> {
+      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
+      randomBytes.copy(utils.bufferWrap(data));
+    },
+  },
+};
+
+/**
+ * QUIC Server Crypto
+ * This uses the keys utilities which uses `allocUnsafeSlow`.
+ * This ensures that the underlying buffer is not shared.
+ * Also all node buffers satisfy the `ArrayBuffer` interface.
+ */
+const quicServerCrypto: QUICServerCrypto = {
+  key: keysUtils.generateKey(),
+  ops: {
+    async sign(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
+      return keysUtils.macWithKey(
+        utils.bufferWrap(key) as Key,
+        utils.bufferWrap(data),
+      ).buffer;
+    },
+    async verify(
+      key: ArrayBuffer,
+      data: ArrayBuffer,
+      sig: ArrayBuffer,
+    ): Promise<boolean> {
+      return keysUtils.authWithKey(
+        utils.bufferWrap(key) as Key,
+        utils.bufferWrap(data),
+        utils.bufferWrap(sig),
+      );
+    },
+  },
+};
+
+async function* collectNodeContacts(
+  levelPath: LevelPath,
+  tran: DBTransaction,
+  options: {
+    reverse?: boolean;
+    lt?: LevelPath;
+    gt?: LevelPath;
+    limit?: number;
+    pathAdjust?: KeyPath;
+  } = {},
+): AsyncGenerator<[NodeId, NodeContact], void> {
+  let nodeId: NodeId | undefined = undefined;
+  let nodeContact: NodeContact = {};
+  let count = 0;
+  for await (const [
+    keyPath,
+    nodeContactAddressData,
+  ] of tran.iterator<NodeContactAddressData>(levelPath, {
+    reverse: options.reverse,
+    lt: options.lt,
+    gt: options.gt,
+    valueAsBuffer: false,
+  })) {
+    const { nodeId: nodeIdCurrent, nodeContactAddress } = parseBucketsDbKey([
+      ...(options.pathAdjust ?? []),
+      ...keyPath,
+    ]);
+    if (!(nodeId == null || nodeIdCurrent.equals(nodeId))) {
+      // Yield and tear
+      yield [nodeId, nodeContact];
+      nodeContact = {};
+      count++;
+    }
+    // Accumulate addresses and data
+    nodeContact[nodeContactAddress] = nodeContactAddressData;
+    nodeId = nodeIdCurrent;
+    if (options.limit != null && count >= options.limit) return;
+  }
+  // Yield remaining data if it exists
+  if (nodeId != null) yield [nodeId, nodeContact];
+}
+
 export {
   sepBuffer,
+  nodeContactAddress,
   bucketIndex,
   bucketKey,
   bucketsDbKey,
   bucketDbKey,
-  lastUpdatedBucketsDbKey,
-  lastUpdatedBucketDbKey,
-  lastUpdatedKey,
+  connectedKey,
+  parseConnectedKey,
+  parseNodeContactAddress,
+  parseNodeAddressKey,
   parseBucketsDbKey,
   parseBucketDbKey,
   parseLastUpdatedBucketsDbKey,
   parseLastUpdatedBucketDbKey,
   nodeDistance,
+  nodeDistanceCmpFactory,
   bucketSortByDistance,
   generateRandomDistanceForBucket,
   xOrNodeId,
@@ -693,6 +794,9 @@ export {
   parseSeedNodes,
   verifyServerCertificateChain,
   verifyClientCertificateChain,
+  quicClientCrypto,
+  quicServerCrypto,
+  collectNodeContacts,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids';

@@ -1,10 +1,22 @@
-import type { NodeId } from '@/nodes/types';
+import type {
+  NodeAddressScope,
+  NodeContactAddressData,
+  NodeId,
+} from '@/nodes/types';
 import type PolykeyAgent from '@/PolykeyAgent';
+import type Logger from '@matrixai/logger';
+import type { KeyRing } from '@/keys';
+import type { Host, Port } from '@/network/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
 import * as keysUtils from '@/keys/utils';
-import { bigInt2Bytes } from '@/utils';
+import * as utils from '@/utils';
+import * as nodesUtils from '@/nodes/utils';
+import { hostArb, hostnameArb, portArb } from '../network/utils';
+import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
+import * as testsUtils from '../utils';
 
 /**
  * Generate random `NodeId`
@@ -22,6 +34,14 @@ function generateRandomNodeId(readable: boolean = false): NodeId {
     const random = keysUtils.getRandomBytes(32);
     return IdInternal.fromBuffer<NodeId>(random);
   }
+}
+
+/**
+ * Generates a random unix timestamp between 0 and now.
+ */
+function generateRandomUnixtime() {
+  const now = utils.getUnixtime() + 1;
+  return Math.random() * (now - 0) + now;
 }
 
 /**
@@ -49,7 +69,7 @@ function generateNodeIdForBucket(
     throw new RangeError('bucketOffset is beyond bucket size');
   }
   // Offset position within the bucket
-  const distance = bigInt2Bytes(
+  const distance = utils.bigInt2Bytes(
     lowerBoundDistance + BigInt(bucketOffset),
     nodeId.byteLength,
   );
@@ -70,22 +90,31 @@ function generateNodeIdForBucket(
  */
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
-  await localNode.nodeManager.setNode(remoteNode.keyRing.getNodeId(), {
-    host: remoteNode.agentServiceHost,
-    port: remoteNode.agentServicePort,
-    scopes: ['global'],
-  });
+  await localNode.nodeManager.setNode(
+    remoteNode.keyRing.getNodeId(),
+    [remoteNode.agentServiceHost, remoteNode.agentServicePort],
+    {
+      mode: 'direct',
+      connectedTime: Date.now(),
+      scopes: ['local'],
+    },
+  );
   // Add local node's details to remote node
-  await remoteNode.nodeManager.setNode(localNode.keyRing.getNodeId(), {
-    host: localNode.agentServiceHost,
-    port: localNode.agentServicePort,
-    scopes: ['global'],
-  });
+  await remoteNode.nodeManager.setNode(
+    localNode.keyRing.getNodeId(),
+    [localNode.agentServiceHost, localNode.agentServicePort],
+    {
+      mode: 'direct',
+      connectedTime: Date.now(),
+      scopes: ['local'],
+    },
+  );
 }
 
 const nodeIdArb = fc
   .int8Array({ minLength: 32, maxLength: 32 })
-  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)));
+  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)))
+  .noShrink();
 
 const nodeIdArrayArb = (length: number) =>
   fc.array(nodeIdArb, { maxLength: length, minLength: length }).noShrink();
@@ -102,6 +131,44 @@ const uniqueNodeIdArb = (length: number) =>
       }
       return false;
     });
+
+const nodeAddressArb = fc.tuple(fc.oneof(hostArb, hostnameArb), portArb);
+
+const nodeContactAddressArb = nodeAddressArb.map((value) =>
+  nodesUtils.nodeContactAddress(value),
+);
+
+const scopeArb = fc.constantFrom(
+  'global',
+  'local',
+) as fc.Arbitrary<NodeAddressScope>;
+
+const scopesArb = fc.uniqueArray(scopeArb);
+
+const nodeContactAddressDataArb = fc.record({
+  mode: fc.constantFrom('direct', 'signal', 'relay'),
+  connectedTime: fc.integer({ min: 0 }),
+  scopes: scopesArb,
+}) as fc.Arbitrary<NodeContactAddressData>;
+
+const nodeContactPairArb = fc.record({
+  nodeContactAddress: nodeContactAddressArb,
+  nodeContactAddressData: nodeContactAddressDataArb,
+});
+
+const nodeContactArb = fc
+  .dictionary(nodeContactAddressArb, nodeContactAddressDataArb, {
+    minKeys: 1,
+    maxKeys: 5,
+  })
+  .noShrink();
+
+const nodeIdContactPairArb = fc
+  .record({
+    nodeId: nodeIdArb,
+    nodeContact: nodeContactArb,
+  })
+  .noShrink();
 
 /**
  * Signs using the 256-bit HMAC key
@@ -172,14 +239,100 @@ function createReasonConverters() {
   };
 }
 
+type NCMState = {
+  nodeId: NodeId;
+  nodeConnectionManager: NodeConnectionManager;
+  port: Port;
+};
+
+async function nodeConnectionManagerFactory({
+  keyRing,
+  createOptions: {
+    connectionFindConcurrencyLimit,
+    connectionFindLocalTimeoutTime,
+    connectionIdleTimeoutTimeMin,
+    connectionIdleTimeoutTimeScale,
+    connectionConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime,
+    rpcParserBufferSize,
+    rpcCallTimeoutTime,
+  } = {},
+  startOptions: { host, port, agentService },
+  logger,
+}: {
+  keyRing: KeyRing;
+  createOptions?: {
+    connectionFindConcurrencyLimit?: number;
+    connectionFindLocalTimeoutTime?: number;
+    connectionIdleTimeoutTimeMin?: number;
+    connectionIdleTimeoutTimeScale?: number;
+    connectionConnectTimeoutTime?: number;
+    connectionKeepAliveTimeoutTime?: number;
+    connectionKeepAliveIntervalTime?: number;
+    connectionHolePunchIntervalTime?: number;
+    rpcParserBufferSize?: number;
+    rpcCallTimeoutTime?: number;
+  };
+  startOptions: {
+    host?: Host;
+    port?: Port;
+    agentService: (nodeConnectionManager) => AgentServerManifest;
+  };
+  logger: Logger;
+}): Promise<NCMState> {
+  const nodeId = keyRing.getNodeId();
+  const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+  const nodeConnectionManager = new NodeConnectionManager({
+    keyRing: keyRing,
+    logger: logger,
+    tlsConfig: tlsConfig,
+    connectionFindConcurrencyLimit,
+    connectionFindLocalTimeoutTime,
+    connectionIdleTimeoutTimeMin,
+    connectionIdleTimeoutTimeScale,
+    connectionConnectTimeoutTime,
+    connectionKeepAliveTimeoutTime,
+    connectionKeepAliveIntervalTime,
+    connectionHolePunchIntervalTime,
+    rpcParserBufferSize,
+    rpcCallTimeoutTime,
+  });
+
+  await nodeConnectionManager.start({
+    agentService: agentService(nodeConnectionManager),
+    host,
+    port,
+  });
+
+  return {
+    nodeId,
+    nodeConnectionManager,
+    port: nodeConnectionManager.port,
+  };
+}
+
+export type { NCMState };
+
 export {
   generateRandomNodeId,
+  generateRandomUnixtime,
   generateNodeIdForBucket,
   nodesConnect,
   nodeIdArb,
   nodeIdArrayArb,
   uniqueNodeIdArb,
+  nodeAddressArb,
+  nodeContactAddressArb,
+  scopeArb,
+  scopesArb,
+  nodeContactAddressDataArb,
+  nodeContactPairArb,
+  nodeContactArb,
+  nodeIdContactPairArb,
   sign,
   verify,
   createReasonConverters,
+  nodeConnectionManagerFactory,
 };

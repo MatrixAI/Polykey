@@ -11,7 +11,7 @@ import type { FileSystem } from '../types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import type { NodeId } from '../ids/types';
 import type KeyRing from '../keys/KeyRing';
-import type NodeConnectionManager from '../nodes/NodeConnectionManager';
+import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type NotificationsManager from '../notifications/NotificationsManager';
 import type ACL from '../acl/ACL';
@@ -74,7 +74,7 @@ class VaultManager {
     db,
     acl,
     keyRing,
-    nodeConnectionManager,
+    nodeManager,
     gestaltGraph,
     notificationsManager,
     fs = require('fs'),
@@ -85,7 +85,7 @@ class VaultManager {
     db: DB;
     acl: ACL;
     keyRing: KeyRing;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     fs?: FileSystem;
@@ -99,7 +99,7 @@ class VaultManager {
       db,
       acl,
       keyRing,
-      nodeConnectionManager,
+      nodeManager,
       gestaltGraph,
       notificationsManager,
       fs,
@@ -118,7 +118,7 @@ class VaultManager {
   protected db: DB;
   protected acl: ACL;
   protected keyRing: KeyRing;
-  protected nodeConnectionManager: NodeConnectionManager;
+  protected nodeManager: NodeManager;
   protected gestaltGraph: GestaltGraph;
   protected notificationsManager: NotificationsManager;
   protected vaultsDbPath: LevelPath = [this.constructor.name];
@@ -136,7 +136,7 @@ class VaultManager {
     db,
     acl,
     keyRing,
-    nodeConnectionManager,
+    nodeManager,
     gestaltGraph,
     notificationsManager,
     fs,
@@ -146,7 +146,7 @@ class VaultManager {
     db: DB;
     acl: ACL;
     keyRing: KeyRing;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     fs: FileSystem;
@@ -158,7 +158,7 @@ class VaultManager {
     this.db = db;
     this.acl = acl;
     this.keyRing = keyRing;
-    this.nodeConnectionManager = nodeConnectionManager;
+    this.nodeManager = nodeManager;
     this.gestaltGraph = gestaltGraph;
     this.notificationsManager = notificationsManager;
     this.fs = fs;
@@ -706,7 +706,7 @@ class VaultManager {
           targetVaultNameOrId: vaultNameOrId,
           vaultId,
           db: this.db,
-          nodeConnectionManager: this.nodeConnectionManager,
+          nodeManager: this.nodeManager,
           vaultsDbPath: this.vaultsDbPath,
           keyRing: this.keyRing,
           efs: this.efs,
@@ -786,7 +786,7 @@ class VaultManager {
         await tran.lock([...this.vaultsDbPath, vaultId].join(''));
         const vault = await this.getVault(vaultId, tran);
         await vault.pullVault({
-          nodeConnectionManager: this.nodeConnectionManager,
+          nodeManager: this.nodeManager,
           pullNodeId,
           pullVaultNameOrId,
           tran,
@@ -899,7 +899,7 @@ class VaultManager {
     vaultPermissions: VaultAction[];
   }> {
     // Create a connection to another node
-    return yield* this.nodeConnectionManager.withConnG(
+    return yield* this.nodeManager.withConnG(
       targetNodeId,
       async function* (connection): AsyncGenerator<{
         vaultName: VaultName;

@@ -5,7 +5,7 @@ import type {
   NodesAddMessage,
 } from '../types';
 import type { NodeId } from '../../ids';
-import type { Host, Hostname, Port } from '../../network/types';
+import type { Host, Port } from '../../network/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids';
@@ -32,13 +32,13 @@ class NodesAdd extends UnaryHandler<
       port,
     }: {
       nodeId: NodeId;
-      host: Host | Hostname;
+      host: Host;
       port: Port;
     } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
           [['nodeId'], () => ids.parseNodeId(value)],
-          [['host'], () => networkUtils.parseHostOrHostname(value)],
+          [['host'], () => networkUtils.parseHost(value)],
           [['port'], () => networkUtils.parsePort(value)],
           () => value,
         );
@@ -52,9 +52,7 @@ class NodesAdd extends UnaryHandler<
     // Pinging to authenticate the node
     if (
       (input.ping ?? false) &&
-      !(await nodeManager.pingNode(nodeId, [
-        { host, port, scopes: ['global'] },
-      ]))
+      !(await nodeManager.pingNodeAddress(nodeId, host, port))
     ) {
       throw new nodeErrors.ErrorNodePingFailed(
         'Failed to authenticate target node',
@@ -64,9 +62,10 @@ class NodesAdd extends UnaryHandler<
     await db.withTransactionF((tran) =>
       nodeManager.setNode(
         nodeId,
+        [host, port],
         {
-          host,
-          port,
+          mode: 'direct',
+          connectedTime: Date.now(),
           scopes: ['global'],
         },
         true,

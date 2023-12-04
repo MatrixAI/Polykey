@@ -91,7 +91,7 @@ function promFromEvent<
   target: T,
   resolveEvent: new () => EResolve,
   rejectEvent?: new () => EReject,
-) {
+): Promise<EResolve> {
   const handleResolveEvent = (evt: EResolve) => prom.resolveP(evt);
   const handleRejectEvent = (evt: EReject) => prom.rejectP(evt);
   const prom = promise<EResolve>();
@@ -112,7 +112,38 @@ function promFromEvent<
         target.removeEventListener(rejectEvent.name, handleRejectEvent);
       }
     });
-  return prom;
+  return prom.p;
+}
+
+function promFromEvents<
+  EResolve extends Event = Event,
+  T extends EventTarget = EventTarget,
+>(
+  target: T,
+  resolveEvent: new () => EResolve,
+  limit: number,
+): Promise<Array<EResolve>> {
+  const events = new Array<EResolve>();
+  const { p, resolveP } = promise<Array<EResolve>>();
+  const handleResolveEvent = (evt: EResolve) => {
+    events.push(evt);
+    limit--;
+    if (limit <= 0) {
+      resolveP(events);
+    }
+  };
+  target.addEventListener(resolveEvent.name, handleResolveEvent);
+  // Prevent unhandled rejection errors
+  void p
+    .then(
+      () => {},
+      () => {},
+    )
+    .finally(() => {
+      // Clean up
+      target.removeEventListener(resolveEvent.name, handleResolveEvent);
+    });
+  return p;
 }
 
 export {
@@ -122,4 +153,5 @@ export {
   describeIf,
   trackTimers,
   promFromEvent,
+  promFromEvents,
 };

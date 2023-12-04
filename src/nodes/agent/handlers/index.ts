@@ -9,6 +9,7 @@ import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type NotificationsManager from '../../../notifications/NotificationsManager';
 import type VaultManager from '../../../vaults/VaultManager';
 import NodesClaimsGet from './NodesClaimsGet';
+import NodesClosestActiveConnectionsGet from './NodesClosestActiveConnectionsGet';
 import NodesClosestLocalNodesGet from './NodesClosestLocalNodesGet';
 import NodesConnectionSignalFinal from './NodesConnectionSignalFinal';
 import NodesConnectionSignalInitial from './NodesConnectionSignalInitial';
@@ -35,6 +36,9 @@ const manifestServer = (container: {
 }) => {
   return {
     nodesClaimsGet: new NodesClaimsGet(container),
+    nodesClosestActiveConnectionsGet: new NodesClosestActiveConnectionsGet(
+      container,
+    ),
     nodesClosestLocalNodesGet: new NodesClosestLocalNodesGet(container),
     nodesConnectionSignalFinal: new NodesConnectionSignalFinal(container),
     nodesConnectionSignalInitial: new NodesConnectionSignalInitial(container),
@@ -46,10 +50,13 @@ const manifestServer = (container: {
   };
 };
 
+type AgentServerManifest = ReturnType<typeof manifestServer>;
+
 export default manifestServer;
 
 export {
   NodesClaimsGet,
+  NodesClosestActiveConnectionsGet,
   NodesClosestLocalNodesGet,
   NodesConnectionSignalFinal,
   NodesConnectionSignalInitial,
@@ -59,3 +66,5 @@ export {
   VaultsGitPackGet,
   VaultsScan,
 };
+
+export type { AgentServerManifest };

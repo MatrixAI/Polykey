@@ -1,4 +1,5 @@
 import nodesClaimsGet from './nodesClaimsGet';
+import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet';
 import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet';
 import nodesConnectionSignalFinal from './nodesConnectionSignalFinal';
 import nodesConnectionSignalInitial from './nodesConnectionSignalInitial';
@@ -13,6 +14,7 @@ import vaultsScan from './vaultsScan';
  */
 const manifestClient = {
   nodesClaimsGet,
+  nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
   nodesConnectionSignalFinal,
   nodesConnectionSignalInitial,
@@ -22,11 +24,14 @@ const manifestClient = {
   vaultsGitPackGet,
   vaultsScan,
 };
+
+type AgentClientManifest = typeof manifestClient;
 
 export default manifestClient;
 
 export {
   nodesClaimsGet,
+  nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
   nodesConnectionSignalFinal,
   nodesConnectionSignalInitial,
@@ -36,3 +41,5 @@ export {
   vaultsGitPackGet,
   vaultsScan,
 };
+
+export type { AgentClientManifest };

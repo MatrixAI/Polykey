@@ -1,13 +1,12 @@
 import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
-import type { SeedNodes } from './nodes/types';
+import type { NodeAddress, NodeId, SeedNodes } from './nodes/types';
 import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { MDNS } from '@matrixai/mdns';
 import {
   CreateDestroyStartStop,
   ready,
@@ -76,7 +75,8 @@ type PolykeyAgentOptions = {
     rpcParserBufferSize: number;
   };
   nodes: {
-    connectionIdleTimeoutTime: number;
+    connectionIdleTimeoutTimeMin: number;
+    connectionIdleTimeoutTimeScale: number;
     connectionFindConcurrencyLimit: number;
     connectionConnectTimeoutTime: number;
     connectionKeepAliveTimeoutTime: number;
@@ -160,8 +160,10 @@ class PolykeyAgent {
         rpcParserBufferSize: config.defaultsSystem.rpcParserBufferSize,
       },
       nodes: {
-        connectionIdleTimeoutTime:
-          config.defaultsSystem.nodesConnectionIdleTimeoutTime,
+        connectionIdleTimeoutTimeMin:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTimeMin,
+        connectionIdleTimeoutTimeScale:
+          config.defaultsSystem.nodesConnectionIdleTimeoutTimeScale,
         connectionFindConcurrencyLimit:
           config.defaultsSystem.nodesConnectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
@@ -213,7 +215,6 @@ class PolykeyAgent {
     let gestaltGraph: GestaltGraph | undefined;
     let identitiesManager: IdentitiesManager | undefined;
     let nodeGraph: NodeGraph | undefined;
-    let mdns: MDNS | undefined;
     let nodeConnectionManager: NodeConnectionManager | undefined;
     let nodeManager: NodeManager | undefined;
     let discovery: Discovery | undefined;
@@ -330,30 +331,20 @@ class PolykeyAgent {
         keyRing,
         logger: logger.getChild(NodeGraph.name),
       });
-      mdns = new MDNS({
-        logger: logger.getChild(MDNS.name),
-      });
-      await mdns.start({
-        id: keyRing.getNodeId().toBuffer().readUint16BE(),
-        hostname: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-        groups: optionsDefaulted.mdns.groups,
-        port: optionsDefaulted.mdns.port,
-      });
       // Remove your own node ID if provided as a seed node
       const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
-        nodeGraph,
         tlsConfig,
-        mdns,
-        seedNodes: optionsDefaulted.seedNodes,
         connectionFindConcurrencyLimit:
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
           optionsDefaulted.nodes.connectionFindLocalTimeoutTime,
-        connectionIdleTimeoutTime:
-          optionsDefaulted.nodes.connectionIdleTimeoutTime,
+        connectionIdleTimeoutTimeMin:
+          optionsDefaulted.nodes.connectionIdleTimeoutTimeMin,
+        connectionIdleTimeoutTimeScale:
+          optionsDefaulted.nodes.connectionIdleTimeoutTimeScale,
         connectionConnectTimeoutTime:
           optionsDefaulted.nodes.connectionConnectTimeoutTime,
         connectionKeepAliveTimeoutTime:
@@ -374,22 +365,12 @@ class PolykeyAgent {
         nodeConnectionManager,
         taskManager,
         gestaltGraph,
+        mdnsOptions: {
+          groups: optionsDefaulted.mdns.groups,
+          port: optionsDefaulted.mdns.port,
+        },
         logger: logger.getChild(NodeManager.name),
       });
-      await nodeManager.start();
-      // Add seed nodes to the nodeGraph
-      const setNodeProms = new Array<Promise<void>>();
-      for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
-        const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-        if (nodeId == null) utils.never();
-        const setNodeProm = nodeManager.setNode(
-          nodeId,
-          optionsDefaulted.seedNodes[nodeIdEncoded],
-          true,
-        );
-        setNodeProms.push(setNodeProm);
-      }
-      await Promise.all(setNodeProms);
       discovery = await Discovery.createDiscovery({
         db,
         keyRing,
@@ -403,7 +384,6 @@ class PolykeyAgent {
         await NotificationsManager.createNotificationsManager({
           acl,
           db,
-          nodeConnectionManager,
           nodeManager,
           keyRing,
           logger: logger.getChild(NotificationsManager.name),
@@ -412,7 +392,7 @@ class PolykeyAgent {
       vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing,
-        nodeConnectionManager,
+        nodeManager,
         notificationsManager,
         gestaltGraph,
         acl,
@@ -458,7 +438,6 @@ class PolykeyAgent {
       await discovery?.stop();
       await identitiesManager?.stop();
       await gestaltGraph?.stop();
-      await mdns?.stop();
       await acl?.stop();
       await sigchain?.stop();
       await certManager?.stop();
@@ -483,7 +462,6 @@ class PolykeyAgent {
       acl,
       gestaltGraph,
       nodeGraph,
-      mdns,
       taskManager,
       nodeConnectionManager,
       nodeManager,
@@ -504,6 +482,7 @@ class PolykeyAgent {
         agentServicePort: optionsDefaulted.agentServicePort,
         workers: optionsDefaulted.workers,
         ipv6Only: optionsDefaulted.ipv6Only,
+        seedNodes: optionsDefaulted.seedNodes,
       },
       fresh,
     });
@@ -523,7 +502,6 @@ class PolykeyAgent {
   public readonly acl: ACL;
   public readonly gestaltGraph: GestaltGraph;
   public readonly nodeGraph: NodeGraph;
-  public readonly mdns: MDNS;
   public readonly taskManager: TaskManager;
   public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
@@ -570,7 +548,6 @@ class PolykeyAgent {
     acl,
     gestaltGraph,
     nodeGraph,
-    mdns,
     taskManager,
     nodeConnectionManager,
     nodeManager,
@@ -594,7 +571,6 @@ class PolykeyAgent {
     acl: ACL;
     gestaltGraph: GestaltGraph;
     nodeGraph: NodeGraph;
-    mdns: MDNS;
     taskManager: TaskManager;
     nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
@@ -620,7 +596,6 @@ class PolykeyAgent {
     this.gestaltGraph = gestaltGraph;
     this.discovery = discovery;
     this.nodeGraph = nodeGraph;
-    this.mdns = mdns;
     this.taskManager = taskManager;
     this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
@@ -681,6 +656,7 @@ class PolykeyAgent {
         groups: Array<string>;
         port: number;
       };
+      seedNodes: SeedNodes;
     }>;
     workers?: number;
     fresh?: boolean;
@@ -698,6 +674,7 @@ class PolykeyAgent {
           groups: config.defaultsSystem.mdnsGroups,
           port: config.defaultsSystem.mdnsPort,
         },
+        seedNodes: config.defaultsUser.seedNodes,
       });
       // Register event handlers
       this.certManager.addEventListener(
@@ -768,18 +745,11 @@ class PolykeyAgent {
         host: optionsDefaulted.clientServiceHost,
         port: optionsDefaulted.clientServicePort,
       });
-      await this.mdns.start({
-        id: this.keyRing.getNodeId().toBuffer().readUint16BE(),
-        hostname: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
-        groups: optionsDefaulted.mdns.groups,
-        port: optionsDefaulted.mdns.port,
-      });
-      await this.nodeManager.start();
       await this.nodeConnectionManager.start({
         host: optionsDefaulted.agentServiceHost,
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
-        manifest: agentServerManifest({
+        agentService: agentServerManifest({
           acl: this.acl,
           db: this.db,
           keyRing: this.keyRing,
@@ -792,8 +762,39 @@ class PolykeyAgent {
           vaultManager: this.vaultManager,
         }),
       });
+      await this.nodeManager.start();
+      // Add seed nodes to the nodeGraph
+      const setNodeProms = new Array<Promise<void>>();
+      for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
+        const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+        if (nodeId == null) utils.never();
+        const setNodeProm = this.nodeManager.setNode(
+          nodeId,
+          optionsDefaulted.seedNodes[nodeIdEncoded],
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+          true,
+        );
+        setNodeProms.push(setNodeProm);
+      }
+      await Promise.all(setNodeProms);
       await this.nodeGraph.start({ fresh });
-      await this.nodeManager.syncNodeGraph(false);
+      const seedNodeEntries = Object.entries(
+        optionsDefaulted.seedNodes as SeedNodes,
+      );
+      if (seedNodeEntries.length > 0) {
+        const initialNodes = seedNodeEntries.map(
+          ([nodeIdEncoded, nodeAddress]) => {
+            const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+            if (nodeId == null) utils.never('nodeId should be defined');
+            return [nodeId, nodeAddress] as [NodeId, NodeAddress];
+          },
+        );
+        await this.nodeManager.syncNodeGraph(initialNodes, undefined, false);
+      }
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
@@ -838,7 +839,6 @@ class PolykeyAgent {
       await this.vaultManager?.stop();
       await this.discovery?.stop();
       await this.nodeGraph?.stop();
-      await this.mdns?.stop();
       await this.nodeConnectionManager?.stop();
       await this.nodeManager?.stop();
       await this.clientService.stop({ force: true });
@@ -882,7 +882,6 @@ class PolykeyAgent {
     await this.clientService.stop({ force: true });
     await this.identitiesManager.stop();
     await this.gestaltGraph.stop();
-    await this.mdns.stop();
     await this.acl.stop();
     await this.sigchain.stop();
     await this.certManager.stop();

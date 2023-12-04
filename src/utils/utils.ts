@@ -243,9 +243,13 @@ function signalPromise(signal: AbortSignal): Promise<void> {
       reject(signal.reason);
       return;
     }
-    signal.addEventListener('abort', () => {
-      reject(signal.reason);
-    });
+    signal.addEventListener(
+      'abort',
+      () => {
+        reject(signal.reason);
+      },
+      { once: true },
+    );
   });
 }
 
@@ -454,6 +458,13 @@ function lexiUnpackBuffer(b: Buffer): number {
   return lexi.unpack([...b]);
 }
 
+/**
+ * Used to yield to the event loop to allow other micro tasks to process
+ */
+async function yieldMicro() {
+  return await new Promise<void>((r) => queueMicrotask(r));
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -491,4 +502,5 @@ export {
   lexiUnpackBuffer,
   bufferWrap,
   isBufferSource,
+  yieldMicro,
 };

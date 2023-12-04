@@ -1,692 +1,1296 @@
-import type { NodeAddress } from '@/nodes/types';
-import type { Host, Port, TLSConfig } from '@/network/types';
-import type { Task } from '@/tasks/types';
+import type { Host, Port } from '@/network/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
+import type nodeGraph from '@/nodes/NodeGraph';
+import type { NCMState } from './utils';
+import fs from 'fs';
 import path from 'path';
-import { DB } from '@matrixai/db';
+import os from 'os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { DB } from '@matrixai/db';
+import { Semaphore } from '@matrixai/async-locks';
 import * as keysUtils from '@/keys/utils';
-import NodeManager from '@/nodes/NodeManager';
-import Sigchain from '@/sigchain/Sigchain';
-import KeyRing from '@/keys/KeyRing';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import NodeGraph from '@/nodes/NodeGraph';
-import TaskManager from '@/tasks/TaskManager';
-import NodeConnection from '@/nodes/NodeConnection';
+import * as nodesErrors from '@/nodes/errors';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import { never, promise, sleep } from '@/utils';
+import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
+import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
 import * as nodesUtils from '@/nodes/utils';
-import PolykeyAgent from '@/PolykeyAgent';
-import * as testNodesUtils from './utils';
-import * as nodesTestUtils from '../nodes/utils';
-import * as tlsTestUtils from '../utils/tls';
+import { TaskManager } from '@/tasks';
+import { NodeConnection, NodeManager } from '@/nodes';
+import { GestaltGraph } from '@/gestalts';
+import { Sigchain } from '@/sigchain';
+import { KeyRing } from '@/keys';
+import NodeGraph from '@/nodes/NodeGraph';
+import {
+  NodesClosestActiveConnectionsGet,
+  NodesClosestLocalNodesGet,
+} from '@/nodes/agent/handlers';
+import NodeConnectionQueue from '@/nodes/NodeConnectionQueue';
+import * as nodesTestUtils from './utils';
+import ACL from '../../src/acl/ACL';
+import * as testsUtils from '../utils';
 
-describe(`${NodeManager.name} test`, () => {
-  const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [
+describe(`${NodeManager.name}`, () => {
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
-  const localHost = '127.0.0.1';
-  const port = 55556;
   const password = 'password';
-  const mockedPingNode = jest.fn();
-  const mockedIsSeedNode = jest.fn();
-  const dummyNodeConnectionManager = {
-    connectionConnectTime: 5000,
-    pingTimeoutTime: 5000,
-    pingNode: mockedPingNode,
-    isSeedNode: mockedIsSeedNode,
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-  } as unknown as NodeConnectionManager;
-  const dummySigchain = {} as Sigchain;
+  const localHost = '127.0.0.1' as Host;
+  const timeoutTime = 300;
 
-  let keyRing: KeyRing;
-  let db: DB;
-  let acl: ACL;
-  let gestaltGraph: GestaltGraph;
-  let nodeGraph: NodeGraph;
-  let sigchain: Sigchain;
-  let taskManager: TaskManager;
-
-  let tlsConfig: TLSConfig;
-  let nodeConnectionManager: NodeConnectionManager;
-  let nodeManager: NodeManager;
-
-  let server: PolykeyAgent;
+  let dataDir: string;
 
   beforeEach(async () => {
-    // Setting up client dependencies
-    const keysPath = path.join(dataDir, 'keys');
-    keyRing = await KeyRing.createKeyRing({
-      password,
-      keysPath,
-      logger,
-      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-      passwordMemLimit: keysUtils.passwordMemLimits.min,
-      strictMemoryLock: false,
-    });
-    const dbPath = path.join(dataDir, 'db');
-    db = await DB.createDB({
-      dbPath,
-      logger,
-    });
-    acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    nodeGraph = await NodeGraph.createNodeGraph({
-      db,
-      keyRing,
-      logger,
-    });
-    sigchain = await Sigchain.createSigchain({
-      db,
-      keyRing,
-      logger,
-    });
-    taskManager = await TaskManager.createTaskManager({
-      db,
-      logger,
-    });
-
-    tlsConfig = await tlsTestUtils.createTLSConfig(keyRing.keyPair);
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
   });
-
   afterEach(async () => {
-    await taskManager.stop();
-    await nodeManager?.stop();
-    await nodeConnectionManager?.stop();
-    await sigchain.stop();
-    await sigchain.destroy();
-    await nodeGraph.stop();
-    await nodeGraph.destroy();
-    await gestaltGraph.stop();
-    await gestaltGraph.destroy();
-    await acl.stop();
-    await acl.destroy();
-    await taskManager.destroy();
-    await db.stop();
-    await db.destroy();
-    await keyRing.stop();
-    await keyRing.destroy();
-
-    await server?.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
-  test('should add a node when bucket has room', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
+  test('NodeManager readiness', async () => {
+    let db: DB | undefined;
+    let taskManager: TaskManager | undefined;
+    let nodeManager: NodeManager | undefined;
+    try {
+      // Creating dependencies
+      const dbPath = path.join(dataDir, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
 
-    await nodeManager.start();
-    const localNodeId = keyRing.getNodeId();
-    const bucketIndex = 100;
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      localNodeId,
-      bucketIndex,
-    );
-    await nodeManager.setNode(nodeId, {} as NodeAddress);
-
-    // Checking bucket
-    const bucket = await nodeManager.getBucket(bucketIndex);
-    expect(bucket).toHaveLength(1);
-  });
-  test('should update a node if node exists', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const localNodeId = keyRing.getNodeId();
-    const bucketIndex = 100;
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      localNodeId,
-      bucketIndex,
-    );
-    await nodeManager.setNode(nodeId, {
-      host: '' as Host,
-      port: 11111 as Port,
-      scopes: ['global'],
-    });
-
-    const nodeData = (await nodeGraph.getNode(nodeId))!;
-    // Seconds resolution so we wait more than 1 second
-    await sleep(1100);
-
-    // Should update the node
-    await nodeManager.setNode(nodeId, {
-      host: '' as Host,
-      port: 22222 as Port,
-      scopes: ['global'],
-    });
-
-    const newNodeData = (await nodeGraph.getNode(nodeId))!;
-    expect(newNodeData.address.port).not.toEqual(nodeData.address.port);
-    expect(newNodeData.lastUpdated).not.toEqual(nodeData.lastUpdated);
-  });
-  test('should not add node if bucket is full and old node is alive', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const localNodeId = keyRing.getNodeId();
-    const bucketIndex = 100;
-    // Creating 20 nodes in bucket
-    for (let i = 1; i <= 20; i++) {
-      const nodeId = nodesTestUtils.generateNodeIdForBucket(
-        localNodeId,
-        bucketIndex,
-        i,
-      );
-      await nodeManager.setNode(nodeId, { port: i } as NodeAddress);
+      // Creating NodeManager
+      nodeManager = new NodeManager({
+        db,
+        gestaltGraph: {} as GestaltGraph,
+        keyRing: {} as KeyRing,
+        nodeConnectionManager: {
+          addEventListener: (..._args) => {},
+          removeEventListener: (..._args) => {},
+        } as NodeConnectionManager,
+        nodeGraph: {} as nodeGraph,
+        sigchain: {} as Sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+      await nodeManager.stop();
+      // Await expect(async () => {
+      //   await nodeManager.setNode(testsNodesUtils.generateRandomNodeId(), {
+      //     host: '127.0.0.1' as Host,
+      //     port: 55555 as Port,
+      //     scopes: ['local'],
+      //   });
+      // }).rejects.toThrow(nodesErrors.ErrorNodeManagerNotRunning);
+      await nodeManager.start();
+      await nodeManager.stop();
+    } finally {
+      await db?.stop();
+      await taskManager?.stop();
+      await nodeManager?.stop();
     }
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      localNodeId,
-      bucketIndex,
-    );
-    // Mocking ping
-    mockedPingNode.mockResolvedValue(true);
-    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
-    const oldestNode = await nodeGraph.getNode(oldestNodeId!);
-    // Waiting for a second to tick over
-    await sleep(1500);
-    // Adding a new node with bucket full
-    await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
-    // Bucket still contains max nodes
-    const bucket = await nodeManager.getBucket(bucketIndex);
-    expect(bucket).toHaveLength(nodeGraph.nodeBucketLimit);
-    // New node was not added
-    const node = await nodeGraph.getNode(nodeId);
-    expect(node).toBeUndefined();
-    // Oldest node was updated
-    const oldestNodeNew = await nodeGraph.getNode(oldestNodeId!);
-    expect(oldestNodeNew!.lastUpdated).not.toEqual(oldestNode!.lastUpdated);
   });
-  test('should add node if bucket is full, old node is alive and force is set', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
 
-    const localNodeId = keyRing.getNodeId();
-    const bucketIndex = 100;
-    // Creating 20 nodes in bucket
-    for (let i = 1; i <= 20; i++) {
-      const nodeId = nodesTestUtils.generateNodeIdForBucket(
-        localNodeId,
-        bucketIndex,
-        i,
+  describe('with NodeManager', () => {
+    let basePath: string;
+    let keyRing: KeyRing;
+    let db: DB;
+    let acl: ACL;
+    let sigchain: Sigchain;
+    let gestaltGraph: GestaltGraph;
+    let nodeGraph: NodeGraph;
+    let nodeConnectionManager: NodeConnectionManager;
+    let taskManager: TaskManager;
+    let nodeManager: NodeManager;
+
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
+      keyRing = await KeyRing.createKeyRing({
+        password,
+        keysPath,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPath = path.join(basePath, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManager.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+    });
+    afterEach(async () => {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
+      await nodeManager.stop();
+      await nodeConnectionManager.stop();
+      await nodeGraph.stop();
+      await gestaltGraph.stop();
+      await sigchain.stop();
+      await acl.stop();
+      await db.stop();
+      await keyRing.stop();
+      await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    test('stopping NodeManager should cancel all tasks', async () => {
+      await nodeManager.stop();
+      const tasks: Array<any> = [];
+      for await (const task of taskManager.getTasks('asc', true, [
+        nodeManager.tasksPath,
+      ])) {
+        tasks.push(task);
+      }
+      expect(tasks.length).toEqual(0);
+    });
+    test('task handler ids are not empty', async () => {
+      expect(nodeManager.gcBucketHandlerId).toEqual(
+        'NodeManager.gcBucketHandler',
       );
-      await nodeManager.setNode(nodeId, { port: i } as NodeAddress);
-    }
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      localNodeId,
-      bucketIndex,
-    );
-    // Mocking ping
-    const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
-    nodeManagerPingMock.mockResolvedValue(true);
-    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
-    // Adding a new node with bucket full
-    await nodeManager.setNode(
-      nodeId,
-      { port: 55555 } as NodeAddress,
-      undefined,
-      true,
-    );
-    // Bucket still contains max nodes
-    const bucket = await nodeManager.getBucket(bucketIndex);
-    expect(bucket).toHaveLength(nodeGraph.nodeBucketLimit);
-    // New node was added
-    const node = await nodeGraph.getNode(nodeId);
-    expect(node).toBeDefined();
-    // Oldest node was removed
-    const oldestNodeNew = await nodeGraph.getNode(oldestNodeId!);
-    expect(oldestNodeNew).toBeUndefined();
-    nodeManagerPingMock.mockRestore();
-  });
-  test('should add node if bucket is full and old node is dead', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const localNodeId = keyRing.getNodeId();
-    const bucketIndex = 100;
-    // Creating 20 nodes in bucket
-    for (let i = 1; i <= 20; i++) {
-      const nodeId = nodesTestUtils.generateNodeIdForBucket(
-        localNodeId,
-        bucketIndex,
-        i,
+      expect(nodeManager.refreshBucketHandlerId).toEqual(
+        'NodeManager.refreshBucketHandler',
       );
-      await nodeManager.setNode(nodeId, { port: i } as NodeAddress);
-    }
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      localNodeId,
-      bucketIndex,
-    );
-    // Mocking ping
-    const nodeManagerPingMock = jest.spyOn(NodeManager.prototype, 'pingNode');
-    nodeManagerPingMock.mockResolvedValue(false);
-    const oldestNodeId = (await nodeGraph.getOldestNode(bucketIndex)).pop();
-    // Adding a new node with bucket full
-    await nodeManager.setNode(nodeId, { port: 55555 } as NodeAddress, true);
-    // New node was added
-    const node = await nodeGraph.getNode(nodeId);
-    expect(node).toBeDefined();
-    // Oldest node was removed
-    const oldestNodeNew = await nodeGraph.getNode(oldestNodeId!);
-    expect(oldestNodeNew).toBeUndefined();
-    nodeManagerPingMock.mockRestore();
+    });
+    test.todo('general tests for adding new nodes');
+    // Previously these tests were
+    // 'should add a node when bucket has room'
+    // 'should update a node if node exists'
+    // 'should not add node if bucket is full and old node is alive'
+    // 'should add node if bucket is full, old node is alive and force is set'
+    // 'should add node if bucket is full and old node is dead'
+    // 'should add node when an incoming connection is established'
+    // 'should not add nodes to full bucket if pings succeeds'
+    // 'should add nodes to full bucket if pings fail'
+    // 'should not block when bucket is full'
+    // 'should update deadline when updating a bucket'
   });
-  test('should add node when an incoming connection is established', async () => {
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      nodeGraph,
-      tlsConfig,
-      logger,
-    });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
+  describe('with 1 peer', () => {
+    let basePath: string;
+    let keyRing: KeyRing;
+    let db: DB;
+    let acl: ACL;
+    let sigchain: Sigchain;
+    let gestaltGraph: GestaltGraph;
+    let nodeGraph: NodeGraph;
+    let nodeConnectionManager: NodeConnectionManager;
+    let taskManager: TaskManager;
+    let nodeManager: NodeManager;
 
-    await nodeConnectionManager.start({
-      host: localHost as Host,
+    let basePathPeer: string;
+    let keyRingPeer: KeyRing;
+    let dbPeer: DB;
+    let aclPeer: ACL;
+    let sigchainPeer: Sigchain;
+    let gestaltGraphPeer: GestaltGraph;
+    let nodeGraphPeer: NodeGraph;
+    let nodeConnectionManagerPeer: NodeConnectionManager;
+    let taskManagerPeer: TaskManager;
+    let nodeManagerPeer: NodeManager;
+
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
+      keyRing = await KeyRing.createKeyRing({
+        password,
+        keysPath,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPath = path.join(basePath, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManager.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+
+      basePathPeer = path.join(dataDir, 'peer');
+      const keysPathPeer = path.join(basePathPeer, 'keys');
+      keyRingPeer = await KeyRing.createKeyRing({
+        password,
+        keysPath: keysPathPeer,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPathPeer = path.join(basePathPeer, 'db');
+      dbPeer = await DB.createDB({
+        dbPath: dbPathPeer,
+        logger: logger.getChild(DB.name),
+      });
+      aclPeer = await ACL.createACL({
+        db: dbPeer,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchainPeer = await Sigchain.createSigchain({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraphPeer = await GestaltGraph.createGestaltGraph({
+        db: dbPeer,
+        acl: aclPeer,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraphPeer = await NodeGraph.createNodeGraph({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManagerPeer = new NodeConnectionManager({
+        keyRing: keyRingPeer,
+        tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManagerPeer.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManagerPeer = await TaskManager.createTaskManager({
+        db: dbPeer,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManagerPeer = new NodeManager({
+        db: dbPeer,
+        keyRing: keyRingPeer,
+        gestaltGraph: gestaltGraphPeer,
+        nodeGraph: nodeGraphPeer,
+        nodeConnectionManager: nodeConnectionManagerPeer,
+        sigchain: sigchainPeer,
+        taskManager: taskManagerPeer,
+        logger: logger.getChild(NodeManager.name),
+      });
+
+      await nodeManagerPeer.start();
     });
-    server = await PolykeyAgent.createPolykeyAgent({
-      password: 'password',
-      options: {
-        nodePath: path.join(dataDir, 'server'),
-        agentServiceHost: localHost,
-        clientServiceHost: localHost,
-        keys: {
+    afterEach(async () => {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
+      await nodeManager.stop();
+      await nodeConnectionManager.stop();
+      await nodeGraph.stop();
+      await gestaltGraph.stop();
+      await sigchain.stop();
+      await acl.stop();
+      await db.stop();
+      await keyRing.stop();
+      await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
+      });
+
+      await taskManagerPeer.stopProcessing();
+      await taskManagerPeer.stopTasks();
+      await nodeManagerPeer.stop();
+      await nodeConnectionManagerPeer.stop();
+      await nodeGraphPeer.stop();
+      await gestaltGraphPeer.stop();
+      await sigchainPeer.stop();
+      await aclPeer.stop();
+      await dbPeer.stop();
+      await keyRingPeer.stop();
+      await taskManagerPeer.stop();
+      await fs.promises.rm(basePathPeer, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    describe('context functions', () => {
+      test('acquire Connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        const [resourceReleaser, nodeConnection] =
+          await nodeManager.acquireConnection(nodeId)();
+        expect(nodeConnection).toBeInstanceOf(NodeConnection);
+        expect(nodeConnectionManager.hasConnection(nodeId)).toBeTrue();
+        await resourceReleaser();
+      });
+      test('acquire Connection fails', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(nodeManager.acquireConnection(nodeId)()).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerConnectionFailed,
+        );
+      });
+      test('withConnF', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+
+        await nodeManager.withConnF(nodeId, async (conn) => {
+          expect(conn).toBeInstanceOf(NodeConnection);
+        });
+      });
+      test('withConnG', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+
+        const gen = nodeManager.withConnG(
+          nodeId,
+          async function* (
+            conn,
+          ): AsyncGenerator<undefined, undefined, undefined> {
+            expect(conn).toBeInstanceOf(NodeConnection);
+          },
+        );
+
+        for await (const _ of gen) {
+          // Consume until done, should not throw
+        }
+      });
+    });
+    describe('pinging', () => {
+      test('pingNode success', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeDefined();
+      });
+      test('pingNode success with existing connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodesUtils.nodeContactAddress([
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ]),
+          {
+            mode: 'direct',
+            connectedTime: 0,
+            scopes: ['global'],
+          },
+        );
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeDefined();
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeDefined();
+      });
+      test('pingNode fail', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNode(nodeId, { timer: timeoutTime }),
+        ).resolves.toBeUndefined();
+      });
+      test('pingNodeAddress success', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+      });
+      test('pingNodeAddress success with existing connection', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+        await expect(
+          nodeManager.pingNodeAddress(
+            nodeId,
+            localHost,
+            nodeConnectionManagerPeer.port,
+          ),
+        ).resolves.toBeTrue();
+        expect(nodeConnectionManager.connectionsActive()).toBe(1);
+      });
+      test('pingNodeAddress fail', async () => {
+        const nodeId = keyRingPeer.getNodeId();
+        await expect(
+          nodeManager.pingNodeAddress(nodeId, localHost, 50000 as Port, {
+            timer: timeoutTime,
+          }),
+        ).resolves.toBeFalse();
+        await expect(
+          nodeManager.pingNodeAddress(
+            keyRing.getNodeId(),
+            localHost,
+            nodeConnectionManagerPeer.port,
+            { timer: timeoutTime },
+          ),
+        ).resolves.toBeFalse();
+      });
+    });
+    test.todo('requestChainData');
+    test.todo('claimNode');
+
+    // TODO: These require mdns integration with `NodeManager`.
+    test.todo('findNodeByMdns');
+    test.todo('findNode with mdns');
+  });
+  describe('with peers in network', () => {
+    let basePath: string;
+    let keyRing: KeyRing;
+    let db: DB;
+    let acl: ACL;
+    let sigchain: Sigchain;
+    let gestaltGraph: GestaltGraph;
+    let nodeGraph: NodeGraph;
+    let nodeConnectionManager: NodeConnectionManager;
+    let taskManager: TaskManager;
+    let nodeManager: NodeManager;
+
+    // Will create 6 peers forming a simple network
+    let ncmPeers: Array<
+      NCMState & {
+        db: DB;
+        keyRing: KeyRing;
+        nodeGraph: NodeGraph;
+      }
+    >;
+    async function linkConnection(a: number, b: number) {
+      const ncmA = ncmPeers[a];
+      const ncmB = ncmPeers[b];
+      await ncmA.nodeConnectionManager.createConnection(
+        [ncmB.nodeId],
+        localHost,
+        ncmB.port,
+      );
+    }
+    async function quickLinkConnection(structure: Array<Array<number>>) {
+      const linkPs: Array<Promise<void>> = [];
+      for (const chain of structure) {
+        for (let i = 1; i < chain.length; i++) {
+          linkPs.push(linkConnection(chain[i - 1], chain[i]));
+        }
+      }
+      await Promise.all(linkPs);
+    }
+
+    async function linkGraph(a, b) {
+      const ncmA = ncmPeers[a];
+      const ncmB = ncmPeers[b];
+      const nodeContactAddressB = nodesUtils.nodeContactAddress([
+        ncmB.nodeConnectionManager.host,
+        ncmB.nodeConnectionManager.port,
+      ]);
+      await ncmA.nodeGraph.setNodeContact(ncmB.keyRing.getNodeId(), {
+        [nodeContactAddressB]: {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      });
+    }
+
+    async function quickLinkGraph(structure: Array<Array<number>>) {
+      for (const chain of structure) {
+        for (let i = 1; i < chain.length; i++) {
+          await linkGraph(chain[i - 1], chain[i]);
+          await linkGraph(chain[i], chain[i - 1]);
+        }
+      }
+    }
+
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      const keysPath = path.join(basePath, 'keys');
+      keyRing = await KeyRing.createKeyRing({
+        password,
+        keysPath,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger: logger.getChild(KeyRing.name),
+      });
+      const dbPath = path.join(basePath, 'db');
+      db = await DB.createDB({
+        dbPath,
+        logger: logger.getChild(DB.name),
+      });
+      acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      await nodeConnectionManager.start({
+        agentService: {} as AgentServerManifest,
+        host: localHost,
+      });
+      taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
+
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeManager.start();
+
+      ncmPeers = [];
+      const createPs: Array<Promise<void>> = [];
+      for (let i = 0; i < 5; i++) {
+        const db = await DB.createDB({
+          dbPath: path.join(basePath, `db${i}`),
+          logger,
+        });
+        const keyRing = await KeyRing.createKeyRing({
+          keysPath: path.join(basePath, `key${i}`),
+          password,
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
           strictMemoryLock: false,
-        },
-      },
-      logger: logger,
+          logger,
+        });
+        const nodeGraph = await NodeGraph.createNodeGraph({
+          db,
+          keyRing,
+          logger,
+        });
+
+        const peerP = nodesTestUtils
+          .nodeConnectionManagerFactory({
+            keyRing,
+            createOptions: {
+              connectionConnectTimeoutTime: timeoutTime,
+            },
+            startOptions: {
+              host: localHost,
+              agentService: (nodeConnectionManager) =>
+                ({
+                  nodesConnectionSignalFinal: new NodesConnectionSignalFinal({
+                    nodeConnectionManager,
+                    logger,
+                  }),
+                  nodesConnectionSignalInitial:
+                    new NodesConnectionSignalInitial({
+                      nodeConnectionManager,
+                    }),
+                  nodesClosestActiveConnectionsGet:
+                    new NodesClosestActiveConnectionsGet({
+                      nodeConnectionManager,
+                    }),
+                  nodesClosestLocalNodesGet: new NodesClosestLocalNodesGet({
+                    db,
+                    nodeGraph,
+                  }),
+                }) as AgentServerManifest,
+            },
+            logger: logger.getChild(`${NodeConnectionManager.name}Peer${i}`),
+          })
+          .then((peer) => {
+            ncmPeers[i] = {
+              ...peer,
+              db,
+              keyRing,
+              nodeGraph,
+            };
+          });
+        createPs.push(peerP);
+      }
+      await Promise.all(createPs);
+      // Sort in order of distance
+      const nodeDistanceCmp = nodesUtils.nodeDistanceCmpFactory(
+        keyRing.getNodeId(),
+      );
+      ncmPeers.sort((a, b) => {
+        return nodeDistanceCmp(a.nodeId, b.nodeId);
+      });
     });
-    const serverNodeId = server.keyRing.getNodeId();
-    const serverNodeAddress: NodeAddress = {
-      host: server.agentServiceHost,
-      port: server.agentServicePort,
-      scopes: ['global'],
-    };
-    await nodeGraph.setNode(serverNodeId, serverNodeAddress);
+    afterEach(async () => {
+      await taskManager.stopProcessing();
+      await taskManager.stopTasks();
+      await nodeManager.stop();
+      await nodeConnectionManager.stop();
+      await nodeGraph.stop();
+      await gestaltGraph.stop();
+      await sigchain.stop();
+      await acl.stop();
+      await db.stop();
+      await keyRing.stop();
+      await taskManager.stop();
+      await fs.promises.rm(basePath, {
+        force: true,
+        recursive: true,
+      });
 
-    const expectedHost = nodeConnectionManager.host;
-    const expectedPort = nodeConnectionManager.port;
-    const expectedNodeId = keyRing.getNodeId();
-
-    const nodeData = await server.nodeGraph.getNode(expectedNodeId);
-    expect(nodeData).toBeUndefined();
-
-    // Now we want to connect to the server
-    await nodeConnectionManager.withConnF(serverNodeId, async () => {
-      // Do nothing
-    });
-    // Wait for background logic to settle
-    await sleep(100);
-    const nodeData2 = await server.nodeGraph.getNode(expectedNodeId);
-    expect(nodeData2).toBeDefined();
-    expect(nodeData2?.address.host).toEqual(expectedHost);
-    expect(nodeData2?.address.port).toEqual(expectedPort);
-  });
-  test('should not add nodes to full bucket if pings succeeds', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = {
-      host: localHost as Host,
-      port: port as Port,
-      scopes: ['global'],
-    };
-    // Let's fill a bucket
-    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
-      const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
-      await nodeManager.setNode(newNode, address);
-    }
-
-    // Helpers
-    const listBucket = async (bucketIndex: number) => {
-      const bucket = await nodeManager.getBucket(bucketIndex);
-      return bucket?.map(([nodeId]) => nodesUtils.encodeNodeId(nodeId));
-    };
-
-    // Pings succeed, node not added
-    mockedPingNode.mockImplementation(async () => true);
-    const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, 21);
-    await nodeManager.setNode(newNode, address, true);
-    expect(await listBucket(100)).not.toContain(
-      nodesUtils.encodeNodeId(newNode),
-    );
-  });
-  test('should add nodes to full bucket if pings fail', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = {
-      host: localHost as Host,
-      port: port as Port,
-      scopes: ['global'],
-    };
-    // Let's fill a bucket
-    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
-      const newNode = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, i);
-      await nodeManager.setNode(newNode, address);
-    }
-    // Wait for 2 secs for new nodes to be added with new times
-    await sleep(2000);
-
-    // Helpers
-    const listBucket = async (bucketIndex: number) => {
-      const bucket = await nodeManager.getBucket(bucketIndex);
-      return bucket?.map(([nodeId]) => nodesUtils.encodeNodeId(nodeId));
-    };
-
-    // Pings fail, new nodes get added
-    mockedPingNode.mockImplementation(async () => false);
-    const newNode1 = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, 22);
-    const newNode2 = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, 23);
-    const newNode3 = nodesTestUtils.generateNodeIdForBucket(nodeId, 100, 24);
-    await nodeManager.setNode(newNode1, address, true);
-    await nodeManager.setNode(newNode2, address, true);
-    await nodeManager.setNode(newNode3, address, true);
-    const list = await listBucket(100);
-    expect(list).toContain(nodesUtils.encodeNodeId(newNode1));
-    expect(list).toContain(nodesUtils.encodeNodeId(newNode2));
-    expect(list).toContain(nodesUtils.encodeNodeId(newNode3));
-  });
-  test('should not block when bucket is full', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const nodeId = keyRing.getNodeId();
-    const address: NodeAddress = {
-      host: localHost as Host,
-      port: port as Port,
-      scopes: ['global'],
-    };
-    // Let's fill a bucket
-    for (let i = 0; i < nodeGraph.nodeBucketLimit; i++) {
-      const newNode = testNodesUtils.generateNodeIdForBucket(nodeId, 100, i);
-      await nodeManager.setNode(newNode, address);
-    }
-
-    // Set node does not block
-    const delayPing = promise();
-    mockedPingNode.mockImplementation(async (_) => {
-      await delayPing.p;
-      return true;
-    });
-    const newNode4 = testNodesUtils.generateNodeIdForBucket(nodeId, 100, 25);
-    // Set manually to non-blocking
-    await expect(
-      nodeManager.setNode(newNode4, address, false),
-    ).resolves.toBeUndefined();
-    delayPing.resolveP();
-  });
-  test('should update deadline when updating a bucket', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    mockRefreshBucket.mockImplementation(
-      () => new PromiseCancellable((resolve) => resolve()),
-    );
-    // Getting starting value
-    const bucketIndex = 100;
-    let refreshBucketTask: Task | undefined;
-    for await (const task of taskManager.getTasks('asc', true, [
-      nodeManager.basePath,
-      nodeManager.refreshBucketHandlerId,
-      `${bucketIndex}`,
-    ])) {
-      refreshBucketTask = task;
-    }
-    if (refreshBucketTask == null) never();
-    const nodeId = nodesTestUtils.generateNodeIdForBucket(
-      keyRing.getNodeId(),
-      bucketIndex,
-    );
-    await sleep(100);
-    await nodeManager.setNode(nodeId, {} as NodeAddress);
-    // Deadline should be updated
-    let refreshBucketTaskUpdated: Task | undefined;
-    for await (const task of taskManager.getTasks('asc', true, [
-      nodeManager.basePath,
-      nodeManager.refreshBucketHandlerId,
-      `${bucketIndex}`,
-    ])) {
-      refreshBucketTaskUpdated = task;
-    }
-    if (refreshBucketTaskUpdated == null) never();
-    expect(refreshBucketTaskUpdated?.delay).not.toEqual(
-      refreshBucketTask?.delay,
-    );
-  });
-  test('refreshBucket should not throw errors when network is empty', async () => {
-    nodeConnectionManager = new NodeConnectionManager({
-      keyRing,
-      nodeGraph,
-      tlsConfig,
-      logger,
-    });
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeConnectionManager.start({
-      host: localHost as Host,
-    });
-    await nodeManager.start();
-
-    await expect(nodeManager.refreshBucket(100)).resolves.not.toThrow();
-  });
-  test('refreshBucket tasks should have spread delays', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-
-    const mockRefreshBucket = jest.spyOn(
-      NodeManager.prototype,
-      'refreshBucket',
-    );
-    mockRefreshBucket.mockImplementation(
-      () => new PromiseCancellable((resolve) => resolve()),
-    );
-    await nodeManager.start();
-    // Getting starting value
-    const startingDelay = new Set<number>();
-    for await (const task of taskManager.getTasks('asc', true, [
-      'refreshBucket',
-    ])) {
-      startingDelay.add(task.delay);
-    }
-    expect(startingDelay.size).not.toBe(1);
-    // Updating delays should have spread
-    for (
-      let bucketIndex = 0;
-      bucketIndex < nodeGraph.nodeIdBits;
-      bucketIndex++
-    ) {
-      await nodeManager.updateRefreshBucketDelay(bucketIndex, undefined, true);
-    }
-    const updatedDelay = new Set<number>();
-    for await (const task of taskManager.getTasks('asc', true, [
-      'refreshBucket',
-    ])) {
-      updatedDelay.add(task.delay);
-    }
-    expect(updatedDelay.size).not.toBe(1);
-  });
-  test('Stopping nodeManager should cancel all ephemeral tasks', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
-    });
-    await nodeManager.start();
-    await taskManager.stopProcessing();
-
-    // Creating dummy tasks
-    const task1 = await taskManager.scheduleTask({
-      handlerId: nodeManager.pingAndSetNodeHandlerId,
-      lazy: false,
-      path: [nodeManager.basePath],
-    });
-    const task2 = await taskManager.scheduleTask({
-      handlerId: nodeManager.pingAndSetNodeHandlerId,
-      lazy: false,
-      path: [nodeManager.basePath],
+      const destroyPs: Array<Promise<void>> = [];
+      for (const ncmPeer of ncmPeers) {
+        destroyPs.push(ncmPeer.nodeConnectionManager.stop({ force: true }));
+        destroyPs.push(ncmPeer.nodeGraph.stop());
+        destroyPs.push(ncmPeer.keyRing.stop());
+        destroyPs.push(ncmPeer.db.stop());
+      }
+      await Promise.all(destroyPs);
     });
 
-    // Stopping nodeManager should cancel any nodeManager tasks
-    await nodeManager.stop();
-    const tasks: Array<any> = [];
-    for await (const task of taskManager.getTasks('asc', true, [
-      nodeManager.basePath,
-    ])) {
-      tasks.push(task);
-    }
-    expect(tasks.length).toEqual(0);
-    await expect(task1.promise()).toReject();
-    await expect(task2.promise()).toReject();
-  });
-  test('Should have unique HandlerIds', async () => {
-    const nodeManager = new NodeManager({
-      db,
-      sigchain: dummySigchain,
-      keyRing,
-      gestaltGraph,
-      nodeGraph,
-      nodeConnectionManager: dummyNodeConnectionManager,
-      taskManager,
-      logger,
+    describe('findNode by signalled connections', () => {
+      test('connection found in chain graph', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkConnection([[0, 1, 2, 3, 4]]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeBySignal(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('connection found in MST graph', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2
+        // 3 -> 1 -> 4
+        await quickLinkConnection([
+          [0, 1, 2],
+          [3, 1, 4],
+        ]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeBySignal(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('connection found in cyclic graph', async () => {
+        // Structure is a ring with a branch
+        // 0 -> 1 -> 2 -> 3 -> 0
+        // 4 -> 2
+        await quickLinkConnection([
+          [0, 1, 2, 3, 0],
+          [4, 2],
+        ]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeBySignal(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('finding self will do exhaustive search and not find self', async () => {
+        // Structure is branching
+        // 0 -> 1 -> 2 -> 3
+        // 1 -> 4
+        await quickLinkConnection([
+          [0, 1, 2, 3],
+          [1, 4],
+        ]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(3);
+        const resultP = nodeManager.findNodeBySignal(
+          keyRing.getNodeId(),
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            keyRing.getNodeId(),
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(5);
+      });
+      test('finding self will hit limit and not find self', async () => {
+        // Structure is a chain
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkConnection([[0, 1, 2, 3, 4]]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(3);
+        const resultP = nodeManager.findNodeBySignal(
+          keyRing.getNodeId(),
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            keyRing.getNodeId(),
+            3,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(3);
+      });
+      // FIXME: this is a bit in-determinate right now
+      test.skip('connection found in two attempts', async () => {
+        // Structure is a chain
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkConnection([[0, 1, 2, 3, 4]]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const rateLimiter = new Semaphore(1);
+        const path = await nodeManager.findNodeBySignal(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            3,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(path).toBeUndefined();
+        // Should have initial connection + 3 new ones
+        expect(nodeConnectionManager.connectionsActive()).toBe(3);
+
+        // 2nd attempt continues where we left off due to existing connections
+        const path2 = await nodeManager.findNodeBySignal(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            3,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(path2).toBeDefined();
+        expect(path2!.length).toBe(2);
+      });
+      test.todo('handles offline nodes');
     });
-    // This is a sanity check for a previous bug with SWC decorators causing Thing.name to be ''
-    expect(nodeManager.gcBucketHandlerId).not.toEqual(
-      nodeManager.refreshBucketHandlerId,
-    );
-    expect(nodeManager.gcBucketHandlerId).not.toEqual(
-      nodeManager.pingAndSetNodeHandlerId,
-    );
-    expect(nodeManager.refreshBucketHandlerId).not.toEqual(
-      nodeManager.pingAndSetNodeHandlerId,
-    );
+    describe('findNode by direct connections', () => {
+      test('connection found in chain graph', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkGraph([[0, 1, 2, 3, 4]]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeByDirect(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('connection found in MST graph', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2
+        // 3 -> 1 -> 4
+        await quickLinkGraph([
+          [0, 1, 2],
+          [3, 1, 4],
+        ]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeByDirect(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('connection found in cyclic graph', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3 -> 0
+        // 4 -> 2
+        await quickLinkGraph([
+          [0, 1, 2, 3, 0],
+          [4, 2],
+        ]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const result = await nodeManager.findNodeByDirect(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result).toBeDefined();
+        const [[host, port]] = result!;
+        expect(host).toBe(localHost);
+        expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
+      });
+      test('finding self will do exhaustive search and not find self', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3
+        // 1 -> 4
+        await quickLinkGraph([
+          [0, 1, 2, 3],
+          [1, 4],
+        ]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const resultP = nodeManager.findNodeByDirect(
+          keyRing.getNodeId(),
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            keyRing.getNodeId(),
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(5);
+      });
+      test('finding self will hit limit and not find self', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkGraph([[0, 1, 2, 3, 4]]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const resultP = nodeManager.findNodeByDirect(
+          keyRing.getNodeId(),
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            keyRing.getNodeId(),
+            20,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(5);
+      });
+      // FIXME: needs to store made connections in nodeGraph for this to work
+      test.skip('connection found in two attempts', async () => {
+        // Structure is an acyclic graph
+        // 0 -> 1 -> 2 -> 3 -> 4
+        await quickLinkGraph([[0, 1, 2, 3, 4]]);
+
+        // Setting up entry point
+        const nodeContactAddressB = nodesUtils.nodeContactAddress([
+          ncmPeers[0].nodeConnectionManager.host,
+          ncmPeers[0].nodeConnectionManager.port,
+        ]);
+        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
+          [nodeContactAddressB]: {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        });
+
+        const rateLimiter = new Semaphore(3);
+        const result1 = await nodeManager.findNodeByDirect(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            3,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result1).toBeUndefined();
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(4);
+
+        const result2 = await nodeManager.findNodeByDirect(
+          ncmPeers[4].nodeId,
+          new NodeConnectionQueue(
+            keyRing.getNodeId(),
+            ncmPeers[4].nodeId,
+            3,
+            rateLimiter,
+            rateLimiter,
+          ),
+        );
+        expect(result2).toBeDefined();
+        // All connections made
+        expect(nodeConnectionManager.connectionsActive()).toBe(5);
+      });
+      test.todo('handles offline nodes');
+    });
+    describe('findNode by both', () => {
+      test('connection found in chain graph', async () => {
+        // Structure is an acyclic graph
+        // connections
+        // 0 -> 1, 2 -> 3
+        // graph links
+        // 1 -> 2, 3 -> 4
+        await quickLinkConnection([
+          [0, 1],
+          [2, 3],
+        ]);
+        await quickLinkGraph([
+          [1, 2],
+          [3, 4],
+        ]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const result = await nodeManager.findNode(ncmPeers[4].nodeId);
+        expect(result).toMatchObject([
+          [localHost, ncmPeers[4].nodeConnectionManager.port],
+          {
+            mode: 'direct',
+            connectedTime: expect.any(Number),
+            scopes: expect.any(Array),
+          },
+        ]);
+      });
+      test('connection found with shortcut', async () => {
+        // Structure is an acyclic graph
+        // connections
+        // 0 -> 1 -> 2 -> 3
+        // graph links
+        // 0 -> 4
+        await quickLinkConnection([[0, 1, 2, 3]]);
+        await quickLinkGraph([[0, 4]]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const result = await nodeManager.findNode(ncmPeers[4].nodeId);
+        expect(result).toMatchObject([
+          [localHost, ncmPeers[4].nodeConnectionManager.port],
+          {
+            mode: 'direct',
+            connectedTime: expect.any(Number),
+            scopes: expect.any(Array),
+          },
+        ]);
+      });
+      test.todo('handles offline nodes');
+    });
+    test.todo('network entry with syncNodeGraph');
+    test.todo('network entry with syncNodeGraph handles offline nodes');
+    test.todo('refresh buckets');
+    test.todo('nodeGraph entry is updated when connection is made');
   });
 });

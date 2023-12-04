@@ -32,7 +32,6 @@ describe('nodesCrossSignClaim', () => {
     new StreamHandler(),
   ]);
   const password = 'password';
-  const crypto = tlsTestsUtils.createCrypto();
   const localHost = '127.0.0.1';
 
   let dataDir: string;
@@ -137,10 +136,7 @@ describe('nodesCrossSignClaim', () => {
           return undefined;
         },
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicServerCrypto,
       logger,
     });
     const handleStream = async (
@@ -203,9 +199,7 @@ describe('nodesCrossSignClaim', () => {
     localNodeId = keysUtils.publicKeyToNodeId(clientKeyPair.publicKey);
     const tlsConfigClient = await tlsTestsUtils.createTLSConfig(clientKeyPair);
     quicClient = await QUICClient.createQUICClient({
-      crypto: {
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicClientCrypto,
       config: {
         key: tlsConfigClient.keyPrivatePem,
         cert: tlsConfigClient.certChainPem,

@@ -6,7 +6,6 @@ import type {
 } from '../types';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type { Host, Port } from '../../../network/types';
-import type { NodeAddress } from '../../../nodes/types';
 import type { JSONValue } from '../../../types';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
@@ -50,16 +49,14 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     if (remotePort == null || typeof remotePort !== 'number') {
       never('Missing or invalid remotePort');
     }
-    const address: NodeAddress = {
-      host: remoteHost as Host,
-      port: remotePort as Port,
-      scopes: ['global'],
-    };
     const targetAddress =
       await nodeConnectionManager.handleNodesConnectionSignalInitial(
         requestingNodeId,
         targetNodeId,
-        address,
+        {
+          host: remoteHost as Host,
+          port: remotePort as Port,
+        },
         input.signature,
       );
     return {

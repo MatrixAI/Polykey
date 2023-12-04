@@ -5,7 +5,8 @@ import type {
   NodesFindMessage,
 } from '../types';
 import type { NodeId } from '../../ids';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+import type NodeManager from '../../nodes/NodeManager';
+import type { ContextTimed } from '@matrixai/contexts';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids';
 import * as nodesErrors from '../../nodes/errors';
@@ -14,15 +15,18 @@ import { matchSync } from '../../utils';
 
 class NodesFind extends UnaryHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeManager: NodeManager;
   },
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<NodesFindMessage>
 > {
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
+    _cancel,
+    _meta,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<NodesFindMessage>> => {
-    const { nodeConnectionManager } = this.container;
+    const { nodeManager } = this.container;
 
     const {
       nodeId,
@@ -39,12 +43,21 @@ class NodesFind extends UnaryHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
-    const addresses = await nodeConnectionManager.findNodeAll(nodeId);
-    if (addresses.length === 0) {
+    const result = await nodeManager.findNode(
+      nodeId,
+      undefined,
+      undefined,
+      undefined,
+      ctx,
+    );
+    if (result == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }
-
-    return { addresses };
+    const [nodeAddress, nodeContactAddressData] = result;
+    return {
+      nodeAddress,
+      nodeContactAddressData,
+    };
   };
 }
 

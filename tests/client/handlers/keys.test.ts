@@ -567,7 +567,7 @@ describe('keysKeyPairRenew', () => {
     expect(mockedRefreshBuckets).toHaveBeenCalledTimes(0);
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
-    const certChangeEventProm = testsUtils.promFromEvent(
+    const certChangeEventP = testsUtils.promFromEvent(
       pkAgent.certManager,
       keysEvents.EventCertManagerCertChange,
     );
@@ -576,7 +576,7 @@ describe('keysKeyPairRenew', () => {
       password: 'somepassphrase',
     });
     // Awaiting change to propagate
-    await certChangeEventProm.p;
+    await certChangeEventP;
     // Wait some time after event for domains to update
     await utils.sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;
@@ -695,7 +695,7 @@ describe('keysKeyPairReset', () => {
     expect(mockedRefreshBuckets).not.toHaveBeenCalled();
     expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
     expect(nodeId1.equals(nodeIdStatus1)).toBe(true);
-    const certChangeEventProm = testsUtils.promFromEvent(
+    const certChangeEventP = testsUtils.promFromEvent(
       pkAgent.certManager,
       keysEvents.EventCertManagerCertChange,
     );
@@ -704,7 +704,7 @@ describe('keysKeyPairReset', () => {
       password: 'somepassphrase',
     });
     // Awaiting change to propagate
-    await certChangeEventProm.p;
+    await certChangeEventP;
     // Wait some time after event for domains to update
     await utils.sleep(500);
     const rootKeyPair2 = pkAgent.keyRing.keyPair;

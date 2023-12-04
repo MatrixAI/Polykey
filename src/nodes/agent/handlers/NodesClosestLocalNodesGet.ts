@@ -2,7 +2,7 @@ import type { DB } from '@matrixai/db';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  NodeAddressMessage,
+  NodeContactMessage,
   NodeIdMessage,
 } from '../types';
 import type NodeGraph from '../../NodeGraph';
@@ -22,11 +22,11 @@ class NodesClosestLocalNodesGet extends ServerHandler<
     db: DB;
   },
   AgentRPCRequestParams<NodeIdMessage>,
-  AgentRPCResponseResult<NodeAddressMessage>
+  AgentRPCResponseResult<NodeContactMessage>
 > {
   public handle = async function* (
     input: AgentRPCRequestParams<NodeIdMessage>,
-  ): AsyncGenerator<AgentRPCResponseResult<NodeAddressMessage>> {
+  ): AsyncGenerator<AgentRPCResponseResult<NodeContactMessage>> {
     const { nodeGraph, db } = this.container;
 
     const {
@@ -46,18 +46,17 @@ class NodesClosestLocalNodesGet extends ServerHandler<
     );
     // Get all local nodes that are closest to the target node from the request
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
-      AgentRPCResponseResult<NodeAddressMessage>
+      AgentRPCResponseResult<NodeContactMessage>
     > {
       const closestNodes = await nodeGraph.getClosestNodes(
         nodeId,
         undefined,
         tran,
       );
-      for (const [nodeId, nodeData] of closestNodes) {
+      for (const [nodeId, nodeContact] of closestNodes) {
         yield {
           nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
-          host: nodeData.address.host,
-          port: nodeData.address.port,
+          nodeContact,
         };
       }
     });

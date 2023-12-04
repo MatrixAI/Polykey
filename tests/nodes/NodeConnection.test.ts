@@ -1,6 +1,8 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { RPCStream } from '@matrixai/rpc';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
+import type { AgentClientManifest } from '@/nodes/agent/callers';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
@@ -22,7 +24,6 @@ describe(`${NodeConnection.name}`, () => {
     ),
   ]);
   const localHost = '127.0.0.1';
-  const crypto = tlsTestUtils.createCrypto();
 
   let serverTlsConfig: TLSConfig;
   let clientTlsConfig: TLSConfig;
@@ -34,12 +35,12 @@ describe(`${NodeConnection.name}`, () => {
   let rpcServer: RPCServer;
   let clientSocket: QUICSocket;
 
-  const nodeConnections: Array<NodeConnection<any>> = [];
+  const nodeConnections: Array<NodeConnection> = [];
   /**
    * Adds created nodeConnections to the `nodeConnections` array for automated cleanup.
    * @param nc
    */
-  const extractNodeConnection = (nc: NodeConnection<any>) => {
+  const extractNodeConnection = (nc: NodeConnection) => {
     nodeConnections.push(nc);
     return nc;
   };
@@ -74,10 +75,7 @@ describe(`${NodeConnection.name}`, () => {
         verifyPeer: true,
         verifyCallback: nodesUtils.verifyClientCertificateChain,
       },
-      crypto: {
-        key: keysUtils.generateKey(),
-        ops: crypto,
-      },
+      crypto: nodesUtils.quicServerCrypto,
       socket: serverSocket,
       logger: logger.getChild(`${QUICServer.name}`),
     });
@@ -85,7 +83,7 @@ describe(`${NodeConnection.name}`, () => {
       fromError: networkUtils.fromError,
       logger: logger.getChild(`${RPCServer.name}`),
     });
-    await rpcServer.start({ manifest: {} });
+    await rpcServer.start({ manifest: {} as AgentServerManifest });
     // Setting up handling
     logger.info('Setting up connection handling for server');
     quicServer.addEventListener(
@@ -125,9 +123,8 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -140,9 +137,8 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -153,10 +149,9 @@ describe(`${NodeConnection.name}`, () => {
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: 12345 as Port,
-        manifest: {},
+        manifest: {} as AgentClientManifest,
         connectionKeepAliveTimeoutTime: 1000,
         tlsConfig: clientTlsConfig,
-        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
@@ -172,31 +167,29 @@ describe(`${NodeConnection.name}`, () => {
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as unknown as Port,
-        manifest: {},
+        manifest: {} as AgentClientManifest,
         connectionKeepAliveTimeoutTime: 100,
         tlsConfig: clientTlsConfig,
-        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
       { timer: 100 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
     await serverSocket.stop({ force: true });
     // Wait for destruction, may take 2+ seconds
-    await destroyProm.p;
+    await destroyP;
   });
   test('get the root chain cert', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -208,9 +201,8 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -218,30 +210,28 @@ describe(`${NodeConnection.name}`, () => {
       nodesUtils.encodeNodeId(nodeConnection.nodeId),
     );
   });
-
   test('Should fail due to server rejecting client certificate (no certs)', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       handleStream: () => {},
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       // @ts-ignore: TLS not used for this test
       tlsConfig: {},
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
-    const errorProm = testsUtils.promFromEvent(
+    const errorP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionError,
     );
-    await destroyProm.p;
-    const evt = await errorProm.p;
+    await destroyP;
+    const evt = await errorP;
     expect(evt.detail.cause).toBeInstanceOf(
       quicErrors.ErrorQUICConnectionPeerTLS,
     );
@@ -251,9 +241,8 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [clientNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -265,22 +254,21 @@ describe(`${NodeConnection.name}`, () => {
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as unknown as Port,
-        manifest: {},
+        manifest: {} as AgentClientManifest,
         connectionKeepAliveIntervalTime: 100,
         connectionKeepAliveTimeoutTime: 200,
         tlsConfig: clientTlsConfig,
-        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
     await serverSocket.stop({ force: true });
-    await destroyProm.p;
+    await destroyP;
   });
   test('Should fail and destroy due to connection ending local', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
@@ -288,17 +276,16 @@ describe(`${NodeConnection.name}`, () => {
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as unknown as Port,
-        manifest: {},
+        manifest: {} as AgentClientManifest,
         connectionKeepAliveTimeoutTime: 200,
         connectionKeepAliveIntervalTime: 100,
         tlsConfig: clientTlsConfig,
-        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
@@ -307,7 +294,7 @@ describe(`${NodeConnection.name}`, () => {
       errorCode: 0,
       force: false,
     });
-    await destroyProm.p;
+    await destroyP;
   });
   test('Should fail and destroy due to connection ending remote', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
@@ -315,17 +302,16 @@ describe(`${NodeConnection.name}`, () => {
         targetNodeIds: [serverNodeId],
         targetHost: localHost as Host,
         targetPort: quicServer.port as unknown as Port,
-        manifest: {},
+        manifest: {} as AgentClientManifest,
         connectionKeepAliveTimeoutTime: 200,
         connectionKeepAliveIntervalTime: 100,
         tlsConfig: clientTlsConfig,
-        crypto,
         quicSocket: clientSocket,
         logger: logger.getChild(`${NodeConnection.name}`),
       },
       { timer: 150 },
     ).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
@@ -338,10 +324,10 @@ describe(`${NodeConnection.name}`, () => {
         force: false,
       });
     });
-    await destroyProm.p;
+    await destroyP;
   });
   test('should wrap reverse connection', async () => {
-    const nodeConnectionReverseProm = promise<NodeConnection<any>>();
+    const nodeConnectionReverseProm = promise<NodeConnection>();
     quicServer.removeEventListener(
       quicEvents.EventQUICConnectionStream.name,
       handleEventQUICConnectionStream,
@@ -356,7 +342,7 @@ describe(`${NodeConnection.name}`, () => {
         const nodeConnection = NodeConnection.createNodeConnectionReverse({
           nodeId,
           certChain,
-          manifest: {},
+          manifest: {} as AgentClientManifest,
           quicConnection,
           logger,
         });
@@ -369,22 +355,21 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
     const nodeConnectionReverse = await nodeConnectionReverseProm.p;
     await nodeConnectionReverse.destroy({ force: true });
-    await destroyProm.p;
+    await destroyP;
   });
   test('should handle reverse streams', async () => {
-    const nodeConnectionReverseProm = promise<NodeConnection<any>>();
+    const nodeConnectionReverseProm = promise<NodeConnection>();
     const reverseStreamProm = promise<RPCStream<Uint8Array, Uint8Array>>();
     quicServer.removeEventListener(
       quicEvents.EventQUICConnectionStream.name,
@@ -400,7 +385,7 @@ describe(`${NodeConnection.name}`, () => {
         const nodeConnection = NodeConnection.createNodeConnectionReverse({
           nodeId,
           certChain,
-          manifest: {},
+          manifest: {} as AgentClientManifest,
           quicConnection,
           logger,
         });
@@ -421,9 +406,8 @@ describe(`${NodeConnection.name}`, () => {
       targetNodeIds: [serverNodeId],
       targetHost: localHost as Host,
       targetPort: quicServer.port as unknown as Port,
-      manifest: {},
+      manifest: {} as AgentClientManifest,
       tlsConfig: clientTlsConfig,
-      crypto,
       quicSocket: clientSocket,
       logger: logger.getChild(`${NodeConnection.name}`),
     }).then(extractNodeConnection);
@@ -447,11 +431,11 @@ describe(`${NodeConnection.name}`, () => {
     await writer2.write(Buffer.from('Hello!'));
     await forwardStreamProm.p;
 
-    const destroyProm = testsUtils.promFromEvent(
+    const destroyP = testsUtils.promFromEvent(
       nodeConnection,
       nodesEvents.EventNodeConnectionDestroyed,
     );
     await nodeConnectionReverse.destroy({ force: true });
-    await destroyProm.p;
+    await destroyP;
   });
 });

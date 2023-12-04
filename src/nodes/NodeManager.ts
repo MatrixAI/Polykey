@@ -1,59 +1,71 @@
 import type { DB, DBTransaction } from '@matrixai/db';
-import type NodeConnectionManager from './NodeConnectionManager';
-import type NodeGraph from './NodeGraph';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ResourceAcquire } from '@matrixai/resources';
 import type KeyRing from '../keys/KeyRing';
 import type Sigchain from '../sigchain/Sigchain';
+import type TaskManager from '../tasks/TaskManager';
+import type GestaltGraph from '../gestalts/GestaltGraph';
 import type {
-  NodeId,
-  NodeAddress,
-  NodeBucket,
-  NodeBucketIndex,
-  NodeData,
-} from './types';
+  TaskHandler,
+  TaskHandlerId,
+  Task,
+  TaskInfo,
+} from '../tasks/types';
+import type { SignedTokenEncoded } from '../tokens/types';
+import type { Host, Port } from '../network/types';
 import type {
   Claim,
   ClaimId,
   ClaimIdEncoded,
   SignedClaim,
 } from '../claims/types';
-import type TaskManager from '../tasks/TaskManager';
-import type GestaltGraph from '../gestalts/GestaltGraph';
-import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
-import type { ContextTimed } from '@matrixai/contexts';
-import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { Host, Port } from '../network/types';
-import type { SignedTokenEncoded } from '../tokens/types';
 import type { ClaimLinkNode } from '../claims/payloads';
+import type NodeConnection from '../nodes/NodeConnection';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   AgentClaimMessage,
 } from './agent/types';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeBucket,
+  NodeBucketIndex,
+  NodeContactAddressData,
+  NodeIdEncoded,
+} from './types';
+import type NodeConnectionManager from './NodeConnectionManager';
+import type NodeGraph from './NodeGraph';
+import type { ServicePOJO } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import * as nodesErrors from './errors';
+import { withF } from '@matrixai/resources';
+import { MDNS, events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
-import * as claimsUtils from '../claims/utils';
-import * as tasksErrors from '../tasks/errors';
-import * as claimsErrors from '../claims/errors';
-import * as keysUtils from '../keys/utils';
-import { never, promise } from '../utils/utils';
-import {
-  decodeClaimId,
-  encodeClaimId,
-  parseSignedClaim,
-} from '../claims/utils';
+import * as nodesErrors from './errors';
+import NodeConnectionQueue from './NodeConnectionQueue';
 import Token from '../tokens/Token';
+import * as keysUtils from '../keys/utils';
+import * as tasksErrors from '../tasks/errors';
+import * as claimsUtils from '../claims/utils';
+import * as claimsErrors from '../claims/errors';
+import * as utils from '../utils/utils';
 import config from '../config';
+import * as networkUtils from '../network/utils';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
 
+/**
+ * NodeManager manages all operations involving nodes.
+ * It encapsulates mutations to the NodeGraph.
+ * It listens to the NodeConnectionManager events.
+ */
 interface NodeManager extends StartStop {}
 @StartStop({
   eventStart: nodesEvents.EventNodeManagerStart,
@@ -62,51 +74,77 @@ interface NodeManager extends StartStop {}
   eventStopped: nodesEvents.EventNodeManagerStopped,
 })
 class NodeManager {
-  protected db: DB;
-  protected logger: Logger;
-  protected sigchain: Sigchain;
-  protected keyRing: KeyRing;
-  protected nodeConnectionManager: NodeConnectionManager;
-  protected nodeGraph: NodeGraph;
-  protected taskManager: TaskManager;
-  protected gestaltGraph: GestaltGraph;
-  protected refreshBucketDelay: number;
-  protected refreshBucketDelayJitter: number;
-  protected retrySeedConnectionsDelay: number;
-  protected pendingNodes: Map<number, Map<string, NodeAddress>> = new Map();
-
   /**
    * Time used to establish `NodeConnection`
    */
   public readonly connectionConnectTimeoutTime: number;
 
-  public readonly basePath = this.constructor.name;
+  public readonly refreshBucketDelayTime: number;
+  public readonly refreshBucketDelayJitter: number;
+  /**
+   * Interval used to reestablish connections to maintain network health.
+   * Will trigger a refreshBucket for bucket 255 if it is missing connections.
+   * Will always trigger a findNode(this.keyRing.getNodeId()).
+   */
+  public readonly retryConnectionsDelayTime: number;
+  public readonly tasksPath = this.constructor.name;
+
+  protected db: DB;
+  protected logger: Logger;
+  protected keyRing: KeyRing;
+  protected sigchain: Sigchain;
+  protected gestaltGraph: GestaltGraph;
+  protected taskManager: TaskManager;
+  protected nodeGraph: NodeGraph;
+  protected nodeConnectionManager: NodeConnectionManager;
+  protected mdnsOptions:
+    | {
+        groups: Array<Host>;
+        port: Port;
+      }
+    | undefined;
+  protected mdns: MDNS | undefined;
+
+  protected pendingNodes: Map<
+    number,
+    Map<string, [NodeAddress, NodeContactAddressData]>
+  > = new Map();
+
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
-    bucketIndex,
+    bucketIndex: NodeBucketIndex,
   ) => {
+    // Don't use defaults like this
+    // if a default is to be used
+    // provide it directly
+
     await this.refreshBucket(
       bucketIndex,
       this.connectionConnectTimeoutTime,
       ctx,
     );
     // When completed reschedule the task
-    const jitter = nodesUtils.refreshBucketsDelayJitter(
-      this.refreshBucketDelay,
-      this.refreshBucketDelayJitter,
-    );
-    await this.taskManager.scheduleTask({
-      delay: this.refreshBucketDelay + jitter,
-      handlerId: this.refreshBucketHandlerId,
-      lazy: true,
-      parameters: [bucketIndex],
-      path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
-      priority: 0,
-    });
+    // if refreshBucketDelay is 0 then it's considered disabled
+    if (this.refreshBucketDelayTime > 0) {
+      const jitter = nodesUtils.refreshBucketsDelayJitter(
+        this.refreshBucketDelayTime,
+        this.refreshBucketDelayJitter,
+      );
+      await this.taskManager.scheduleTask({
+        delay: this.refreshBucketDelayTime + jitter,
+        handlerId: this.refreshBucketHandlerId,
+        lazy: true,
+        parameters: [bucketIndex],
+        path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        priority: 0,
+      });
+    }
   };
+
   public readonly refreshBucketHandlerId =
-    `${this.basePath}.${this.refreshBucketHandler.name}.refreshBucketHandlerId` as TaskHandlerId;
+    `${this.tasksPath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+
   protected gcBucketHandler: TaskHandler = async (
     ctx,
     _taskInfo,
@@ -125,96 +163,115 @@ class NodeManager {
     // Re-schedule the task
     await this.setupGCTask(bucketIndex);
   };
+
   public readonly gcBucketHandlerId =
-    `${this.basePath}.${this.gcBucketHandler.name}.gcBucketHandlerId` as TaskHandlerId;
-  protected pingAndSetNodeHandler: TaskHandler = async (
-    ctx,
-    _taskInfo,
-    nodeIdEncoded: string,
-    host: Host,
-    port: Port,
-  ) => {
-    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-    if (nodeId == null) {
-      this.logger.error(
-        `pingAndSetNodeHandler received invalid NodeId: ${nodeIdEncoded}`,
-      );
-      never();
+    `${this.tasksPath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+
+  protected checkConnectionsHandler: TaskHandler = async (ctx, taskInfo) => {
+    this.logger.debug('Checking connections');
+    let connectionCount = 0;
+    for (const connection of this.nodeConnectionManager.listConnections()) {
+      if (connection.primary) {
+        const [bucketId] = this.nodeGraph.bucketIndex(connection.nodeId);
+        if (bucketId === 255) connectionCount++;
+      }
     }
-    if (
-      await this.pingNode(nodeId, [{ host, port, scopes: ['global'] }], {
-        signal: ctx.signal,
-      })
-    ) {
-      await this.setNode(
-        nodeId,
-        { host, port, scopes: ['global'] },
-        false,
-        false,
-        2000,
+    if (connectionCount > 0) {
+      this.logger.debug('triggering bucket refresh for bucket 255');
+      await this.updateRefreshBucketDelay(255, 0);
+    }
+    try {
+      this.logger.debug(
+        'triggering fidNode for self to populate closest nodes',
+      );
+      await this.findNode(
+        this.keyRing.getNodeId(),
+        undefined,
+        undefined,
+        undefined,
         ctx,
       );
-    }
-  };
-  public readonly pingAndSetNodeHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.pingAndSetNodeHandler.name}.pingAndSetNodeHandlerId` as TaskHandlerId;
-  protected checkSeedConnectionsHandler: TaskHandler = async (
-    ctx,
-    taskInfo,
-  ) => {
-    this.logger.debug('Checking seed connections');
-    // Check for existing seed node connections
-    const seedNodes = this.nodeConnectionManager.getSeedNodes();
-    const allInactive = !seedNodes
-      .map((nodeId) => this.nodeConnectionManager.hasConnection(nodeId))
-      .reduce((a, b) => a || b, false);
-    try {
-      if (allInactive) {
-        this.logger.debug(
-          'No active seed connections were found, retrying network entry',
-        );
-        // If no seed node connections exist then we redo syncNodeGraph
-        await this.syncNodeGraph(true, undefined, ctx);
-      } else {
-        // Doing this concurrently, we don't care about the results
-        await Promise.allSettled(
-          seedNodes.map((nodeId) => {
-            // Retry any failed seed node connections
-            if (!this.nodeConnectionManager.hasConnection(nodeId)) {
-              this.logger.debug(
-                `Re-establishing seed connection for ${nodesUtils.encodeNodeId(
-                  nodeId,
-                )}`,
-              );
-              return this.pingNode(nodeId, undefined, ctx);
-            }
-          }),
-        );
-      }
     } finally {
-      this.logger.debug('Checked seed connections');
+      this.logger.debug('Checked connections');
       // Re-schedule this task
       await this.taskManager.scheduleTask({
         delay: taskInfo.delay,
         deadline: taskInfo.deadline,
-        handlerId: this.checkSeedConnectionsHandlerId,
+        handlerId: this.checkConnectionsHandlerId,
         lazy: true,
-        path: [this.basePath, this.checkSeedConnectionsHandlerId],
+        path: [this.tasksPath, this.checkConnectionsHandlerId],
         priority: taskInfo.priority,
       });
     }
   };
-  public readonly checkSeedConnectionsHandlerId: TaskHandlerId =
-    `${this.basePath}.${this.checkSeedConnectionsHandler.name}.checkSeedConnectionsHandler` as TaskHandlerId;
+
+  public readonly checkConnectionsHandlerId: TaskHandlerId =
+    `${this.tasksPath}.${this.checkConnectionsHandler.name}` as TaskHandlerId;
+
+  protected syncNodeGraphHandler = async (
+    ctx: ContextTimed,
+    taskInfo: TaskInfo | undefined,
+    initialNodes: Array<[NodeIdEncoded, [Host, Port]]>,
+    pingTimeoutTime: number | undefined,
+  ) => {
+    // Establishing connections to the initial nodes
+    const connectionResults = await Promise.allSettled(
+      initialNodes.map(([nodeIdEncoded, [host, port]]) => {
+        const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+        if (nodeId == null) utils.never();
+        return this.nodeConnectionManager.createConnection(
+          [nodeId],
+          host,
+          port,
+          { timer: pingTimeoutTime, signal: ctx.signal },
+        );
+      }),
+    );
+    const successfulConnections = connectionResults.filter(
+      (r) => r.status === 'fulfilled',
+    ).length;
+    if (successfulConnections === 0) {
+      throw Error('TMP IMP Failed to enter network');
+    }
+
+    // Attempt a findNode operation looking for ourselves
+    await this.findNode(
+      this.keyRing.getNodeId(),
+      undefined,
+      undefined,
+      undefined,
+      ctx,
+    );
+
+    // Getting the closest node from the `NodeGraph`
+    let bucketIndex: number | undefined;
+    for await (const bucket of this.nodeGraph.getBuckets('distance', 'asc')) {
+      bucketIndex = bucket[0];
+    }
+    // If no buckets then end here
+    if (bucketIndex == null) return;
+    // Trigger refreshBucket operations for all buckets above bucketIndex
+    const refreshBuckets: Array<Promise<any>> = [];
+    for (let i = bucketIndex; i < this.nodeGraph.nodeIdBits; i++) {
+      const task = await this.updateRefreshBucketDelay(i, 0, false);
+      refreshBuckets.push(task.promise());
+    }
+    await Promise.all(refreshBuckets);
+  };
+
+  public readonly syncNodeGraphHandlerId: TaskHandlerId =
+    `${this.tasksPath}.${this.syncNodeGraphHandler.name}` as TaskHandlerId;
 
   protected handleEventNodeConnectionManagerConnectionReverse = async (
     e: nodesEvents.EventNodeConnectionManagerConnectionReverse,
   ) => {
     await this.setNode(
       e.detail.remoteNodeId,
+      [e.detail.remoteHost, e.detail.remotePort],
+      // FIXME
       {
-        host: e.detail.remoteHost,
-        port: e.detail.remotePort,
+        mode: 'direct',
+        connectedTime: Date.now(),
         scopes: ['global'],
       },
       false,
@@ -226,28 +283,35 @@ class NodeManager {
     db,
     keyRing,
     sigchain,
-    nodeConnectionManager,
-    nodeGraph,
-    taskManager,
     gestaltGraph,
-    refreshBucketDelay = 3600000, // 1 hour in milliseconds
-    refreshBucketDelayJitter = 0.5, // Multiple of refreshBucketDelay to jitter by
-    retrySeedConnectionsDelay = 120000, // 2 minuets
+    taskManager,
+    nodeGraph,
+    nodeConnectionManager,
+    mdnsOptions,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
+    refreshBucketDelayTime = config.defaultsSystem
+      .nodesRefreshBucketIntervalTime,
+    refreshBucketDelayJitter = config.defaultsSystem
+      .nodesRefreshBucketIntervalTimeJitter,
+    retryConnectionsDelayTime = 120000, // 2 minutes
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     sigchain: Sigchain;
-    nodeConnectionManager: NodeConnectionManager;
-    nodeGraph: NodeGraph;
-    taskManager: TaskManager;
     gestaltGraph: GestaltGraph;
-    refreshBucketDelay?: number;
-    refreshBucketDelayJitter?: number;
-    retrySeedConnectionsDelay?: number;
+    taskManager: TaskManager;
+    nodeGraph: NodeGraph;
+    mdnsOptions?: {
+      groups: Array<Host>;
+      port: Port;
+    };
+    nodeConnectionManager: NodeConnectionManager;
     connectionConnectTimeoutTime?: number;
+    refreshBucketDelayTime?: number;
+    refreshBucketDelayJitter?: number;
+    retryConnectionsDelayTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -258,19 +322,18 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
-    this.refreshBucketDelay = refreshBucketDelay;
-    // Clamped from 0 to 1 inclusive
-    this.refreshBucketDelayJitter = Math.max(
-      0,
-      Math.min(refreshBucketDelayJitter, 1),
-    );
-    this.retrySeedConnectionsDelay = retrySeedConnectionsDelay;
+    this.mdnsOptions = mdnsOptions;
+    if (mdnsOptions != null) {
+      this.mdns = new MDNS({ logger: this.logger.getChild(MDNS.name) });
+    }
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
+    this.refreshBucketDelayTime = refreshBucketDelayTime;
+    this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
+    this.retryConnectionsDelayTime = retryConnectionsDelayTime;
   }
 
   public async start() {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Registering handler for setNode`);
     this.taskManager.registerHandler(
       this.refreshBucketHandlerId,
       this.refreshBucketHandler,
@@ -280,20 +343,39 @@ class NodeManager {
       this.gcBucketHandler,
     );
     this.taskManager.registerHandler(
-      this.pingAndSetNodeHandlerId,
-      this.pingAndSetNodeHandler,
+      this.checkConnectionsHandlerId,
+      this.checkConnectionsHandler,
     );
     this.taskManager.registerHandler(
-      this.checkSeedConnectionsHandlerId,
-      this.checkSeedConnectionsHandler,
+      this.syncNodeGraphHandlerId,
+      this.syncNodeGraphHandler,
     );
     await this.setupRefreshBucketTasks();
-    await this.taskManager.scheduleTask({
-      delay: this.retrySeedConnectionsDelay,
-      handlerId: this.checkSeedConnectionsHandlerId,
-      lazy: true,
-      path: [this.basePath, this.checkSeedConnectionsHandlerId],
-    });
+    // Can be disabled with 0 delay, only use for testing
+    if (this.retryConnectionsDelayTime > 0) {
+      await this.taskManager.scheduleTask({
+        delay: this.retryConnectionsDelayTime,
+        handlerId: this.checkConnectionsHandlerId,
+        lazy: true,
+        path: [this.tasksPath, this.checkConnectionsHandlerId],
+      });
+    }
+    // Starting MDNS
+    if (this.mdns != null) {
+      const nodeId = this.keyRing.getNodeId();
+      await this.mdns.start({
+        id: nodeId.toBuffer().readUint16BE(),
+        hostname: nodesUtils.encodeNodeId(nodeId),
+        groups: this.mdnsOptions!.groups,
+        port: this.mdnsOptions!.port,
+      });
+      this.mdns.registerService({
+        name: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        port: this.nodeConnectionManager.port,
+        type: 'polykey',
+        protocol: 'udp',
+      });
+    }
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
       nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
@@ -309,66 +391,732 @@ class NodeManager {
       nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
       this.handleEventNodeConnectionManagerConnectionReverse,
     );
-    this.logger.info('Cancelling ephemeral tasks');
-    if (this.taskManager.isProcessing()) {
-      throw new tasksErrors.ErrorTaskManagerProcessing();
-    }
-    const tasks: Array<Promise<any>> = [];
-    for await (const task of this.taskManager.getTasks('asc', false, [
-      this.basePath,
+    await this.mdns?.stop();
+    // Cancels all NodeManager tasks
+    const taskPs: Array<Promise<any>> = [];
+    for await (const task of this.taskManager.getTasks(undefined, false, [
+      this.tasksPath,
     ])) {
-      tasks.push(task.promise());
+      taskPs.push(task.promise());
       task.cancel(abortEphemeralTaskReason);
     }
-    // We don't care about the result, only that they've ended
-    await Promise.allSettled(tasks);
-    this.logger.info('Cancelled ephemeral tasks');
-    this.logger.info(`Unregistering handler for setNode`);
+    await Promise.allSettled(taskPs);
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
-    this.taskManager.deregisterHandler(this.pingAndSetNodeHandlerId);
-    this.taskManager.deregisterHandler(this.checkSeedConnectionsHandlerId);
+    this.taskManager.deregisterHandler(this.checkConnectionsHandlerId);
+    this.taskManager.deregisterHandler(this.syncNodeGraphHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   /**
-   * Determines whether a node in the Polykey network is online.
-   * @return true if online, false if offline
-   * @param nodeId - NodeId of the node we're pinging
-   * @param addresses - Optional Host and Port we want to ping
+   * For usage with withF, to acquire a connection
+   * This unique acquire function structure of returning the ResourceAcquire
+   * itself is such that we can pass targetNodeId as a parameter (as opposed to
+   * an acquire function with no parameters).
+   * @param nodeId Id of target node to communicate with
    * @param ctx
+   * @returns ResourceAcquire Resource API for use in with contexts
+   */
+  public acquireConnection(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): ResourceAcquire<NodeConnection> {
+    if (this.keyRing.getNodeId().equals(nodeId)) {
+      this.logger.warn('Attempting connection to our own NodeId');
+      throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
+    }
+    return async () => {
+      // Checking if connection already exists
+      if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+        // Establish the connection
+        const result = await this.findNode(
+          nodeId,
+          undefined,
+          undefined,
+          undefined,
+          ctx,
+        );
+        if (result == null) {
+          throw new nodesErrors.ErrorNodeManagerConnectionFailed();
+        }
+      }
+      return await this.nodeConnectionManager.acquireConnection(nodeId)();
+    };
+  }
+
+  /**
+   * Perform some function on another node over the network with a connection.
+   * Will either retrieve an existing connection, or create a new one if it
+   * doesn't exist.
+   * for use with normal arrow function
+   * @param nodeId Id of target node to communicate with
+   * @param f Function to handle communication
+   * @param ctx
+   */
+  public withConnF<T>(
+    nodeId: NodeId,
+    f: (conn: NodeConnection) => Promise<T>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<T>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async withConnF<T>(
+    nodeId: NodeId,
+    f: (conn: NodeConnection) => Promise<T>,
+    @context ctx: ContextTimed,
+  ) {
+    return await withF(
+      [this.acquireConnection(nodeId, ctx)],
+      async ([conn]) => {
+        return await f(conn);
+      },
+    );
+  }
+
+  /**
+   * Perform some function on another node over the network with a connection.
+   * Will either retrieve an existing connection, or create a new one if it
+   * doesn't exist.
+   * for use with a generator function
+   * @param nodeId Id of target node to communicate with
+   * @param g Generator function to handle communication
+   * @param ctx
+   */
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async *withConnG<T, TReturn, TNext>(
+    nodeId: NodeId,
+    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+    ctx?: Partial<ContextTimedInput>,
+  ): AsyncGenerator<T, TReturn, TNext> {
+    const acquire = this.acquireConnection(nodeId, ctx);
+    const [release, conn] = await acquire();
+    let caughtError;
+    try {
+      if (conn == null) utils.never();
+      return yield* g(conn);
+    } catch (e) {
+      caughtError = e;
+      throw e;
+    } finally {
+      await release(caughtError);
+    }
+  }
+
+  /**
+   * Will attempt to find a node within the network using a hybrid strategy of
+   * attempting signalled connections, direct connections and checking MDNS.
+   *
+   * Will attempt to fix regardless of existing connection.
+   * @param nodeId - NodeId of target to find.
+   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param concurrencyLimit - Limit the number of concurrent connections.
+   * @param limit - Limit the number of total connections to be made before giving up.
+   * @param ctx
+   */
+  public findNode(
+    nodeId: NodeId,
+    pingTimeoutTime?: number,
+    concurrencyLimit?: number,
+    limit?: number,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<[NodeAddress, NodeContactAddressData] | undefined>;
+  @timedCancellable(true)
+  public async findNode(
+    nodeId: NodeId,
+    pingTimeoutTime: number = 2000,
+    concurrencyLimit: number = 3,
+    limit: number = this.nodeGraph.nodeBucketLimit,
+    @context ctx: ContextTimed,
+  ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
+    // Setting up intermediate signal
+    const abortController = new AbortController();
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortController.signal,
+    };
+    const handleAbort = () => {
+      abortController.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    const rateLimit = new Semaphore(concurrencyLimit);
+    const connectionsQueue = new NodeConnectionQueue(
+      this.keyRing.getNodeId(),
+      nodeId,
+      limit,
+      rateLimit,
+      rateLimit,
+    );
+
+    // Starting discovery strategies
+    const findBySignal = this.findNodeBySignal(
+      nodeId,
+      connectionsQueue,
+      pingTimeoutTime,
+      newCtx,
+    );
+    const findByDirect = this.findNodeByDirect(
+      nodeId,
+      connectionsQueue,
+      pingTimeoutTime,
+      newCtx,
+    );
+    const findByMDNS = this.findNodeByMDNS(nodeId, newCtx);
+
+    try {
+      return await Promise.any([findBySignal, findByDirect, findByMDNS]);
+    } catch (e) {
+      // FIXME: check error type and throw if not connection related failure
+      return;
+    } finally {
+      abortController.abort(Error('TMP IMP cancelling pending connections'));
+      await Promise.allSettled([findBySignal, findByDirect, findByMDNS]);
+      ctx.signal.removeEventListener('abort', handleAbort);
+    }
+  }
+
+  /**
+   * Will try to make a connection to the node using hole punched connections only
+   *
+   * @param nodeId - NodeId of the target to find.
+   * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
+   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param ctx
+   */
+  public findNodeBySignal(
+    nodeId: NodeId,
+    nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime?: number,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
+  @timedCancellable(true)
+  public async findNodeBySignal(
+    nodeId: NodeId,
+    nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime: number = 2000,
+    @context ctx: ContextTimed,
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
+    // Setting up intermediate signal
+    const abortController = new AbortController();
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortController.signal,
+    };
+    const handleAbort = () => {
+      abortController.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    const chain: Map<string, string | undefined> = new Map();
+    let connectionMade: [Host, Port] | undefined;
+
+    // Seed the initial queue
+    for (const {
+      nodeId: nodeIdConnected,
+    } of this.nodeConnectionManager.getClosestConnections(nodeId)) {
+      nodeConnectionsQueue.queueNodeSignal(nodeIdConnected, undefined);
+    }
+
+    while (true) {
+      const isDone = await nodeConnectionsQueue.withNodeSignal(
+        async (nodeIdTarget, nodeIdSignaller) => {
+          let nodeConnection: NodeConnection | undefined;
+          if (
+            !this.nodeConnectionManager.hasConnection(nodeIdTarget) &&
+            nodeIdSignaller != null
+          ) {
+            this.logger.debug(
+              `attempting connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )} via ${
+                nodeIdSignaller != null
+                  ? nodesUtils.encodeNodeId(nodeIdSignaller)
+                  : 'local'
+              }`,
+            );
+            nodeConnection =
+              await this.nodeConnectionManager.createConnectionPunch(
+                nodeIdTarget,
+                nodeIdSignaller,
+                {
+                  timer: pingTimeoutTime,
+                  signal: newCtx.signal,
+                },
+              );
+            // If connection succeeds add it to the chain
+            chain.set(nodeIdTarget.toString(), nodeIdSignaller?.toString());
+          }
+          nodeConnectionsQueue.contactedNode(nodeIdTarget);
+          // If connection was our target then we're done
+          if (nodeId.toString() === nodeIdTarget.toString()) {
+            nodeConnection =
+              nodeConnection ??
+              this.nodeConnectionManager.getConnection(nodeIdTarget)
+                ?.connection;
+            if (nodeConnection == null) utils.never('connection should exist');
+            connectionMade = [nodeConnection.host, nodeConnection.port];
+            return true;
+          }
+          await this.queueDataFromRequest(
+            nodeIdTarget,
+            nodeId,
+            nodeConnectionsQueue,
+            newCtx,
+          );
+          this.logger.debug(
+            `connection attempt to ${nodesUtils.encodeNodeId(
+              nodeIdTarget,
+            )} succeeded`,
+          );
+          return false;
+        },
+        newCtx,
+      );
+      if (isDone) break;
+    }
+    // After queue is done we want to signal and await clean up
+    abortController.abort(Error('TMP IMP cancelling pending connections'));
+    ctx.signal.removeEventListener('abort', handleAbort);
+    // Wait for pending attempts to finish
+    for (const pendingP of nodeConnectionsQueue.nodesRunningSignal) {
+      await pendingP.catch((e) => {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      });
+    }
+
+    // Connection was not made
+    if (connectionMade == null) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via signal',
+      );
+    }
+    // We can get the path taken with this code
+    // const path: Array<NodeId> = [];
+    // let current: string | undefined = nodeId.toString();
+    // while (current != null) {
+    //   const nodeId = IdInternal.fromString<NodeId>(current);
+    //   path.unshift(nodeId);
+    //   current = chain.get(current);
+    // }
+    // console.log(path);
+    return [
+      connectionMade,
+      {
+        mode: 'signal',
+        connectedTime: Date.now(),
+        scopes: ['global'],
+      },
+    ] as [[Host, Port], NodeContactAddressData];
+  }
+
+  /**
+   * Will try to make a connection to the node using direct connections only
+   *
+   * @param nodeId - NodeId of the target to find.
+   * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
+   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param ctx
+   */
+  public findNodeByDirect(
+    nodeId: NodeId,
+    nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime?: number,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
+  @timedCancellable(true)
+  public async findNodeByDirect(
+    nodeId: NodeId,
+    nodeConnectionsQueue: NodeConnectionQueue,
+    pingTimeoutTime: number = 2000,
+    @context ctx: ContextTimed,
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
+    // Setting up intermediate signal
+    const abortController = new AbortController();
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortController.signal,
+    };
+    const handleAbort = () => {
+      abortController.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    let connectionMade = false;
+
+    // Seed the initial queue
+    for (const [
+      nodeIdTarget,
+      nodeContact,
+    ] of await this.nodeGraph.getClosestNodes(
+      nodeId,
+      this.nodeGraph.nodeBucketLimit,
+    )) {
+      nodeConnectionsQueue.queueNodeDirect(nodeIdTarget, nodeContact);
+    }
+
+    while (true) {
+      const isDone = await nodeConnectionsQueue.withNodeDirect(
+        async (nodeIdTarget, nodeContact) => {
+          if (!this.nodeConnectionManager.hasConnection(nodeIdTarget)) {
+            this.logger.debug(
+              `attempting connection to ${nodesUtils.encodeNodeId(
+                nodeIdTarget,
+              )} via direct connection`,
+            );
+
+            // Attempt all direct
+            const addresses: Array<[Host, Port]> = [];
+            for (const [
+              nodeContactAddress,
+              nodeContactAddressData,
+            ] of Object.entries(nodeContact)) {
+              // FIXME: handle hostnames by resolving them.
+              const [host, port] =
+                nodesUtils.parseNodeContactAddress(nodeContactAddress);
+              if (
+                nodeContactAddressData.mode === 'direct' &&
+                networkUtils.isHost(host)
+              ) {
+                addresses.push([host as Host, port]);
+              }
+            }
+
+            try {
+              await this.nodeConnectionManager.createConnectionMultiple(
+                [nodeIdTarget],
+                addresses,
+                { timer: pingTimeoutTime, signal: newCtx.signal },
+              );
+            } catch (e) {
+              if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
+                return false;
+              }
+              throw e;
+            }
+          }
+          nodeConnectionsQueue.contactedNode(nodeIdTarget);
+          // If connection was our target then we're done
+          if (nodeId.toString() === nodeIdTarget.toString()) {
+            connectionMade = true;
+            return true;
+          }
+          await this.queueDataFromRequest(
+            nodeIdTarget,
+            nodeId,
+            nodeConnectionsQueue,
+            newCtx,
+          );
+          this.logger.debug(
+            `connection attempt to ${nodesUtils.encodeNodeId(
+              nodeIdTarget,
+            )} succeeded`,
+          );
+          return false;
+        },
+        newCtx,
+      );
+      if (isDone) break;
+    }
+    // After queue is done we want to signal and await clean up
+    abortController.abort(Error('TMP IMP cancelling pending connections'));
+    ctx.signal.removeEventListener('abort', handleAbort);
+    // Wait for pending attempts to finish
+    for (const pendingP of nodeConnectionsQueue.nodesRunningDirect) {
+      await pendingP.catch((e) => {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      });
+    }
+
+    if (!connectionMade) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via direct',
+      );
+    }
+    const conAndTimer = this.nodeConnectionManager.getConnection(nodeId);
+    if (conAndTimer == null) {
+      utils.never('connection should have been established');
+    }
+    return [
+      [conAndTimer.connection.host, conAndTimer.connection.port],
+      {
+        mode: 'direct',
+        connectedTime: Date.now(),
+        scopes: ['global'],
+      },
+    ] as [[Host, Port], NodeContactAddressData];
+  }
+
+  /**
+   * Will query via MDNS for running Polykey nodes with the matching NodeId
+   *
+   * @param nodeId
+   * @param ctx
+   */
+  public queryMDNS(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<Array<[Host, Port]>>;
+  @timedCancellable(true)
+  public async queryMDNS(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<Array<[Host, Port]>> {
+    const addresses: Array<[Host, Port]> = [];
+    if (this.mdns == null) return addresses;
+    const encodedNodeId = nodesUtils.encodeNodeId(nodeId);
+    // First check if we already have an existing MDNS Service
+    const mdnsOptions = { type: 'polykey', protocol: 'udp' } as const;
+    let service: ServicePOJO | void = this.mdns.networkServices.get(
+      mdnsUtils.toFqdn({ name: encodedNodeId, ...mdnsOptions }),
+    );
+    if (service == null) {
+      // Setup promises
+      const { p: endedP, resolveP: resolveEndedP } = utils.promise<void>();
+      const abortHandler = () => {
+        resolveEndedP();
+      };
+      ctx.signal.addEventListener('abort', abortHandler, { once: true });
+      ctx.timer.catch(() => {}).finally(() => abortHandler());
+      const { p: serviceP, resolveP: resolveServiceP } =
+        utils.promise<ServicePOJO>();
+      const handleEventMDNSService = (evt: mdnsEvents.EventMDNSService) => {
+        if (evt.detail.name === encodedNodeId) {
+          resolveServiceP(evt.detail);
+        }
+      };
+      this.mdns.addEventListener(
+        mdnsEvents.EventMDNSService.name,
+        handleEventMDNSService,
+        { once: true },
+      );
+      // Abort and restart query in case already running
+      this.mdns.stopQuery(mdnsOptions);
+      this.mdns.startQuery(mdnsOptions);
+      // Race promises to find node or timeout
+      service = await Promise.race([serviceP, endedP]);
+      this.mdns.removeEventListener(
+        mdnsEvents.EventMDNSService.name,
+        handleEventMDNSService,
+      );
+      this.mdns.stopQuery(mdnsOptions);
+      ctx.signal.removeEventListener('abort', abortHandler);
+    }
+    // If the service is not found, just return no addresses
+    if (service == null) {
+      return addresses;
+    }
+    for (const host_ of service.hosts) {
+      let host: string;
+      switch (this.nodeConnectionManager.type) {
+        case 'ipv4':
+          if (networkUtils.isIPv4(host_)) {
+            host = host_;
+          } else if (networkUtils.isIPv4MappedIPv6(host_)) {
+            host = networkUtils.fromIPv4MappedIPv6(host_);
+          } else {
+            continue;
+          }
+          break;
+        case 'ipv6':
+          if (networkUtils.isIPv6(host_)) host = host_;
+          else continue;
+          break;
+        case 'ipv4&ipv6':
+          host = host_;
+          break;
+        default:
+          continue;
+      }
+      addresses.push([host as Host, service.port as Port]);
+      this.logger.debug(
+        `found address for ${nodesUtils.encodeNodeId(nodeId)} at ${host}:${
+          service.port
+        }`,
+      );
+    }
+    return addresses;
+  }
+
+  /**
+   * Will query MDNS for local nodes and attempt a connection.
+   * @param nodeId - NodeId of the target to find.
+   * @param ctx
+   */
+  public findNodeByMDNS(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
+  @timedCancellable(true)
+  public async findNodeByMDNS(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
+    try {
+      if (this.mdns == null) {
+        throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+          'MDNS not running',
+        );
+      }
+      // First get the address data
+      const addresses = await this.queryMDNS(nodeId, ctx);
+      if (addresses.length === 0) {
+        throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+          'query resulted in no addresses found',
+        );
+      }
+      // Then make the connection
+      const nodeConnection =
+        await this.nodeConnectionManager.createConnectionMultiple(
+          [nodeId],
+          addresses,
+        );
+      return [
+        [nodeConnection.host, nodeConnection.port],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['local'],
+        },
+      ] as [[Host, Port], NodeContactAddressData];
+    } catch (e) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via MDNS',
+        { cause: e },
+      );
+    }
+  }
+
+  /**
+   * Will ask the target node about the closest nodes to the `node`
+   * and add them to the `nodeConnectionsQueue`.
+   *
+   * @param nodeId - node to find the closest nodes to
+   * @param nodeIdTarget - node to make RPC requests to
+   * @param nodeConnectionsQueue
+   * @param ctx
+   */
+  protected async queueDataFromRequest(
+    nodeId: NodeId,
+    nodeIdTarget: NodeId,
+    nodeConnectionsQueue: NodeConnectionQueue,
+    ctx: ContextTimed,
+  ) {
+    await this.nodeConnectionManager.withConnF(nodeId, async (conn) => {
+      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
+      const closestConnectionsRequestP = (async () => {
+        const resultStream =
+          await conn.rpcClient.methods.nodesClosestActiveConnectionsGet(
+            {
+              nodeIdEncoded: nodeIdEncoded,
+            },
+            ctx,
+          );
+        // Collecting results
+        for await (const result of resultStream) {
+          const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
+          if (nodeIdNew == null) {
+            utils.never('failed to decode nodeId');
+          }
+          nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
+        }
+      })();
+      const closestNodesRequestP = (async () => {
+        const resultStream =
+          await conn.rpcClient.methods.nodesClosestLocalNodesGet({
+            nodeIdEncoded: nodeIdEncoded,
+          });
+        for await (const { nodeIdEncoded, nodeContact } of resultStream) {
+          const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+          if (nodeId == null) utils.never();
+          nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
+        }
+      })();
+      await Promise.allSettled([
+        closestConnectionsRequestP,
+        closestNodesRequestP,
+      ]);
+    });
+  }
+
+  /**
+   * Will attempt to establish connection using `findNode` or use existing connection.
+   * Will return true if connection was established or already exists, false otherwise.
    */
   public pingNode(
     nodeId: NodeId,
-    addresses?: Array<NodeAddress>,
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<boolean>;
+  ): PromiseCancellable<[NodeAddress, NodeContactAddressData] | undefined>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,
-    (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,
-    addresses: Array<NodeAddress> | undefined,
     @context ctx: ContextTimed,
-  ): Promise<boolean> {
-    // We need to attempt a connection using the proxies
-    // For now we will just do a forward connect + relay message
-    const targetAddresses =
-      addresses ??
-      (await this.nodeConnectionManager.findNodeAll(
-        nodeId,
-        this.connectionConnectTimeoutTime,
-        ctx,
-      ));
-    if (targetAddresses == null) {
-      return false;
-    }
-    return await this.nodeConnectionManager.pingNode(
+  ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
+    return await this.findNode(
       nodeId,
-      targetAddresses,
+      2000,
+      3,
+      this.nodeGraph.nodeBucketLimit,
       ctx,
     );
+  }
+
+  /**
+   * Will attempt to make a direct connection without ICE.
+   * This will only succeed due to these conditions
+   * 1. connection already exists to target.
+   * 2. Nat already allows port due to already being punched.
+   * 3. Port is publicly accessible due to nat configuration .
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNodeAddress(
+    nodeId: NodeId,
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    try {
+      await this.nodeConnectionManager.createConnection(
+        [nodeId],
+        host,
+        port,
+        ctx,
+      );
+      return true;
+    } catch {
+      // TODO: stricter error checking
+      return false;
+    }
   }
 
   /**
@@ -378,10 +1126,9 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param claimId If set then we get the claims newer that this claim Id.
+   * @param claimId If set then we get the claims newer that this claim ID.
    * @param ctx
    */
-  // FIXME: this should be a generator/stream
   public requestChainData(
     targetNodeId: NodeId,
     claimId?: ClaimId,
@@ -394,20 +1141,24 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    return await this.nodeConnectionManager.withConnF(
+    return await this.withConnF(
       targetNodeId,
       async (connection) => {
         const claims: Record<ClaimId, SignedClaim> = {};
         const client = connection.getClient();
         for await (const agentClaim of await client.methods.nodesClaimsGet({
           claimIdEncoded:
-            claimId != null ? encodeClaimId(claimId) : ('' as ClaimIdEncoded),
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
         })) {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           // Need to re-construct each claim
-          const claimId: ClaimId = decodeClaimId(agentClaim.claimIdEncoded)!;
+          const claimId: ClaimId = claimsUtils.decodeClaimId(
+            agentClaim.claimIdEncoded,
+          )!;
           const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = parseSignedClaim(signedClaimEncoded);
+          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
           // Verifying the claim
           const issPublicKey = keysUtils.publicKeyFromNodeId(
             nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
@@ -442,10 +1193,16 @@ class NodeManager {
    * Call this function upon receiving a "claim node request" notification from
    * another node.
    */
-  public async claimNode(
+  public claimNode(
     targetNodeId: NodeId,
     tran?: DBTransaction,
-    ctx?: ContextTimed, // FIXME, this needs to be a timed cancellable
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async claimNode(
+    targetNodeId: NodeId,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => {
@@ -460,7 +1217,7 @@ class NodeManager {
       },
       undefined,
       async (token) => {
-        return this.nodeConnectionManager.withConnF(
+        return this.withConnF(
           targetNodeId,
           async (conn) => {
             // 2. create the agentClaim message to send
@@ -483,7 +1240,7 @@ class NodeManager {
               }
               const receivedClaim = readStatus.value;
               // We need to re-construct the token from the message
-              const signedClaim = parseSignedClaim(
+              const signedClaim = claimsUtils.parseSignedClaim(
                 receivedClaim.signedTokenEncoded,
               );
               fullySignedToken = Token.fromSigned(signedClaim);
@@ -506,7 +1263,7 @@ class NodeManager {
               }
               const receivedClaimRemote = readStatus2.value;
               // We need to re-construct the token from the message
-              const signedClaimRemote = parseSignedClaim(
+              const signedClaimRemote = claimsUtils.parseSignedClaim(
                 receivedClaimRemote.signedTokenEncoded,
               );
               // This is a singly signed claim,
@@ -553,7 +1310,6 @@ class NodeManager {
     });
   }
 
-  // TODO: make cancellable
   public async *handleClaimNode(
     requestingNodeId: NodeId,
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
@@ -570,7 +1326,9 @@ class NodeManager {
       throw new claimsErrors.ErrorEmptyStream();
     }
     const receivedMessage = readStatus.value;
-    const signedClaim = parseSignedClaim(receivedMessage.signedTokenEncoded);
+    const signedClaim = claimsUtils.parseSignedClaim(
+      receivedMessage.signedTokenEncoded,
+    );
     const token = Token.fromSigned(signedClaim);
     // Verify if the token is signed
     if (
@@ -591,7 +1349,7 @@ class NodeManager {
     };
 
     // Now we want to send our own claim signed
-    const halfSignedClaimProm = promise<SignedTokenEncoded>();
+    const halfSignedClaimProm = utils.promise<SignedTokenEncoded>();
     const claimProm = this.sigchain.addClaim(
       {
         typ: 'ClaimLinkNode',
@@ -610,7 +1368,9 @@ class NodeManager {
         }
         const receivedClaim = readStatus.value;
         // We need to re-construct the token from the message
-        const signedClaim = parseSignedClaim(receivedClaim.signedTokenEncoded);
+        const signedClaim = claimsUtils.parseSignedClaim(
+          receivedClaim.signedTokenEncoded,
+        );
         const fullySignedToken = Token.fromSigned(signedClaim);
         // Check that the signatures are correct
         const requestingNodePublicKey =
@@ -645,52 +1405,12 @@ class NodeManager {
   }
 
   /**
-   * Retrieves the node Address from the NodeGraph
-   * @param nodeId node ID of the target node
-   * @param tran
-   * @returns Node Address of the target node
-   */
-  public async getNodeAddress(
-    nodeId: NodeId,
-    tran: DBTransaction,
-  ): Promise<NodeAddress | undefined> {
-    return (await this.nodeGraph.getNode(nodeId, tran))?.address;
-  }
-
-  /**
-   * Determines whether a node ID -> node address mapping exists in the NodeGraph
-   * @param targetNodeId the node ID of the node to find
-   * @param tran
-   * @returns true if the node exists in the table, false otherwise
-   */
-  public async knowsNode(
-    targetNodeId: NodeId,
-    tran: DBTransaction,
-  ): Promise<boolean> {
-    return (await this.nodeGraph.getNode(targetNodeId, tran)) != null;
-  }
-
-  /**
-   * Gets the specified bucket from the NodeGraph
-   */
-  public async getBucket(
-    bucketIndex: number,
-    tran?: DBTransaction,
-  ): Promise<NodeBucket | undefined> {
-    return await this.nodeGraph.getBucket(
-      bucketIndex,
-      undefined,
-      undefined,
-      tran,
-    );
-  }
-
-  /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
    * Updates the node if the node already exists
    * This operation is blocking by default - set `block` 2qto false to make it non-blocking
-   * @param nodeId - Id of the node we wish to add
+   * @param nodeId - ID of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
+   * @param nodeContactAddressData
    * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
@@ -701,6 +1421,7 @@ class NodeManager {
   public setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    nodeContactAddressData: NodeContactAddressData,
     block?: boolean,
     force?: boolean,
     pingTimeoutTime?: number,
@@ -712,6 +1433,7 @@ class NodeManager {
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    nodeContactAddressData: NodeContactAddressData,
     block: boolean = false,
     force: boolean = false,
     pingTimeoutTime: number = this.connectionConnectTimeoutTime,
@@ -729,6 +1451,7 @@ class NodeManager {
         this.setNode(
           nodeId,
           nodeAddress,
+          nodeContactAddressData,
           block,
           force,
           pingTimeoutTime,
@@ -749,21 +1472,28 @@ class NodeManager {
     const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     // To avoid conflict we want to lock on the bucket index
     await this.nodeGraph.lockBucket(bucketIndex, tran);
-    const nodeData = await this.nodeGraph.getNode(nodeId, tran);
+
+    const nodeContact = await this.nodeGraph.getNodeContact(nodeId, tran);
     // If this is a new entry, check the bucket limit
     const count = await this.nodeGraph.getBucketMetaProp(
       bucketIndex,
       'count',
       tran,
     );
-    if (nodeData != null || count < this.nodeGraph.nodeBucketLimit) {
+
+    if (nodeContact != null || count < this.nodeGraph.nodeBucketLimit) {
       // Either already exists or has room in the bucket
       // We want to add or update the node
-      await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+      await this.nodeGraph.setNodeContactAddressData(
+        nodeId,
+        nodeAddress,
+        nodeContactAddressData,
+        tran,
+      );
       // Updating the refreshBucket timer
       await this.updateRefreshBucketDelay(
         bucketIndex,
-        this.refreshBucketDelay,
+        this.refreshBucketDelayTime,
         true,
         tran,
       );
@@ -771,21 +1501,33 @@ class NodeManager {
       // We want to add a node but the bucket is full
       if (force) {
         // We just add the new node anyway without checking the old one
-        const oldNodeId = (
-          await this.nodeGraph.getOldestNode(bucketIndex, 1, tran)
-        ).pop();
-        if (oldNodeId == null) never();
+        const bucket = await this.nodeGraph.getBucket(
+          bucketIndex,
+          'connected',
+          'asc',
+          1,
+          tran,
+        );
+        const oldNodeId = bucket[0]?.[0];
+        if (oldNodeId == null) {
+          utils.never('bucket should be full in this case');
+        }
         this.logger.debug(
           `Force was set, removing ${nodesUtils.encodeNodeId(
             oldNodeId,
           )} and adding ${nodesUtils.encodeNodeId(nodeId)}`,
         );
-        await this.nodeGraph.unsetNode(oldNodeId, tran);
-        await this.nodeGraph.setNode(nodeId, nodeAddress, tran);
+        await this.nodeGraph.unsetNodeContact(oldNodeId, tran);
+        await this.nodeGraph.setNodeContactAddressData(
+          nodeId,
+          nodeAddress,
+          nodeContactAddressData,
+          tran,
+        );
         // Updating the refreshBucket timer
         await this.updateRefreshBucketDelay(
           bucketIndex,
-          this.refreshBucketDelay,
+          this.refreshBucketDelayTime,
           true,
           tran,
         );
@@ -801,12 +1543,36 @@ class NodeManager {
         bucketIndex,
         nodeId,
         nodeAddress,
+        nodeContactAddressData,
         block,
         pingTimeoutTime,
         ctx,
         tran,
       );
     }
+  }
+
+  /**
+   * Removes a node from the NodeGraph
+   */
+  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
+    return await this.nodeGraph.unsetNodeContact(nodeId, tran);
+  }
+
+  /**
+   * Gets the specified bucket from the NodeGraph
+   */
+  public async getBucket(
+    bucketIndex: number,
+    tran?: DBTransaction,
+  ): Promise<NodeBucket | undefined> {
+    return await this.nodeGraph.getBucket(
+      bucketIndex,
+      undefined,
+      undefined,
+      undefined,
+      tran,
+    );
   }
 
   protected garbageCollectBucket(
@@ -842,20 +1608,19 @@ class NodeManager {
     // Locking on bucket
     await this.nodeGraph.lockBucket(bucketIndex, tran);
     const semaphore = new Semaphore(3);
-
     // Iterating over existing nodes
-    const bucket = await this.nodeGraph.getOldestNode(
+    const bucket = await this.nodeGraph.getBucket(
       bucketIndex,
+      'connected',
+      'asc',
       this.nodeGraph.nodeBucketLimit,
       tran,
     );
-    if (bucket == null) never();
+    if (bucket == null) utils.never();
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
-    for (const nodeId of bucket) {
-      // We want to retain seed nodes regardless of state, so skip them
-      if (this.nodeConnectionManager.isSeedNode(nodeId)) continue;
+    for (const [nodeId] of bucket) {
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock();
       if (ctx.signal?.aborted === true) break;
@@ -867,13 +1632,14 @@ class NodeManager {
             signal: ctx.signal,
             timer: pingTimeoutTime,
           };
-          const nodeAddress = await this.getNodeAddress(nodeId, tran);
-          if (nodeAddress == null) never();
-          if (await this.pingNode(nodeId, [nodeAddress], pingCtx)) {
+          const pingResult = await this.pingNode(nodeId, pingCtx);
+          if (pingResult != null) {
             // Succeeded so update
+            const [nodeAddress, nodeContactAddressData] = pingResult;
             await this.setNode(
               nodeId,
               nodeAddress,
+              nodeContactAddressData,
               false,
               false,
               undefined,
@@ -898,12 +1664,16 @@ class NodeManager {
     // Wait for pending pings to complete
     await Promise.all(pendingPromises);
     // Fill in bucket with pending nodes
-    for (const [nodeIdString, address] of pendingNodes) {
+    for (const [
+      nodeIdString,
+      [address, nodeContactAddressData],
+    ] of pendingNodes) {
       if (removedNodes <= 0) break;
       const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
       await this.setNode(
         nodeId,
         address,
+        nodeContactAddressData,
         false,
         false,
         undefined,
@@ -918,6 +1688,7 @@ class NodeManager {
     bucketIndex: number,
     nodeId: NodeId,
     nodeAddress: NodeAddress,
+    nodeContactAddressData: NodeContactAddressData,
     block: boolean = false,
     pingTimeoutTime: number = this.connectionConnectTimeoutTime,
     ctx: ContextTimed,
@@ -927,7 +1698,7 @@ class NodeManager {
       this.pendingNodes.set(bucketIndex, new Map());
     }
     const pendingNodes = this.pendingNodes.get(bucketIndex);
-    pendingNodes!.set(nodeId.toString(), nodeAddress);
+    pendingNodes!.set(nodeId.toString(), [nodeAddress, nodeContactAddressData]);
     // No need to re-set it in the map, Maps are by reference
 
     // If set to blocking we just run the GC operation here
@@ -943,7 +1714,7 @@ class NodeManager {
     // Check and start a 'garbageCollect` bucket task
     let scheduled: boolean = false;
     for await (const task of this.taskManager.getTasks('asc', true, [
-      this.basePath,
+      this.tasksPath,
       this.gcBucketHandlerId,
       `${bucketIndex}`,
     ])) {
@@ -972,17 +1743,10 @@ class NodeManager {
       await this.taskManager.scheduleTask({
         handlerId: this.gcBucketHandlerId,
         parameters: [bucketIndex],
-        path: [this.basePath, this.gcBucketHandlerId, `${bucketIndex}`],
+        path: [this.tasksPath, this.gcBucketHandlerId, `${bucketIndex}`],
         lazy: true,
       });
     }
-  }
-
-  /**
-   * Removes a node from the NodeGraph
-   */
-  public async unsetNode(nodeId: NodeId, tran: DBTransaction): Promise<void> {
-    return await this.nodeGraph.unsetNode(nodeId, tran);
   }
 
   /**
@@ -990,27 +1754,27 @@ class NodeManager {
    * to the new node ID.
    */
   public async resetBuckets(): Promise<void> {
-    return await this.nodeGraph.resetBuckets(this.keyRing.getNodeId());
+    return await this.nodeGraph.resetBuckets();
   }
 
   /**
    * Kademlia refresh bucket operation.
-   * It picks a random node within a bucket and does a search for that node.
-   * Connections during the search will share node information with other
-   * nodes.
+   * It generates a random node ID within the range of a bucket and does a
+   * lookup for that node in the network. This will cause the network to update
+   * its node graph information.
    * @param bucketIndex
    * @param pingTimeoutTime
    * @param ctx
    */
   public refreshBucket(
-    bucketIndex: number,
+    bucketIndex: NodeBucketIndex,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number | undefined = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
@@ -1020,9 +1784,11 @@ class NodeManager {
       bucketIndex,
     );
     // We then need to start a findNode procedure
-    await this.nodeConnectionManager.findNode(
+    await this.findNode(
       bucketRandomNodeId,
       pingTimeoutTime,
+      undefined,
+      undefined,
       ctx,
     );
   }
@@ -1040,7 +1806,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId],
+      [this.tasksPath, this.refreshBucketHandlerId],
       tran,
     )) {
       const bucketIndex = parseInt(task.path[0]);
@@ -1054,9 +1820,9 @@ class NodeManager {
               performance.now() +
               performance.timeOrigin -
               task.created.getTime() +
-              this.refreshBucketDelay +
+              this.refreshBucketDelayTime +
               nodesUtils.refreshBucketsDelayJitter(
-                this.refreshBucketDelay,
+                this.refreshBucketDelayTime,
                 this.refreshBucketDelayJitter,
               );
             await this.taskManager.updateTask(task.id, { delay }, tran);
@@ -1080,21 +1846,22 @@ class NodeManager {
       bucketIndex++
     ) {
       const exists = existingTasks[bucketIndex];
-      if (!exists) {
+      // Can be disabled with 0 delay, only use for testing
+      if (!exists && this.refreshBucketDelayTime > 0) {
         // Create a new task
         this.logger.debug(
           `Creating refreshBucket task for bucket ${bucketIndex}`,
         );
         const jitter = nodesUtils.refreshBucketsDelayJitter(
-          this.refreshBucketDelay,
+          this.refreshBucketDelayTime,
           this.refreshBucketDelayJitter,
         );
         await this.taskManager.scheduleTask({
           handlerId: this.refreshBucketHandlerId,
-          delay: this.refreshBucketDelay + jitter,
+          delay: this.refreshBucketDelayTime + jitter,
           lazy: true,
           parameters: [bucketIndex],
-          path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+          path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
           priority: 0,
         });
       }
@@ -1105,7 +1872,7 @@ class NodeManager {
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async updateRefreshBucketDelay(
     bucketIndex: number,
-    delay: number = this.refreshBucketDelay,
+    delay: number = this.refreshBucketDelayTime,
     lazy: boolean = true,
     tran?: DBTransaction,
   ): Promise<Task> {
@@ -1124,7 +1891,7 @@ class NodeManager {
     for await (const task of this.taskManager.getTasks(
       'asc',
       true,
-      [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+      [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
       if (!existingTask) {
@@ -1169,11 +1936,11 @@ class NodeManager {
         handlerId: this.refreshBucketHandlerId,
         lazy: true,
         parameters: [bucketIndex],
-        path: [this.basePath, this.refreshBucketHandlerId, `${bucketIndex}`],
+        path: [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
         priority: 0,
       });
     }
-    if (foundTask == null) never();
+    if (foundTask == null) utils.never();
     return foundTask;
   }
 
@@ -1182,161 +1949,61 @@ class NodeManager {
    * from each seed node and add them to this database
    * Establish a connection to each node before adding it
    * By default this operation is blocking, set `block` to `false` to make it
-   * non-blocking
+   *
+   * From the spec:
+   * To join the network, a node u must have a contact to an already participating node w. u inserts w into the
+   * appropriate k-bucket. u then performs a node lookup for its own node ID. Finally, u refreshes all kbuckets further
+   * away than its closest neighbor. During the refreshes, u both populates its own k-buckets and inserts itself into
+   * other nodes’ k-buckets as necessary.
+   *
+   * So this will do 3 steps
+   * 1. Connect to the initial nodes
+   * 2. do a find-node operation for itself
+   * 3. reschedule refresh bucket operations for every bucket above the closest node we found
+   *
    */
   public syncNodeGraph(
-    block?: boolean,
+    initialNodes: Array<[NodeId, NodeAddress]>,
     pingTimeoutTime?: number,
+    blocking?: boolean,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @timedCancellable(true)
   public async syncNodeGraph(
-    block: boolean = true,
+    initialNodes: Array<[NodeId, NodeAddress]>,
     pingTimeoutTime: number | undefined,
+    blocking: boolean = false,
     @context ctx: ContextTimed,
   ): Promise<void> {
     const logger = this.logger.getChild('syncNodeGraph');
     logger.info('Synchronizing NodeGraph');
-    const seedNodes = this.nodeConnectionManager.getSeedNodes();
-    if (seedNodes.length === 0) {
-      logger.info('Seed nodes list is empty, skipping synchronization');
-      return;
+    if (initialNodes.length === 0) {
+      throw Error('TMP IMP Must provide at least 1 initial node');
     }
-    const addresses = await Promise.all(
-      await this.db.withTransactionF(async (tran) =>
-        seedNodes.map(
-          async (seedNode) =>
-            (await this.nodeGraph.getNode(seedNode, tran))?.address,
-        ),
-      ),
-    );
-    const filteredAddresses = addresses.filter(
-      (address) => address != null,
-    ) as Array<NodeAddress>;
-    logger.debug(
-      `establishing multi-connection to the following seed nodes ${seedNodes.map(
-        (nodeId) => nodesUtils.encodeNodeId(nodeId),
-      )}`,
-    );
-    logger.debug(
-      `and addresses ${filteredAddresses.map(
-        (address) => `${address.host}:${address.port}`,
-      )}`,
-    );
-    // Establishing connections to the seed nodes
-    let connections: Array<NodeId>;
-    try {
-      connections = await this.nodeConnectionManager.getMultiConnection(
-        seedNodes,
-        filteredAddresses,
-        { signal: ctx.signal },
-      );
-    } catch (e) {
-      if (
-        e instanceof nodesErrors.ErrorNodeConnectionManagerMultiConnectionFailed
-      ) {
-        // Not explicitly a failure but we do want to stop here
-        this.logger.warn(
-          'Failed to connect to any seed nodes when syncing node graph',
-        );
-        return;
-      }
-      throw e;
-    }
-    logger.debug(`Multi-connection established for`);
-    connections.forEach((nodeId) => {
-      logger.debug(`${nodesUtils.encodeNodeId(nodeId)}`);
+    const initialNodesParameter = initialNodes.map(([nodeId, address]) => {
+      return [nodesUtils.encodeNodeId(nodeId), address] as [
+        NodeIdEncoded,
+        [Host, Port],
+      ];
     });
-    // Using a map to avoid duplicates
-    const closestNodesAll: Map<NodeId, NodeData> = new Map();
-    const localNodeId = this.keyRing.getNodeId();
-    let closestNode: NodeId | null = null;
-    logger.debug('Getting closest nodes');
-    for (const nodeId of connections) {
-      const closestNodes =
-        await this.nodeConnectionManager.getRemoteNodeClosestNodes(
-          nodeId,
-          localNodeId,
-          { signal: ctx.signal },
-        );
-      // Setting node information into the map, filtering out local node
-      closestNodes.forEach(([nodeId, address]) => {
-        if (!localNodeId.equals(nodeId)) closestNodesAll.set(nodeId, address);
-      });
-
-      // Getting the closest node
-      let closeNodeInfo = closestNodes.pop();
-      if (closeNodeInfo != null && localNodeId.equals(closeNodeInfo[0])) {
-        closeNodeInfo = closestNodes.pop();
-      }
-      if (closeNodeInfo == null) continue;
-      const [closeNode] = closeNodeInfo;
-      if (closestNode == null) closestNode = closeNode;
-      const distA = nodesUtils.nodeDistance(localNodeId, closeNode);
-      const distB = nodesUtils.nodeDistance(localNodeId, closestNode);
-      if (distA < distB) closestNode = closeNode;
-    }
-    logger.debug('Starting pingsAndSet tasks');
-    const pingTasks: Array<Task> = [];
-    for (const [nodeId, nodeData] of closestNodesAll) {
-      if (!localNodeId.equals(nodeId)) {
-        logger.debug(
-          `pingAndSetTask for ${nodesUtils.encodeNodeId(nodeId)}@${
-            nodeData.address.host
-          }:${nodeData.address.port}`,
-        );
-        const pingAndSetTask = await this.taskManager.scheduleTask({
-          delay: 0,
-          handlerId: this.pingAndSetNodeHandlerId,
-          lazy: !block,
-          parameters: [
-            nodesUtils.encodeNodeId(nodeId),
-            nodeData.address.host,
-            nodeData.address.port,
-          ],
-          path: [this.basePath, this.pingAndSetNodeHandlerId],
-          // Need to be somewhat active so high priority
-          priority: 100,
-          deadline: pingTimeoutTime,
-        });
-        pingTasks.push(pingAndSetTask);
-      }
-    }
-    if (block) {
-      // We want to wait for all the tasks
-      logger.debug('Awaiting all pingAndSetTasks');
-      await Promise.all(
-        pingTasks.map((task) => {
-          const prom = task.promise();
-          // Hook on cancellation
-          if (ctx.signal.aborted) {
-            prom.cancel(ctx.signal.reason);
-          } else {
-            ctx.signal.addEventListener('abort', () =>
-              prom.cancel(ctx.signal.reason),
-            );
-          }
-          // Ignore errors
-          return task.promise().catch(() => {});
-        }),
+    if (blocking) {
+      await this.syncNodeGraphHandler(
+        ctx,
+        undefined,
+        initialNodesParameter,
+        pingTimeoutTime,
       );
-    }
-    // Refreshing every bucket above the closest node
-    logger.debug(`Triggering refreshBucket tasks`);
-    let index = this.nodeGraph.nodeIdBits;
-    if (closestNode != null) {
-      const [bucketIndex] = this.nodeGraph.bucketIndex(closestNode);
-      index = bucketIndex;
-    }
-    const refreshBuckets: Array<Promise<any>> = [];
-    for (let i = index; i < this.nodeGraph.nodeIdBits; i++) {
-      const task = await this.updateRefreshBucketDelay(i, 0, !block);
-      refreshBuckets.push(task.promise());
-    }
-    if (block) {
-      logger.debug(`Awaiting refreshBucket tasks`);
-      await Promise.all(refreshBuckets);
+    } else {
+      // Create task
+      await this.taskManager.scheduleTask({
+        delay: 0,
+        handlerId: this.syncNodeGraphHandlerId,
+        lazy: true,
+        parameters: [initialNodesParameter, pingTimeoutTime],
+        path: [this.tasksPath, this.syncNodeGraphHandlerId],
+        priority: 0,
+      });
     }
   }
 }

@@ -94,5 +94,4 @@ describe('tasks/utils', () => {
       tasksUtils.decodeTaskId('vvvvvvvvvvvvvvvvvvvvvvvvvvs')?.equals(taskId3),
     ).toBe(true);
   });
-  test;
 });

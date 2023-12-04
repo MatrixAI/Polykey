@@ -7,9 +7,7 @@ import type {
   PrivateKeyPEM,
 } from '@/keys/types';
 import type { TLSConfig } from '@/network/types';
-import type { ClientCryptoOps, ServerCryptoOps } from '@matrixai/quic';
 import * as keysUtils from '@/keys/utils';
-import * as testNodesUtils from '../nodes/utils';
 
 async function createTLSConfig(
   keyPair: KeyPair,
@@ -65,16 +63,4 @@ async function createTLSConfigWithChain(
   };
 }
 
-function createCrypto(): ServerCryptoOps & ClientCryptoOps {
-  return {
-    randomBytes: async (data: ArrayBuffer) => {
-      const randomBytes = keysUtils.getRandomBytes(data.byteLength);
-      const dataBuf = Buffer.from(data);
-      dataBuf.write(randomBytes.toString('binary'), 'binary');
-    },
-    sign: testNodesUtils.sign,
-    verify: testNodesUtils.verify,
-  };
-}
-
-export { createTLSConfig, createTLSConfigWithChain, createCrypto };
+export { createTLSConfig, createTLSConfigWithChain };

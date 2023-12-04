@@ -18,6 +18,11 @@ import type { Notification } from '../notifications/types';
 import type { ProviderToken } from '../identities/types';
 import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
 import type { AuditMetricGetTypeOverride } from './callers/auditMetricGet';
+import type {
+  NodeContact,
+  NodeAddress,
+  NodeContactAddressData,
+} from '../nodes/types';
 
 type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<
@@ -106,10 +111,14 @@ type AddressMessage = {
 type NodeAddressMessage = NodeIdMessage & AddressMessage;
 
 type NodesFindMessage = {
-  addresses: Array<AddressMessage>;
+  nodeAddress: NodeAddress;
+  nodeContactAddressData: NodeContactAddressData;
 };
 
-type NodesGetMessage = NodeAddressMessage & { bucketIndex: number };
+type NodesGetMessage = NodeIdMessage & {
+  nodeContact: NodeContact;
+  bucketIndex: number;
+};
 
 type NodesAddMessage = NodeAddressMessage & {
   force?: boolean;
