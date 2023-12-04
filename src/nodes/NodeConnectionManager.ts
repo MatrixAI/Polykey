@@ -11,7 +11,7 @@ import type {
   TLSConfig,
 } from '../network/types';
 import type { AgentServerManifest } from './agent/handlers';
-import type { NodeId, NodeIdString, SeedNodes } from './types';
+import type { NodeId, NodeIdString } from './types';
 import {
   events as quicEvents,
   QUICServer,
@@ -168,7 +168,6 @@ class NodeConnectionManager {
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected tlsConfig: TLSConfig;
-  protected seedNodes: SeedNodes;
 
   protected quicSocket: QUICSocket;
   protected quicServer: QUICServer;
@@ -448,10 +447,6 @@ class NodeConnectionManager {
     return this.quicSocket.type;
   }
 
-  // Run on this
-  // with this port
-  // with reuseAddr
-
   public async start({
     agentService,
     host = '::' as Host,
@@ -511,11 +506,7 @@ class NodeConnectionManager {
     this.quicSocket.addEventListener(EventAll.name, this.handleEventAll);
     this.rateLimiter.startRefillInterval();
 
-    // Why is this started beforehand?
     await this.rpcServer.start({ manifest: agentService });
-
-    // Should you make initial connections? If not
-    // Then why bother with seednodes at all
 
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -697,8 +688,6 @@ class NodeConnectionManager {
     }
     // Wait for any destruction to complete after locking is removed
   }
-
-  // Refactoring methods here
 
   /**
    * Starts a connection.

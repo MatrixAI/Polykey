@@ -14,7 +14,7 @@ import type {
 } from './types';
 import type KeyRing from '../keys/KeyRing';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
-import type NodeConnectionManager from '../nodes/NodeConnectionManager';
+import type NodeManager from '../nodes/NodeManager';
 import type { RPCClient } from '@matrixai/rpc';
 import type agentClientManifest from '../nodes/agent/callers';
 import type { POJO } from '../types';
@@ -113,7 +113,7 @@ class VaultInternal {
     db,
     vaultsDbPath,
     keyRing,
-    nodeConnectionManager,
+    nodeManager,
     efs,
     logger = new Logger(this.name),
     tran,
@@ -125,7 +125,7 @@ class VaultInternal {
     vaultsDbPath: LevelPath;
     efs: EncryptedFS;
     keyRing: KeyRing;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeManager: NodeManager;
     logger?: Logger;
     tran?: DBTransaction;
   }): Promise<VaultInternal> {
@@ -138,7 +138,7 @@ class VaultInternal {
           db,
           vaultsDbPath,
           keyRing,
-          nodeConnectionManager,
+          nodeManager,
           efs,
           logger,
           tran,
@@ -165,7 +165,7 @@ class VaultInternal {
     let remoteVaultId: VaultId;
     let remote: RemoteInfo;
     try {
-      [vaultName, remoteVaultId] = await nodeConnectionManager.withConnF(
+      [vaultName, remoteVaultId] = await nodeManager.withConnF(
         targetNodeId,
         async (connection) => {
           const client = connection.getClient();
@@ -539,12 +539,12 @@ class VaultInternal {
 
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async pullVault({
-    nodeConnectionManager,
+    nodeManager,
     pullNodeId,
     pullVaultNameOrId,
     tran,
   }: {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeManager: NodeManager;
     pullNodeId?: NodeId;
     pullVaultNameOrId?: VaultId | VaultName;
     tran?: DBTransaction;
@@ -552,7 +552,7 @@ class VaultInternal {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.pullVault({
-          nodeConnectionManager,
+          nodeManager,
           pullNodeId,
           pullVaultNameOrId,
           tran,
@@ -594,7 +594,7 @@ class VaultInternal {
     );
     let remoteVaultId: VaultId;
     try {
-      remoteVaultId = await nodeConnectionManager.withConnF(
+      remoteVaultId = await nodeManager.withConnF(
         pullNodeId!,
         async (connection) => {
           const client = connection.getClient();

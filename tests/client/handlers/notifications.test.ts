@@ -3,6 +3,7 @@ import type { Host, TLSConfig } from '@/network/types';
 import type { General, Notification, VaultShare } from '@/notifications/types';
 import type { VaultIdEncoded, NodeIdEncoded } from '@/ids/types';
 import type { VaultName } from '@/vaults/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -103,7 +104,6 @@ describe('notificationsClear', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -122,13 +122,15 @@ describe('notificationsClear', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -259,7 +261,6 @@ describe('notificationsRead', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -278,13 +279,15 @@ describe('notificationsRead', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -599,10 +602,7 @@ describe('notificationsSend', () => {
   let sigchain: Sigchain;
   let mockedSendNotification: jest.SpyInstance;
   beforeEach(async () => {
-    mockedSendNotification = jest.spyOn(
-      NodeConnectionManager.prototype,
-      'withConnF',
-    );
+    mockedSendNotification = jest.spyOn(NodeManager.prototype, 'withConnF');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -642,7 +642,6 @@ describe('notificationsSend', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
@@ -660,13 +659,15 @@ describe('notificationsSend', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,

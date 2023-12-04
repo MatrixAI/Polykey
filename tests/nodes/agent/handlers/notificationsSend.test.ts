@@ -148,7 +148,6 @@ describe('notificationsSend', () => {
         db,
         keyRing,
         acl,
-        nodeConnectionManager,
         nodeManager,
         logger,
       });

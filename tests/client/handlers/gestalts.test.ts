@@ -16,6 +16,7 @@ import type {
 import type { SignedClaim } from '@/claims/types';
 import type { Host } from '@/network/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -463,6 +464,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
+      agentService: {} as AgentServerManifest,
     });
     discovery = await Discovery.createDiscovery({
       db,
@@ -639,7 +641,10 @@ describe('gestaltsDiscoveryByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1252,7 +1257,10 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,
@@ -1628,12 +1636,19 @@ describe('gestaltsGestaltTrustByNode', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
-    await nodeManager.setNode(nodeIdRemote, {
-      host: node.agentServiceHost,
-      port: node.agentServicePort,
-      scopes: ['global'],
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
     });
+    await nodeManager.setNode(
+      nodeIdRemote,
+      [node.agentServiceHost, node.agentServicePort],
+      {
+        mode: 'direct',
+        connectedTime: 0,
+        scopes: ['global'],
+      },
+    );
     discovery = await Discovery.createDiscovery({
       db,
       gestaltGraph,

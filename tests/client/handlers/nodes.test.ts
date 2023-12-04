@@ -2,7 +2,7 @@ import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { NodeIdEncoded } from '@/ids/types';
 import type { TLSConfig, Host, Port } from '@/network/types';
 import type { Notification } from '@/notifications/types';
-import type { NodeAddress } from '@/nodes/types';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -100,7 +100,6 @@ describe('nodesAdd', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -119,7 +118,10 @@ describe('nodesAdd', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
@@ -178,17 +180,17 @@ describe('nodesAdd', () => {
       ping: false,
       force: false,
     });
-    const result = await nodeGraph.getNode(
+    const result = await nodeGraph.getNodeContact(
       nodesUtils.decodeNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
       )!,
     );
     expect(result).toBeDefined();
-    expect(result!.address).toEqual({
-      host: '127.0.0.1',
-      port: 11111,
-      scopes: ['global'],
-    });
+    expect(
+      result![
+        nodesUtils.nodeContactAddress(['127.0.0.1' as Host, 11111 as Port])
+      ],
+    ).toBeDefined();
   });
   test('cannot add invalid node', async () => {
     // Invalid host
@@ -315,7 +317,6 @@ describe('nodesClaim', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -334,13 +335,15 @@ describe('nodesClaim', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -434,16 +437,21 @@ describe('nodesFind', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let mockedFindNode: jest.SpyInstance;
   beforeEach(async () => {
     mockedFindNode = jest
-      .spyOn(NodeConnectionManager.prototype, 'findNode')
-      .mockResolvedValue({
-        host: '127.0.0.1' as Host,
-        port: 11111 as Port,
-        scopes: ['local'],
-      });
+      .spyOn(NodeManager.prototype, 'findNode')
+      // [NodeAddress, NodeContactAddressData]
+      .mockResolvedValue([
+        ['127.0.0.1' as Host, 11111 as Port],
+        {
+          mode: 'direct',
+          connectedTime: 0,
+          scopes: ['local'],
+        },
+      ]);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -479,7 +487,6 @@ describe('nodesFind', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -487,7 +494,20 @@ describe('nodesFind', () => {
       connectionIdleTimeoutTimeScale: 0,
       logger: logger.getChild('NodeConnectionManager'),
     });
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeGraph,
+      nodeConnectionManager,
+      taskManager,
+      gestaltGraph: {} as GestaltGraph,
+      sigchain: {} as Sigchain,
+      logger: logger.getChild(NodeManager.name),
+    });
     await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
@@ -496,7 +516,7 @@ describe('nodesFind', () => {
     await clientService.start({
       manifest: {
         nodesFind: new NodesFind({
-          nodeConnectionManager,
+          nodeManager,
         }),
       },
       host: localhost,
@@ -540,9 +560,9 @@ describe('nodesFind', () => {
       nodeIdEncoded:
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
     });
-    const address = response.addresses.at(0);
-    expect(address?.host).toBe('127.0.0.1');
-    expect(address?.port).toBe(11111);
+    const [host, port] = response.nodeAddress;
+    expect(host).toBe('127.0.0.1');
+    expect(port).toBe(11111);
   });
   test('cannot find an invalid node', async () => {
     await testsUtils.expectRemoteError(
@@ -613,7 +633,6 @@ describe('nodesPing', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -631,7 +650,10 @@ describe('nodesPing', () => {
       gestaltGraph: {} as GestaltGraph,
       logger,
     });
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
@@ -680,7 +702,7 @@ describe('nodesPing', () => {
     });
   });
   test('pings a node (offline)', async () => {
-    mockedPingNode.mockResolvedValue(false);
+    mockedPingNode.mockResolvedValue(undefined);
     const response = await rpcClient.methods.nodesPing({
       nodeIdEncoded:
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
@@ -688,7 +710,7 @@ describe('nodesPing', () => {
     expect(response.success).toBeFalsy();
   });
   test('pings a node (online)', async () => {
-    mockedPingNode.mockResolvedValue(true);
+    mockedPingNode.mockResolvedValue([]);
     const response = await rpcClient.methods.nodesPing({
       nodeIdEncoded:
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
@@ -762,7 +784,6 @@ describe('nodesGetAll', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -781,7 +802,10 @@ describe('nodesGetAll', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
@@ -834,10 +858,12 @@ describe('nodesGetAll', () => {
       parseNodeId(
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
       ),
+      ['127.0.0.1' as Host, 1111 as Port],
       {
-        host: networkUtils.parseHostOrHostname('127.0.0.1'),
-        port: networkUtils.parsePort(1111),
-      } as NodeAddress,
+        mode: 'direct',
+        connectedTime: 0,
+        scopes: ['local'],
+      },
     );
     const values: Array<any> = [];
     const response = await rpcClient.methods.nodesGetAll({});
@@ -912,7 +938,6 @@ describe('nodesListConnections', () => {
     });
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
-      nodeGraph,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
       connectionConnectTimeoutTime: 2000,
@@ -931,7 +956,10 @@ describe('nodesListConnections', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
@@ -983,6 +1011,8 @@ describe('nodesListConnections', () => {
     mockedConnection.mockReturnValue([
       {
         nodeId: testsUtils.generateRandomNodeId(),
+        connectionId: 'someId',
+        primary: true,
         address: {
           host: '127.0.0.1',
           port: 11111,
@@ -992,6 +1022,7 @@ describe('nodesListConnections', () => {
         timeout: undefined,
       },
     ]);
+
     const values: Array<any> = [];
     const responses = await rpcClient.methods.nodesListConnections({});
     for await (const response of responses) {

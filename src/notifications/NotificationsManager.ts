@@ -3,7 +3,6 @@ import type { NotificationId, Notification, NotificationData } from './types';
 import type ACL from '../acl/ACL';
 import type KeyRing from '../keys/KeyRing';
 import type NodeManager from '../nodes/NodeManager';
-import type NodeConnectionManager from '../nodes/NodeConnectionManager';
 import type { NodeId } from '../ids/types';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -40,7 +39,6 @@ class NotificationsManager {
   static async createNotificationsManager({
     acl,
     db,
-    nodeConnectionManager,
     nodeManager,
     keyRing,
     messageCap = 10000,
@@ -49,7 +47,6 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
-    nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     keyRing: KeyRing;
     messageCap?: number;
@@ -63,7 +60,6 @@ class NotificationsManager {
       keyRing,
       logger,
       messageCap,
-      nodeConnectionManager,
       nodeManager,
     });
 
@@ -77,7 +73,6 @@ class NotificationsManager {
   protected db: DB;
   protected keyRing: KeyRing;
   protected nodeManager: NodeManager;
-  protected nodeConnectionManager: NodeConnectionManager;
   protected messageCap: number;
 
   /**
@@ -101,7 +96,6 @@ class NotificationsManager {
   constructor({
     acl,
     db,
-    nodeConnectionManager,
     nodeManager,
     keyRing,
     messageCap,
@@ -109,7 +103,6 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
-    nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     keyRing: KeyRing;
     messageCap: number;
@@ -120,7 +113,6 @@ class NotificationsManager {
     this.acl = acl;
     this.db = db;
     this.keyRing = keyRing;
-    this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
   }
 
@@ -183,7 +175,7 @@ class NotificationsManager {
       notification,
       this.keyRing.keyPair,
     );
-    await this.nodeConnectionManager.withConnF(nodeId, async (connection) => {
+    await this.nodeManager.withConnF(nodeId, async (connection) => {
       const client = connection.getClient();
       await client.methods.notificationsSend({
         signedNotificationEncoded: signedNotification,

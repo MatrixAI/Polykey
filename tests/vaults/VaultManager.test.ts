@@ -7,6 +7,8 @@ import type {
 } from '@/vaults/types';
 import type NotificationsManager from '@/notifications/NotificationsManager';
 import type { Host } from '@/network/types';
+import type { Sigchain } from '@/sigchain';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -19,6 +21,7 @@ import { RWLockWriter } from '@matrixai/async-locks';
 import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
+import NodeManager from '@/nodes/NodeManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import KeyRing from '@/keys/KeyRing';
 import PolykeyAgent from '@/PolykeyAgent';
@@ -61,6 +64,11 @@ describe('VaultManager', () => {
   const dummyKeyRing = {
     getNodeId: () => nodeId,
   } as KeyRing;
+  const dummyGestaltGraph = {} as GestaltGraph;
+  const dummySigchain = {} as Sigchain;
+  const dummyACL = {} as ACL;
+  const dummyNodeManager = {} as NodeManager;
+  const dummyNotificationsManager = {} as NotificationsManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -86,10 +94,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -116,10 +124,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -136,10 +144,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager: {} as NodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager: dummyNodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -178,10 +186,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -211,10 +219,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -239,10 +247,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -271,10 +279,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager: {} as NodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager: dummyNodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -316,10 +324,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -342,10 +350,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -367,10 +375,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -392,10 +400,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -428,10 +436,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -472,6 +480,7 @@ describe('VaultManager', () => {
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager;
+    let nodeManager: NodeManager;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let taskManager: TaskManager;
@@ -514,17 +523,24 @@ describe('VaultManager', () => {
       remoteKeynode2Id = remoteKeynode2.keyRing.getNodeId();
 
       // Adding details to each agent
-      await remoteKeynode1.nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.agentServiceHost,
-        port: remoteKeynode2.agentServicePort,
-        scopes: ['global'],
-      });
-      await remoteKeynode2.nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.agentServiceHost,
-        port: remoteKeynode1.agentServicePort,
-        scopes: ['global'],
-      });
-
+      await remoteKeynode1.nodeGraph.setNodeContactAddressData(
+        remoteKeynode2Id,
+        [remoteKeynode2.agentServiceHost, remoteKeynode2.agentServicePort],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
+      await remoteKeynode2.nodeGraph.setNodeContactAddressData(
+        remoteKeynode1Id,
+        [remoteKeynode1.agentServiceHost, remoteKeynode1.agentServicePort],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
       await remoteKeynode1.gestaltGraph.setNode({
         nodeId: remoteKeynode2Id,
       });
@@ -572,27 +588,49 @@ describe('VaultManager', () => {
       const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
-        nodeGraph,
         tlsConfig,
         logger,
       });
-      await nodeConnectionManager.start({ host: localhost as Host });
+      await nodeConnectionManager.start({
+        host: localhost as Host,
+        agentService: {} as AgentServerManifest,
+      });
+      nodeManager = new NodeManager({
+        db,
+        keyRing,
+        nodeConnectionManager,
+        nodeGraph,
+        gestaltGraph: dummyGestaltGraph,
+        sigchain: dummySigchain,
+        taskManager,
+        logger,
+      });
+      await nodeManager.start();
       await taskManager.startProcessing();
-      await nodeGraph.setNode(remoteKeynode1Id, {
-        host: remoteKeynode1.agentServiceHost,
-        port: remoteKeynode1.agentServicePort,
-        scopes: ['global'],
-      });
-      await nodeGraph.setNode(remoteKeynode2Id, {
-        host: remoteKeynode2.agentServiceHost,
-        port: remoteKeynode2.agentServicePort,
-        scopes: ['global'],
-      });
+      await nodeGraph.setNodeContactAddressData(
+        remoteKeynode1Id,
+        [remoteKeynode1.agentServiceHost, remoteKeynode1.agentServicePort],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
+      await nodeGraph.setNodeContactAddressData(
+        remoteKeynode2Id,
+        [remoteKeynode2.agentServiceHost, remoteKeynode2.agentServicePort],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
     });
     afterEach(async () => {
       await taskManager.stopProcessing();
       await taskManager.stopTasks();
       await remoteKeynode1.vaultManager.destroyVault(remoteVaultId);
+      await nodeManager.stop();
       await nodeConnectionManager.stop();
       await nodeGraph.stop();
       await nodeGraph.destroy();
@@ -605,10 +643,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -667,10 +705,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -706,10 +744,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -749,10 +787,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -812,10 +850,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -836,10 +874,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -878,10 +916,10 @@ describe('VaultManager', () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
           keyRing: dummyKeyRing,
-          gestaltGraph: {} as GestaltGraph,
-          nodeConnectionManager,
-          acl: {} as ACL,
-          notificationsManager: {} as NotificationsManager,
+          gestaltGraph: dummyGestaltGraph,
+          nodeManager,
+          acl: dummyACL,
+          notificationsManager: dummyNotificationsManager,
           db,
           logger: logger.getChild(VaultManager.name),
         });
@@ -966,10 +1004,10 @@ describe('VaultManager', () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
           keyRing: dummyKeyRing,
-          gestaltGraph: {} as GestaltGraph,
-          nodeConnectionManager,
-          acl: {} as ACL,
-          notificationsManager: {} as NotificationsManager,
+          gestaltGraph: dummyGestaltGraph,
+          nodeManager,
+          acl: dummyACL,
+          notificationsManager: dummyNotificationsManager,
           db,
           logger: logger.getChild(VaultManager.name),
         });
@@ -1099,10 +1137,10 @@ describe('VaultManager', () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
           keyRing: dummyKeyRing,
-          gestaltGraph: {} as GestaltGraph,
-          nodeConnectionManager,
-          acl: {} as ACL,
-          notificationsManager: {} as NotificationsManager,
+          gestaltGraph: dummyGestaltGraph,
+          nodeManager,
+          acl: dummyACL,
+          notificationsManager: dummyNotificationsManager,
           db,
           logger: logger.getChild(VaultManager.name),
         });
@@ -1173,10 +1211,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -1230,10 +1268,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -1256,10 +1294,10 @@ describe('VaultManager', () => {
         const vaultManager = await VaultManager.createVaultManager({
           vaultsPath,
           keyRing: dummyKeyRing,
-          gestaltGraph: {} as GestaltGraph,
-          nodeConnectionManager,
-          acl: {} as ACL,
-          notificationsManager: {} as NotificationsManager,
+          gestaltGraph: dummyGestaltGraph,
+          nodeManager,
+          acl: dummyACL,
+          notificationsManager: dummyNotificationsManager,
           db,
           logger: logger.getChild(VaultManager.name),
         });
@@ -1372,10 +1410,10 @@ describe('VaultManager', () => {
       const vaultManager = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing,
-        nodeConnectionManager,
+        nodeManager,
         acl: {} as any,
         gestaltGraph: {} as any,
-        notificationsManager: {} as NotificationsManager,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -1385,11 +1423,15 @@ describe('VaultManager', () => {
         const nodeId1 = keyRing.getNodeId();
 
         // Letting nodeGraph know where the remote agent is
-        await nodeGraph.setNode(targetNodeId, {
-          host: remoteKeynode1.agentServiceHost,
-          port: remoteKeynode1.agentServicePort,
-          scopes: ['global'],
-        });
+        await nodeGraph.setNodeContactAddressData(
+          targetNodeId,
+          [remoteKeynode1.agentServiceHost, remoteKeynode1.agentServicePort],
+          {
+            mode: 'direct',
+            connectedTime: Date.now(),
+            scopes: ['global'],
+          },
+        );
 
         await remoteKeynode1.gestaltGraph.setNode({
           nodeId: nodeId1,
@@ -1474,10 +1516,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeManager: dummyNodeManager,
       acl,
       gestaltGraph,
-      notificationsManager: {} as NotificationsManager,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1539,10 +1581,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1582,10 +1624,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1624,10 +1666,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1663,10 +1705,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1684,10 +1726,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1715,10 +1757,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1743,10 +1785,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1773,10 +1815,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1790,10 +1832,10 @@ describe('VaultManager', () => {
       vaultManager2 = await VaultManager.createVaultManager({
         vaultsPath,
         keyRing: dummyKeyRing,
-        gestaltGraph: {} as GestaltGraph,
-        nodeConnectionManager: {} as NodeConnectionManager,
-        acl: {} as ACL,
-        notificationsManager: {} as NotificationsManager,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager: dummyNodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
         db,
         logger: logger.getChild(VaultManager.name),
       });
@@ -1813,10 +1855,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });
@@ -1836,10 +1878,10 @@ describe('VaultManager', () => {
     const vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       keyRing: dummyKeyRing,
-      gestaltGraph: {} as GestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
-      acl: {} as ACL,
-      notificationsManager: {} as NotificationsManager,
+      gestaltGraph: dummyGestaltGraph,
+      nodeManager: dummyNodeManager,
+      acl: dummyACL,
+      notificationsManager: dummyNotificationsManager,
       db,
       logger: logger.getChild(VaultManager.name),
     });

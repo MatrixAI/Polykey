@@ -29,16 +29,12 @@ import * as nodesTestUtils from './utils';
 import ACL from '../../src/acl/ACL';
 import * as testsUtils from '../utils';
 
-describe(`NodeConnectionManager`, () => {
-  const logger = new Logger(
-    `${NodeConnectionManager.name} test`,
-    LogLevel.WARN,
-    [
-      new StreamHandler(
-        formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
-      ),
-    ],
-  );
+describe(`${NodeManager.name}`, () => {
+  const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
   const password = 'password';
   const localHost = '127.0.0.1' as Host;
   const timeoutTime = 300;

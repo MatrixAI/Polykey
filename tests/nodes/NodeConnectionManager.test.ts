@@ -15,7 +15,7 @@ import * as nodesTestUtils from './utils';
 import * as keysTestUtils from '../keys/utils';
 import * as testsUtils from '../utils';
 
-describe(`NodeConnectionManager`, () => {
+describe(`${NodeConnectionManager.name}`, () => {
   const logger = new Logger(
     `${NodeConnectionManager.name} test`,
     LogLevel.WARN,

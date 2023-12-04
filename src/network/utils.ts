@@ -214,13 +214,13 @@ function toCanonicalHost(host: string): Host {
   if (scope != null) {
     host_ = host_.replace(/%.+/, '');
   }
-  if (isIPv4MappedIPv6(host)) {
-    host_ = fromIPv4MappedIPv6(host);
-  } else if (isIPv4(host)) {
-    host_ = IPv4.fromString(host).toString();
+  if (isIPv4MappedIPv6(host_)) {
+    host_ = fromIPv4MappedIPv6(host_);
+  } else if (isIPv4(host_)) {
+    host_ = IPv4.fromString(host_).toString();
     // Host_ = (new IPv4(host)).toString();
-  } else if (isIPv6(host)) {
-    host_ = IPv6.fromString(host).toString();
+  } else if (isIPv6(host_)) {
+    host_ = IPv6.fromString(host_).toString();
     // Host_ = (new IPv6(host)).toString();
   } else {
     throw new TypeError('Invalid IP address');

@@ -6,7 +6,12 @@ import type KeyRing from '../keys/KeyRing';
 import type Sigchain from '../sigchain/Sigchain';
 import type TaskManager from '../tasks/TaskManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
-import type { TaskHandler, TaskHandlerId, Task } from '../tasks/types';
+import type {
+  TaskHandler,
+  TaskHandlerId,
+  Task,
+  TaskInfo,
+} from '../tasks/types';
 import type { SignedTokenEncoded } from '../tokens/types';
 import type { Host, Port } from '../network/types';
 import type {
@@ -32,14 +37,14 @@ import type {
 } from './types';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
-import type { MDNS, ServicePOJO } from '@matrixai/mdns';
+import type { ServicePOJO } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { withF } from '@matrixai/resources';
-import { events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
+import { MDNS, events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
@@ -92,6 +97,12 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected nodeGraph: NodeGraph;
   protected nodeConnectionManager: NodeConnectionManager;
+  protected mdnsOptions:
+    | {
+        groups: Array<Host>;
+        port: Port;
+      }
+    | undefined;
   protected mdns: MDNS | undefined;
 
   protected pendingNodes: Map<
@@ -197,9 +208,9 @@ class NodeManager {
   public readonly checkConnectionsHandlerId: TaskHandlerId =
     `${this.tasksPath}.${this.checkConnectionsHandler.name}` as TaskHandlerId;
 
-  protected syncNodeGraphHandler: TaskHandler = async (
+  protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
-    taskInfo,
+    taskInfo: TaskInfo | undefined,
     initialNodes: Array<[NodeIdEncoded, [Host, Port]]>,
     pingTimeoutTime: number | undefined,
   ) => {
@@ -276,7 +287,7 @@ class NodeManager {
     taskManager,
     nodeGraph,
     nodeConnectionManager,
-    mdns,
+    mdnsOptions,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
     refreshBucketDelayTime = config.defaultsSystem
@@ -292,7 +303,10 @@ class NodeManager {
     gestaltGraph: GestaltGraph;
     taskManager: TaskManager;
     nodeGraph: NodeGraph;
-    mdns?: MDNS;
+    mdnsOptions?: {
+      groups: Array<Host>;
+      port: Port;
+    };
     nodeConnectionManager: NodeConnectionManager;
     connectionConnectTimeoutTime?: number;
     refreshBucketDelayTime?: number;
@@ -308,7 +322,10 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
-    this.mdns = mdns;
+    this.mdnsOptions = mdnsOptions;
+    if (mdnsOptions != null) {
+      this.mdns = new MDNS({ logger: this.logger.getChild(MDNS.name) });
+    }
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
     this.refreshBucketDelayTime = refreshBucketDelayTime;
     this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
@@ -345,6 +362,13 @@ class NodeManager {
     }
     // Starting MDNS
     if (this.mdns != null) {
+      const nodeId = this.keyRing.getNodeId();
+      await this.mdns.start({
+        id: nodeId.toBuffer().readUint16BE(),
+        hostname: nodesUtils.encodeNodeId(nodeId),
+        groups: this.mdnsOptions!.groups,
+        port: this.mdnsOptions!.port,
+      });
       this.mdns.registerService({
         name: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
         port: this.nodeConnectionManager.port,
@@ -367,6 +391,7 @@ class NodeManager {
       nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
       this.handleEventNodeConnectionManagerConnectionReverse,
     );
+    await this.mdns?.stop();
     // Cancels all NodeManager tasks
     const taskPs: Array<Promise<any>> = [];
     for await (const task of this.taskManager.getTasks(undefined, false, [
@@ -477,15 +502,15 @@ class NodeManager {
   }
 
   /**
-   * Will do a Kademlia find node proceedure.
+   * Will attempt to find a node within the network using a hybrid strategy of
+   * attempting signalled connections, direct connections and checking MDNS.
    *
    * Will attempt to fix regardless of existing connection.
    * @param nodeId - NodeId of target to find.
-   * @param pingTimeoutTime
-   * @param concurrencyLimit - Limit the number of concurrent connections
-   * @param limit
+   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param concurrencyLimit - Limit the number of concurrent connections.
+   * @param limit - Limit the number of total connections to be made before giving up.
    * @param ctx
-   * @returns true if the node was found.
    */
   public findNode(
     nodeId: NodeId,
@@ -554,11 +579,11 @@ class NodeManager {
   }
 
   /**
-   * Will try to make a connection to the node using active connections only
+   * Will try to make a connection to the node using hole punched connections only
    *
-   * @param nodeId
-   * @param nodeConnectionsQueue
-   * @param pingTimeoutTime
+   * @param nodeId - NodeId of the target to find.
+   * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
+   * @param pingTimeoutTime - timeout time for each individual connection.
    * @param ctx
    */
   public findNodeBySignal(
@@ -692,6 +717,14 @@ class NodeManager {
     ] as [[Host, Port], NodeContactAddressData];
   }
 
+  /**
+   * Will try to make a connection to the node using direct connections only
+   *
+   * @param nodeId - NodeId of the target to find.
+   * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
+   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param ctx
+   */
   public findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
@@ -764,7 +797,7 @@ class NodeManager {
               await this.nodeConnectionManager.createConnectionMultiple(
                 [nodeIdTarget],
                 addresses,
-                newCtx,
+                { timer: pingTimeoutTime, signal: newCtx.signal },
               );
             } catch (e) {
               if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
@@ -917,6 +950,11 @@ class NodeManager {
     return addresses;
   }
 
+  /**
+   * Will query MDNS for local nodes and attempt a connection.
+   * @param nodeId - NodeId of the target to find.
+   * @param ctx
+   */
   public findNodeByMDNS(
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
@@ -962,10 +1000,10 @@ class NodeManager {
   }
 
   /**
-   * Will ask the target node about closest nodes to the `node`
+   * Will ask the target node about the closest nodes to the `node`
    * and add them to the `nodeConnectionsQueue`.
    *
-   * @param nodeId - node to find closest nodes to
+   * @param nodeId - node to find the closest nodes to
    * @param nodeIdTarget - node to make RPC requests to
    * @param nodeConnectionsQueue
    * @param ctx
@@ -1081,8 +1119,6 @@ class NodeManager {
     }
   }
 
-  // RPC related methods
-
   /**
    * Connects to the target node, and retrieves its sigchain data.
    * Verifies and returns the decoded chain as ChainData. Note: this will drop
@@ -1090,7 +1126,7 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param claimId If set then we get the claims newer that this claim Id.
+   * @param claimId If set then we get the claims newer that this claim ID.
    * @param ctx
    */
   public requestChainData(
@@ -1368,144 +1404,11 @@ class NodeManager {
     });
   }
 
-  // Node graph wrappers
-
-  // As a management system for nodes we should at least for the CRUD layer for this
-
-  // TODO: Do we even need these?
-  // /**
-  //  * Gets information about the node that the NodeManager is aware of.
-  //  *
-  //  * This does not perform any side-effects beyond querying local state.
-  //  * This will always return `undefined` for the own node ID.
-  //  */
-  // @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  // public async getNode(
-  //   nodeId: NodeId,
-  //   tran?: DBTransaction,
-  // ): Promise<NodeInfo | undefined> {
-  //   const nodeData = await this.nodeGraph.getNode(nodeId, tran);
-  //   const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
-  //   // Shouldn't this be synchronous?
-  //   const nodeConnection = this.nodeConnectionManager.getConnection(nodeId);
-  //   if (nodeData != null && nodeConnection != null) {
-  //     return {
-  //       id: nodeId,
-  //       graph: {
-  //         data: nodeData,
-  //         bucketIndex,
-  //       },
-  //       connection: nodeConnection,
-  //     };
-  //   } else if (nodeData != null) {
-  //     return {
-  //       id: nodeId,
-  //       graph: {
-  //         data: nodeData,
-  //         bucketIndex,
-  //       },
-  //     };
-  //   } else if (nodeConnection != null) {
-  //     return {
-  //       id: nodeId,
-  //       connection: nodeConnection,
-  //     };
-  //   }
-  // }
-  //
-  // // Here we are going to add this info
-  // // high level set node
-  // // vs low level set node
-  //
-  // /**
-  //  * Adds a new `NodeId` to the nodes system.
-  //  *
-  //  * This will attempt to connect to the node. If the connection is not
-  //  * successful, the node will not be saved in the node graph.
-  //  * If the bucket is full, we will want to check if the oldest last
-  //  * updated node is contacted, and if that fails, it will be replaced
-  //  * with this node. If the las updated node connection is successful,
-  //  * then the new node is dropped.
-  //  *
-  //  * Note that of the set of records in the bucket.
-  //  * We only consider records that are not active connections.
-  //  * If any of the `NodeId` has active connections, then they cannot
-  //  * be dropped.
-  //  *
-  //  * If the `NodeConnection`
-  //  *
-  //  * If `force` is set to true, it will not bother trying to connect.
-  //  * It will just set the node straight into the node graph.
-  //  *
-  //  * @throws {nodesErrors.ErrorNodeConnection} - If the connection fails
-  //  */
-  // @timedCancellable(true)
-  // public async addNode(
-  //   nodeId: NodeId,
-  //   nodeAddress: NodeAddress,
-  //   @context ctx: ContextTimed,
-  //   tran?: DBTransaction,
-  // ) {
-  //   // Remember if the last updated node cannot be an active connection
-  //   // If there is an active connection, they cannot be dropped
-  //   // Therefore if you make more than 20 active connections, do you just fail to do it?
-  //   // No in that case, it's data is just not added to the graph
-  //
-  //   if (nodeId.equals(this.keyRing.getNodeId())) {
-  //     throw new nodesErrors.ErrorNodeManagerNodeIdOwn('Cannot set own node ID');
-  //   }
-  //   if (tran == null) {
-  //     return this.db.withTransactionF((tran) =>
-  //       this.addNode(nodeId, nodeAddress, ctx, tran),
-  //     );
-  //   }
-  //   // If we don't have a connection or we cannot make a connection
-  //   // then we will not add this node to the graph
-  //   // Note that the existing connection may be using a different address
-  //   // Until NodeGraph supports multiple addresses, we have to prefer existing addresses
-  //   if (!this.nodeConnectionManager.hasConnection(nodeId)) {
-  //     // Make a connection to the node Id
-  //     // Expect that the NCM would keep track of this
-  //     // And idle out afterwards
-  //     // Note that we also have a ctx for the entire operation!
-  //     await this.nodeConnectionManager.connectTo(nodeId, nodeAddress, ctx);
-  //   }
-  //
-  //   // Now we can check the graph
-  //
-  //   // If we already have an active connection
-  //   // If it fails to connect, we don't bother adding it
-  //   // We could throw an exception here
-  //   // And that would make sense
-  //
-  //   // Serialise operations to the bucket, because this requires updating
-  //   // the bucket count atomically to avoid concurrent thrashing
-  //   const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
-  //   await this.nodeGraph.lockBucket(bucketIndex, tran);
-  //
-  //   // We should attempting a connection first
-  //
-  //   const nodeData = await this.nodeGraph.getNode(nodeId, tran);
-  //   const bucketCount = await this.nodeGraph.getBucketMetaProp(
-  //     bucketIndex,
-  //     'count',
-  //     tran,
-  //   );
-  //
-  //   // We must always connect to the thing first
-  //   // Plus if we are making a connection, the connection is managed
-  //   // by the NCM, we just get a reference to it?
-  //
-  //   if (bucketCount < this.nodeGraph.nodeBucketLimit) {
-  //     // We need to work this
-  //   }
-  // }
-
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
    * Updates the node if the node already exists
    * This operation is blocking by default - set `block` 2qto false to make it non-blocking
-   * @param nodeId - Id of the node we wish to add
+   * @param nodeId - ID of the node we wish to add
    * @param nodeAddress - Expected address of the node we want to add
    * @param nodeContactAddressData
    * @param block - When true it will wait for any garbage collection to finish before returning.
@@ -1537,20 +1440,6 @@ class NodeManager {
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
-    // Such a complicated function
-    // To just set a node into our system
-    // We have to basically say we have already authenticated
-    // Because we can have a protected version of set Node
-    // that just sets the node without doing any authentication
-    // so what exactly is this function for?
-    // So doing this literally means we have the address
-    // To do so is to add a node into graph without connecting to it
-    // I'm not sure if that makes sense
-    // we can "prefill" some already well known things
-    // But I think with the SRV style
-    // I would not expose such a feature
-    // It seems more like a debug feature
-
     // We don't want to add our own node
     if (nodeId.equals(this.keyRing.getNodeId())) {
       this.logger.debug('Is own NodeId, skipping');
@@ -1584,9 +1473,6 @@ class NodeManager {
     // To avoid conflict we want to lock on the bucket index
     await this.nodeGraph.lockBucket(bucketIndex, tran);
 
-    // WHY - this checks if it already exists
-    // What if it doesn't exist?
-
     const nodeContact = await this.nodeGraph.getNodeContact(nodeId, tran);
     // If this is a new entry, check the bucket limit
     const count = await this.nodeGraph.getBucketMetaProp(
@@ -1594,15 +1480,6 @@ class NodeManager {
       'count',
       tran,
     );
-
-    // Because we have to do this one at a time?
-    // To avoid a bucket limit problem?
-    // Setting a node and now figuring out what to do with the old nodes
-    // To GC them somehow
-    // Problem is, we have to "force" it
-    // It should default to forcing it
-    // But you can keep old connections on automatic systems
-    // But if it is set, it should default to forcing
 
     if (nodeContact != null || count < this.nodeGraph.nodeBucketLimit) {
       // Either already exists or has room in the bucket
@@ -2104,20 +1981,30 @@ class NodeManager {
     if (initialNodes.length === 0) {
       throw Error('TMP IMP Must provide at least 1 initial node');
     }
-    // Create task
     const initialNodesParameter = initialNodes.map(([nodeId, address]) => {
-      return [nodesUtils.encodeNodeId(nodeId), address];
+      return [nodesUtils.encodeNodeId(nodeId), address] as [
+        NodeIdEncoded,
+        [Host, Port],
+      ];
     });
-    const task = this.taskManager.scheduleTask({
-      delay: 0,
-      handlerId: this.syncNodeGraphHandlerId,
-      lazy: true,
-      parameters: [initialNodesParameter, pingTimeoutTime],
-      path: [this.tasksPath, this.syncNodeGraphHandlerId],
-      priority: 0,
-    });
-    // TODO: cancellation
-    if (blocking) await task;
+    if (blocking) {
+      await this.syncNodeGraphHandler(
+        ctx,
+        undefined,
+        initialNodesParameter,
+        pingTimeoutTime,
+      );
+    } else {
+      // Create task
+      await this.taskManager.scheduleTask({
+        delay: 0,
+        handlerId: this.syncNodeGraphHandlerId,
+        lazy: true,
+        parameters: [initialNodesParameter, pingTimeoutTime],
+        path: [this.tasksPath, this.syncNodeGraphHandlerId],
+        priority: 0,
+      });
+    }
   }
 }
 

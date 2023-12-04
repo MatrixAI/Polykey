@@ -4,6 +4,7 @@ import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { Key } from '@/keys/types';
 import type GestaltGraph from '@/gestalts/GestaltGraph';
+import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -112,7 +113,6 @@ describe('NotificationsManager', () => {
     });
     const tlsConfig = await tlsTestsUtils.createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
-      nodeGraph,
       keyRing,
       tlsConfig,
       logger,
@@ -128,7 +128,10 @@ describe('NotificationsManager', () => {
       logger,
     });
     await nodeManager.start();
-    await nodeConnectionManager.start({ host: localhost as Host });
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
     await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
@@ -145,11 +148,15 @@ describe('NotificationsManager', () => {
       },
       logger,
     });
-    await nodeGraph.setNode(receiver.keyRing.getNodeId(), {
-      host: receiver.agentServiceHost,
-      port: receiver.agentServicePort,
-      scopes: ['global'],
-    });
+    await nodeGraph.setNodeContactAddressData(
+      receiver.keyRing.getNodeId(),
+      [receiver.agentServiceHost, receiver.agentServicePort],
+      {
+        mode: 'direct',
+        connectedTime: 0,
+        scopes: ['global'],
+      },
+    );
   }, globalThis.defaultTimeout);
   afterEach(async () => {
     await taskManager.stopProcessing();
@@ -173,7 +180,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -200,7 +206,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -264,7 +269,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -318,7 +322,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -385,7 +388,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -425,7 +427,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -461,7 +462,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -521,7 +521,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -580,7 +579,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -638,7 +636,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -699,7 +696,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         messageCap: 2,
@@ -759,7 +755,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -793,7 +788,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -828,7 +822,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
@@ -886,7 +879,6 @@ describe('NotificationsManager', () => {
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
-        nodeConnectionManager,
         nodeManager,
         keyRing,
         logger,
