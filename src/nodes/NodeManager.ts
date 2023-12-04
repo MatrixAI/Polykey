@@ -87,7 +87,7 @@ class NodeManager {
    * Will always trigger a findNode(this.keyRing.getNodeId()).
    */
   public readonly retryConnectionsDelayTime: number;
-  public readonly tasksPath = this.constructor.name;
+  public readonly tasksPath = 'NodeManager';
 
   protected db: DB;
   protected logger: Logger;
@@ -143,7 +143,7 @@ class NodeManager {
   };
 
   public readonly refreshBucketHandlerId =
-    `${this.tasksPath}.${this.refreshBucketHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.refreshBucketHandlerId` as TaskHandlerId;
 
   protected gcBucketHandler: TaskHandler = async (
     ctx,
@@ -165,7 +165,7 @@ class NodeManager {
   };
 
   public readonly gcBucketHandlerId =
-    `${this.tasksPath}.${this.gcBucketHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.gcBucketHandlerId` as TaskHandlerId;
 
   protected checkConnectionsHandler: TaskHandler = async (ctx, taskInfo) => {
     this.logger.debug('Checking connections');
@@ -206,7 +206,7 @@ class NodeManager {
   };
 
   public readonly checkConnectionsHandlerId: TaskHandlerId =
-    `${this.tasksPath}.${this.checkConnectionsHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.checkConnectionsHandlerId` as TaskHandlerId;
 
   protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
@@ -260,7 +260,7 @@ class NodeManager {
   };
 
   public readonly syncNodeGraphHandlerId: TaskHandlerId =
-    `${this.tasksPath}.${this.syncNodeGraphHandler.name}` as TaskHandlerId;
+    `${this.tasksPath}.syncNodeGraphHandlerId` as TaskHandlerId;
 
   protected handleEventNodeConnectionManagerConnectionReverse = async (
     e: nodesEvents.EventNodeConnectionManagerConnectionReverse,
