@@ -93,7 +93,10 @@ function isIPv4MappedIPv6Dec(host: any): host is Host {
  * 2. ::ffff:127.0.0.1
  * Always returns the dotted decimal variant.
  */
-function fromIPv4MappedIPv6(host: string): Host {
+function fromIPv4MappedIPv6(host: unknown): Host {
+  if (typeof host !== 'string') {
+    throw new TypeError('Invalid IPv4 mapped IPv6 address');
+  }
   const ipv4 = host.slice('::ffff:'.length);
   if (isIPv4(ipv4)) {
     return ipv4 as Host;
@@ -607,6 +610,7 @@ export {
   isIPv4MappedIPv6,
   isIPv4MappedIPv6Hex,
   isIPv4MappedIPv6Dec,
+  fromIPv4MappedIPv6,
   isHost,
   isHostWildcard,
   isHostname,

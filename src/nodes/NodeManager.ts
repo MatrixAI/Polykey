@@ -32,12 +32,14 @@ import type {
 } from './types';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
+import type { MDNS, ServicePOJO } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import { Semaphore, Lock } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { withF } from '@matrixai/resources';
+import { events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
@@ -90,6 +92,7 @@ class NodeManager {
   protected taskManager: TaskManager;
   protected nodeGraph: NodeGraph;
   protected nodeConnectionManager: NodeConnectionManager;
+  protected mdns: MDNS | undefined;
 
   protected pendingNodes: Map<
     number,
@@ -273,9 +276,11 @@ class NodeManager {
     taskManager,
     nodeGraph,
     nodeConnectionManager,
+    mdns,
     connectionConnectTimeoutTime = config.defaultsSystem
       .nodesConnectionConnectTimeoutTime,
-    refreshBucketDelayTime = config.defaultsSystem.nodesRefreshBucketIntervalTime,
+    refreshBucketDelayTime = config.defaultsSystem
+      .nodesRefreshBucketIntervalTime,
     refreshBucketDelayJitter = config.defaultsSystem
       .nodesRefreshBucketIntervalTimeJitter,
     retryConnectionsDelayTime = 120000, // 2 minutes
@@ -287,6 +292,7 @@ class NodeManager {
     gestaltGraph: GestaltGraph;
     taskManager: TaskManager;
     nodeGraph: NodeGraph;
+    mdns?: MDNS;
     nodeConnectionManager: NodeConnectionManager;
     connectionConnectTimeoutTime?: number;
     refreshBucketDelayTime?: number;
@@ -302,6 +308,7 @@ class NodeManager {
     this.nodeGraph = nodeGraph;
     this.taskManager = taskManager;
     this.gestaltGraph = gestaltGraph;
+    this.mdns = mdns;
     this.connectionConnectTimeoutTime = connectionConnectTimeoutTime;
     this.refreshBucketDelayTime = refreshBucketDelayTime;
     this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
@@ -336,7 +343,15 @@ class NodeManager {
         path: [this.tasksPath, this.checkConnectionsHandlerId],
       });
     }
-
+    // Starting MDNS
+    if (this.mdns != null) {
+      this.mdns.registerService({
+        name: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        port: this.nodeConnectionManager.port,
+        type: 'polykey',
+        protocol: 'udp',
+      });
+    }
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
       nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
@@ -461,7 +476,6 @@ class NodeManager {
     }
   }
 
-  // TODO: use shorter timeouts for attempting connections
   /**
    * Will do a Kademlia find node proceedure.
    *
@@ -518,46 +532,23 @@ class NodeManager {
       connectionsQueue,
       pingTimeoutTime,
       newCtx,
-    ).then((nodeAddress) => {
-      if (nodeAddress != null) {
-        return [
-          nodeAddress,
-          {
-            mode: 'signal',
-            connectedTime: Date.now(),
-            scopes: ['global'],
-          },
-        ] as [NodeAddress, NodeContactAddressData];
-      }
-      throw 'failed to find by signal';
-    });
+    );
     const findByDirect = this.findNodeByDirect(
       nodeId,
       connectionsQueue,
       pingTimeoutTime,
       newCtx,
-    ).then((nodeAddress) => {
-      if (nodeAddress != null) {
-        return [
-          nodeAddress,
-          {
-            mode: 'direct',
-            connectedTime: Date.now(),
-            scopes: ['global'],
-          },
-        ] as [NodeAddress, NodeContactAddressData];
-      }
-      throw 'failed to find by direct';
-    });
+    );
+    const findByMDNS = this.findNodeByMDNS(nodeId, newCtx);
 
     try {
-      return await Promise.any([findBySignal, findByDirect]);
-    } catch {
+      return await Promise.any([findBySignal, findByDirect, findByMDNS]);
+    } catch (e) {
       // FIXME: check error type and throw if not connection related failure
       return;
     } finally {
       abortController.abort(Error('TMP IMP cancelling pending connections'));
-      await Promise.allSettled([findBySignal, findByDirect]);
+      await Promise.allSettled([findBySignal, findByDirect, findByMDNS]);
       ctx.signal.removeEventListener('abort', handleAbort);
     }
   }
@@ -575,14 +566,14 @@ class NodeManager {
     nodeConnectionsQueue: NodeConnectionQueue,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<NodeAddress | undefined>;
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
   @timedCancellable(true)
   public async findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
     pingTimeoutTime: number = 2000,
     @context ctx: ContextTimed,
-  ): Promise<NodeAddress | undefined> {
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
     const newCtx = {
@@ -599,7 +590,7 @@ class NodeManager {
     }
 
     const chain: Map<string, string | undefined> = new Map();
-    let connectionMade: NodeAddress | undefined;
+    let connectionMade: [Host, Port] | undefined;
 
     // Seed the initial queue
     for (const {
@@ -670,12 +661,18 @@ class NodeManager {
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningSignal) {
-      // FIXME: don't wholesale ignore error here
-      await pendingP.catch(() => {});
+      await pendingP.catch((e) => {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      });
     }
 
     // Connection was not made
-    if (connectionMade == null) return undefined;
+    if (connectionMade == null) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via signal',
+      );
+    }
     // We can get the path taken with this code
     // const path: Array<NodeId> = [];
     // let current: string | undefined = nodeId.toString();
@@ -685,7 +682,14 @@ class NodeManager {
     //   current = chain.get(current);
     // }
     // console.log(path);
-    return connectionMade;
+    return [
+      connectionMade,
+      {
+        mode: 'signal',
+        connectedTime: Date.now(),
+        scopes: ['global'],
+      },
+    ] as [[Host, Port], NodeContactAddressData];
   }
 
   public findNodeByDirect(
@@ -693,14 +697,14 @@ class NodeManager {
     nodeConnectionsQueue: NodeConnectionQueue,
     pingTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<NodeAddress | undefined>;
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
   @timedCancellable(true)
   public async findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
     pingTimeoutTime: number = 2000,
     @context ctx: ContextTimed,
-  ): Promise<NodeAddress | undefined> {
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
     const newCtx = {
@@ -739,22 +743,8 @@ class NodeManager {
               )} via direct connection`,
             );
 
-            // Setting up intermediate signal
-            const abortControllerMultiConn = new AbortController();
-            const handleAbort = () => {
-              abortControllerMultiConn.abort(newCtx.signal.reason);
-            };
-            if (newCtx.signal.aborted) {
-              handleAbort();
-            } else {
-              newCtx.signal.addEventListener('abort', handleAbort, {
-                once: true,
-              });
-            }
-
             // Attempt all direct
-            const connectPs: Array<Promise<NodeConnection>> = [];
-            let success = false;
+            const addresses: Array<[Host, Port]> = [];
             for (const [
               nodeContactAddress,
               nodeContactAddressData,
@@ -766,25 +756,22 @@ class NodeManager {
                 nodeContactAddressData.mode === 'direct' &&
                 networkUtils.isHost(host)
               ) {
-                const connectP = this.nodeConnectionManager
-                  .createConnection([nodeIdTarget], host as Host, port, {
-                    timer: pingTimeoutTime,
-                    signal: abortControllerMultiConn.signal,
-                  })
-                  .then((v) => {
-                    success = true;
-                    abortControllerMultiConn.abort(
-                      Error('cancelling extra connections'),
-                    );
-                    return v;
-                  });
-                connectPs.push(connectP);
+                addresses.push([host as Host, port]);
               }
             }
-            await Promise.allSettled(connectPs);
-            ctx.signal.removeEventListener('abort', handleAbort);
 
-            if (!success) return false;
+            try {
+              await this.nodeConnectionManager.createConnectionMultiple(
+                [nodeIdTarget],
+                addresses,
+                newCtx,
+              );
+            } catch (e) {
+              if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
+                return false;
+              }
+              throw e;
+            }
           }
           nodeConnectionsQueue.contactedNode(nodeIdTarget);
           // If connection was our target then we're done
@@ -814,16 +801,164 @@ class NodeManager {
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningDirect) {
-      // FIXME: don't wholesale ignore error here
-      await pendingP.catch(() => {});
+      await pendingP.catch((e) => {
+        if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) return;
+        throw e;
+      });
     }
 
-    if (!connectionMade) return undefined;
+    if (!connectionMade) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via direct',
+      );
+    }
     const conAndTimer = this.nodeConnectionManager.getConnection(nodeId);
     if (conAndTimer == null) {
       utils.never('connection should have been established');
     }
-    return [conAndTimer.connection.host, conAndTimer.connection.port];
+    return [
+      [conAndTimer.connection.host, conAndTimer.connection.port],
+      {
+        mode: 'direct',
+        connectedTime: Date.now(),
+        scopes: ['global'],
+      },
+    ] as [[Host, Port], NodeContactAddressData];
+  }
+
+  /**
+   * Will query via MDNS for running Polykey nodes with the matching NodeId
+   *
+   * @param nodeId
+   * @param ctx
+   */
+  public queryMDNS(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<Array<[Host, Port]>>;
+  @timedCancellable(true)
+  public async queryMDNS(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<Array<[Host, Port]>> {
+    const addresses: Array<[Host, Port]> = [];
+    if (this.mdns == null) return addresses;
+    const encodedNodeId = nodesUtils.encodeNodeId(nodeId);
+    // First check if we already have an existing MDNS Service
+    const mdnsOptions = { type: 'polykey', protocol: 'udp' } as const;
+    let service: ServicePOJO | void = this.mdns.networkServices.get(
+      mdnsUtils.toFqdn({ name: encodedNodeId, ...mdnsOptions }),
+    );
+    if (service == null) {
+      // Setup promises
+      const { p: endedP, resolveP: resolveEndedP } = utils.promise<void>();
+      const abortHandler = () => {
+        resolveEndedP();
+      };
+      ctx.signal.addEventListener('abort', abortHandler, { once: true });
+      ctx.timer.catch(() => {}).finally(() => abortHandler());
+      const { p: serviceP, resolveP: resolveServiceP } =
+        utils.promise<ServicePOJO>();
+      const handleEventMDNSService = (evt: mdnsEvents.EventMDNSService) => {
+        if (evt.detail.name === encodedNodeId) {
+          resolveServiceP(evt.detail);
+        }
+      };
+      this.mdns.addEventListener(
+        mdnsEvents.EventMDNSService.name,
+        handleEventMDNSService,
+        { once: true },
+      );
+      // Abort and restart query in case already running
+      this.mdns.stopQuery(mdnsOptions);
+      this.mdns.startQuery(mdnsOptions);
+      // Race promises to find node or timeout
+      service = await Promise.race([serviceP, endedP]);
+      this.mdns.removeEventListener(
+        mdnsEvents.EventMDNSService.name,
+        handleEventMDNSService,
+      );
+      this.mdns.stopQuery(mdnsOptions);
+      ctx.signal.removeEventListener('abort', abortHandler);
+    }
+    // If the service is not found, just return no addresses
+    if (service == null) {
+      return addresses;
+    }
+    for (const host_ of service.hosts) {
+      let host: string;
+      switch (this.nodeConnectionManager.type) {
+        case 'ipv4':
+          if (networkUtils.isIPv4(host_)) {
+            host = host_;
+          } else if (networkUtils.isIPv4MappedIPv6(host_)) {
+            host = networkUtils.fromIPv4MappedIPv6(host_);
+          } else {
+            continue;
+          }
+          break;
+        case 'ipv6':
+          if (networkUtils.isIPv6(host_)) host = host_;
+          else continue;
+          break;
+        case 'ipv4&ipv6':
+          host = host_;
+          break;
+        default:
+          continue;
+      }
+      addresses.push([host as Host, service.port as Port]);
+      this.logger.debug(
+        `found address for ${nodesUtils.encodeNodeId(nodeId)} at ${host}:${
+          service.port
+        }`,
+      );
+    }
+    return addresses;
+  }
+
+  public findNodeByMDNS(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
+  @timedCancellable(true)
+  public async findNodeByMDNS(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<[[Host, Port], NodeContactAddressData]> {
+    try {
+      if (this.mdns == null) {
+        throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+          'MDNS not running',
+        );
+      }
+      // First get the address data
+      const addresses = await this.queryMDNS(nodeId, ctx);
+      if (addresses.length === 0) {
+        throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+          'query resulted in no addresses found',
+        );
+      }
+      // Then make the connection
+      const nodeConnection =
+        await this.nodeConnectionManager.createConnectionMultiple(
+          [nodeId],
+          addresses,
+        );
+      return [
+        [nodeConnection.host, nodeConnection.port],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['local'],
+        },
+      ] as [[Host, Port], NodeContactAddressData];
+    } catch (e) {
+      throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
+        'failed to find node via MDNS',
+        { cause: e },
+      );
+    }
   }
 
   /**

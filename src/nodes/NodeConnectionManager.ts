@@ -443,6 +443,11 @@ class NodeConnectionManager {
     return this.quicSocket.port as unknown as Port;
   }
 
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  public get type(): 'ipv4' | 'ipv6' | 'ipv4&ipv6' {
+    return this.quicSocket.type;
+  }
+
   // Run on this
   // with this port
   // with reuseAddr
@@ -723,6 +728,63 @@ class NodeConnectionManager {
     );
     this.addConnection(nodeConnection.validatedNodeId, nodeConnection);
     return nodeConnection;
+  }
+
+  /**
+   * Creates multiple connections looking for a single node. Once the connection
+   * has been established then all pending connections are cancelled.
+   * This will return the first connection made or timeout.
+   */
+  public createConnectionMultiple(
+    nodeIds: Array<NodeId>,
+    addresses: Array<[Host, Port]>,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<NodeConnection>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async createConnectionMultiple(
+    nodeIds: Array<NodeId>,
+    addresses: Array<[Host, Port]>,
+    @context ctx: ContextTimed,
+  ): Promise<NodeConnection> {
+    // Setting up intermediate signal
+    const abortControllerMultiConn = new AbortController();
+    const handleAbort = () => {
+      abortControllerMultiConn.abort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      handleAbort();
+    } else {
+      ctx.signal.addEventListener('abort', handleAbort, {
+        once: true,
+      });
+    }
+    const newCtx = {
+      timer: ctx.timer,
+      signal: abortControllerMultiConn.signal,
+    };
+
+    const attempts = addresses.map(([host, port]) => {
+      return this.createConnection(nodeIds, host, port, newCtx);
+    });
+
+    try {
+      // Await first success
+      return await Promise.any(attempts).catch((e) => {
+        throw new nodesErrors.ErrorNodeConnectionTimeout(undefined, {
+          cause: e,
+        });
+      });
+    } finally {
+      // Abort and clean up the rest
+      abortControllerMultiConn.abort(Error('TMP IMP clean up'));
+      await Promise.allSettled(attempts);
+      ctx.signal.removeEventListener('abort', handleAbort);
+    }
   }
 
   /**

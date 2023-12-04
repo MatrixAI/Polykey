@@ -829,7 +829,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -860,7 +860,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -891,7 +891,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -911,7 +911,7 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const rateLimiter = new Semaphore(3);
-        const path = await nodeManager.findNodeBySignal(
+        const resultP = nodeManager.findNodeBySignal(
           keyRing.getNodeId(),
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -921,7 +921,9 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(path).toBeUndefined();
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });
@@ -937,7 +939,7 @@ describe(`NodeConnectionManager`, () => {
         );
 
         const rateLimiter = new Semaphore(3);
-        const path = await nodeManager.findNodeBySignal(
+        const resultP = nodeManager.findNodeBySignal(
           keyRing.getNodeId(),
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -947,7 +949,9 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(path).toBeUndefined();
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(3);
       });
@@ -1025,7 +1029,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -1063,7 +1067,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -1101,7 +1105,7 @@ describe(`NodeConnectionManager`, () => {
           ),
         );
         expect(result).toBeDefined();
-        const [host, port] = result!;
+        const [[host, port]] = result!;
         expect(host).toBe(localHost);
         expect(port).toBe(ncmPeers[4].nodeConnectionManager.port);
       });
@@ -1128,7 +1132,7 @@ describe(`NodeConnectionManager`, () => {
         });
 
         const rateLimiter = new Semaphore(3);
-        const result = await nodeManager.findNodeByDirect(
+        const resultP = nodeManager.findNodeByDirect(
           keyRing.getNodeId(),
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -1138,7 +1142,9 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(result).toBeUndefined();
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });
@@ -1161,7 +1167,7 @@ describe(`NodeConnectionManager`, () => {
         });
 
         const rateLimiter = new Semaphore(3);
-        const result = await nodeManager.findNodeByDirect(
+        const resultP = nodeManager.findNodeByDirect(
           keyRing.getNodeId(),
           new NodeConnectionQueue(
             keyRing.getNodeId(),
@@ -1171,7 +1177,9 @@ describe(`NodeConnectionManager`, () => {
             rateLimiter,
           ),
         );
-        expect(result).toBeUndefined();
+        await expect(resultP).rejects.toThrow(
+          nodesErrors.ErrorNodeManagerFindNodeFailed,
+        );
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });

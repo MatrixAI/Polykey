@@ -83,7 +83,8 @@ describe(`NodeConnectionManager`, () => {
       ncmLocal = await nodesTestUtils.nodeConnectionManagerFactory({
         keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
-          connectionIdleTimeoutTime: 1000,
+          connectionIdleTimeoutTimeMin: 5000,
+          connectionIdleTimeoutTimeScale: 0,
           connectionConnectTimeoutTime: timeoutTime,
         },
         startOptions: {
@@ -589,7 +590,61 @@ describe(`NodeConnectionManager`, () => {
       expect(connection2[destroyed]).toBeTrue();
       expect(connection3[destroyed]).toBeTrue();
     });
+    test('should createConnectionMultiple with single address', async () => {
+      await ncmLocal.nodeConnectionManager.createConnectionMultiple(
+        [ncmPeer1.nodeId],
+        [[localHost, ncmPeer1.port]],
+      );
+      // Should exist in the map now.
+      expect(
+        ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
+      ).toBeTrue();
+    });
+    test('should createConnectionMultiple with multiple address', async () => {
+      await ncmLocal.nodeConnectionManager.createConnectionMultiple(
+        [ncmPeer1.nodeId],
+        [
+          [localHost, ncmPeer1.port],
+          ['127.0.0.2' as Host, ncmPeer1.port],
+          ['127.0.0.3' as Host, ncmPeer1.port],
+        ],
+      );
+      // Should exist in the map now.
+      expect(
+        ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
+      ).toBeTrue();
+    });
+    test('should createConnectionMultiple with failures', async () => {
+      await ncmLocal.nodeConnectionManager.createConnectionMultiple(
+        [ncmPeer1.nodeId],
+        [
+          ['127.0.0.2' as Host, 12345 as Port],
+          ['127.0.0.3' as Host, 12346 as Port],
+          [localHost, ncmPeer1.port],
+        ],
+      );
+      // Should exist in the map now.
+      expect(
+        ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
+      ).toBeTrue();
+    });
+    test('createConnectionMultiple fails to connect', async () => {
+      await expect(
+        ncmLocal.nodeConnectionManager.createConnectionMultiple(
+          [ncmPeer1.nodeId],
+          [
+            ['127.0.0.2' as Host, 12345 as Port],
+            ['127.0.0.3' as Host, 12346 as Port],
+          ],
+        ),
+      ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+      // Should not have connection
+      expect(
+        ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
+      ).toBeFalse();
+    });
   });
+
   describe('With 2 peers', () => {
     let ncmLocal: NCMState;
     let ncmPeer1: NCMState;

@@ -333,15 +333,6 @@ class PolykeyAgent {
         keyRing,
         logger: logger.getChild(NodeGraph.name),
       });
-      mdns = new MDNS({
-        logger: logger.getChild(MDNS.name),
-      });
-      await mdns.start({
-        id: keyRing.getNodeId().toBuffer().readUint16BE(),
-        hostname: nodesUtils.encodeNodeId(keyRing.getNodeId()),
-        groups: optionsDefaulted.mdns.groups,
-        port: optionsDefaulted.mdns.port,
-      });
       // Remove your own node ID if provided as a seed node
       const nodeIdOwnEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
       delete optionsDefaulted.seedNodes[nodeIdOwnEncoded];
@@ -368,6 +359,15 @@ class PolykeyAgent {
         rpcCallTimeoutTime: optionsDefaulted.nodes.rpcCallTimeoutTime,
         logger: logger.getChild(NodeConnectionManager.name),
       });
+      mdns = new MDNS({
+        logger: logger.getChild(MDNS.name),
+      });
+      await mdns.start({
+        id: keyRing.getNodeId().toBuffer().readUint16BE(),
+        hostname: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        groups: optionsDefaulted.mdns.groups,
+        port: optionsDefaulted.mdns.port,
+      });
       nodeManager = new NodeManager({
         db,
         sigchain,
@@ -376,6 +376,7 @@ class PolykeyAgent {
         nodeConnectionManager,
         taskManager,
         gestaltGraph,
+        mdns,
         logger: logger.getChild(NodeManager.name),
       });
       await nodeManager.start();
