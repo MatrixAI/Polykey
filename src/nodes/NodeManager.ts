@@ -211,18 +211,20 @@ class NodeManager {
   protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
     taskInfo: TaskInfo | undefined,
-    initialNodes: Array<[NodeIdEncoded, [Host, Port]]>,
+    initialNodes: Array<[NodeIdEncoded, NodeAddress]>,
     pingTimeoutTime: number | undefined,
   ) => {
     // Establishing connections to the initial nodes
     const connectionResults = await Promise.allSettled(
-      initialNodes.map(([nodeIdEncoded, [host, port]]) => {
+      initialNodes.map(async ([nodeIdEncoded, nodeAddress]) => {
+        const resolvedHosts = await networkUtils.resolveHostnames([
+          nodeAddress,
+        ]);
         const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
         if (nodeId == null) utils.never();
-        return this.nodeConnectionManager.createConnection(
+        return this.nodeConnectionManager.createConnectionMultiple(
           [nodeId],
-          host,
-          port,
+          resolvedHosts,
           { timer: pingTimeoutTime, signal: ctx.signal },
         );
       }),
@@ -777,7 +779,7 @@ class NodeManager {
             );
 
             // Attempt all direct
-            const addresses: Array<[Host, Port]> = [];
+            const addresses: Array<NodeAddress> = [];
             for (const [
               nodeContactAddress,
               nodeContactAddressData,
@@ -785,18 +787,17 @@ class NodeManager {
               // FIXME: handle hostnames by resolving them.
               const [host, port] =
                 nodesUtils.parseNodeContactAddress(nodeContactAddress);
-              if (
-                nodeContactAddressData.mode === 'direct' &&
-                networkUtils.isHost(host)
-              ) {
-                addresses.push([host as Host, port]);
+              if (nodeContactAddressData.mode === 'direct') {
+                addresses.push([host, port]);
               }
             }
+            const resolvedHosts =
+              await networkUtils.resolveHostnames(addresses);
 
             try {
               await this.nodeConnectionManager.createConnectionMultiple(
                 [nodeIdTarget],
-                addresses,
+                resolvedHosts,
                 { timer: pingTimeoutTime, signal: newCtx.signal },
               );
             } catch (e) {
@@ -1984,7 +1985,7 @@ class NodeManager {
     const initialNodesParameter = initialNodes.map(([nodeId, address]) => {
       return [nodesUtils.encodeNodeId(nodeId), address] as [
         NodeIdEncoded,
-        [Host, Port],
+        NodeAddress,
       ];
     });
     if (blocking) {

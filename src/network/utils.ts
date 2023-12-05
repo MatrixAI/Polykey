@@ -407,27 +407,18 @@ function resolvesZeroIP(ip: Host): Host {
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
   existingAddresses: Set<string> = new Set(),
-): Promise<Array<{ host: Host; port: Port }>> {
-  const final: Array<{
-    host: Host;
-    port: Port;
-  }> = [];
+): Promise<Array<[Host, Port]>> {
+  const final: Array<[Host, Port]> = [];
   for (const [host, port] of addresses) {
     if (isHost(host)) {
       if (existingAddresses.has(`${host}|${port}`)) continue;
-      final.push({
-        host: host,
-        port: port,
-      });
+      final.push([host, port]);
       existingAddresses.add(`${host}|${port}`);
       continue;
     }
     const resolvedAddresses = await resolveHostname(host);
     for (const resolvedHost of resolvedAddresses) {
-      const newAddress = {
-        host: resolvedHost,
-        port: port,
-      };
+      const newAddress: [Host, Port] = [resolvedHost, port];
       if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
       if (existingAddresses.has(`${resolvedHost}|${port}`)) continue;
       final.push(newAddress);
