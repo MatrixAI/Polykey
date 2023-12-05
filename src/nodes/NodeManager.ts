@@ -1976,7 +1976,7 @@ class NodeManager {
   @timedCancellable(true)
   public async syncNodeGraph(
     initialNodes: Array<[NodeId, NodeAddress]>,
-    pingTimeoutTime: number | undefined,
+    pingTimeoutTime: number = 2000,
     blocking: boolean = false,
     @context ctx: ContextTimed,
   ): Promise<void> {
