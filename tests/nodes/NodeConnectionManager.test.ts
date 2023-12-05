@@ -397,7 +397,9 @@ describe(`${NodeConnectionManager.name}`, () => {
           ncmPeer1.nodeId,
           async () => {},
         ),
-      ).rejects.toThrow();
+      ).rejects.toThrow(
+        nodesErrors.ErrorNodeConnectionManagerConnectionNotFound,
+      );
     });
     test('can handle concurrent connections between local and peer', async () => {
       const connectionsLocalP = testsUtils.promFromEvents(
@@ -735,13 +737,14 @@ describe(`${NodeConnectionManager.name}`, () => {
     });
     test('createConnectionPunch fails with no signaler', async () => {
       // Can't signal without signaler connected
-      // TODO: check error type
       await expect(
         ncmLocal.nodeConnectionManager.createConnectionPunch(
           ncmPeer2.nodeId,
           ncmPeer1.nodeId,
         ),
-      ).rejects.toThrow();
+      ).rejects.toThrow(
+        nodesErrors.ErrorNodeConnectionManagerConnectionNotFound,
+      );
     });
     test('createConnectionPunch fails with signaller missing connection to target', async () => {
       // Create initial connections of local -> peer1
@@ -751,13 +754,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         ncmPeer1.port,
       );
       // Can't signal without signaler connected
-      // TODO: check error type
-      await expect(
+      await testsUtils.expectRemoteError(
         ncmLocal.nodeConnectionManager.createConnectionPunch(
           ncmPeer2.nodeId,
           ncmPeer1.nodeId,
         ),
-      ).rejects.toThrow();
+        nodesErrors.ErrorNodeConnectionManagerConnectionNotFound,
+      );
     });
     test('can create multiple connections with signaling', async () => {
       // Create initial connections of local -> peer1 -> peer2

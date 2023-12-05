@@ -68,6 +68,10 @@ type ActiveConnectionsInfo = {
   connections: Record<string, ConnectionInfo>;
 };
 
+const abortPendingConnectionsReason = Symbol(
+  'abort pending connections reason',
+);
+
 /**
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections.
@@ -601,7 +605,7 @@ class NodeConnectionManager {
       const targetNodeIdString = targetNodeId.toString() as NodeIdString;
       const connectionsEntry = this.connections.get(targetNodeIdString);
       if (connectionsEntry == null) {
-        throw Error('TMP IMP connection should exist');
+        throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
       }
       const connectionAndTimer =
         connectionsEntry.connections[connectionsEntry.activeConnection];
@@ -770,7 +774,7 @@ class NodeConnectionManager {
       });
     } finally {
       // Abort and clean up the rest
-      abortControllerMultiConn.abort(Error('TMP IMP clean up'));
+      abortControllerMultiConn.abort(abortPendingConnectionsReason);
       await Promise.allSettled(attempts);
       ctx.signal.removeEventListener('abort', handleAbort);
     }
@@ -786,7 +790,7 @@ class NodeConnectionManager {
   ): Promise<NodeConnection> {
     // Get the signaller node from the existing connections
     if (!this.hasConnection(nodeIdSignaller)) {
-      throw Error('TMP IMP no existing connection to signaller');
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
     const { host, port } = await this.withConnF(
       nodeIdSignaller,

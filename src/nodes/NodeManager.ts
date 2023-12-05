@@ -60,6 +60,9 @@ import * as networkUtils from '../network/utils';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
+const abortPendingConnectionsReason = Symbol(
+  'abort pending connections reason',
+);
 
 /**
  * NodeManager manages all operations involving nodes.
@@ -233,7 +236,7 @@ class NodeManager {
       (r) => r.status === 'fulfilled',
     ).length;
     if (successfulConnections === 0) {
-      throw Error('TMP IMP Failed to enter network');
+      throw new nodesErrors.ErrorNodeManagerSyncNodeGraphFailed();
     }
 
     // Attempt a findNode operation looking for ourselves
@@ -574,7 +577,7 @@ class NodeManager {
       // FIXME: check error type and throw if not connection related failure
       return;
     } finally {
-      abortController.abort(Error('TMP IMP cancelling pending connections'));
+      abortController.abort(abortPendingConnectionsReason);
       await Promise.allSettled([findBySignal, findByDirect, findByMDNS]);
       ctx.signal.removeEventListener('abort', handleAbort);
     }
@@ -684,7 +687,7 @@ class NodeManager {
       if (isDone) break;
     }
     // After queue is done we want to signal and await clean up
-    abortController.abort(Error('TMP IMP cancelling pending connections'));
+    abortController.abort(abortPendingConnectionsReason);
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningSignal) {
@@ -831,7 +834,7 @@ class NodeManager {
       if (isDone) break;
     }
     // After queue is done we want to signal and await clean up
-    abortController.abort(Error('TMP IMP cancelling pending connections'));
+    abortController.abort(abortPendingConnectionsReason);
     ctx.signal.removeEventListener('abort', handleAbort);
     // Wait for pending attempts to finish
     for (const pendingP of nodeConnectionsQueue.nodesRunningDirect) {
@@ -1980,7 +1983,9 @@ class NodeManager {
     const logger = this.logger.getChild('syncNodeGraph');
     logger.info('Synchronizing NodeGraph');
     if (initialNodes.length === 0) {
-      throw Error('TMP IMP Must provide at least 1 initial node');
+      throw new nodesErrors.ErrorNodeManagerSyncNodeGraphFailed(
+        'must provide at least 1 initial node',
+      );
     }
     const initialNodesParameter = initialNodes.map(([nodeId, address]) => {
       return [nodesUtils.encodeNodeId(nodeId), address] as [
