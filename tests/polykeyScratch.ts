@@ -42,10 +42,10 @@ async function main() {
   await sleep(1000);
   logger.warn('attempting find node for self');
   const start = Date.now();
-  const result = await pkAgent.nodeManager.findNode(
-    pkAgent.keyRing.getNodeId(),
-    2000,
-  );
+  const result = await pkAgent.nodeManager.findNode({
+    nodeId: pkAgent.keyRing.getNodeId(),
+    connectionConnectTimeoutTime: 2000,
+  });
   logger.warn(`findNode took ${Date.now() - start}`);
   logger.warn(`result, ${JSON.stringify(result, undefined, 1)}`);
 

@@ -44,10 +44,9 @@ class NodesFind extends UnaryHandler<
       },
     );
     const result = await nodeManager.findNode(
-      nodeId,
-      undefined,
-      undefined,
-      undefined,
+      {
+        nodeId: nodeId,
+      },
       ctx,
     );
     if (result == null) {

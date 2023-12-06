@@ -90,6 +90,10 @@ class NodeManager {
    * Will always trigger a findNode(this.keyRing.getNodeId()).
    */
   public readonly retryConnectionsDelayTime: number;
+  /**
+   * Timeout for finding a connection via MDNS
+   */
+  public readonly connectionFindMDNSTimeoutTime: number;
   public readonly tasksPath = 'NodeManager';
 
   protected db: DB;
@@ -112,6 +116,7 @@ class NodeManager {
     number,
     Map<string, [NodeAddress, NodeContactAddressData]>
   > = new Map();
+  protected concurrencyLimit = 3;
 
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -188,10 +193,9 @@ class NodeManager {
         'triggering fidNode for self to populate closest nodes',
       );
       await this.findNode(
-        this.keyRing.getNodeId(),
-        undefined,
-        undefined,
-        undefined,
+        {
+          nodeId: this.keyRing.getNodeId(),
+        },
         ctx,
       );
     } finally {
@@ -215,7 +219,7 @@ class NodeManager {
     ctx: ContextTimed,
     taskInfo: TaskInfo | undefined,
     initialNodes: Array<[NodeIdEncoded, NodeAddress]>,
-    pingTimeoutTime: number | undefined,
+    connectionConnectTimeoutTime: number | undefined,
   ) => {
     // Establishing connections to the initial nodes
     const connectionResults = await Promise.allSettled(
@@ -228,7 +232,7 @@ class NodeManager {
         return this.nodeConnectionManager.createConnectionMultiple(
           [nodeId],
           resolvedHosts,
-          { timer: pingTimeoutTime, signal: ctx.signal },
+          { timer: connectionConnectTimeoutTime, signal: ctx.signal },
         );
       }),
     );
@@ -241,10 +245,9 @@ class NodeManager {
 
     // Attempt a findNode operation looking for ourselves
     await this.findNode(
-      this.keyRing.getNodeId(),
-      undefined,
-      undefined,
-      undefined,
+      {
+        nodeId: this.keyRing.getNodeId(),
+      },
       ctx,
     );
 
@@ -300,6 +303,8 @@ class NodeManager {
     refreshBucketDelayJitter = config.defaultsSystem
       .nodesRefreshBucketIntervalTimeJitter,
     retryConnectionsDelayTime = 120000, // 2 minutes
+    nodesConnectionFindLocalTimeoutTime = config.defaultsSystem
+      .nodesConnectionFindLocalTimeoutTime,
     logger,
   }: {
     db: DB;
@@ -317,6 +322,7 @@ class NodeManager {
     refreshBucketDelayTime?: number;
     refreshBucketDelayJitter?: number;
     retryConnectionsDelayTime?: number;
+    nodesConnectionFindLocalTimeoutTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -335,6 +341,7 @@ class NodeManager {
     this.refreshBucketDelayTime = refreshBucketDelayTime;
     this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
     this.retryConnectionsDelayTime = retryConnectionsDelayTime;
+    this.connectionFindMDNSTimeoutTime = nodesConnectionFindLocalTimeoutTime;
   }
 
   public async start() {
@@ -435,10 +442,9 @@ class NodeManager {
       if (!this.nodeConnectionManager.hasConnection(nodeId)) {
         // Establish the connection
         const result = await this.findNode(
-          nodeId,
-          undefined,
-          undefined,
-          undefined,
+          {
+            nodeId: nodeId,
+          },
           ctx,
         );
         if (result == null) {
@@ -512,24 +518,43 @@ class NodeManager {
    *
    * Will attempt to fix regardless of existing connection.
    * @param nodeId - NodeId of target to find.
-   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param connectionConnectTimeoutTime - timeout time for each individual connection.
+   * @param connectionFindLocalTimeoutTime
    * @param concurrencyLimit - Limit the number of concurrent connections.
    * @param limit - Limit the number of total connections to be made before giving up.
    * @param ctx
    */
   public findNode(
-    nodeId: NodeId,
-    pingTimeoutTime?: number,
-    concurrencyLimit?: number,
-    limit?: number,
+    {
+      nodeId,
+      connectionConnectTimeoutTime,
+      connectionFindMDNSTimeoutTime,
+      concurrencyLimit,
+      limit,
+    }: {
+      nodeId: NodeId;
+      connectionConnectTimeoutTime?: number;
+      connectionFindMDNSTimeoutTime?: number;
+      concurrencyLimit?: number;
+      limit?: number;
+    },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[NodeAddress, NodeContactAddressData] | undefined>;
   @timedCancellable(true)
   public async findNode(
-    nodeId: NodeId,
-    pingTimeoutTime: number = 2000,
-    concurrencyLimit: number = 3,
-    limit: number = this.nodeGraph.nodeBucketLimit,
+    {
+      nodeId,
+      connectionConnectTimeoutTime = this.connectionConnectTimeoutTime,
+      connectionFindMDNSTimeoutTime = this.connectionFindMDNSTimeoutTime,
+      concurrencyLimit = this.concurrencyLimit,
+      limit = this.nodeGraph.nodeBucketLimit,
+    }: {
+      nodeId: NodeId;
+      connectionConnectTimeoutTime: number;
+      connectionFindMDNSTimeoutTime: number;
+      concurrencyLimit: number;
+      limit: number;
+    },
     @context ctx: ContextTimed,
   ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
     // Setting up intermediate signal
@@ -560,19 +585,27 @@ class NodeManager {
     const findBySignal = this.findNodeBySignal(
       nodeId,
       connectionsQueue,
-      pingTimeoutTime,
+      connectionConnectTimeoutTime,
       newCtx,
     );
     const findByDirect = this.findNodeByDirect(
       nodeId,
       connectionsQueue,
-      pingTimeoutTime,
+      connectionConnectTimeoutTime,
       newCtx,
     );
-    const findByMDNS = this.findNodeByMDNS(nodeId, newCtx);
+    const findByMDNS = this.findNodeByMDNS(nodeId, {
+      timer: connectionFindMDNSTimeoutTime,
+      signal: newCtx.signal,
+    });
 
     try {
-      return await Promise.any([findBySignal, findByDirect, findByMDNS]);
+      const result = await Promise.any([
+        findBySignal,
+        findByDirect,
+        findByMDNS,
+      ]);
+      return result;
     } catch (e) {
       // FIXME: check error type and throw if not connection related failure
       return;
@@ -588,20 +621,20 @@ class NodeManager {
    *
    * @param nodeId - NodeId of the target to find.
    * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
-   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param connectionConnectTimeoutTime - timeout time for each individual connection.
    * @param ctx
    */
   public findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
   @timedCancellable(true)
   public async findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
-    pingTimeoutTime: number = 2000,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
@@ -651,7 +684,7 @@ class NodeManager {
                 nodeIdTarget,
                 nodeIdSignaller,
                 {
-                  timer: pingTimeoutTime,
+                  timer: connectionConnectTimeoutTime,
                   signal: newCtx.signal,
                 },
               );
@@ -727,20 +760,20 @@ class NodeManager {
    *
    * @param nodeId - NodeId of the target to find.
    * @param nodeConnectionsQueue - shared nodeConnectionQueue helper class.
-   * @param pingTimeoutTime - timeout time for each individual connection.
+   * @param connectionConnectTimeoutTime - timeout time for each individual connection.
    * @param ctx
    */
   public findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
   @timedCancellable(true)
   public async findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
-    pingTimeoutTime: number = 2000,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
@@ -801,7 +834,7 @@ class NodeManager {
               await this.nodeConnectionManager.createConnectionMultiple(
                 [nodeIdTarget],
                 resolvedHosts,
-                { timer: pingTimeoutTime, signal: newCtx.signal },
+                { timer: connectionConnectTimeoutTime, signal: newCtx.signal },
               );
             } catch (e) {
               if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
@@ -873,7 +906,10 @@ class NodeManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<Array<[Host, Port]>>;
-  @timedCancellable(true)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
+  )
   public async queryMDNS(
     nodeId: NodeId,
     @context ctx: ContextTimed,
@@ -963,7 +999,10 @@ class NodeManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
-  @timedCancellable(true)
+  @timedCancellable(
+    true,
+    (nodeManager: NodeManager) => nodeManager.connectionFindMDNSTimeoutTime,
+  )
   public async findNodeByMDNS(
     nodeId: NodeId,
     @context ctx: ContextTimed,
@@ -1074,10 +1113,9 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
     return await this.findNode(
-      nodeId,
-      2000,
-      3,
-      this.nodeGraph.nodeBucketLimit,
+      {
+        nodeId: nodeId,
+      },
       ctx,
     );
   }
@@ -1418,7 +1456,7 @@ class NodeManager {
    * @param block - When true it will wait for any garbage collection to finish before returning.
    * @param force - Flag for if we want to add the node without authenticating or if the bucket is full.
    * This will drop the oldest node in favor of the new.
-   * @param pingTimeoutTime - Timeout for each ping operation during garbage collection.
+   * @param connectionConnectTimeoutTime - Timeout for each ping operation during garbage collection.
    * @param ctx
    * @param tran
    */
@@ -1428,7 +1466,7 @@ class NodeManager {
     nodeContactAddressData: NodeContactAddressData,
     block?: boolean,
     force?: boolean,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
@@ -1440,7 +1478,7 @@ class NodeManager {
     nodeContactAddressData: NodeContactAddressData,
     block: boolean = false,
     force: boolean = false,
-    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -1458,7 +1496,7 @@ class NodeManager {
           nodeContactAddressData,
           block,
           force,
-          pingTimeoutTime,
+          connectionConnectTimeoutTime,
           ctx,
           tran,
         ),
@@ -1549,7 +1587,7 @@ class NodeManager {
         nodeAddress,
         nodeContactAddressData,
         block,
-        pingTimeoutTime,
+        connectionConnectTimeoutTime,
         ctx,
         tran,
       );
@@ -1581,20 +1619,25 @@ class NodeManager {
 
   protected garbageCollectBucket(
     bucketIndex: number,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   protected async garbageCollectBucket(
     bucketIndex: number,
-    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.garbageCollectBucket(bucketIndex, pingTimeoutTime, ctx, tran),
+        this.garbageCollectBucket(
+          bucketIndex,
+          connectionConnectTimeoutTime,
+          ctx,
+          tran,
+        ),
       );
     }
 
@@ -1611,7 +1654,7 @@ class NodeManager {
     this.pendingNodes.set(bucketIndex, new Map());
     // Locking on bucket
     await this.nodeGraph.lockBucket(bucketIndex, tran);
-    const semaphore = new Semaphore(3);
+    const semaphore = new Semaphore(this.concurrencyLimit);
     // Iterating over existing nodes
     const bucket = await this.nodeGraph.getBucket(
       bucketIndex,
@@ -1634,7 +1677,7 @@ class NodeManager {
           // Ping and remove or update node in bucket
           const pingCtx = {
             signal: ctx.signal,
-            timer: pingTimeoutTime,
+            timer: connectionConnectTimeoutTime,
           };
           const pingResult = await this.pingNode(nodeId, pingCtx);
           if (pingResult != null) {
@@ -1694,7 +1737,7 @@ class NodeManager {
     nodeAddress: NodeAddress,
     nodeContactAddressData: NodeContactAddressData,
     block: boolean = false,
-    pingTimeoutTime: number = this.connectionConnectTimeoutTime,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
@@ -1708,7 +1751,12 @@ class NodeManager {
     // If set to blocking we just run the GC operation here
     //  without setting up a new task
     if (block) {
-      await this.garbageCollectBucket(bucketIndex, pingTimeoutTime, ctx, tran);
+      await this.garbageCollectBucket(
+        bucketIndex,
+        connectionConnectTimeoutTime,
+        ctx,
+        tran,
+      );
       return;
     }
     await this.setupGCTask(bucketIndex);
@@ -1767,18 +1815,19 @@ class NodeManager {
    * lookup for that node in the network. This will cause the network to update
    * its node graph information.
    * @param bucketIndex
-   * @param pingTimeoutTime
+   * @param connectionConnectTimeoutTime
    * @param ctx
    */
   public refreshBucket(
     bucketIndex: NodeBucketIndex,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
-    pingTimeoutTime: number | undefined = this.connectionConnectTimeoutTime,
+    connectionConnectTimeoutTime: number | undefined = this
+      .connectionConnectTimeoutTime,
     @context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
@@ -1789,10 +1838,10 @@ class NodeManager {
     );
     // We then need to start a findNode procedure
     await this.findNode(
-      bucketRandomNodeId,
-      pingTimeoutTime,
-      undefined,
-      undefined,
+      {
+        nodeId: bucketRandomNodeId,
+        connectionConnectTimeoutTime: connectionConnectTimeoutTime,
+      },
       ctx,
     );
   }
@@ -1968,7 +2017,7 @@ class NodeManager {
    */
   public syncNodeGraph(
     initialNodes: Array<[NodeId, NodeAddress]>,
-    pingTimeoutTime?: number,
+    connectionConnectTimeoutTime?: number,
     blocking?: boolean,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
@@ -1976,7 +2025,7 @@ class NodeManager {
   @timedCancellable(true)
   public async syncNodeGraph(
     initialNodes: Array<[NodeId, NodeAddress]>,
-    pingTimeoutTime: number = 2000,
+    connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     blocking: boolean = false,
     @context ctx: ContextTimed,
   ): Promise<void> {
@@ -1998,7 +2047,7 @@ class NodeManager {
         ctx,
         undefined,
         initialNodesParameter,
-        pingTimeoutTime,
+        connectionConnectTimeoutTime,
       );
     } else {
       // Create task
@@ -2006,7 +2055,7 @@ class NodeManager {
         delay: 0,
         handlerId: this.syncNodeGraphHandlerId,
         lazy: true,
-        parameters: [initialNodesParameter, pingTimeoutTime],
+        parameters: [initialNodesParameter, connectionConnectTimeoutTime],
         path: [this.tasksPath, this.syncNodeGraphHandlerId],
         priority: 0,
       });

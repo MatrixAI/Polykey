@@ -1257,7 +1257,9 @@ describe(`${NodeManager.name}`, () => {
           ncmPeers[0].port,
         );
 
-        const result = await nodeManager.findNode(ncmPeers[4].nodeId);
+        const result = await nodeManager.findNode({
+          nodeId: ncmPeers[4].nodeId,
+        });
         expect(result).toMatchObject([
           [localHost, ncmPeers[4].nodeConnectionManager.port],
           {
@@ -1282,7 +1284,9 @@ describe(`${NodeManager.name}`, () => {
           ncmPeers[0].port,
         );
 
-        const result = await nodeManager.findNode(ncmPeers[4].nodeId);
+        const result = await nodeManager.findNode({
+          nodeId: ncmPeers[4].nodeId,
+        });
         expect(result).toMatchObject([
           [localHost, ncmPeers[4].nodeConnectionManager.port],
           {
@@ -1292,7 +1296,67 @@ describe(`${NodeManager.name}`, () => {
           },
         ]);
       });
-      test.todo('handles offline nodes');
+      test('finding self will do exhaustive search', async () => {
+        // Structure is an acyclic graph
+        // connections
+        // 0 -> 1 -> 2 -> 3
+        // graph links
+        // 0 -> 4
+        await quickLinkConnection([[0, 1, 2, 3]]);
+        await quickLinkGraph([[0, 4]]);
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const result = await nodeManager.findNode({
+          nodeId: keyRing.getNodeId(),
+        });
+        expect(result).toBeUndefined();
+        expect(nodeConnectionManager.connectionsActive()).toBeGreaterThan(3);
+      });
+      test('handles offline nodes', async () => {
+        // Structure is an acyclic graph
+        // connections
+        // 0 -> 1
+        // 1 -> 2
+        // graph links
+        // 1 -> 3
+        // 0 -> 4
+        // 2, 3, and 4 are dead.
+        await quickLinkConnection([
+          [0, 1],
+          [1, 2],
+        ]);
+        await quickLinkGraph([
+          [1, 3],
+          [0, 4],
+        ]);
+        await ncmPeers[2].nodeConnectionManager.stop({ force: true });
+        await ncmPeers[3].nodeConnectionManager.stop({ force: true });
+        await ncmPeers[4].nodeConnectionManager.stop({ force: true });
+        // Creating first connection to 0;
+        await nodeConnectionManager.createConnection(
+          [ncmPeers[0].nodeId],
+          localHost,
+          ncmPeers[0].port,
+        );
+
+        const start = Date.now();
+        const result = await nodeManager.findNode({
+          nodeId: keyRing.getNodeId(),
+          connectionConnectTimeoutTime: 1000,
+        });
+        const duration = Date.now() - start;
+        // Should time out after 1000ms
+        expect(duration).toBeGreaterThanOrEqual(1000);
+        // Should time out faster than default timeout of 15000
+        expect(duration).toBeLessThan(3000);
+
+        expect(result).toBeUndefined();
+      });
     });
     test.todo('network entry with syncNodeGraph');
     test.todo('network entry with syncNodeGraph handles offline nodes');
