@@ -190,7 +190,7 @@ class NodeManager {
     }
     try {
       this.logger.debug(
-        'triggering fidNode for self to populate closest nodes',
+        'triggering findNode for self to populate closest nodes',
       );
       await this.findNode(
         {
@@ -302,7 +302,7 @@ class NodeManager {
       .nodesRefreshBucketIntervalTime,
     refreshBucketDelayJitter = config.defaultsSystem
       .nodesRefreshBucketIntervalTimeJitter,
-    retryConnectionsDelayTime = 120000, // 2 minutes
+    retryConnectionsDelayTime = 45_000, // 45 seconds
     nodesConnectionFindLocalTimeoutTime = config.defaultsSystem
       .nodesConnectionFindLocalTimeoutTime,
     logger,
@@ -600,12 +600,7 @@ class NodeManager {
     });
 
     try {
-      const result = await Promise.any([
-        findBySignal,
-        findByDirect,
-        findByMDNS,
-      ]);
-      return result;
+      return await Promise.any([findBySignal, findByDirect, findByMDNS]);
     } catch (e) {
       // FIXME: check error type and throw if not connection related failure
       return;
