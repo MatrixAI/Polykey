@@ -793,7 +793,19 @@ class PolykeyAgent {
             return [nodeId, nodeAddress] as [NodeId, NodeAddress];
           },
         );
-        await this.nodeManager.syncNodeGraph(initialNodes, undefined, false);
+        // Sort and cull to 3 nodes closest nodes
+        const nodeDistanceCompare = nodesUtils.nodeDistanceCmpFactory(
+          this.keyRing.getNodeId(),
+        );
+        initialNodes.sort(([nodeIdA], [nodeIdB]) => {
+          return nodeDistanceCompare(nodeIdA, nodeIdB);
+        });
+        const initialNodesShortlist = initialNodes.slice(0, 3);
+        await this.nodeManager.syncNodeGraph(
+          initialNodesShortlist,
+          undefined,
+          false,
+        );
       }
       await this.discovery.start({ fresh });
       await this.vaultManager.start({ fresh });
