@@ -262,8 +262,6 @@ release:distribution:
   interruptible: false
   # Requires mutual exclusion
   resource_group: release:distribution
-  variables:
-    REGISTRY_AUTH_FILE: "./tmp/registry-auth-file.json"
   script:
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
     - echo 'Publishing library'
@@ -273,7 +271,6 @@ release:distribution:
       '
   after_script:
     - rm -f ./.npmrc
-    - rm -f "$REGISTRY_AUTH_FILE"
   rules:
     # Only runs on tag pipeline where the tag is a release version
     # This requires dependencies to also run on tag pipeline
