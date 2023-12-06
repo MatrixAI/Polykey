@@ -720,6 +720,22 @@ class NodeConnectionManager {
       ctx,
     );
     this.addConnection(nodeConnection.validatedNodeId, nodeConnection);
+    // Dispatch the connection event
+    const connectionData: ConnectionData = {
+      remoteNodeId: nodeConnection.nodeId,
+      remoteHost: nodeConnection.host,
+      remotePort: nodeConnection.port,
+    };
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: connectionData,
+      }),
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnection({
+        detail: connectionData,
+      }),
+    );
     return nodeConnection;
   }
 
@@ -887,18 +903,6 @@ class NodeConnectionManager {
         entry.activeConnection = connectionId;
       }
     }
-
-    // Dispatch the connection event
-    const connectionData: ConnectionData = {
-      remoteNodeId: nodeConnection.nodeId,
-      remoteHost: nodeConnection.host,
-      remotePort: nodeConnection.port,
-    };
-    this.dispatchEvent(
-      new nodesEvents.EventNodeConnectionManagerConnection({
-        detail: connectionData,
-      }),
-    );
     return newConnAndTimer;
   }
 
@@ -1012,6 +1016,22 @@ class NodeConnectionManager {
       ),
     });
     this.addConnection(nodeId, nodeConnectionNew);
+    // Dispatch the connection event
+    const connectionData: ConnectionData = {
+      remoteNodeId: nodeConnectionNew.nodeId,
+      remoteHost: nodeConnectionNew.host,
+      remotePort: nodeConnectionNew.port,
+    };
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: connectionData,
+      }),
+    );
+    this.dispatchEvent(
+      new nodesEvents.EventNodeConnectionManagerConnection({
+        detail: connectionData,
+      }),
+    );
   }
 
   /**

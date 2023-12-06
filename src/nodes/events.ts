@@ -36,10 +36,6 @@ class EventNodeConnectionManagerConnectionForward extends EventNodeConnectionMan
 
 class EventNodeConnectionManagerConnectionReverse extends EventNodeConnectionManagerConnection {}
 
-class EventNodeConnectionManagerConnectionReverseFailure extends EventNodeConnectionManager<
-  Error | EventNodeConnectionError
-> {}
-
 abstract class EventNodeGraph<T> extends EventPolykey<T> {}
 
 class EventNodeGraphStart extends EventNodeGraph<undefined> {}
@@ -82,7 +78,6 @@ export {
   EventNodeConnectionManagerConnection,
   EventNodeConnectionManagerConnectionForward,
   EventNodeConnectionManagerConnectionReverse,
-  EventNodeConnectionManagerConnectionReverseFailure,
   EventNodeGraph,
   EventNodeGraphStart,
   EventNodeGraphStarted,

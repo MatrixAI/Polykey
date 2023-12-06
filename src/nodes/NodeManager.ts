@@ -267,19 +267,19 @@ class NodeManager {
   public readonly syncNodeGraphHandlerId: TaskHandlerId =
     `${this.tasksPath}.syncNodeGraphHandlerId` as TaskHandlerId;
 
-  protected handleEventNodeConnectionManagerConnectionReverse = async (
-    e: nodesEvents.EventNodeConnectionManagerConnectionReverse,
+  protected handleEventNodeConnectionManagerConnection = async (
+    e: nodesEvents.EventNodeConnectionManagerConnection,
   ) => {
     await this.setNode(
       e.detail.remoteNodeId,
       [e.detail.remoteHost, e.detail.remotePort],
-      // FIXME
+      // FIXME: We want to distinguish punched, direct and local connections
       {
         mode: 'direct',
         connectedTime: Date.now(),
         scopes: ['global'],
       },
-      false,
+      true,
       false,
     );
   };
@@ -383,8 +383,8 @@ class NodeManager {
     }
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
-      nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
-      this.handleEventNodeConnectionManagerConnectionReverse,
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleEventNodeConnectionManagerConnection,
     );
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -393,8 +393,8 @@ class NodeManager {
     this.logger.info(`Stopping ${this.constructor.name}`);
     // Remove handling for connections
     this.nodeConnectionManager.removeEventListener(
-      nodesEvents.EventNodeConnectionManagerConnectionReverse.name,
-      this.handleEventNodeConnectionManagerConnectionReverse,
+      nodesEvents.EventNodeConnectionManagerConnection.name,
+      this.handleEventNodeConnectionManagerConnection,
     );
     await this.mdns?.stop();
     // Cancels all NodeManager tasks
@@ -1432,7 +1432,7 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
   @timedCancellable(true)
   public async setNode(
     nodeId: NodeId,
@@ -1873,7 +1873,7 @@ class NodeManager {
     this.logger.info('Set up refreshBucket tasks');
   }
 
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
   public async updateRefreshBucketDelay(
     bucketIndex: number,
     delay: number = this.refreshBucketDelayTime,
