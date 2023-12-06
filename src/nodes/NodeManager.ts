@@ -146,7 +146,7 @@ class NodeManager {
   };
 
   public readonly refreshBucketHandlerId =
-    `${this.tasksPath}.refreshBucketHandlerId` as TaskHandlerId;
+    `${this.tasksPath}.refreshBucketHandler` as TaskHandlerId;
 
   protected gcBucketHandler: TaskHandler = async (
     ctx,
@@ -168,7 +168,7 @@ class NodeManager {
   };
 
   public readonly gcBucketHandlerId =
-    `${this.tasksPath}.gcBucketHandlerId` as TaskHandlerId;
+    `${this.tasksPath}.gcBucketHandler` as TaskHandlerId;
 
   protected checkConnectionsHandler: TaskHandler = async (ctx, taskInfo) => {
     this.logger.debug('Checking connections');
@@ -209,7 +209,7 @@ class NodeManager {
   };
 
   public readonly checkConnectionsHandlerId: TaskHandlerId =
-    `${this.tasksPath}.checkConnectionsHandlerId` as TaskHandlerId;
+    `${this.tasksPath}.checkConnectionsHandler` as TaskHandlerId;
 
   protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
@@ -265,7 +265,7 @@ class NodeManager {
   };
 
   public readonly syncNodeGraphHandlerId: TaskHandlerId =
-    `${this.tasksPath}.syncNodeGraphHandlerId` as TaskHandlerId;
+    `${this.tasksPath}.syncNodeGraphHandler` as TaskHandlerId;
 
   protected handleEventNodeConnectionManagerConnection = async (
     e: nodesEvents.EventNodeConnectionManagerConnection,

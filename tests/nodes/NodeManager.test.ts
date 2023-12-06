@@ -205,16 +205,16 @@ describe(`${NodeManager.name}`, () => {
     });
     test('task handler ids are not empty', async () => {
       expect(nodeManager.gcBucketHandlerId).toEqual(
-        'NodeManager.gcBucketHandlerId',
+        'NodeManager.gcBucketHandler',
       );
       expect(nodeManager.refreshBucketHandlerId).toEqual(
-        'NodeManager.refreshBucketHandlerId',
+        'NodeManager.refreshBucketHandler',
       );
       expect(nodeManager.checkConnectionsHandlerId).toEqual(
-        'NodeManager.checkConnectionsHandlerId',
+        'NodeManager.checkConnectionsHandler',
       );
       expect(nodeManager.syncNodeGraphHandlerId).toEqual(
-        'NodeManager.syncNodeGraphHandlerId',
+        'NodeManager.syncNodeGraphHandler',
       );
     });
     test.todo('general tests for adding new nodes');
