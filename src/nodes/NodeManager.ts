@@ -242,6 +242,7 @@ class NodeManager {
     if (successfulConnections === 0) {
       throw new nodesErrors.ErrorNodeManagerSyncNodeGraphFailed();
     }
+    if (ctx.signal.aborted) return;
 
     // Attempt a findNode operation looking for ourselves
     await this.findNode(
@@ -250,6 +251,7 @@ class NodeManager {
       },
       ctx,
     );
+    if (ctx.signal.aborted) return;
 
     // Getting the closest node from the `NodeGraph`
     let bucketIndex: number | undefined;
@@ -264,7 +266,8 @@ class NodeManager {
       const task = await this.updateRefreshBucketDelay(i, 0, false);
       refreshBuckets.push(task.promise());
     }
-    await Promise.all(refreshBuckets);
+    const signalProm = utils.signalPromise(ctx.signal).catch(() => {});
+    await Promise.race([Promise.all(refreshBuckets), signalProm]);
   };
 
   public readonly syncNodeGraphHandlerId: TaskHandlerId =

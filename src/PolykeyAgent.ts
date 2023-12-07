@@ -888,7 +888,7 @@ class PolykeyAgent {
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
     await this.discovery.stop();
-    await this.nodeConnectionManager.stop();
+    await this.nodeConnectionManager.stop({ force: true });
     await this.nodeGraph.stop();
     await this.nodeManager.stop();
     await this.clientService.stop({ force: true });
