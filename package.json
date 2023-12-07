@@ -74,7 +74,7 @@
     "@matrixai/events": "^3.2.3",
     "@matrixai/id": "^3.3.6",
     "@matrixai/logger": "^3.1.2",
-    "@matrixai/mdns": "^1.2.3",
+    "@matrixai/mdns": "^1.2.5",
     "@matrixai/quic": "^1.1.1",
     "@matrixai/resources": "^1.1.5",
     "@matrixai/rpc": "^0.4.3",
