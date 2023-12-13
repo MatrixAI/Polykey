@@ -686,6 +686,7 @@ class VaultManager {
     nodeId: NodeId,
     vaultNameOrId: VaultId | VaultName,
     tran?: DBTransaction,
+    force: boolean = false,
   ): Promise<VaultId> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -718,6 +719,20 @@ class VaultManager {
         const baseVaultName = vaultMetadata.vaultName;
         // Need to check if the name is taken, 10 attempts
         let newVaultName = baseVaultName;
+
+        // Get the list of existing vaults
+        const existingVaults = await this.listVaults(tran);
+
+        if (existingVaults.has(newVaultName)) {
+          if (force) {
+            newVaultName = `${newVaultName}_1`;
+          } else {
+            throw new vaultsErrors.ErrorVaultsNameConflict(
+              `A vault with the name '${newVaultName}' already exists. Use --override to force cloning.`,
+            );
+          }
+        }
+
         let attempts = 1;
         while (true) {
           const existingVaultId = await tran.get([

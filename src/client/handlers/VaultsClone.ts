@@ -39,9 +39,10 @@ class VaultsClone extends UnaryHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
+    const force = input.force ?? false;
     // Vault id
     await db.withTransactionF(async (tran) => {
-      await vaultManager.cloneVault(nodeId, input.nameOrId, tran);
+      await vaultManager.cloneVault(nodeId, input.nameOrId, tran, force);
     });
     return {
       success: true,

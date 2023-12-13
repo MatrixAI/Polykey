@@ -228,7 +228,10 @@ type VaultIdentifierMessage = {
   nameOrId: VaultIdEncoded | VaultName;
 };
 
-type CloneMessage = NodeIdMessage & VaultIdentifierMessage;
+type CloneMessage = NodeIdMessage &
+  VaultIdentifierMessage & {
+    force?: boolean;
+  };
 
 type VaultListMessage = VaultNameMessage & VaultIdMessage;
 
