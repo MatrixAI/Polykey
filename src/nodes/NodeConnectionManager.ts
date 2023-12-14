@@ -714,7 +714,7 @@ class NodeConnectionManager {
         connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
         quicSocket: this.quicSocket,
         logger: this.logger.getChild(
-          `${NodeConnection.name} [${host}:${port}]`,
+          `${NodeConnection.name}Forward [${host}:${port}]`,
         ),
       },
       ctx,
@@ -1010,7 +1010,7 @@ class NodeConnectionManager {
       manifest: agentClientManifest,
       quicConnection: quicConnection,
       logger: this.logger.getChild(
-        `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+        `${NodeConnection.name}Reverse [${nodesUtils.encodeNodeId(nodeId)}@${
           quicConnection.remoteHost
         }:${quicConnection.remotePort}]`,
       ),
