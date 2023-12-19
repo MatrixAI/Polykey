@@ -10,7 +10,7 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
-import { WebSocketClient } from '@matrixai/ws';
+import { WebSocketClient, events as webSocketEvents } from '@matrixai/ws';
 import { RPCClient, middleware as rpcMiddleware } from '@matrixai/rpc';
 import { Session } from './sessions';
 import * as ids from './ids';
@@ -156,6 +156,10 @@ class PolykeyClient {
     RPCClient<typeof clientClientManifest>
   >;
 
+  protected handleEventWebSocketClientDestroyed = async () => {
+    await this.stop({ force: true });
+  };
+
   constructor({
     nodePath,
     session,
@@ -292,6 +296,10 @@ class PolykeyClient {
       },
       ctx,
     );
+    webSocketClient.addEventListener(
+      webSocketEvents.EventWebSocketClientDestroyed.name,
+      this.handleEventWebSocketClientDestroyed,
+    );
     const rpcClient = new RPCClient({
       manifest: clientClientManifest,
       streamFactory: () => webSocketClient.connection.newStream(),
@@ -318,6 +326,10 @@ class PolykeyClient {
    */
   public async stop({ force = false }: { force?: boolean } = {}) {
     this.logger.info(`Stopping ${this.constructor.name}`);
+    this._webSocketClient.removeEventListener(
+      webSocketEvents.EventWebSocketClientDestroyed.name,
+      this.handleEventWebSocketClientDestroyed,
+    );
     await this._webSocketClient.destroy({ force });
     await this.session.stop();
     this.logger.info(`Stopped ${this.constructor.name}`);

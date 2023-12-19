@@ -8,6 +8,7 @@ import {
   utils as webSocketUtils,
   errors as webSocketErrors,
 } from '@matrixai/ws';
+import { statusP } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import PolykeyAgent from '@/PolykeyAgent';
 import PolykeyClient from '@/PolykeyClient';
 import Session from '@/sessions/Session';
@@ -206,6 +207,23 @@ describe(PolykeyClient.name, () => {
         },
       });
       await pkClient.stop();
+    });
+    test('WebSocketClient destruction causes PolykeyClient to stop', async () => {
+      const pkClient = await PolykeyClient.createPolykeyClient({
+        nodeId: pkAgent.keyRing.getNodeId(),
+        port: pkAgent.clientServicePort,
+        host: pkAgent.clientServiceHost,
+        options: {
+          nodePath: nodePath,
+        },
+        fs,
+        logger: logger.getChild(PolykeyClient.name),
+        fresh: true,
+      });
+      // Promise that resolves when status changes
+      const statusProm = pkClient[statusP];
+      await pkClient.webSocketClient.destroy({ force: true });
+      await expect(statusProm).resolves.toBe('stopping');
     });
   });
 });
