@@ -8,7 +8,7 @@ import {
   utils as webSocketUtils,
   errors as webSocketErrors,
 } from '@matrixai/ws';
-import { statusP } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { running } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import PolykeyAgent from '@/PolykeyAgent';
 import PolykeyClient from '@/PolykeyClient';
 import Session from '@/sessions/Session';
@@ -17,6 +17,8 @@ import * as ids from '@/ids';
 import * as clientUtils from '@/client/utils';
 import * as keysUtils from '@/keys/utils';
 import * as errors from '@/errors';
+import * as events from '@/events';
+import * as utils from '@/utils';
 import * as testUtils from './utils';
 
 describe(PolykeyClient.name, () => {
@@ -220,10 +222,14 @@ describe(PolykeyClient.name, () => {
         logger: logger.getChild(PolykeyClient.name),
         fresh: true,
       });
+      const { p: stoppedP, resolveP: resolveStoppedP } = utils.promise();
+      pkClient.addEventListener(events.EventPolykeyClientStopped.name, () =>
+        resolveStoppedP(),
+      );
       // Promise that resolves when status changes
-      const statusProm = pkClient[statusP];
       await pkClient.webSocketClient.destroy({ force: true });
-      await expect(statusProm).resolves.toBe('stopping');
+      await expect(stoppedP).toResolve();
+      expect(pkClient[running]).toBe(false);
     });
   });
 });
