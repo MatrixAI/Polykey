@@ -6,6 +6,7 @@ import type {
 import type PolykeyAgent from '../../PolykeyAgent';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
+import config from '../../config';
 
 class AgentStatus extends UnaryHandler<
   {
@@ -28,6 +29,10 @@ class AgentStatus extends UnaryHandler<
       startTime: polykeyAgent.startTime,
       connectionsActive: polykeyAgent.nodeConnectionManager.connectionsActive(),
       nodesTotal: await polykeyAgent.nodeGraph.nodesTotal(),
+      version: config.version,
+      sourceVersion: config.sourceVersion,
+      stateVersion: config.stateVersion,
+      networkVersion: config.networkVersion,
     };
   };
 }

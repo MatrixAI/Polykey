@@ -209,6 +209,10 @@ describe('agentStatus', () => {
       connectionsActive: expect.any(Number),
       nodesTotal: expect.any(Number),
       startTime: expect.any(Number),
+      version: config.version,
+      sourceVersion: config.sourceVersion,
+      stateVersion: config.stateVersion,
+      networkVersion: config.networkVersion,
     });
   });
 });

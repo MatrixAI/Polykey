@@ -50,6 +50,10 @@ type StatusResultMessage = {
     startTime: number;
     connectionsActive: number;
     nodesTotal: number;
+    version: string;
+    sourceVersion: string;
+    stateVersion: number;
+    networkVersion: number;
   };
 
 // Identity messages

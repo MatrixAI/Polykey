@@ -11,6 +11,13 @@ import { version } from '../package.json';
  */
 const config = {
   /**
+   * Compound version string made up of all version values.
+   * Formatted as `${sourceVersion}-${stateVersion}-${networkVersion}`
+   */
+  get version() {
+    return `${this.sourceVersion}-${this.stateVersion}-${this.networkVersion}`;
+  },
+  /**
    * Version of source code
    * This must match the package.json
    */
@@ -26,7 +33,7 @@ const config = {
    * It is only incremented on breaking changes
    * Use this to know if you must upgrade your service client
    */
-  serviceVersion: 1,
+  networkVersion: 1,
   /**
    * Default provider configuration
    * These are managed by Matrix AI and Polykey developers
