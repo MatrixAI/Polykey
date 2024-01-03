@@ -50,7 +50,7 @@ type AuditEventSerialized = AuditEventToAuditEventSerialized<AuditEvent>;
 
 type AuditEventToAuditEventDB<T extends AuditEvent> = Omit<T, 'id'>;
 
-type AuditEventToAuditEventSerialized<T extends AuditEvent> = T & {
+type AuditEventToAuditEventSerialized<T extends AuditEvent> = Omit<T, 'id'> & {
   id: AuditEventIdEncoded;
 };
 

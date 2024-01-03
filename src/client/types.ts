@@ -335,7 +335,7 @@ type OverrideRPClientType<T extends RPCClient<ClientManifest>> = Omit<
   methods: {
     auditEventsGet: AuditEventsGetTypeOverride;
     auditMetricGet: AuditMetricGetTypeOverride;
-  } & T['methods'];
+  } & Omit<T['methods'], 'auditEventsGet' | 'auditMetricGet'>;
 };
 
 export type {
