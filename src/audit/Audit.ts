@@ -172,7 +172,7 @@ class Audit {
         const auditEventId = this.generateAuditEventId();
         await this.setAuditEvent(
           topicPath,
-          { id: auditEventId, data: eventData } as any,
+          { id: auditEventId, data: eventData, path: topicPath } as any,
           tran,
         );
       });

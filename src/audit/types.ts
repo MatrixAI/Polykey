@@ -23,20 +23,24 @@ type InferTypeFromSubpath<
   E,
 > = IsSubpath<T, U> extends true ? E : never;
 
+type InferAuditEventFromSubpath<
+  P extends TopicSubPath,
+  T extends AuditEvent,
+> = InferTypeFromSubpath<P, T['path'], T>;
+
 /**
  * Represents a capture of an event.
  */
-type AuditEventBase<T extends POJO = POJO> = {
+type AuditEventBase<T extends POJO = POJO, P extends TopicPath = TopicPath> = {
   id: AuditEventId;
+  path: P;
   data: T;
 };
 
 /**
  * Represents a capture of an event.
  */
-type AuditEvent =
-  | AuditEventNodeConnectionForward
-  | AuditEventNodeConnectionReverse;
+type AuditEvent = TopicSubPathToAuditEvent<TopicPath>;
 
 /**
  * Represents a capture of an event stored in the database.
@@ -62,18 +66,11 @@ type TopicSubPath<T = TopicPath> =
       : [])
   | TopicPath;
 
+// Define your topics here, the AuditEvent type will be derived from this.
 type TopicSubPathToAuditEvent<T extends TopicSubPath> =
   // Nodes
-  | InferTypeFromSubpath<
-      T,
-      typeof nodeConnectionReverseTopicPath,
-      AuditEventNodeConnectionReverse
-    >
-  | InferTypeFromSubpath<
-      T,
-      typeof nodeConnectionForwardTopicPath,
-      AuditEventNodeConnectionForward
-    >;
+  | InferAuditEventFromSubpath<T, AuditEventNodeConnectionReverse>
+  | InferAuditEventFromSubpath<T, AuditEventNodeConnectionForward>;
 
 // Nodes
 
@@ -88,14 +85,20 @@ type AuditEventNodeConnection =
   | AuditEventNodeConnectionForward;
 
 type AuditEventNodeConnectionReverse = AuditEventNodeConnectionBase &
-  AuditEventBase<{
-    type: 'reverse';
-  }>;
+  AuditEventBase<
+    {
+      type: 'reverse';
+    },
+    typeof nodeConnectionReverseTopicPath
+  >;
 
 type AuditEventNodeConnectionForward = AuditEventNodeConnectionBase &
-  AuditEventBase<{
-    type: 'forward';
-  }>;
+  AuditEventBase<
+    {
+      type: 'forward';
+    },
+    typeof nodeConnectionForwardTopicPath
+  >;
 
 // Metrics
 
@@ -130,6 +133,7 @@ export type {
   // Event
   IsSubpath,
   InferTypeFromSubpath,
+  InferAuditEventFromSubpath,
   AuditEventBase,
   AuditEvent,
   AuditEventDB,
