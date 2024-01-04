@@ -461,6 +461,7 @@ describe(Audit.name, () => {
       // @ts-ignore: kidnap protected
       await audit.setAuditEvent(['node', 'connection', 'forward'], {
         id: ids.generateAuditEventIdFromTimestamp(date),
+        path: ['node', 'connection', 'forward'],
         data: {
           ...auditEventData,
           type: 'forward',
@@ -483,6 +484,7 @@ describe(Audit.name, () => {
       // @ts-ignore: kidnap protected
       await audit.setAuditEvent(['node', 'connection', 'forward'], {
         id: ids.generateAuditEventIdFromTimestamp(date + 10),
+        path: ['node', 'connection', 'forward'],
         data: {
           ...auditEventData,
           type: 'forward',
@@ -582,6 +584,7 @@ describe(Audit.name, () => {
         // @ts-ignore: kidnap protected
         await audit.setAuditEvent(['node', 'connection', 'reverse'], {
           id: ids.generateAuditEventIdFromTimestamp(iterDate),
+          path: ['node', 'connection', 'reverse'],
           data: {
             ...auditEventData,
             type: 'reverse',
@@ -592,6 +595,7 @@ describe(Audit.name, () => {
         // @ts-ignore: kidnap protected
         await audit.setAuditEvent(['node', 'connection', 'forward'], {
           id: ids.generateAuditEventIdFromTimestamp(iterDate),
+          path: ['node', 'connection', 'forward'],
           data: {
             ...auditEventData,
             type: 'forward',
