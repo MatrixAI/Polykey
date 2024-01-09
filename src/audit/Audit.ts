@@ -384,7 +384,8 @@ class Audit {
         const iterator = tran.iterator<TopicSubPathToAuditEvent<T>>(
           this.auditEventDbPath,
           {
-            keys: false,
+            keyAsBuffer: true,
+            keys: true,
             values: true,
             valueAsBuffer: false,
             reverse: order !== 'asc',
@@ -393,7 +394,10 @@ class Audit {
             lte: seekEndAuditEventId?.toBuffer(),
           },
         );
-        for await (const [, auditEvent] of iterator) {
+        for await (const [key, auditEvent] of iterator) {
+          auditEvent.id = IdInternal.fromBuffer<AuditEventId>(
+            key.at(-1) as Buffer,
+          );
           yield auditEvent;
           finishedPSignal?.throwIfAborted();
         }

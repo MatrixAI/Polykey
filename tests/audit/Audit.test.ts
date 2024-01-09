@@ -252,6 +252,38 @@ describe(Audit.name, () => {
       expect(count).toBe(limit);
       await audit.stop();
     });
+    test('metadata', async () => {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      const audit = await Audit.createAudit({
+        db,
+        nodeConnectionManager: mockNodeConnectionManager,
+        logger,
+      });
+      const eventDetail: ConnectionData = {
+        remoteHost: '::' as Host,
+        remoteNodeId: nodeId,
+        remotePort: 0 as Port,
+      };
+      // @ts-ignore: kidnap protected
+      const handlerMap = audit.eventHandlerMap;
+      await handlerMap
+        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
+        ?.handler(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      const topicPath = ['node', 'connection', 'reverse'] as const;
+      for await (const event of audit.getAuditEvents(topicPath)) {
+        expect(event.id).toBeInstanceOf(Uint8Array);
+        expect(event.path).toEqual(topicPath);
+      }
+      for await (const event of audit.getAuditEvents([])) {
+        expect(event.id).toBeInstanceOf(Uint8Array);
+        expect(event.path).toEqual(topicPath);
+      }
+      await audit.stop();
+    });
     test('topic nesting', async () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
       const audit = await Audit.createAudit({
@@ -269,15 +301,15 @@ describe(Audit.name, () => {
         remoteNodeId: nodeUtils.encodeNodeId(eventDetail.remoteNodeId),
       };
       // @ts-ignore: kidnap protected
-      const handlerMap = audit.eventHandlerMap;
-      await handlerMap
+      const auditEvent = audit.eventHandlerMap;
+      await auditEvent
         .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
         ?.handler(
           new nodeEvents.EventNodeConnectionManagerConnectionReverse({
             detail: eventDetail,
           }),
         );
-      await handlerMap
+      await auditEvent
         .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
         ?.handler(
           new nodeEvents.EventNodeConnectionManagerConnectionForward({
