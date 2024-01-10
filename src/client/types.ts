@@ -54,6 +54,7 @@ type StatusResultMessage = {
     sourceVersion: string;
     stateVersion: number;
     networkVersion: number;
+    versionMetadata: JSONObject;
   };
 
 // Identity messages

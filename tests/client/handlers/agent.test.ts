@@ -155,6 +155,9 @@ describe('agentStatus', () => {
           passwordMemLimit: keysUtils.passwordMemLimits.min,
           strictMemoryLock: false,
         },
+        versionMetadata: {
+          cliAgentCommitHash: 'test',
+        },
       },
       logger,
     });
@@ -213,6 +216,9 @@ describe('agentStatus', () => {
       sourceVersion: config.sourceVersion,
       stateVersion: config.stateVersion,
       networkVersion: config.networkVersion,
+      versionMetadata: {
+        cliAgentCommitHash: 'test',
+      },
     });
   });
 });

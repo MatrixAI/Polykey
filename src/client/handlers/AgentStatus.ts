@@ -33,6 +33,7 @@ class AgentStatus extends UnaryHandler<
       sourceVersion: config.sourceVersion,
       stateVersion: config.stateVersion,
       networkVersion: config.networkVersion,
+      versionMetadata: polykeyAgent.versionMetadata,
     };
   };
 }
