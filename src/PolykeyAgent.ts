@@ -1,8 +1,17 @@
+import type {
+  JSONRPCRequest,
+  JSONRPCResponse,
+  MiddlewareFactory,
+} from '@matrixai/rpc';
 import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { NodeAddress, NodeId, SeedNodes } from './nodes/types';
 import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from './client/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -42,7 +51,6 @@ import * as workersUtils from './workers/utils';
 import * as clientMiddleware from './client/middleware';
 import clientServerManifest from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
-
 /**
  * Optional configuration for `PolykeyAgent`.
  */
@@ -73,6 +81,12 @@ type PolykeyAgentOptions = {
     keepAliveIntervalTime: number;
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
+    rpcMiddlewareFactory?: MiddlewareFactory<
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCResponse<ClientRPCResponseResult>,
+      JSONRPCResponse<ClientRPCResponseResult>
+    >;
   };
   nodes: {
     connectionIdleTimeoutTimeMin: number;
@@ -417,6 +431,7 @@ class PolykeyAgent {
         middlewareFactory: clientMiddleware.middlewareServer(
           sessionManager,
           keyRing,
+          optionsDefaulted.client.rpcMiddlewareFactory,
         ),
         keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
         keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,

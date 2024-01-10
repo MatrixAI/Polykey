@@ -1,7 +1,16 @@
+import type {
+  JSONRPCRequest,
+  JSONRPCResponse,
+  MiddlewareFactory,
+} from '@matrixai/rpc';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { DeepPartial, FileSystem } from './types';
-import type { OverrideRPClientType } from './client/types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+  OverrideRPClientType,
+} from './client/types';
 import type { NodeId } from './ids/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -33,6 +42,12 @@ type PolykeyClientOptions = {
   keepAliveIntervalTime: number;
   rpcCallTimeoutTime: number;
   rpcParserBufferSize: number;
+  rpcMiddlewareFactory?: MiddlewareFactory<
+    JSONRPCRequest<ClientRPCRequestParams>,
+    JSONRPCRequest<ClientRPCRequestParams>,
+    JSONRPCResponse<ClientRPCResponseResult>,
+    JSONRPCResponse<ClientRPCResponseResult>
+  >;
 };
 
 interface PolykeyClient extends CreateDestroyStartStop {}
@@ -304,7 +319,10 @@ class PolykeyClient {
       manifest: clientClientManifest,
       streamFactory: () => webSocketClient.connection.newStream(),
       middlewareFactory: rpcMiddleware.defaultClientMiddlewareWrapper(
-        clientMiddleware.middlewareClient(this.session),
+        clientMiddleware.middlewareClient(
+          this.session,
+          optionsDefaulted.rpcMiddlewareFactory,
+        ),
         optionsDefaulted.rpcParserBufferSize,
       ),
       toError: networkUtils.toError,
