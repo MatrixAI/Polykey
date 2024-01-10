@@ -1,8 +1,18 @@
-import type { DeepPartial, FileSystem, ObjectEmpty } from './types';
+import type {
+  JSONObject,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  MiddlewareFactory,
+} from '@matrixai/rpc';
+import type { DeepPartial, FileSystem, ObjectEmpty, POJO } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { TLSConfig } from './network/types';
 import type { NodeAddress, NodeId, SeedNodes } from './nodes/types';
 import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from './client/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -42,7 +52,6 @@ import * as workersUtils from './workers/utils';
 import * as clientMiddleware from './client/middleware';
 import clientServerManifest from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
-
 /**
  * Optional configuration for `PolykeyAgent`.
  */
@@ -73,6 +82,12 @@ type PolykeyAgentOptions = {
     keepAliveIntervalTime: number;
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
+    rpcMiddlewareFactory?: MiddlewareFactory<
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCResponse<ClientRPCResponseResult>,
+      JSONRPCResponse<ClientRPCResponseResult>
+    >;
   };
   nodes: {
     connectionIdleTimeoutTimeMin: number;
@@ -89,6 +104,7 @@ type PolykeyAgentOptions = {
     groups: Array<string>;
     port: number;
   };
+  versionMetadata: POJO;
 };
 
 interface PolykeyAgent extends CreateDestroyStartStop {}
@@ -181,6 +197,7 @@ class PolykeyAgent {
         groups: config.defaultsSystem.mdnsGroups,
         port: config.defaultsSystem.mdnsPort,
       },
+      versionMetadata: {},
     });
     // This can only happen if the caller didn't specify the node path and the
     // automatic detection failed
@@ -417,6 +434,7 @@ class PolykeyAgent {
         middlewareFactory: clientMiddleware.middlewareServer(
           sessionManager,
           keyRing,
+          optionsDefaulted.client.rpcMiddlewareFactory,
         ),
         keepAliveTimeoutTime: optionsDefaulted.client.keepAliveTimeoutTime,
         keepAliveIntervalTime: optionsDefaulted.client.keepAliveIntervalTime,
@@ -472,6 +490,7 @@ class PolykeyAgent {
       clientService,
       fs,
       logger,
+      versionMetadata: optionsDefaulted.versionMetadata,
     });
     await pkAgent.start({
       password,
@@ -514,6 +533,7 @@ class PolykeyAgent {
   public readonly clientService: ClientService;
   protected workerManager: PolykeyWorkerManagerInterface | undefined;
   protected _startTime: number = 0;
+  protected _versionMetadata: JSONObject;
 
   protected handleEventCertManagerCertChange = async (
     evt: keysEvents.EventCertManagerCertChange,
@@ -558,6 +578,7 @@ class PolykeyAgent {
     clientService,
     fs,
     logger,
+    versionMetadata,
   }: {
     nodePath: string;
     audit: Audit;
@@ -581,6 +602,7 @@ class PolykeyAgent {
     clientService: ClientService;
     fs: FileSystem;
     logger: Logger;
+    versionMetadata: POJO;
   }) {
     this.logger = logger;
     this.nodePath = nodePath;
@@ -604,6 +626,7 @@ class PolykeyAgent {
     this.sessionManager = sessionManager;
     this.clientService = clientService;
     this.fs = fs;
+    this._versionMetadata = versionMetadata;
   }
 
   @ready(new errors.ErrorPolykeyAgentNotRunning())
@@ -624,6 +647,10 @@ class PolykeyAgent {
   @ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServicePort() {
     return this.nodeConnectionManager.port;
+  }
+
+  get versionMetadata() {
+    return this._versionMetadata;
   }
 
   /**
