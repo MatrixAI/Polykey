@@ -695,13 +695,24 @@ class NodeConnectionManager {
 
   /**
    * Starts a connection.
-   *
    */
-  public async createConnection(
+  public createConnection(
     nodeIds: Array<NodeId>,
     host: Host,
     port: Port,
     ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<NodeConnection>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async createConnection(
+    nodeIds: Array<NodeId>,
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
@@ -748,7 +759,7 @@ class NodeConnectionManager {
     nodeIds: Array<NodeId>,
     addresses: Array<[Host, Port]>,
     ctx?: Partial<ContextTimedInput>,
-  ): Promise<NodeConnection>;
+  ): PromiseCancellable<NodeConnection>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,

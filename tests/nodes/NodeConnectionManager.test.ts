@@ -124,7 +124,6 @@ describe(`${NodeConnectionManager.name}`, () => {
         ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
       ).toBeTrue();
     });
-    // FIXME: timeout not respecting `connectionConnectTimeoutTime`.
     test('connection creation can time out', async () => {
       await expect(
         ncmLocal.nodeConnectionManager.createConnection(
