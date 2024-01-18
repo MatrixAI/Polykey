@@ -1057,7 +1057,7 @@ describe(`${NodeManager.name}`, () => {
       await Promise.all(linkPs);
     }
 
-    async function linkGraph(a, b) {
+    async function linkGraph(a: number, b: number) {
       const ncmA = ncmPeers[a];
       const ncmB = ncmPeers[b];
       const nodeContactAddressB = nodesUtils.nodeContactAddress([
@@ -1396,47 +1396,6 @@ describe(`${NodeManager.name}`, () => {
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(3);
       });
-      // FIXME: this is a bit in-determinate right now
-      test.skip('connection found in two attempts', async () => {
-        // Structure is a chain
-        // 0 -> 1 -> 2 -> 3 -> 4
-        await quickLinkConnection([[0, 1, 2, 3, 4]]);
-        // Creating first connection to 0;
-        await nodeConnectionManager.createConnection(
-          [ncmPeers[0].nodeId],
-          localHost,
-          ncmPeers[0].port,
-        );
-
-        const rateLimiter = new Semaphore(1);
-        const path = await nodeManager.findNodeBySignal(
-          ncmPeers[4].nodeId,
-          new NodeConnectionQueue(
-            keyRing.getNodeId(),
-            ncmPeers[4].nodeId,
-            3,
-            rateLimiter,
-            rateLimiter,
-          ),
-        );
-        expect(path).toBeUndefined();
-        // Should have initial connection + 3 new ones
-        expect(nodeConnectionManager.connectionsActive()).toBe(3);
-
-        // 2nd attempt continues where we left off due to existing connections
-        const path2 = await nodeManager.findNodeBySignal(
-          ncmPeers[4].nodeId,
-          new NodeConnectionQueue(
-            keyRing.getNodeId(),
-            ncmPeers[4].nodeId,
-            3,
-            rateLimiter,
-            rateLimiter,
-          ),
-        );
-        expect(path2).toBeDefined();
-        expect(path2!.length).toBe(2);
-      });
       test('handles offline nodes', async () => {
         // Short chain with offline leafs
         // 0 -> 2 -> 4
@@ -1660,54 +1619,6 @@ describe(`${NodeManager.name}`, () => {
         await expect(resultP).rejects.toThrow(
           nodesErrors.ErrorNodeManagerFindNodeFailed,
         );
-        // All connections made
-        expect(nodeConnectionManager.connectionsActive()).toBe(5);
-      });
-      // FIXME: needs to store made connections in nodeGraph for this to work
-      test.skip('connection found in two attempts', async () => {
-        // Structure is an acyclic graph
-        // 0 -> 1 -> 2 -> 3 -> 4
-        await quickLinkGraph([[0, 1, 2, 3, 4]]);
-
-        // Setting up entry point
-        const nodeContactAddressB = nodesUtils.nodeContactAddress([
-          ncmPeers[0].nodeConnectionManager.host,
-          ncmPeers[0].nodeConnectionManager.port,
-        ]);
-        await nodeGraph.setNodeContact(ncmPeers[0].keyRing.getNodeId(), {
-          [nodeContactAddressB]: {
-            mode: 'direct',
-            connectedTime: Date.now(),
-            scopes: ['global'],
-          },
-        });
-
-        const rateLimiter = new Semaphore(3);
-        const result1 = await nodeManager.findNodeByDirect(
-          ncmPeers[4].nodeId,
-          new NodeConnectionQueue(
-            keyRing.getNodeId(),
-            ncmPeers[4].nodeId,
-            3,
-            rateLimiter,
-            rateLimiter,
-          ),
-        );
-        expect(result1).toBeUndefined();
-        // All connections made
-        expect(nodeConnectionManager.connectionsActive()).toBe(4);
-
-        const result2 = await nodeManager.findNodeByDirect(
-          ncmPeers[4].nodeId,
-          new NodeConnectionQueue(
-            keyRing.getNodeId(),
-            ncmPeers[4].nodeId,
-            3,
-            rateLimiter,
-            rateLimiter,
-          ),
-        );
-        expect(result2).toBeDefined();
         // All connections made
         expect(nodeConnectionManager.connectionsActive()).toBe(5);
       });

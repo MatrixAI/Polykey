@@ -29,7 +29,7 @@ describe(`${NodeConnectionManager.name}`, () => {
   );
   const localHost = '127.0.0.1' as Host;
   const dummyManifest = {} as AgentServerManifest;
-  const timeoutTime = 300;
+  const timeoutTime = 2000;
 
   test('NodeConnectionManager readiness', async () => {
     const keyPair = keysUtils.generateKeyPair();
@@ -858,8 +858,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       ).toBeTrue();
       resolveWaitP();
     });
-    // FIXME: weird intermittent failure here, need to look deeper.
-    test.skip('signalling is rate limited', async () => {
+    test('signalling is rate limited', async () => {
       // We pause handleNodesConnectionSignalFinal and check if the handleNodesConnectionSignalInitial times out
       // Create initial connections of local -> peer1 -> peer2
       await ncmLocal.nodeConnectionManager.createConnection(

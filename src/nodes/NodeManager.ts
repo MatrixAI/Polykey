@@ -671,11 +671,7 @@ class NodeManager {
             this.logger.debug(
               `attempting connection to ${nodesUtils.encodeNodeId(
                 nodeIdTarget,
-              )} via ${
-                nodeIdSignaller != null
-                  ? nodesUtils.encodeNodeId(nodeIdSignaller)
-                  : 'local'
-              }`,
+              )} via ${nodesUtils.encodeNodeId(nodeIdSignaller)}`,
             );
             nodeConnection =
               await this.nodeConnectionManager.createConnectionPunch(

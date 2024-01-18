@@ -810,10 +810,21 @@ class NodeConnectionManager {
   /**
    * This will start a new connection using a signalling node to coordinate hole punching.
    */
-  public async createConnectionPunch(
+  public createConnectionPunch(
     nodeIdTarget: NodeId,
     nodeIdSignaller: NodeId,
     ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<NodeConnection>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async createConnectionPunch(
+    nodeIdTarget: NodeId,
+    nodeIdSignaller: NodeId,
+    @context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     // Get the signaller node from the existing connections
     if (!this.hasConnection(nodeIdSignaller)) {
