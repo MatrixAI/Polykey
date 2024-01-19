@@ -695,13 +695,24 @@ class NodeConnectionManager {
 
   /**
    * Starts a connection.
-   *
    */
-  public async createConnection(
+  public createConnection(
     nodeIds: Array<NodeId>,
     host: Host,
     port: Port,
     ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<NodeConnection>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async createConnection(
+    nodeIds: Array<NodeId>,
+    host: Host,
+    port: Port,
+    @context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
@@ -714,7 +725,7 @@ class NodeConnectionManager {
         connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
         quicSocket: this.quicSocket,
         logger: this.logger.getChild(
-          `${NodeConnection.name} [${host}:${port}]`,
+          `${NodeConnection.name}Forward [${host}:${port}]`,
         ),
       },
       ctx,
@@ -748,7 +759,7 @@ class NodeConnectionManager {
     nodeIds: Array<NodeId>,
     addresses: Array<[Host, Port]>,
     ctx?: Partial<ContextTimedInput>,
-  ): Promise<NodeConnection>;
+  ): PromiseCancellable<NodeConnection>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @timedCancellable(
     true,
@@ -799,10 +810,21 @@ class NodeConnectionManager {
   /**
    * This will start a new connection using a signalling node to coordinate hole punching.
    */
-  public async createConnectionPunch(
+  public createConnectionPunch(
     nodeIdTarget: NodeId,
     nodeIdSignaller: NodeId,
     ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<NodeConnection>;
+  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async createConnectionPunch(
+    nodeIdTarget: NodeId,
+    nodeIdSignaller: NodeId,
+    @context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     // Get the signaller node from the existing connections
     if (!this.hasConnection(nodeIdSignaller)) {
@@ -1010,7 +1032,7 @@ class NodeConnectionManager {
       manifest: agentClientManifest,
       quicConnection: quicConnection,
       logger: this.logger.getChild(
-        `${NodeConnection.name} [${nodesUtils.encodeNodeId(nodeId)}@${
+        `${NodeConnection.name}Reverse [${nodesUtils.encodeNodeId(nodeId)}@${
           quicConnection.remoteHost
         }:${quicConnection.remotePort}]`,
       ),

@@ -1,4 +1,5 @@
 import type { Host, Port } from '@/network/types';
+import type NodeConnection from '@/nodes/NodeConnection';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type { KeyRing } from '@/keys';
 import type { NCMState } from './utils';
@@ -11,6 +12,7 @@ import * as nodesErrors from '@/nodes/errors';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
 import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
+import * as utils from '@/utils';
 import * as nodesTestUtils from './utils';
 import * as keysTestUtils from '../keys/utils';
 import * as testsUtils from '../utils';
@@ -27,7 +29,7 @@ describe(`${NodeConnectionManager.name}`, () => {
   );
   const localHost = '127.0.0.1' as Host;
   const dummyManifest = {} as AgentServerManifest;
-  const timeoutTime = 300;
+  const timeoutTime = 2000;
 
   test('NodeConnectionManager readiness', async () => {
     const keyPair = keysUtils.generateKeyPair();
@@ -122,7 +124,6 @@ describe(`${NodeConnectionManager.name}`, () => {
         ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
       ).toBeTrue();
     });
-    // FIXME: timeout not respecting `connectionConnectTimeoutTime`.
     test('connection creation can time out', async () => {
       await expect(
         ncmLocal.nodeConnectionManager.createConnection(
@@ -391,7 +392,6 @@ describe(`${NodeConnectionManager.name}`, () => {
       }
     });
     test('throws when connection is missing', async () => {
-      // TODO: check actual error thrown
       await expect(
         ncmLocal.nodeConnectionManager.withConnF(
           ncmPeer1.nodeId,
@@ -646,7 +646,6 @@ describe(`${NodeConnectionManager.name}`, () => {
       ).toBeFalse();
     });
   });
-
   describe('With 2 peers', () => {
     let ncmLocal: NCMState;
     let ncmPeer1: NCMState;
@@ -825,7 +824,73 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
       expect(result).toHaveLength(2);
     });
-    test.todo('signalling is non-blocking');
-    test.todo('signalling is rate limited');
+    test('signalling is non-blocking', async () => {
+      // We pause handleNodesConnectionSignalFinal and check if the handleNodesConnectionSignalInitial times out
+      // Create initial connections of local -> peer1 -> peer2
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      await ncmPeer1.nodeConnectionManager.createConnection(
+        [ncmPeer2.nodeId],
+        localHost,
+        ncmPeer2.port,
+      );
+
+      // Mock and block `handleNodesConnectionSignalFinal`
+      const mockedHandleNodesConnectionSignalFinal = jest.spyOn(
+        ncmPeer2.nodeConnectionManager,
+        'handleNodesConnectionSignalFinal',
+      );
+      const { p: waitP, resolveP: resolveWaitP } = utils.promise();
+      mockedHandleNodesConnectionSignalFinal.mockImplementation(async () => {
+        await waitP;
+      });
+
+      // Should be able to create connection from local to peer2 using peer1 as signaller
+      await ncmLocal.nodeConnectionManager.createConnectionPunch(
+        ncmPeer2.nodeId,
+        ncmPeer1.nodeId,
+      );
+      expect(
+        ncmLocal.nodeConnectionManager.hasConnection(ncmPeer2.nodeId),
+      ).toBeTrue();
+      resolveWaitP();
+    });
+    test('signalling is rate limited', async () => {
+      // We pause handleNodesConnectionSignalFinal and check if the handleNodesConnectionSignalInitial times out
+      // Create initial connections of local -> peer1 -> peer2
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      await ncmPeer1.nodeConnectionManager.createConnection(
+        [ncmPeer2.nodeId],
+        localHost,
+        ncmPeer2.port,
+      );
+      // Excessive connections will fail due to rate limit
+      const connectionsP = (async () => {
+        const connectionPs: Array<Promise<NodeConnection>> = [];
+        for (let i = 0; i < 21; i++) {
+          const connectionP =
+            ncmLocal.nodeConnectionManager.createConnectionPunch(
+              ncmPeer2.nodeId,
+              ncmPeer1.nodeId,
+            );
+          connectionPs.push(connectionP);
+        }
+        await Promise.allSettled(connectionPs);
+        await Promise.all(connectionPs);
+      })();
+      const expectationP = testsUtils.expectRemoteError(
+        connectionsP,
+        nodesErrors.ErrorNodeConnectionManagerRequestRateExceeded,
+      );
+      await Promise.allSettled([expectationP, connectionsP]);
+      await expectationP;
+    });
   });
 });

@@ -219,7 +219,7 @@ class NodeConnection {
     },
     @context ctx: ContextTimed,
   ): Promise<NodeConnection> {
-    logger.info(`Creating ${this.name}`);
+    logger.info(`Creating forward ${this.name}`);
     // Checking if attempting to connect to a wildcard IP
     if (networkUtils.isHostWildcard(targetHost)) {
       throw new nodesErrors.ErrorNodeConnectionHostWildcard();
@@ -355,7 +355,7 @@ class NodeConnection {
       nodeConnection.handleEventQUICClientDestroyed,
     );
     quicClient.addEventListener(EventAll.name, nodeConnection.handleEventAll);
-    newLogger.info(`Created ${this.name}`);
+    newLogger.info(`Created forward ${this.name}`);
     return nodeConnection;
   }
 
@@ -372,7 +372,7 @@ class NodeConnection {
     manifest: AgentClientManifest;
     logger?: Logger;
   }): NodeConnection {
-    logger.info(`Creating ${this.name}`);
+    logger.info(`Creating reverse ${this.name}`);
     // Creating RPCClient
     const rpcClient = new RPCClient<AgentClientManifest>({
       manifest,
@@ -428,7 +428,7 @@ class NodeConnection {
       EventAll.name,
       nodeConnection.handleEventAll,
     );
-    logger.info(`Created ${this.name}`);
+    logger.info(`Created reverse ${this.name}`);
     return nodeConnection;
   }
 

@@ -3,6 +3,7 @@ import type { NodeId, NodeIdEncoded } from '@/ids';
 import type { RPCStream } from '@matrixai/rpc';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type { AgentClientManifest } from '@/nodes/agent/callers';
+import type { QUICConnection } from '@matrixai/quic';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
@@ -317,7 +318,7 @@ describe(`${NodeConnection.name}`, () => {
     );
     // @ts-ignore: kidnap internal property
     const connectionMap = serverSocket.connectionMap;
-    connectionMap.forEach((connection) => {
+    connectionMap.forEach((connection: QUICConnection) => {
       void connection.stop({
         isApp: true,
         errorCode: 0,
