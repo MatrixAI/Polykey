@@ -16,7 +16,7 @@ import * as utils from '@/utils';
 import * as nodesUtils from '@/nodes/utils';
 import { hostArb, hostnameArb, portArb } from '../network/utils';
 import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
-import * as testsUtils from '../utils';
+import * as testsTLSUtils from '../utils/tls';
 
 /**
  * Generate random `NodeId`
@@ -283,7 +283,7 @@ async function nodeConnectionManagerFactory({
   logger: Logger;
 }): Promise<NCMState> {
   const nodeId = keyRing.getNodeId();
-  const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+  const tlsConfig = await testsTLSUtils.createTLSConfig(keyRing.keyPair);
   const nodeConnectionManager = new NodeConnectionManager({
     keyRing: keyRing,
     logger: logger,

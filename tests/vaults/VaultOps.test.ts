@@ -69,7 +69,6 @@ describe('VaultOps', () => {
     });
     vault = vaultInternal as Vault;
   });
-
   afterEach(async () => {
     await vaultInternal.stop();
     await vaultInternal.destroy();
