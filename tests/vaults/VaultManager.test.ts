@@ -934,7 +934,7 @@ describe('VaultManager', () => {
     //           });
     //         },
     //       );
-
+    //
     //       // Setting permissions
     //       await remoteKeynode1.gestaltGraph.setNode({
     //         nodeId: localNodeId,
@@ -953,7 +953,7 @@ describe('VaultManager', () => {
     //         localNodeId,
     //         'pull',
     //       );
-
+    //
     //       await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
     //       const vaultId = await vaultManager.getVaultId(vaultName);
     //       if (vaultId === undefined) fail('VaultId is not found.');
@@ -966,7 +966,7 @@ describe('VaultManager', () => {
     //           expect(secretsList).not.toContain('secret-2');
     //         });
     //       });
-
+    //
     //       // Creating new history
     //       await remoteKeynode1.vaultManager.withVaults(
     //         [remoteVaultId],
@@ -976,12 +976,12 @@ describe('VaultManager', () => {
     //           });
     //         },
     //       );
-
+    //
     //       // Pulling vault
     //       await vaultManager.pullVault({
     //         vaultId: vaultId,
     //       });
-
+    //
     //       // Should have new data
     //       await vaultManager.withVaults([vaultId], async (vaultClone) => {
     //         return await vaultClone.readF(async (efs) => {
@@ -1500,6 +1500,79 @@ describe('VaultManager', () => {
         expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
       } finally {
         await vaultManager.stop();
+      }
+    });
+    test('can handle name conflict when cloning', async () => {
+      const vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
+      });
+      try {
+        // Creating some state at the remote
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-1', 'secret1');
+              await efs.writeFile('secret-2', 'secret2');
+            });
+          },
+        );
+
+        // Setting permissions
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: localNodeId,
+        });
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'clone',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'pull',
+        );
+
+        // Before cloning we create a local vault
+        await vaultManager.createVault(vaultName);
+        await vaultManager.createVault(`${vaultName}-1`);
+        await vaultManager.createVault(`${vaultName}-2`);
+        await vaultManager.createVault(`${vaultName}-3`);
+        await vaultManager.createVault(`${vaultName}-4`);
+        await vaultManager.createVault(`${vaultName}-5`);
+
+        const vaultId = await vaultManager.cloneVault(
+          remoteKeynode1Id,
+          vaultName,
+        );
+        if (vaultId === undefined) fail('VaultId is not found.');
+        const [file, secretsList] = await vaultManager.withVaults(
+          [vaultId],
+          async (vaultClone) => {
+            return await vaultClone.readF(async (efs) => {
+              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+              const secretsList = await efs.readdir('.');
+              return [file, secretsList];
+            });
+          },
+        );
+        expect(file).toBe('secret1');
+        expect(secretsList).toContain('secret-1');
+        expect(secretsList).toContain('secret-2');
+      } finally {
+        await vaultManager?.stop();
+        await vaultManager?.destroy();
       }
     });
   });

@@ -720,10 +720,10 @@ class VaultManager {
         let newVaultName = baseVaultName;
         let attempts = 1;
         while (true) {
-          const existingVaultId = await tran.get([
-            ...this.vaultsNamesDbPath,
-            newVaultName,
-          ]);
+          const existingVaultId = await tran.get(
+            [...this.vaultsNamesDbPath, newVaultName],
+            true,
+          );
           if (existingVaultId == null) break;
           newVaultName = `${baseVaultName}-${attempts}`;
           if (attempts >= 50) {
