@@ -1,7 +1,14 @@
 import type { EncryptedFS } from 'encryptedfs';
-import type { VaultRef, VaultAction, CommitId } from './types';
+import type {
+  VaultRef,
+  VaultAction,
+  CommitId,
+  FileSystemReadable,
+} from './types';
 import type { NodeId } from '../ids/types';
+import type { Path } from 'encryptedfs/dist/types';
 import path from 'path';
+import { pathJoin } from 'encryptedfs/dist/utils';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
 import * as validationErrors from '../validation/errors';
@@ -36,15 +43,36 @@ function commitAuthor(nodeId: NodeId): { name: string; email: string } {
   };
 }
 
-async function* readdirRecursively(fs, dir = '.') {
+async function* readDirRecursively(fs, dir = '.') {
   const dirents = await fs.promises.readdir(dir);
   for (const dirent of dirents) {
     const res = path.join(dir, dirent.toString());
     const stat = await fs.promises.stat(res);
     if (stat.isDirectory()) {
-      yield* readdirRecursively(fs, res);
+      yield* readDirRecursively(fs, res);
     } else if (stat.isFile()) {
       yield res;
+    }
+  }
+}
+
+async function* walkFs(
+  efs: FileSystemReadable,
+  path: string = '.',
+): AsyncGenerator<string, undefined, undefined> {
+  const shortList: Array<string> = [path];
+  let path_: Path | undefined = undefined;
+  while ((path_ = shortList.shift()) != null) {
+    const pathStat = await efs.stat(path_);
+    if (pathStat.isDirectory()) {
+      // Push contents to shortlist
+      const newPaths = await efs.readdir(path_);
+      shortList.push(
+        ...newPaths.map((v) => pathJoin(path_!.toString(), v.toString())),
+      );
+    } else {
+      // Is a file so we yield the path
+      yield path_;
     }
   }
 }
@@ -84,7 +112,8 @@ export {
   commitAuthor,
   isVaultAction,
   parseVaultAction,
-  readdirRecursively,
+  readDirRecursively,
+  walkFs,
   deleteObject,
 };
 

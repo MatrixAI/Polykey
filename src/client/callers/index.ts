@@ -60,6 +60,7 @@ import vaultsRename from './vaultsRename';
 import vaultsScan from './vaultsScan';
 import vaultsSecretsDelete from './vaultsSecretsDelete';
 import vaultsSecretsEdit from './vaultsSecretsEdit';
+import vaultsSecretsEnv from './vaultsSecretsEnv';
 import vaultsSecretsGet from './vaultsSecretsGet';
 import vaultsSecretsList from './vaultsSecretsList';
 import vaultsSecretsMkdir from './vaultsSecretsMkdir';
@@ -135,6 +136,7 @@ const clientManifest = {
   vaultsScan,
   vaultsSecretsDelete,
   vaultsSecretsEdit,
+  vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,
   vaultsSecretsMkdir,
@@ -209,6 +211,7 @@ export {
   vaultsScan,
   vaultsSecretsDelete,
   vaultsSecretsEdit,
+  vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,
   vaultsSecretsMkdir,
