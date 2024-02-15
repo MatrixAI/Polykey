@@ -40,14 +40,14 @@ describe('Vaults utils', () => {
     const filePath1 = path.join('dir', 'file');
     await efs.promises.writeFile(filePath1, 'content');
     let files: string[] = [];
-    for await (const file of vaultsUtils.readdirRecursively(efs, './')) {
+    for await (const file of vaultsUtils.readDirRecursively(efs, './')) {
       files.push(file);
     }
     expect(files).toStrictEqual([filePath1]);
     files = [];
     const filePath2 = path.join('dir', 'dir2', 'dir3', 'file');
     await efs.promises.writeFile(filePath2, 'content');
-    for await (const file of vaultsUtils.readdirRecursively(efs)) {
+    for await (const file of vaultsUtils.readDirRecursively(efs)) {
       files.push(file);
     }
     expect(files.sort()).toStrictEqual([filePath1, filePath2].sort());
@@ -60,14 +60,14 @@ describe('Vaults utils', () => {
     const filePath1 = path.join(dataDir, 'dir', 'file');
     await fs.promises.writeFile(filePath1, 'content');
     let files: string[] = [];
-    for await (const file of vaultsUtils.readdirRecursively(fs, dataDir)) {
+    for await (const file of vaultsUtils.readDirRecursively(fs, dataDir)) {
       files.push(file);
     }
     expect(files).toStrictEqual([filePath1]);
     files = [];
     const filePath2 = path.join(dataDir, 'dir', 'dir2', 'dir3', 'file');
     await fs.promises.writeFile(filePath2, 'content');
-    for await (const file of vaultsUtils.readdirRecursively(fs, dataDir)) {
+    for await (const file of vaultsUtils.readDirRecursively(fs, dataDir)) {
       files.push(file);
     }
     expect(files.sort()).toStrictEqual([filePath1, filePath2].sort());

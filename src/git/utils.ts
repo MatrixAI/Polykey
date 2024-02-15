@@ -192,7 +192,7 @@ async function listRefs(
   const packedMap = packedRefs(fs, gitdir);
   let files: string[] = [];
   try {
-    for await (const file of vaultsUtils.readdirRecursively(
+    for await (const file of vaultsUtils.readDirRecursively(
       fs,
       path.join(gitdir, filepath),
     )) {

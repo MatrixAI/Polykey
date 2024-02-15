@@ -204,7 +204,7 @@ async function addSecretDirectory(
   const absoluteDirPath = path.resolve(secretDirectory);
 
   await vault.writeF(async (efs) => {
-    for await (const secretPath of vaultsUtils.readdirRecursively(
+    for await (const secretPath of vaultsUtils.readDirRecursively(
       fs,
       absoluteDirPath,
     )) {
@@ -253,7 +253,7 @@ async function addSecretDirectory(
 async function listSecrets(vault: Vault): Promise<string[]> {
   return await vault.readF(async (efs) => {
     const secrets: string[] = [];
-    for await (const secret of vaultsUtils.readdirRecursively(efs)) {
+    for await (const secret of vaultsUtils.readDirRecursively(efs)) {
       secrets.push(secret);
     }
     return secrets;

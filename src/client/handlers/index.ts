@@ -75,6 +75,7 @@ import VaultsRename from './VaultsRename';
 import VaultsScan from './VaultsScan';
 import VaultsSecretsDelete from './VaultsSecretsDelete';
 import VaultsSecretsEdit from './VaultsSecretsEdit';
+import VaultsSecretsEnv from './VaultsSecretsEnv';
 import VaultsSecretsGet from './VaultsSecretsGet';
 import VaultsSecretsList from './VaultsSecretsList';
 import VaultsSecretsMkdir from './VaultsSecretsMkdir';
@@ -175,6 +176,7 @@ const serverManifest = (container: {
     vaultsScan: new VaultsScan(container),
     vaultsSecretsDelete: new VaultsSecretsDelete(container),
     vaultsSecretsEdit: new VaultsSecretsEdit(container),
+    vaultsSecretsEnv: new VaultsSecretsEnv(container),
     vaultsSecretsGet: new VaultsSecretsGet(container),
     vaultsSecretsList: new VaultsSecretsList(container),
     vaultsSecretsMkdir: new VaultsSecretsMkdir(container),
@@ -249,6 +251,7 @@ export {
   VaultsScan,
   VaultsSecretsDelete,
   VaultsSecretsEdit,
+  VaultsSecretsEnv,
   VaultsSecretsGet,
   VaultsSecretsList,
   VaultsSecretsMkdir,
