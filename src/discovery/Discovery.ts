@@ -141,7 +141,7 @@ class Discovery {
     }
   };
   public readonly discoverVertexHandlerId =
-    `${this.constructor.name}.${this.discoverVertexHandler.name}.discoverVertexHandlerId` as TaskHandlerId;
+    `${this.constructor.name}.discoverVertexHandler` as TaskHandlerId;
 
   public constructor({
     keyRing,
