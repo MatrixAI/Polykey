@@ -49,7 +49,7 @@ check:scratch:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm test -- --ci tests/scratch.test.ts;
       '
   allow_failure: true
@@ -61,7 +61,7 @@ check:lint:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm run lint;
       npm run lint-shell;
       '
@@ -79,7 +79,7 @@ check:test-generate:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       ./scripts/check-test-generate.sh > ./tmp/check-test.yml;
       '
   artifacts:
@@ -121,7 +121,7 @@ build:merge:
     # Required for `gh pr create`
     - git remote add upstream "$GH_PROJECT_URL"
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       gh pr create \
         --head staging \
         --base master \
@@ -146,7 +146,7 @@ build:dist:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm run build --verbose;
       '
   artifacts:
@@ -164,7 +164,7 @@ build:platforms-generate:
   needs: []
   script:
     - >
-        nix-shell --arg ci true --run $'
+        nix develop .#ci --command bash -c $'
         ./scripts/build-platforms-generate.sh > ./tmp/build-platforms.yml;
         '
   artifacts:
@@ -207,7 +207,7 @@ build:prerelease:
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
     - echo 'Publishing library prerelease'
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm publish --tag prerelease --access public;
       '
   after_script:
@@ -235,7 +235,7 @@ integration:merge:
     GIT_DEPTH: 0
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       printf "Pipeline Succeeded on ${CI_PIPELINE_ID} for ${CI_COMMIT_SHA}\n\n${CI_PIPELINE_URL}" \
       | gh pr comment staging \
         --body-file - \
@@ -266,7 +266,7 @@ release:distribution:
     - echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
     - echo 'Publishing library'
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm publish --access public;
       '
   after_script:

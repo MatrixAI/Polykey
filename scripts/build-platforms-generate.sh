@@ -75,7 +75,7 @@ build:linux $test_dir:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm test -- --ci --coverage ${test_files[@]};
       '
   artifacts:
@@ -99,7 +99,7 @@ build:linux index:
   needs: []
   script:
     - >
-      nix-shell --arg ci true --run $'
+      nix develop .#ci --command bash -c $'
       npm test -- --ci --coverage ${test_files[@]};
       '
   artifacts:
