@@ -1,10 +1,11 @@
+import type childProcess from 'child_process';
 import type { IdentityData } from './types';
 import os from 'os';
 import process from 'process';
 import spawn from 'cross-spawn';
 import { Searcher } from 'fast-fuzzy';
 
-function browser(url: string): void {
+function browser(url: string): Promise<void> {
   let platform = process.platform;
   if (platform === 'linux' && os.release().indexOf('Microsoft') !== -1) {
     platform = 'win32';
@@ -42,11 +43,23 @@ function browser(url: string): void {
     });
     args = ['/c', 'start', '""'].concat(args);
   }
-  const browserProcess = spawn(command, args, {
+  const browserProcess: childProcess.ChildProcess = spawn(command, args, {
     detached: true,
     stdio: 'ignore',
   });
   browserProcess.unref();
+  return new Promise<void>((resolve, reject) => {
+    browserProcess.on('spawn', () => {
+      resolve();
+      browserProcess.removeAllListeners('spawn');
+      browserProcess.removeAllListeners('error');
+    });
+    browserProcess.on('error', (e) => {
+      reject(e);
+      browserProcess.removeAllListeners('spawn');
+      browserProcess.removeAllListeners('error');
+    });
+  });
 }
 
 /**
@@ -78,11 +91,7 @@ function matchIdentityData(
       break;
     }
   }
-  if (matched) {
-    return true;
-  } else {
-    return false;
-  }
+  return matched;
 }
 
 export { browser, matchIdentityData };
