@@ -61,7 +61,7 @@ async function bootstrapState({
   fs?: FileSystem;
   logger?: Logger;
 }): Promise<RecoveryCode | undefined> {
-  const umask = 0o077;
+  const umask = 0o007;
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);
   logger.info(`Setting node path to ${nodePath}`);
