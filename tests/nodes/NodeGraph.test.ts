@@ -20,7 +20,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as utils from '@/utils';
 import { encodeNodeId } from '@/ids';
 import * as testNodesUtils from './utils';
-import { nodeIdContactPairArb } from './utils';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -1280,9 +1279,16 @@ describe(`${NodeGraph.name} test`, () => {
     });
   });
   describe('nodesTotal', () => {
-    test.prop([fc.array(nodeIdContactPairArb, { maxLength: 20 }).noShrink()], {
-      numRuns: 1,
-    })('should get total nodes', async (nodes) => {
+    test.prop(
+      [
+        fc
+          .array(testNodesUtils.nodeIdContactPairArb, { maxLength: 20 })
+          .noShrink(),
+      ],
+      {
+        numRuns: 1,
+      },
+    )('should get total nodes', async (nodes) => {
       for (const { nodeId, nodeContact } of nodes) {
         await nodeGraph.setNodeContact(nodeId, nodeContact);
       }
