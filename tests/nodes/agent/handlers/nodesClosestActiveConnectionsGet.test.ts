@@ -82,7 +82,7 @@ describe('nodesClosestLocalNode', () => {
   });
 
   test('should get closest active nodes', async () => {
-    // Need to mock sone nodes
+    // Need to mock some nodes
     const connection = await nodeConnectionManagerLocal.createConnection(
       [nodeIdPeer1],
       localHost,
