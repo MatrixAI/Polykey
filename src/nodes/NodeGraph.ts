@@ -428,7 +428,7 @@ class NodeGraph {
       nodeContactAddressData.connectedTime,
       tran,
     );
-    await this.purgeAddresses(nodeId, this.nodeContactAddressLimit);
+    await this.purgeAddresses(nodeId, this.nodeContactAddressLimit, tran);
   }
 
   /**
@@ -1022,15 +1022,15 @@ class NodeGraph {
     }
 
     // Start by getting all the existing addresses
-    const asd = await this.getNodeContact(nodeId, tran);
-    if (asd == null) return;
-    if (Object.keys(asd).length <= num) return;
+    const nodeContact = await this.getNodeContact(nodeId, tran);
+    if (nodeContact == null) return;
+    if (Object.keys(nodeContact).length <= num) return;
 
     const list: Array<[NodeContactAddress, number]> = [];
-    for (const nodeAddress of Object.keys(asd)) {
+    for (const nodeAddress of Object.keys(nodeContact)) {
       list.push([
         nodeAddress as NodeContactAddress,
-        asd[nodeAddress].connectedTime,
+        nodeContact[nodeAddress].connectedTime,
       ]);
     }
     list.sort(([, connectedTimeA], [, connectedTimeB]) => {

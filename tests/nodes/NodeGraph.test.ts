@@ -213,6 +213,34 @@ describe(`${NodeGraph.name} test`, () => {
         );
       },
     );
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        fc.array(testNodesUtils.nodeContactPairArb, {
+          minLength: 2,
+          maxLength: 10,
+        }),
+      ],
+      { numRuns: 19 },
+    )(
+      'Addresses are limited by NodeContactAddressLimit',
+      async (nodeId, nodeContactPairs) => {
+        const nodeContact: NodeContact = {};
+        for (const {
+          nodeContactAddress,
+          nodeContactAddressData,
+        } of nodeContactPairs) {
+          nodeContact[nodeContactAddress] = nodeContactAddressData;
+        }
+        await nodeGraph.setNodeContact(nodeId, nodeContact);
+
+        // Number of contacts should be truncated by NodeContactAddressLimit
+        const nodeContactsResult = await nodeGraph.getNodeContact(nodeId);
+        expect(Object.keys(nodeContactsResult!).length).toBeLessThanOrEqual(
+          nodeGraph.nodeContactAddressLimit,
+        );
+      },
+    );
   });
   describe('getNodeContact', () => {
     test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {

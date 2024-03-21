@@ -217,7 +217,7 @@ class NodeManager {
 
   protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
-    taskInfo: TaskInfo | undefined,
+    _taskInfo: TaskInfo | undefined,
     initialNodes: Array<[NodeIdEncoded, NodeAddress]>,
     connectionConnectTimeoutTime: number | undefined,
   ) => {

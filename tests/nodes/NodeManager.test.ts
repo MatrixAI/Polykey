@@ -252,6 +252,40 @@ describe(`${NodeManager.name}`, () => {
       expect(nodeContactFirst).not.toBe(nodeContactSecond);
       expect(nodeContactSecond);
     });
+    test('adding and updating a single node should not cause conflicts', async () => {
+      // We need 5+ addresses to be added multiple times all concurrently
+      // quick way to generate address data
+      let count = 1;
+      const nodeContactAddressDataFactory = (): NodeContactAddressData => {
+        return {
+          mode: 'signal',
+          connectedTime: count++,
+          scopes: ['global'],
+        };
+      };
+
+      const nodeId = nodesTestUtils.generateRandomNodeId();
+      const { p, resolveP } = utils.promise();
+      const promises: Array<Promise<void>> = [];
+      for (let i = 0; i < 30; i++) {
+        promises.push(
+          (async () => {
+            await p;
+            await nodeManager.setNode(
+              nodeId,
+              ['123.123.123.123' as Host, (i % 6) as Port],
+              nodeContactAddressDataFactory(),
+            );
+          })(),
+        );
+      }
+      await Promise.all([...promises, resolveP()]);
+
+      const nodeContact = await nodeGraph.getNodeContact(nodeId);
+      expect(Object.keys(nodeContact!).length).toBeLessThanOrEqual(
+        nodeGraph.nodeContactAddressLimit,
+      );
+    });
     test('should not add new node if bucket is full and old nodes are responsive', async () => {
       const mockedPingNode = jest.spyOn(nodeManager, 'pingNode');
       // Fill bucket
@@ -1214,7 +1248,7 @@ describe(`${NodeManager.name}`, () => {
         return nodeDistanceCmp(a.nodeId, b.nodeId);
       });
       for (let i = 0; i < ncmPeers.length; i++) {
-        logger.warn(
+        logger.debug(
           `${i}, ${nodesUtils.encodeNodeId(ncmPeers[i].keyRing.getNodeId())}`,
         );
       }
