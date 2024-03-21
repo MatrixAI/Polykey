@@ -169,7 +169,7 @@ describe('nodesClosestLocalNode', () => {
       const nodeId = testNodesUtils.generateRandomNodeId();
       await nodeGraph.setNodeContactAddressData(
         nodeId,
-        ['localhost' as Host, 55555 as Port],
+        ['localhost-2' as Host, 55555 as Port],
         {
           mode: 'direct',
           connectedTime: Date.now(),
@@ -189,5 +189,34 @@ describe('nodesClosestLocalNode', () => {
       resultNodes.push(result.nodeIdEncoded);
     }
     expect(nodes.sort()).toEqual(resultNodes.sort());
+  });
+  test('local only scoped addresses are filtered out', async () => {
+    // Adding 10 nodes
+    const nodes: Array<NodeIdEncoded> = [];
+    for (let i = 0; i < 10; i++) {
+      const nodeId = testNodesUtils.generateRandomNodeId();
+      await nodeGraph.setNodeContactAddressData(
+        nodeId,
+        ['localhost' as Host, 55555 as Port],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['local'],
+        },
+      );
+      nodes.push(nodesUtils.encodeNodeId(nodeId));
+    }
+    const nodeIdEncoded = nodesUtils.encodeNodeId(
+      testNodesUtils.generateRandomNodeId(),
+    );
+    const results = await rpcClient.methods.nodesClosestLocalNodesGet({
+      nodeIdEncoded,
+    });
+    const resultNodes: Array<NodeIdEncoded> = [];
+    for await (const result of results) {
+      resultNodes.push(result.nodeIdEncoded);
+    }
+    // There should be no nodes provided
+    expect(resultNodes).toHaveLength(0);
   });
 });

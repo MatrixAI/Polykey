@@ -57,6 +57,8 @@ class NodeGraph {
     keyRing,
     nodeIdBits = 256,
     nodeBucketLimit = config.defaultsSystem.nodesGraphBucketLimit,
+    nodeContactAddressLimit = config.defaultsSystem
+      .nodesGraphNodeContactAddressLimit,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -64,6 +66,7 @@ class NodeGraph {
     keyRing: KeyRing;
     nodeIdBits?: number;
     nodeBucketLimit?: number;
+    nodeContactAddressLimit?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NodeGraph> {
@@ -73,6 +76,7 @@ class NodeGraph {
       keyRing,
       nodeIdBits,
       nodeBucketLimit,
+      nodeContactAddressLimit,
       logger,
     });
     await nodeGraph.start({ fresh });
@@ -90,6 +94,10 @@ class NodeGraph {
    * Max number of nodes in each bucket.
    */
   public readonly nodeBucketLimit: number;
+  /**
+   * Max number of nodeContactAddresses for each node.
+   */
+  public readonly nodeContactAddressLimit: number;
 
   protected logger: Logger;
   protected db: DB;
@@ -119,12 +127,14 @@ class NodeGraph {
     keyRing,
     nodeIdBits,
     nodeBucketLimit,
+    nodeContactAddressLimit,
     logger,
   }: {
     db: DB;
     keyRing: KeyRing;
     nodeIdBits: number;
     nodeBucketLimit: number;
+    nodeContactAddressLimit: number;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -132,6 +142,7 @@ class NodeGraph {
     this.keyRing = keyRing;
     this.nodeIdBits = nodeIdBits;
     this.nodeBucketLimit = nodeBucketLimit;
+    this.nodeContactAddressLimit = nodeContactAddressLimit;
   }
 
   public async start({
@@ -361,6 +372,7 @@ class NodeGraph {
       );
     }
     await this.setConnectedTime(nodeId, connectedTimeMax, tran);
+    await this.purgeAddresses(nodeId, this.nodeContactAddressLimit, tran);
   }
 
   /**
@@ -416,6 +428,7 @@ class NodeGraph {
       nodeContactAddressData.connectedTime,
       tran,
     );
+    await this.purgeAddresses(nodeId, this.nodeContactAddressLimit, tran);
   }
 
   /**
@@ -992,6 +1005,44 @@ class NodeGraph {
     }
     // `nodeGraphConnectedDbPath` will contain 2 entries for each `NodeId` within the `NodeGraph`
     return (await tran.count(this.nodeGraphConnectedDbPath)) / 2;
+  }
+
+  /**
+   * This utility will clean out the oldest addresses until a set amount remain
+   */
+  protected async purgeAddresses(
+    nodeId: NodeId,
+    num: number,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.purgeAddresses(nodeId, num, tran),
+      );
+    }
+
+    // Start by getting all the existing addresses
+    const nodeContact = await this.getNodeContact(nodeId, tran);
+    if (nodeContact == null) return;
+    if (Object.keys(nodeContact).length <= num) return;
+
+    const list: Array<[NodeContactAddress, number]> = [];
+    for (const nodeAddress of Object.keys(nodeContact)) {
+      list.push([
+        nodeAddress as NodeContactAddress,
+        nodeContact[nodeAddress].connectedTime,
+      ]);
+    }
+    list.sort(([, connectedTimeA], [, connectedTimeB]) => {
+      if (connectedTimeA === connectedTimeB) return 0;
+      if (connectedTimeA > connectedTimeB) return 1;
+      return -1;
+    });
+    const removeNum = list.length - num;
+    for (let i = 0; i < removeNum; i++) {
+      const [addressRemove] = list.shift()!;
+      await this.unsetNodeContactAddress(nodeId, addressRemove, tran);
+    }
   }
 }
 

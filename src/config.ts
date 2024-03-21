@@ -287,6 +287,13 @@ const config = {
      * a node and resource usage per node and across the network.
      */
     nodesGraphBucketLimit: 20,
+    /**
+     * Node graph node specific NodeContactAddress limit. The node graph keeps
+     * a list of addresses for each node. This sets the limit on the number of
+     * different addresses we keep track of. If an added address exceeds this
+     * limit then the oldest addresses are removed first.
+     */
+    nodesGraphNodeContactAddressLimit: 5,
 
     /**
      * Multicast group addresses that the MDNS stack will operate on.

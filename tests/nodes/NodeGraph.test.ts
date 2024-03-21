@@ -20,7 +20,6 @@ import * as nodesUtils from '@/nodes/utils';
 import * as utils from '@/utils';
 import { encodeNodeId } from '@/ids';
 import * as testNodesUtils from './utils';
-import { nodeIdContactPairArb } from './utils';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -211,6 +210,34 @@ describe(`${NodeGraph.name} test`, () => {
         });
         expect(await nodeGraph.getConnectedTime(nodeId)).toBe(
           nodeContactAddressData2.connectedTime,
+        );
+      },
+    );
+    test.prop(
+      [
+        testNodesUtils.nodeIdArb,
+        fc.array(testNodesUtils.nodeContactPairArb, {
+          minLength: 2,
+          maxLength: 10,
+        }),
+      ],
+      { numRuns: 19 },
+    )(
+      'Addresses are limited by NodeContactAddressLimit',
+      async (nodeId, nodeContactPairs) => {
+        const nodeContact: NodeContact = {};
+        for (const {
+          nodeContactAddress,
+          nodeContactAddressData,
+        } of nodeContactPairs) {
+          nodeContact[nodeContactAddress] = nodeContactAddressData;
+        }
+        await nodeGraph.setNodeContact(nodeId, nodeContact);
+
+        // Number of contacts should be truncated by NodeContactAddressLimit
+        const nodeContactsResult = await nodeGraph.getNodeContact(nodeId);
+        expect(Object.keys(nodeContactsResult!).length).toBeLessThanOrEqual(
+          nodeGraph.nodeContactAddressLimit,
         );
       },
     );
@@ -1280,9 +1307,16 @@ describe(`${NodeGraph.name} test`, () => {
     });
   });
   describe('nodesTotal', () => {
-    test.prop([fc.array(nodeIdContactPairArb, { maxLength: 20 }).noShrink()], {
-      numRuns: 1,
-    })('should get total nodes', async (nodes) => {
+    test.prop(
+      [
+        fc
+          .array(testNodesUtils.nodeIdContactPairArb, { maxLength: 20 })
+          .noShrink(),
+      ],
+      {
+        numRuns: 1,
+      },
+    )('should get total nodes', async (nodes) => {
       for (const { nodeId, nodeContact } of nodes) {
         await nodeGraph.setNodeContact(nodeId, nodeContact);
       }
