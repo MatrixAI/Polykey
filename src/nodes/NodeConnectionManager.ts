@@ -835,7 +835,7 @@ class NodeConnectionManager {
       async (conn) => {
         const client = conn.getClient();
         const nodeIdSource = this.keyRing.getNodeId();
-        // Data is just `<sourceNodeId><targetNodeId>` concatenated
+        // Creating signature verifying request, data is just `<sourceNodeId><targetNodeId>` concatenated.
         const data = Buffer.concat([nodeIdSource, nodeIdTarget]);
         const signature = keysUtils.signWithPrivateKey(
           this.keyRing.keyPair,
@@ -1278,9 +1278,15 @@ class NodeConnectionManager {
         requestSignature: requestSignature,
         relaySignature: relaySignature.toString('base64url'),
       });
-    }).finally(() => {
-      this.activeSignalFinalPs.delete(connProm);
-    });
+    })
+      // Ignore results and failures, then are expected to happen and are allowed
+      .then(
+        () => {},
+        () => {},
+      )
+      .finally(() => {
+        this.activeSignalFinalPs.delete(connProm);
+      });
     this.activeSignalFinalPs.add(connProm);
     return {
       host,
