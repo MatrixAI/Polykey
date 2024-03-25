@@ -1291,7 +1291,9 @@ class NodeConnectionManager {
       // Ignore results and failures, then are expected to happen and are allowed
       .then(
         () => {},
-        () => {},
+        (e) => {
+          if (!nodesUtils.isConnectionError(e)) throw e;
+        },
       )
       .finally(() => {
         this.activeSignalFinalPs.delete(connProm);
