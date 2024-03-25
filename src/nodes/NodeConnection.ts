@@ -278,8 +278,6 @@ class NodeConnection {
       throw e;
     }
     const quicConnection = quicClient.connection;
-    // FIXME: right now I'm not sure it's possible for streams to be emitted while setting up here.
-    //  If we get any while setting up they need to be re-emitted after set up. Otherwise cleaned up.
     const throwFunction = () =>
       never('We should never get connections before setting up handling');
     quicConnection.addEventListener(

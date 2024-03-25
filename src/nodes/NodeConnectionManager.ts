@@ -99,6 +99,12 @@ class NodeConnectionManager {
   public readonly connectionFindConcurrencyLimit: number;
 
   /**
+   * Default limit used when getting the closest active connections of a node.
+   * Defaults to the `nodesGraphBucketLimit`
+   */
+  public readonly connectionGetClosestLimit: number;
+
+  /**
    * Time used to find a node using `findNodeLocal`.
    */
   public readonly connectionFindLocalTimeoutTime: number;
@@ -345,6 +351,7 @@ class NodeConnectionManager {
     tlsConfig,
     connectionFindConcurrencyLimit = config.defaultsSystem
       .nodesConnectionFindConcurrencyLimit,
+    connectionGetClosestLimit = config.defaultsSystem.nodesGraphBucketLimit,
     connectionFindLocalTimeoutTime = config.defaultsSystem
       .nodesConnectionFindLocalTimeoutTime,
     connectionIdleTimeoutTimeMin = config.defaultsSystem
@@ -367,6 +374,7 @@ class NodeConnectionManager {
     keyRing: KeyRing;
     tlsConfig: TLSConfig;
     connectionFindConcurrencyLimit?: number;
+    connectionGetClosestLimit?: number;
     connectionFindLocalTimeoutTime?: number;
     connectionIdleTimeoutTimeMin?: number;
     connectionIdleTimeoutTimeScale?: number;
@@ -382,6 +390,7 @@ class NodeConnectionManager {
     this.keyRing = keyRing;
     this.tlsConfig = tlsConfig;
     this.connectionFindConcurrencyLimit = connectionFindConcurrencyLimit;
+    this.connectionGetClosestLimit = connectionGetClosestLimit;
     this.connectionFindLocalTimeoutTime = connectionFindLocalTimeoutTime;
     this.connectionIdleTimeoutTimeMin = connectionIdleTimeoutTimeMin;
     this.connectionIdleTimeoutTimeScale = connectionIdleTimeoutTimeScale;
@@ -835,7 +844,7 @@ class NodeConnectionManager {
       async (conn) => {
         const client = conn.getClient();
         const nodeIdSource = this.keyRing.getNodeId();
-        // Data is just `<sourceNodeId><targetNodeId>` concatenated
+        // Creating signature verifying request, data is just `<sourceNodeId><targetNodeId>` concatenated.
         const data = Buffer.concat([nodeIdSource, nodeIdTarget]);
         const signature = keysUtils.signWithPrivateKey(
           this.keyRing.keyPair,
@@ -1278,9 +1287,17 @@ class NodeConnectionManager {
         requestSignature: requestSignature,
         relaySignature: relaySignature.toString('base64url'),
       });
-    }).finally(() => {
-      this.activeSignalFinalPs.delete(connProm);
-    });
+    })
+      // Ignore results and failures, then are expected to happen and are allowed
+      .then(
+        () => {},
+        (e) => {
+          if (!nodesUtils.isConnectionError(e)) throw e;
+        },
+      )
+      .finally(() => {
+        this.activeSignalFinalPs.delete(connProm);
+      });
     this.activeSignalFinalPs.add(connProm);
     return {
       host,
@@ -1290,12 +1307,11 @@ class NodeConnectionManager {
 
   /**
    * Returns a list of active connections and their address information.
-   * TODO: take limit from config
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public getClosestConnections(
     targetNodeId: NodeId,
-    limit: number = 20,
+    limit: number = this.connectionGetClosestLimit,
   ): Array<ActiveConnectionsInfo> {
     const nodeIds: Array<NodeId> = [];
     for (const nodeIdString of this.connections.keys()) {

@@ -814,7 +814,6 @@ class NodeManager {
               nodeContactAddress,
               nodeContactAddressData,
             ] of Object.entries(nodeContact)) {
-              // FIXME: handle hostnames by resolving them.
               const [host, port] =
                 nodesUtils.parseNodeContactAddress(nodeContactAddress);
               if (nodeContactAddressData.mode === 'direct') {
@@ -1149,8 +1148,8 @@ class NodeManager {
         ctx,
       );
       return true;
-    } catch {
-      // TODO: stricter error checking
+    } catch (e) {
+      if (!nodesUtils.isConnectionError(e)) throw e;
       return false;
     }
   }
