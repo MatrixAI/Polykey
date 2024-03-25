@@ -320,7 +320,9 @@ function isConnectionError(e): boolean {
     e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
     e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed ||
     e instanceof quicErrors.ErrorQUICConnectionPeer ||
-    e instanceof quicErrors.ErrorQUICConnectionLocal
+    e instanceof quicErrors.ErrorQUICConnectionLocal ||
+    e instanceof quicErrors.ErrorQUICConnectionNotRunning ||
+    e instanceof quicErrors.ErrorQUICConnectionStopping
   );
 }
 
