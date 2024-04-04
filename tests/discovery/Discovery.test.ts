@@ -473,6 +473,37 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
+  test('processed vertices are queued for rediscovery', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+      fresh: true,
+    });
+    await taskManager.startProcessing();
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+
+    // For await (const task of taskManager.getTasks('asc', false, [
+    //   Discovery.name,
+    //   discovery.discoverVertexHandlerId,
+    // ])) {
+    //   console.log(task);
+    // }
+
+    await discovery.waitForDiscoveryTasks(true);
+
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
   test('should skip recently discovered vertices', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
@@ -540,6 +571,54 @@ describe('Discovery', () => {
     } while (existingTasks > 0);
     // Only the queued vertex should be processed
     expect(processVertexMock).toHaveBeenCalledTimes(3);
+
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
+
+  test('asd', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+    await taskManager.startProcessing();
+
+    // Attempt initial discovery
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+
+    // None should be re-discovered since they were processed after the threshold
+    await discovery.checkRediscovery(0);
+    // There should be 0 discovery tasks
+
+    let tasks: number = 0;
+    for await (const _ of taskManager.getTasks('asc', false, [
+      Discovery.name,
+      discovery.discoverVertexHandlerId,
+    ])) {
+      tasks++;
+    }
+    expect(tasks).toBe(0);
+
+    // All should be re-discovered
+    await discovery.checkRediscovery(Date.now());
+    tasks = 0;
+    for await (const _ of taskManager.getTasks('asc', false, [
+      Discovery.name,
+      discovery.discoverVertexHandlerId,
+    ])) {
+      tasks++;
+    }
+    expect(tasks).toBeGreaterThan(0);
 
     await taskManager.stopProcessing();
     await discovery.stop();

@@ -77,7 +77,10 @@ class Discovery {
     nodeManager,
     taskManager,
     discoverVertexTimeoutTime = 2000,
+    rediscoverCheckIntervalTime = 60 * 60 * 1000, // 1 hour
+    rediscoverVertexDelayTime = 60 * 60 * 1000, // 1 hour
     rediscoverSkipTime = 60 * 60 * 1000, // 1 hour
+    staleVertexThresholdTime = 3 * 24 * 60 * 60 * 1000, // 3 days
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -88,7 +91,10 @@ class Discovery {
     nodeManager: NodeManager;
     taskManager: TaskManager;
     discoverVertexTimeoutTime?: number;
+    rediscoverCheckIntervalTime?: number;
+    rediscoverVertexDelayTime?: number;
     rediscoverSkipTime?: number;
+    staleVertexThresholdTime?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Discovery> {
@@ -101,7 +107,10 @@ class Discovery {
       nodeManager,
       taskManager,
       discoverVertexTimeoutTime,
+      rediscoverCheckIntervalTime,
+      rediscoverVertexDelayTime,
       rediscoverSkipTime,
+      staleVertexThresholdTime,
       logger,
     });
     await discovery.start({ fresh });
@@ -118,9 +127,22 @@ class Discovery {
   protected taskManager: TaskManager;
   protected discoverVertexTimeoutTime: number;
   /**
+   * Interval delay used when checking for nodes to rediscover
+   */
+  protected rediscoverCheckIntervalTime: number;
+  /**
+   * The threshold used when deciding to rediscover a vertex based on how long ago it was processed
+   */
+  protected rediscoverVertexThresholdTime: number;
+  /**
    * The time since a vertex has been processed where re processing will be skipped
    */
   protected rediscoverSkipTime: number;
+  /**
+   * The time threshold for
+   * @protected
+   */
+  protected staleVertexThresholdTime: number;
   protected discoveryDbPath: LevelPath = [this.constructor.name];
   /**
    * Last processed collection
@@ -132,7 +154,7 @@ class Discovery {
   ];
   /**
    * Last processed collection
-   * `Discovery/lastProcessed/{GestaltIdEncoded} -> number`
+   * `Discovery/lastProcessed/{number}/{GestaltIdEncoded} -> gestaltIdEncoded`
    */
   protected lastProcessedOrderPath: LevelPath = [
     ...this.discoveryDbPath,
@@ -150,6 +172,12 @@ class Discovery {
         vertex,
         lastProcessedCutoffTime ?? undefined,
         ctx,
+      );
+      const gestaltId = gestaltsUtils.decodeGestaltId(vertex);
+      if (gestaltId == null) never('the GestaltId should always be valid here');
+      await this.scheduleDiscoveryForVertex(
+        gestaltId,
+        this.rediscoverVertexThresholdTime,
       );
     } catch (e) {
       if (
@@ -172,6 +200,23 @@ class Discovery {
   public readonly discoverVertexHandlerId =
     `${this.constructor.name}.discoverVertexHandler` as TaskHandlerId;
 
+  /**
+   * This handler is run periodically to check if nodes are ready to be rediscovered
+   */
+  protected checkRediscoveryHandler: TaskHandler = async () => {
+    await this.checkRediscovery(
+      Date.now() - this.rediscoverVertexThresholdTime,
+    );
+    await this.taskManager.scheduleTask({
+      handlerId: this.discoverVertexHandlerId,
+      path: [this.constructor.name, this.checkRediscoveryHandlerId],
+      lazy: true,
+      delay: this.rediscoverCheckIntervalTime,
+    });
+  };
+  public readonly checkRediscoveryHandlerId =
+    `${this.constructor.name}.checkForRediscoveryHandler` as TaskHandlerId;
+
   public constructor({
     keyRing,
     db,
@@ -180,7 +225,10 @@ class Discovery {
     nodeManager,
     taskManager,
     discoverVertexTimeoutTime,
+    rediscoverCheckIntervalTime,
+    rediscoverVertexDelayTime,
     rediscoverSkipTime,
+    staleVertexThresholdTime,
     logger,
   }: {
     db: DB;
@@ -190,7 +238,10 @@ class Discovery {
     nodeManager: NodeManager;
     taskManager: TaskManager;
     discoverVertexTimeoutTime: number;
+    rediscoverCheckIntervalTime: number;
+    rediscoverVertexDelayTime: number;
     rediscoverSkipTime: number;
+    staleVertexThresholdTime: number;
     logger: Logger;
   }) {
     this.db = db;
@@ -200,7 +251,10 @@ class Discovery {
     this.nodeManager = nodeManager;
     this.taskManager = taskManager;
     this.discoverVertexTimeoutTime = discoverVertexTimeoutTime;
+    this.rediscoverCheckIntervalTime = rediscoverCheckIntervalTime;
+    this.rediscoverVertexThresholdTime = rediscoverVertexDelayTime;
     this.rediscoverSkipTime = rediscoverSkipTime;
+    this.staleVertexThresholdTime = staleVertexThresholdTime;
     this.logger = logger;
   }
 
@@ -222,6 +276,13 @@ class Discovery {
       this.discoverVertexHandlerId,
       this.discoverVertexHandler,
     );
+    // Start up rediscovery task
+    await this.taskManager.scheduleTask({
+      handlerId: this.discoverVertexHandlerId,
+      path: [this.constructor.name, this.checkRediscoveryHandlerId],
+      lazy: true,
+      delay: this.rediscoverCheckIntervalTime,
+    });
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -376,7 +437,7 @@ class Discovery {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       switch (signedClaim.payload.typ) {
         case 'ClaimLinkNode':
-          await this.procesessClaimLinkNode(
+          await this.processClaimLinkNode(
             signedClaim,
             nodeId,
             lastProcessedCutoffTime,
@@ -397,7 +458,7 @@ class Discovery {
     await this.setLastProcessed(gestaltNodeId, processedTime);
   }
 
-  protected async procesessClaimLinkNode(
+  protected async processClaimLinkNode(
     signedClaim: SignedClaim,
     nodeId: NodeId,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
@@ -680,24 +741,22 @@ class Discovery {
       task.cancel(abortSingletonTaskReason);
     }
     // Only create if it doesn't exist
-    if (!taskExisting) {
-      // Otherwise create a new task if none exists
-      await this.taskManager.scheduleTask(
-        {
-          handlerId: this.discoverVertexHandlerId,
-          parameters: [gestaltIdEncoded, lastProcessedCutoffTime],
-          path: [
-            this.constructor.name,
-            this.discoverVertexHandlerId,
-            gestaltIdEncoded,
-          ],
-          lazy: true,
-          deadline: this.discoverVertexTimeoutTime,
-          delay,
-        },
-        tran,
-      );
-    }
+    if (taskExisting != null) return;
+    await this.taskManager.scheduleTask(
+      {
+        handlerId: this.discoverVertexHandlerId,
+        parameters: [gestaltIdEncoded, lastProcessedCutoffTime],
+        path: [
+          this.constructor.name,
+          this.discoverVertexHandlerId,
+          gestaltIdEncoded,
+        ],
+        lazy: true,
+        deadline: this.discoverVertexTimeoutTime,
+        delay,
+      },
+      tran,
+    );
   }
 
   /**
@@ -780,6 +839,86 @@ class Discovery {
       }
     }
     return identityClaims;
+  }
+
+  /**
+   * Checks previously discovered vertices for ones to be re-added back on to the queue
+   */
+  public async checkRediscovery(
+    lastProcessedCutoffTime: number,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.checkRediscovery(lastProcessedCutoffTime, tran),
+      );
+    }
+
+    const staleVertexCutoff = Date.now() - this.staleVertexThresholdTime;
+    const gestaltIds: Array<[GestaltIdEncoded, number]> = [];
+    for await (const [
+      gestaltId,
+      lastProcessedTime,
+    ] of this.getLastProcessedTimes(
+      {
+        order: 'asc',
+        seek: lastProcessedCutoffTime,
+      },
+      tran,
+    )) {
+      gestaltIds.push([
+        gestaltsUtils.encodeGestaltId(gestaltId),
+        lastProcessedTime,
+      ]);
+    }
+    // We want to lock all the ids at once before moving ahead
+    const locks = gestaltIds.map((gestaltIdEncoded) => {
+      return [
+        this.constructor.name,
+        this.discoverVertexHandlerId,
+        gestaltIdEncoded,
+      ].join('');
+    });
+    await tran.lock(...locks);
+    // Schedule a new task for each vertex if it doesn't already exist
+    for (const [gestaltIdEncoded, lastProcessedTime] of gestaltIds) {
+      // If we exceed an age threshold then we just remove the vertex information
+      if (lastProcessedTime < staleVertexCutoff) {
+        await this.unsetLastProcessed(
+          gestaltsUtils.decodeGestaltId(gestaltIdEncoded)!,
+        );
+      }
+      let taskExisting: Task | null = null;
+      for await (const task of this.taskManager.getTasks(
+        'asc',
+        true,
+        [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded],
+        tran,
+      )) {
+        if (taskExisting == null) {
+          taskExisting = task;
+          continue;
+        }
+        // Any extra tasks should be cancelled, this shouldn't normally happen
+        task.cancel(abortSingletonTaskReason);
+      }
+      if (taskExisting != null) continue;
+      // Schedule a new task
+      await this.taskManager.scheduleTask(
+        {
+          handlerId: this.discoverVertexHandlerId,
+          parameters: [gestaltIdEncoded, lastProcessedCutoffTime],
+          path: [
+            this.constructor.name,
+            this.discoverVertexHandlerId,
+            gestaltIdEncoded,
+          ],
+          lazy: true,
+          deadline: this.discoverVertexTimeoutTime,
+        },
+        tran,
+      );
+    }
   }
 
   /**
@@ -878,19 +1017,37 @@ class Discovery {
    * Gets the last processed time for a vertex
    */
   protected async *getLastProcessedTimes(
-    order: 'asc' | 'desc' = 'asc',
+    {
+      order = 'asc',
+      seek,
+      limit,
+    }: {
+      order?: 'asc' | 'desc';
+      seek?: number;
+      limit?: number;
+    } = {},
     tran?: DBTransaction,
   ): AsyncGenerator<[GestaltId, number]> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
-        this.getLastProcessedTimes(order, tran),
+        this.getLastProcessedTimes({ order, seek, limit }, tran),
       );
     }
 
-    const iterator = tran.iterator<number>(this.lastProcessedOrderPath, {
-      valueAsBuffer: false,
-      reverse: order !== 'asc',
-    });
+    const iterator = tran.iterator<GestaltIdEncoded>(
+      this.lastProcessedOrderPath,
+      {
+        keyAsBuffer: true,
+        keys: true,
+        values: true,
+        valueAsBuffer: false,
+        reverse: order !== 'asc',
+        lte:
+          seek != null
+            ? [utils.lexiPackBuffer(seek), Buffer.alloc(1, 0)]
+            : undefined,
+      },
+    );
     for await (const [path, gestaltIdEncoded] of iterator) {
       const lastProcessedTime = utils.lexiUnpackBuffer(path[0] as Buffer);
       if (lastProcessedTime == null) {
