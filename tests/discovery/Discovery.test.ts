@@ -235,7 +235,7 @@ describe('Discovery', () => {
     await taskManager.stopTasks();
     await nodeA.stop();
     await nodeB.stop();
-    await nodeConnectionManager.stop();
+    await nodeConnectionManager.stop({ force: true });
     await nodeManager.stop();
     await nodeGraph.stop();
     await sigchain.stop();
@@ -469,6 +469,78 @@ describe('Discovery', () => {
       nodesUtils.encodeNodeId(nodeB.keyRing.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
+  test('should skip recently discovered vertices', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+    await taskManager.startProcessing();
+
+    // @ts-ignore: spy on protected method
+    const processVertexMock = jest.spyOn(discovery, 'processVertex');
+
+    // Attempt initial discovery
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+    // All the vertices should be processed
+    expect(processVertexMock).toHaveBeenCalledTimes(3);
+    // 2nd attempt at discovery
+    processVertexMock.mockReset();
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+    // Only the queued vertex should be processed
+    expect(processVertexMock).toHaveBeenCalledTimes(1);
+
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
+  test('should force discovery on recently processed vertices', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+    await taskManager.startProcessing();
+
+    // @ts-ignore: spy on protected method
+    const processVertexMock = jest.spyOn(discovery, 'processVertex');
+
+    // Attempt initial discovery
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+    // All the vertices should be processed
+    expect(processVertexMock).toHaveBeenCalledTimes(3);
+    // 2nd attempt at discovery
+    processVertexMock.mockClear();
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId(), Date.now());
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+    // Only the queued vertex should be processed
+    expect(processVertexMock).toHaveBeenCalledTimes(3);
+
     await taskManager.stopProcessing();
     await discovery.stop();
     await discovery.destroy();
