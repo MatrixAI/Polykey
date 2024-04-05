@@ -402,6 +402,7 @@ class PolykeyAgent {
           acl,
           db,
           nodeManager,
+          taskManager,
           keyRing,
           logger: logger.getChild(NotificationsManager.name),
           fresh,

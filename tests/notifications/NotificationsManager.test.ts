@@ -21,6 +21,7 @@ import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as notificationsErrors from '@/notifications/errors';
+import * as notificationsUtils from '@/notifications/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
@@ -132,7 +133,6 @@ describe('NotificationsManager', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -181,6 +181,7 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
@@ -207,9 +208,11 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     const generalNotification: NotificationData = {
       type: 'General',
       message: 'msg',
@@ -235,14 +238,26 @@ describe('NotificationsManager', () => {
     await notificationsManager.sendNotification(
       receiver.keyRing.getNodeId(),
       generalNotification,
+      {
+        blocking: true,
+        retries: 0,
+      },
     );
     await notificationsManager.sendNotification(
       receiver.keyRing.getNodeId(),
       gestaltNotification,
+      {
+        blocking: true,
+        retries: 0,
+      },
     );
     await notificationsManager.sendNotification(
       receiver.keyRing.getNodeId(),
       vaultNotification,
+      {
+        blocking: true,
+        retries: 0,
+      },
     );
     const receivedNotifications =
       await receiver.notificationsManager.readNotifications();
@@ -270,9 +285,11 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     const generalNotification: NotificationData = {
       type: 'General',
       message: 'msg',
@@ -294,6 +311,10 @@ describe('NotificationsManager', () => {
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         generalNotification,
+        {
+          blocking: true,
+          retries: 0,
+        },
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
@@ -301,6 +322,10 @@ describe('NotificationsManager', () => {
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         gestaltNotification,
+        {
+          blocking: true,
+          retries: 0,
+        },
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
@@ -308,6 +333,10 @@ describe('NotificationsManager', () => {
       notificationsManager.sendNotification(
         receiver.keyRing.getNodeId(),
         vaultNotification,
+        {
+          blocking: true,
+          retries: 0,
+        },
       ),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
@@ -318,15 +347,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('can receive notifications from senders with permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -337,6 +372,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'GestaltInvite',
@@ -346,6 +384,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'VaultShare',
@@ -384,15 +425,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('cannot receive notifications from senders without permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -423,15 +470,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('marks notifications as read', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -458,15 +511,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('all notifications are read oldest to newest by default', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -477,6 +536,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -487,6 +549,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -517,15 +582,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('can read only unread notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -536,6 +607,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -546,6 +620,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -575,15 +652,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('can read a single notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -594,6 +677,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -604,6 +690,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -632,15 +721,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('can read notifications in reverse order', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -651,6 +746,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -661,6 +759,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -692,16 +793,22 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('notifications can be capped and oldest notifications deleted', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         messageCap: 2,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -712,6 +819,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -722,6 +832,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -751,15 +864,22 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('can find a gestalt invite notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationIdEncoded = notificationsUtils.encodeNotificationId(
+      generateNotificationId(),
+    );
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded,
       typ: 'notification',
       data: {
         type: 'GestaltInvite',
@@ -777,22 +897,32 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification);
     const receivedInvite =
       await notificationsManager.findGestaltInvite(senderId);
-    expect(receivedInvite).toEqual(notification);
+    expect(receivedInvite).toEqual({
+      ...notification,
+      notificationIdEncoded: expect.any(String),
+      peerNotificationIdEncoded: notificationIdEncoded,
+    });
     // Reverse side-effects
     await notificationsManager.clearNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('clears notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -818,15 +948,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('notifications are persistent across restarts', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -837,6 +973,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -875,15 +1014,21 @@ describe('NotificationsManager', () => {
     await notificationsManager.stop();
   });
   test('creating fresh notifications manager', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',

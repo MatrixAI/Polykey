@@ -126,15 +126,16 @@ describe('notificationsClear', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
       logger: logger.getChild(ClientService.name),
@@ -283,15 +284,16 @@ describe('notificationsRead', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
       logger: logger.getChild(ClientService.name),
@@ -663,15 +665,16 @@ describe('notificationsSend', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.start();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
       logger: logger.getChild(ClientService.name),
@@ -728,6 +731,8 @@ describe('notificationsSend', () => {
     await rpcClient.methods.notificationsSend({
       nodeIdEncoded: receiverNodeIdEncoded,
       message: 'test',
+      blocking: true,
+      retries: 0,
     });
     // Check we signed and sent the notification
     expect(mockedSendNotification.mock.calls.length).toBe(1);

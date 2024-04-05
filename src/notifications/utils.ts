@@ -218,3 +218,5 @@ export {
   assertGestaltInvite,
   assertVaultShare,
 };
+
+export { encodeNotificationId, decodeNotificationId } from '../ids';

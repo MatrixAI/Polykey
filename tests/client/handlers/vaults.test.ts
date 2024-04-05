@@ -15,6 +15,7 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
+import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import KeyRing from '@/keys/KeyRing';
 import VaultManager from '@/vaults/VaultManager';
@@ -83,6 +84,7 @@ describe('vaultsClone', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let vaultManager: VaultManager;
+  let taskManager: TaskManager;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -118,6 +120,8 @@ describe('vaultsClone', () => {
     await clientService?.stop({ force: true });
     await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await db.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
@@ -427,6 +431,7 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
     vaultsPermissionUnset: typeof vaultsPermissionUnset;
     vaultsPermissionGet: typeof vaultsPermissionGet;
   }>;
+  let taskManager: TaskManager;
   let vaultManager: VaultManager;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -466,14 +471,21 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
     await gestaltGraph.setNode({
       nodeId: nodeId,
     });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager: {} as NodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     const vaultsPath = path.join(dataDir, 'vaults');
     vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
@@ -539,6 +551,8 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
     await notificationsManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
     await db.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
@@ -606,6 +620,7 @@ describe('vaultsPull', () => {
   let webSocketClient: WebSocketClient;
   let clientService: ClientService;
   let vaultManager: VaultManager;
+  let taskManager: TaskManager;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let notificationsManager: NotificationsManager;
@@ -639,14 +654,21 @@ describe('vaultsPull', () => {
     await gestaltGraph.setNode({
       nodeId: nodeId,
     });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager: {} as NodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     const vaultsPath = path.join(dataDir, 'vaults');
     vaultManager = await VaultManager.createVaultManager({
       vaultsPath,

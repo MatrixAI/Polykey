@@ -217,6 +217,8 @@ type NotificationMessage = {
 
 type NotificationSendMessage = NodeIdMessage & {
   message: string;
+  blocking?: boolean;
+  retries?: number;
 };
 
 // Vaults messages

@@ -196,6 +196,7 @@ async function bootstrapState({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger: logger.getChild(NotificationsManager.name),
         fresh,

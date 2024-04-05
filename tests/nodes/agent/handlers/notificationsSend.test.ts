@@ -142,16 +142,16 @@ describe('notificationsSend', () => {
       host: localHost,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         db,
         keyRing,
         acl,
+        taskManager,
         nodeManager,
         logger,
       });
-
+    await taskManager.startProcessing();
     // Setting up server
     const serverManifest = {
       notificationsSend: new NotificationsSend({
@@ -267,6 +267,8 @@ describe('notificationsSend', () => {
   });
 
   test('successfully sends a notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Set notify permission for sender on receiver
     await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
@@ -274,6 +276,9 @@ describe('notificationsSend', () => {
     });
     // Construct and send notification
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -301,6 +306,8 @@ describe('notificationsSend', () => {
     await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send invalidly formatted notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Set notify permission for sender on receiver
     await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
@@ -308,6 +315,9 @@ describe('notificationsSend', () => {
     });
     // Unsigned notification
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -355,8 +365,13 @@ describe('notificationsSend', () => {
     await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send notification without permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Construct and send notification
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
