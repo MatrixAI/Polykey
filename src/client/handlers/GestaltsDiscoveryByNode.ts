@@ -33,7 +33,7 @@ class GestaltsDiscoveryByNode extends UnaryHandler<
       },
     );
 
-    await discovery.queueDiscoveryByNode(nodeId);
+    await discovery.queueDiscoveryByNode(nodeId, Date.now());
 
     return {};
   };

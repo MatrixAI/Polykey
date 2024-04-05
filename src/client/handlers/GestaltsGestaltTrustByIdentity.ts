@@ -53,7 +53,11 @@ class GestaltsGestaltTrustByIdentity extends UnaryHandler<
         // Queue the new identity for discovery
         // This will only add the identity to the GG if it is connected to a
         // node (required to set permissions for it)
-        await discovery.queueDiscoveryByIdentity(providerId, identityId);
+        await discovery.queueDiscoveryByIdentity(
+          providerId,
+          identityId,
+          Date.now(),
+        );
       }
       // We can currently only set permissions for identities that are
       // connected to at least one node. If these conditions are not met, this

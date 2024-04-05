@@ -38,7 +38,11 @@ class GestaltsDiscoveryByIdentity extends UnaryHandler<
       },
     );
 
-    await discovery.queueDiscoveryByIdentity(providerId, identityId);
+    await discovery.queueDiscoveryByIdentity(
+      providerId,
+      identityId,
+      Date.now(),
+    );
 
     return {};
   };
