@@ -490,14 +490,6 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-
-    // For await (const task of taskManager.getTasks('asc', false, [
-    //   Discovery.name,
-    //   discovery.discoverVertexHandlerId,
-    // ])) {
-    //   console.log(task);
-    // }
-
     await discovery.waitForDiscoveryTasks(true);
 
     await taskManager.stopProcessing();
