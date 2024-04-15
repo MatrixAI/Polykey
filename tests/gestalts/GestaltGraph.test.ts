@@ -32,7 +32,9 @@ import * as keysUtils from '@/keys/utils';
 import Token from '@/tokens/Token';
 import { encodeGestaltNodeId, encodeGestaltIdentityId } from '@/gestalts/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as claimsUtils from '@/claims/utils';
 import * as testsGestaltsUtils from './utils';
+import * as testsUtils from '../utils';
 import * as testsIdentitiesUtils from '../identities/utils';
 import * as testsKeysUtils from '../keys/utils';
 import * as ids from '../../src/ids';
@@ -1394,5 +1396,35 @@ describe('GestaltGraph', () => {
       },
       { numRuns: 20 },
     );
+  });
+  test('Should only set the newest ClaimId', async () => {
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+      fresh: true,
+    });
+
+    // Creating 3 claimIDs.
+    const nodeId = testsUtils.generateRandomNodeId();
+    const claimIdGenerator = claimsUtils.createClaimIdGenerator(nodeId);
+    const claimId1 = claimIdGenerator();
+    const claimId2 = claimIdGenerator();
+    const claimId3 = claimIdGenerator();
+
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId1);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId1.toMultibase('base32hex'));
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId3);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId3.toMultibase('base32hex'));
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId2);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId3.toMultibase('base32hex'));
+
+    await gestaltGraph.stop();
   });
 });

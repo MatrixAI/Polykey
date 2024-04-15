@@ -1,4 +1,4 @@
-import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction } from '@matrixai/db';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId } from '../nodes/types';
@@ -18,7 +18,7 @@ import type {
   ProviderIdentityId,
 } from '../identities/types';
 import type KeyRing from '../keys/KeyRing';
-import type { ClaimId, ClaimIdEncoded, SignedClaim } from '../claims/types';
+import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { Task, TaskHandler, TaskHandlerId } from '../tasks/types';
 import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
@@ -35,7 +35,6 @@ import * as tasksErrors from '../tasks/errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
-import * as utils from '../utils';
 import { never } from '../utils';
 import Token from '../tokens/Token';
 import { decodeClaimId } from '../ids';
@@ -140,26 +139,8 @@ class Discovery {
   protected rediscoverSkipTime: number;
   /**
    * The time threshold for
-   * @protected
    */
   protected staleVertexThresholdTime: number;
-  protected discoveryDbPath: LevelPath = [this.constructor.name];
-  /**
-   * Last processed collection
-   * `Discovery/lastProcessed/{GestaltIdEncoded} -> number`
-   */
-  protected lastProcessedPath: LevelPath = [
-    ...this.discoveryDbPath,
-    'lastProcessed',
-  ];
-  /**
-   * Last processed collection
-   * `Discovery/lastProcessed/{number}/{GestaltIdEncoded} -> gestaltIdEncoded`
-   */
-  protected lastProcessedOrderPath: LevelPath = [
-    ...this.discoveryDbPath,
-    'lastProcessedOrder',
-  ];
 
   protected discoverVertexHandler: TaskHandler = async (
     ctx,
@@ -172,12 +153,6 @@ class Discovery {
         vertex,
         lastProcessedCutoffTime ?? undefined,
         ctx,
-      );
-      const gestaltId = gestaltsUtils.decodeGestaltId(vertex);
-      if (gestaltId == null) never('the GestaltId should always be valid here');
-      await this.scheduleDiscoveryForVertex(
-        gestaltId,
-        this.rediscoverVertexThresholdTime,
       );
     } catch (e) {
       if (
@@ -349,8 +324,6 @@ class Discovery {
     );
   }
 
-  // Fixme, when processing a vertex, we need to check existing links in the
-  //  GestaltGraph and ask for claims newer than that
   protected processVertex(
     vertex: GestaltIdEncoded,
     lastProcessedCutoffTime?: number,
@@ -387,25 +360,13 @@ class Discovery {
     if (nodeId.equals(this.keyRing.getNodeId())) {
       // Skip our own nodeId, we actively add this information when it changes,
       // so there is no need to scan it.
-      await this.setLastProcessed(gestaltNodeId, processedTime);
+      await this.gestaltGraph.setVertexProcessedTime(
+        gestaltNodeId,
+        processedTime,
+      );
       return;
     }
-    // Get the oldest known claim for this node
-    // get the oldest one
-    let newestClaimId: ClaimId | undefined = undefined;
-    for await (const [, gestaltLink] of this.gestaltGraph.getLinks([
-      'node',
-      nodeId,
-    ])) {
-      const claimIdEncoded = gestaltLink[1].claim.payload.jti;
-      const claimId = decodeClaimId(claimIdEncoded);
-      if (claimId == null) never();
-      if (newestClaimId == null) {
-        newestClaimId = claimId;
-      } else if (Buffer.compare(newestClaimId, claimId) === -1) {
-        newestClaimId = claimId;
-      }
-    }
+    const newestClaimId = await this.gestaltGraph.getClaimIdNewest(nodeId);
     // The sigChain data of the vertex (containing all cryptolinks)
     let vertexChainData: Record<ClaimIdEncoded, SignedClaim> = {};
     try {
@@ -415,7 +376,10 @@ class Discovery {
         ctx,
       );
     } catch (e) {
-      await this.setLastProcessed(gestaltNodeId, processedTime);
+      await this.gestaltGraph.setVertexProcessedTime(
+        gestaltNodeId,
+        processedTime,
+      );
       // Not strictly an error in this case, we can fail to connect
       this.logger.info(
         `Failed to discover ${nodesUtils.encodeNodeId(
@@ -424,15 +388,7 @@ class Discovery {
       );
       return;
     }
-    // TODO: for now, the chain data is treated as a 'disjoint' set of
-    //  cryptolink claims from a node to another node/identity.
-    //  That is, we have no notion of revocations, or multiple claims to
-    //  the same node/identity. Thus, we simply iterate over this chain
-    //  of cryptolinks.
     // Iterate over each of the claims in the chain (already verified).
-    // TODO: there is no deterministic iteration order of keys in a record.
-    //  When we change to iterating over ordered sigchain claims,
-    //  this must change into array iteration.
     for (const signedClaim of Object.values(vertexChainData)) {
       if (ctx.signal.aborted) throw ctx.signal.reason;
       switch (signedClaim.payload.typ) {
@@ -455,7 +411,10 @@ class Discovery {
           never();
       }
     }
-    await this.setLastProcessed(gestaltNodeId, processedTime);
+    await this.gestaltGraph.setVertexProcessedTime(
+      gestaltNodeId,
+      processedTime,
+    );
   }
 
   protected async processClaimLinkNode(
@@ -497,6 +456,9 @@ class Discovery {
         meta: {},
       },
     );
+    const claimId = decodeClaimId(signedClaim.payload.jti);
+    if (claimId == null) never();
+    await this.gestaltGraph.setClaimIdNewest(nodeId, claimId);
     // Add this vertex to the queue if it hasn't already been visited
     const linkedGestaltId: GestaltId = ['node', linkedVertexNodeId];
     if (
@@ -579,6 +541,9 @@ class Discovery {
         },
       },
     );
+    const claimId = decodeClaimId(signedClaim.payload.jti);
+    if (claimId == null) never();
+    await this.gestaltGraph.setClaimIdNewest(nodeId, claimId);
     // Add this identity vertex to the queue if it is not present
     const providerIdentityId = JSON.parse(signedClaim.payload.sub!);
     const identityGestaltId: GestaltId = ['identity', providerIdentityId];
@@ -654,7 +619,10 @@ class Discovery {
         );
       }
     }
-    await this.setLastProcessed(['identity', providerIdentityId], Date.now());
+    await this.gestaltGraph.setVertexProcessedTime(
+      ['identity', providerIdentityId],
+      Date.now(),
+    );
   }
 
   /**
@@ -859,7 +827,7 @@ class Discovery {
     for await (const [
       gestaltId,
       lastProcessedTime,
-    ] of this.getLastProcessedTimes(
+    ] of this.gestaltGraph.getVertexProcessedTimes(
       {
         order: 'asc',
         seek: lastProcessedCutoffTime,
@@ -884,7 +852,7 @@ class Discovery {
     for (const [gestaltIdEncoded, lastProcessedTime] of gestaltIds) {
       // If we exceed an age threshold then we just remove the vertex information
       if (lastProcessedTime < staleVertexCutoff) {
-        await this.unsetLastProcessed(
+        await this.gestaltGraph.unsetVertexProcessedTime(
           gestaltsUtils.decodeGestaltId(gestaltIdEncoded)!,
         );
       }
@@ -922,144 +890,6 @@ class Discovery {
   }
 
   /**
-   * Updates the last processed time in the database for the given vertex
-   */
-  protected async setLastProcessed(
-    vertex: GestaltId,
-    processedTime: number,
-    tran?: DBTransaction,
-  ): Promise<void> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.setLastProcessed(vertex, processedTime, tran),
-      );
-    }
-
-    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
-    await tran.lock(
-      [
-        this.constructor.name,
-        this.discoverVertexHandlerId,
-        gestaltIdEncoded,
-      ].join(''),
-    );
-
-    await tran.put(
-      [...this.lastProcessedPath, gestaltIdEncoded],
-      processedTime,
-    );
-    await tran.put(
-      [
-        ...this.lastProcessedOrderPath,
-        utils.lexiPackBuffer(processedTime),
-        gestaltIdEncoded,
-      ],
-      gestaltIdEncoded,
-    );
-  }
-
-  /**
-   * Removes the last processed time for a vertex
-   */
-  protected async unsetLastProcessed(
-    vertex: GestaltId,
-    tran?: DBTransaction,
-  ): Promise<void> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.unsetLastProcessed(vertex, tran),
-      );
-    }
-
-    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
-    await tran.lock(
-      [
-        this.constructor.name,
-        this.discoverVertexHandlerId,
-        gestaltIdEncoded,
-      ].join(''),
-    );
-
-    const processedTime = await tran.get<number>([
-      ...this.lastProcessedPath,
-      gestaltIdEncoded,
-    ]);
-    if (processedTime == null) return;
-    await tran.del([...this.lastProcessedPath, gestaltIdEncoded]);
-    await tran.del([
-      ...this.lastProcessedOrderPath,
-      utils.lexiPackBuffer(processedTime),
-      gestaltIdEncoded,
-    ]);
-  }
-
-  /**
-   * Gets the last processed time for a vertex
-   */
-  protected async getLastProcessedTime(
-    vertex: GestaltId,
-    tran?: DBTransaction,
-  ): Promise<number | undefined> {
-    if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getLastProcessedTime(vertex, tran),
-      );
-    }
-
-    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
-    return await tran.get<number>([
-      ...this.lastProcessedPath,
-      gestaltIdEncoded,
-    ]);
-  }
-
-  /**
-   * Gets the last processed time for a vertex
-   */
-  protected async *getLastProcessedTimes(
-    {
-      order = 'asc',
-      seek,
-      limit,
-    }: {
-      order?: 'asc' | 'desc';
-      seek?: number;
-      limit?: number;
-    } = {},
-    tran?: DBTransaction,
-  ): AsyncGenerator<[GestaltId, number]> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.getLastProcessedTimes({ order, seek, limit }, tran),
-      );
-    }
-
-    const iterator = tran.iterator<GestaltIdEncoded>(
-      this.lastProcessedOrderPath,
-      {
-        keyAsBuffer: true,
-        keys: true,
-        values: true,
-        valueAsBuffer: false,
-        reverse: order !== 'asc',
-        lte:
-          seek != null
-            ? [utils.lexiPackBuffer(seek), Buffer.alloc(1, 0)]
-            : undefined,
-      },
-    );
-    for await (const [path, gestaltIdEncoded] of iterator) {
-      const lastProcessedTime = utils.lexiUnpackBuffer(path[0] as Buffer);
-      if (lastProcessedTime == null) {
-        never('lastProcessedTime should be valid here');
-      }
-      const gestaltId = gestaltsUtils.decodeGestaltId(gestaltIdEncoded);
-      if (gestaltId == null) never('GestaltId should be valid here');
-      yield [gestaltId, lastProcessedTime];
-    }
-  }
-
-  /**
    * Returns true if the vertex was processed after the given time
    */
   protected async processedTimeGreaterThan(
@@ -1068,7 +898,7 @@ class Discovery {
     tran?: DBTransaction,
   ): Promise<boolean> {
     const lastProcessedTime =
-      (await this.getLastProcessedTime(vertex, tran)) ?? 0;
+      (await this.gestaltGraph.getVertexProcessedTime(vertex, tran)) ?? 0;
     return lastProcessedTime > time;
   }
 }
