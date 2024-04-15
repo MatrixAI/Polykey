@@ -33,6 +33,8 @@ import { never } from '../utils/utils';
 
 const NOTIFICATIONS_COUNT_KEY = 'numNotifications';
 
+const abortSendNotificationTaskReason = Symbol('abort send notification task reason');
+
 /**
  * Manage Node Notifications between Gestalts
  */
@@ -92,7 +94,12 @@ class NotificationsManager {
   protected nodeManager: NodeManager;
   protected taskManager: TaskManager;
   protected messageCap: number;
-  protected outboxNotificationIdToTaskIdMap: Map<NotificationId, TaskId>;
+
+  /**
+   * Map for hashing NotificationIds to find TaskIds.
+   * The key must be NotificationIdEncoded, so that the string representation is hashed rather than the reference to the NotificationId object.
+   */
+  protected outboxNotificationIdEncodedToTaskIdMap: Map<NotificationIdEncoded, TaskId>;
 
   /**
    * Top level stores inbox/outbox -> Notifications, numMessages
@@ -113,7 +120,7 @@ class NotificationsManager {
     ...this.notificationsManagerInboxDbPath,
     'notifications',
   ];
-  protected notnotificationsManagerInboxNotificationsCounterDbPath: KeyPath = [
+  protected notificationsManagerInboxNotificationsCounterDbPath: KeyPath = [
     ...this.notificationsManagerInboxDbPath,
     NOTIFICATIONS_COUNT_KEY,
   ];
@@ -220,7 +227,7 @@ class NotificationsManager {
       } finally {
         // If a new task has been scheduled, set it in the map. If not, delete it.
         if (newTaskId == null) {
-          this.outboxNotificationIdToTaskIdMap.delete(notificationId);
+          this.outboxNotificationIdEncodedToTaskIdMap.delete(notificationIdEncoded);
           await tran.del(notificationKeyPath);
           const counter = await tran.get<number>(
             this.notificationsManagerOutboxNotificationsCounterDbPath,
@@ -230,7 +237,7 @@ class NotificationsManager {
             counter != null ? counter - 1 : 0,
           );
         } else {
-          this.outboxNotificationIdToTaskIdMap.set(notificationId, newTaskId);
+          this.outboxNotificationIdEncodedToTaskIdMap.set(notificationIdEncoded, newTaskId);
         }
       }
     });
@@ -260,7 +267,7 @@ class NotificationsManager {
     this.keyRing = keyRing;
     this.nodeManager = nodeManager;
     this.taskManager = taskManager;
-    this.outboxNotificationIdToTaskIdMap = new Map();
+    this.outboxNotificationIdEncodedToTaskIdMap = new Map();
   }
 
   public async start({
@@ -306,8 +313,8 @@ class NotificationsManager {
       for await (const task of this.taskManager.getTasks('asc', false, [
         this.sendNotificationHandlerId,
       ])) {
-        this.outboxNotificationIdToTaskIdMap.set(
-          task.parameters[0].notificationId,
+        this.outboxNotificationIdEncodedToTaskIdMap.set(
+          task.parameters[0].notificationIdEncoded,
           task.id,
         );
       }
@@ -322,7 +329,7 @@ class NotificationsManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.taskManager.deregisterHandler(this.sendNotificationHandlerId);
-    this.outboxNotificationIdToTaskIdMap.clear();
+    this.outboxNotificationIdEncodedToTaskIdMap.clear();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -394,7 +401,7 @@ class NotificationsManager {
         },
         tran,
       );
-      this.outboxNotificationIdToTaskIdMap.set(notificationId, pendingTask.id);
+      this.outboxNotificationIdEncodedToTaskIdMap.set(notificationIdEncoded, pendingTask.id);
     });
     if (blocking) {
       while (pendingTask != null) {
@@ -477,6 +484,57 @@ class NotificationsManager {
     return notifications;
   }
 
+  p
+
+  /**
+   * Clears the pending outbox notifications
+   */
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  public async clearOutboxNotifications(tran?: DBTransaction): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) => this.clearOutboxNotifications(tran));
+    }
+
+    await tran.lock(
+      this.notificationsManagerOutboxNotificationsCounterDbPath.join(''),
+    );
+    const notificationIds = await this.getNotificationIds('all', tran);
+    const numMessages = await tran.get<number>(
+      this.notificationsManagerOutboxNotificationsCounterDbPath,
+    );
+    if (numMessages !== undefined) {
+      for (const id of notificationIds) {
+        await this.removeOutboxNotification(id, tran);
+      }
+    }
+  }
+
+  protected async removeOutboxNotification(
+    notificationId: NotificationId,
+    tran: DBTransaction,
+  ): Promise<void> {
+    await tran.lock(
+      this.notificationsManagerOutboxNotificationsCounterDbPath.join(''),
+    );
+    const numMessages = await tran.get<number>(
+      this.notificationsManagerOutboxNotificationsCounterDbPath,
+    );
+    if (numMessages === undefined) {
+      throw new notificationsErrors.ErrorNotificationsDb();
+    }
+    const taskId = this.outboxNotificationIdEncodedToTaskIdMap.get(notificationsUtils.encodeNotificationId(notificationId))!;
+    const task = (await this.taskManager.getTask(taskId, false, tran))!;
+    task.cancel(abortSendNotificationTaskReason);
+    await tran.del([
+      ...this.notificationsManagerOutboxNotificationsDbPath,
+      idUtils.toBuffer(notificationId),
+    ]);
+    await tran.put(
+      this.notificationsManagerOutboxNotificationsCounterDbPath,
+      numMessages - 1,
+    );
+  }
+
   /**
    * Receive a notification
    */
@@ -492,7 +550,7 @@ class NotificationsManager {
     }
 
     await tran.lock(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath.join(''),
+      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
     );
     const nodePerms = await this.acl.getNodePerm(
       nodesUtils.decodeNodeId(notification.iss)!,
@@ -504,12 +562,12 @@ class NotificationsManager {
     if (Object.keys(nodePerms.gestalt).includes('notify')) {
       // If the number stored in notificationsDb >= 10000
       let numMessages = await tran.get<number>(
-        this.notnotificationsManagerInboxNotificationsCounterDbPath,
+        this.notificationsManagerInboxNotificationsCounterDbPath,
       );
       if (numMessages === undefined) {
         numMessages = 0;
         await tran.put(
-          this.notnotificationsManagerInboxNotificationsCounterDbPath,
+          this.notificationsManagerInboxNotificationsCounterDbPath,
           0,
         );
       }
@@ -534,7 +592,7 @@ class NotificationsManager {
       // Number of messages += 1
       const newNumMessages = numMessages + 1;
       await tran.put(
-        this.notnotificationsManagerInboxNotificationsCounterDbPath,
+        this.notificationsManagerInboxNotificationsCounterDbPath,
         newNumMessages,
       );
     }
@@ -621,11 +679,11 @@ class NotificationsManager {
     }
 
     await tran.lock(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath.join(''),
+      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
     );
     const notificationIds = await this.getNotificationIds('all', tran);
     const numMessages = await tran.get<number>(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath,
+      this.notificationsManagerInboxNotificationsCounterDbPath,
     );
     if (numMessages !== undefined) {
       for (const id of notificationIds) {
@@ -727,10 +785,10 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<void> {
     await tran.lock(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath.join(''),
+      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
     );
     const numMessages = await tran.get<number>(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath,
+      this.notificationsManagerInboxNotificationsCounterDbPath,
     );
     if (numMessages === undefined) {
       throw new notificationsErrors.ErrorNotificationsDb();
@@ -741,7 +799,7 @@ class NotificationsManager {
       idUtils.toBuffer(messageId),
     ]);
     await tran.put(
-      this.notnotificationsManagerInboxNotificationsCounterDbPath,
+      this.notificationsManagerInboxNotificationsCounterDbPath,
       numMessages - 1,
     );
   }
