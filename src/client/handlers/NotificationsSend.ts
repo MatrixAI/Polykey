@@ -44,7 +44,6 @@ class NotificationsSend extends UnaryHandler<
     await notificationsManager.sendNotification({
       nodeId,
       data,
-      blocking: input.blocking,
       retries: input.retries,
     });
 

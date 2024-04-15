@@ -150,86 +150,82 @@ class NotificationsManager {
     {
       nodeIdEncoded,
       notificationIdEncoded,
-      blocking,
       retries,
       attempt,
     }: {
       nodeIdEncoded: NodeIdEncoded;
       notificationIdEncoded: NotificationIdEncoded;
-      blocking: boolean;
       retries: number;
       attempt: number;
     },
   ) => {
-    return this.db.withTransactionF(async (tran) => {
-      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-      const notificationId = notificationsUtils.decodeNotificationId(
+    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+    const notificationId = notificationsUtils.decodeNotificationId(
+      notificationIdEncoded,
+    )!;
+    const notificationKeyPath = [
+      ...this.notificationsManagerOutboxNotificationsDbPath,
+      idUtils.toBuffer(notificationId),
+    ];
+
+    const notificationDb = await this.db.withTransactionF(
+      async (tran) => (await tran.get<NotificationDB>(notificationKeyPath))!,
+    );
+    const signedNotification = await notificationsUtils.generateNotification(
+      {
         notificationIdEncoded,
-      )!;
-      const notificationKeyPath = [
-        ...this.notificationsManagerOutboxNotificationsDbPath,
-        idUtils.toBuffer(notificationId),
-      ];
-      const notificationDb =
-        (await tran.get<NotificationDB>(notificationKeyPath))!;
-      const signedNotification = await notificationsUtils.generateNotification(
-        {
-          notificationIdEncoded,
-          ...notificationDb,
-        },
-        this.keyRing.keyPair,
-      );
-      // The task id if a new task has been scheduled for a retry.
-      let newTaskId: TaskId | undefined;
-      try {
-        await this.nodeManager.withConnF(nodeId, async (connection) => {
-          const client = connection.getClient();
-          await client.methods.notificationsSend({
-            signedNotificationEncoded: signedNotification,
-          });
+        ...notificationDb,
+      },
+      this.keyRing.keyPair,
+    );
+    // The task id if a new task has been scheduled for a retry.
+    let newTaskId: TaskId | undefined;
+    try {
+      await this.nodeManager.withConnF(nodeId, async (connection) => {
+        const client = connection.getClient();
+        await client.methods.notificationsSend({
+          signedNotificationEncoded: signedNotification,
         });
-      } catch (e) {
-        if (e instanceof errors.ErrorPolykeyRemote) {
-          this.logger.warn(
-            `Notification recipient ${nodesUtils.encodeNodeId(
-              nodeId,
-            )} responded with error: ${e.cause.description}`,
-          );
-          if (blocking) {
-            throw e;
-          }
-          return;
-        } else {
-          this.logger.warn(
-            `Could not send to ${
-              notificationDb.data.type
-            } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
-          );
-        }
-        // This will only happen on connection errors.
-        if (attempt < retries) {
-          // Recursively return inner task, so that the handler can process them.
-          const newTask = await this.taskManager.scheduleTask({
-            handlerId: this.sendNotificationHandlerId,
-            path: [this.sendNotificationHandlerId],
-            parameters: [
-              {
-                nodeIdEncoded,
-                notificationIdEncoded,
-                blocking,
-                retries,
-                attempt: attempt + 1,
-              },
-            ],
-            delay: 1000 * 2 ** attempt,
-            lazy: false,
-          });
-          newTaskId = newTask.id;
-          return newTask;
-        } else if (blocking) {
-          throw e;
-        }
-      } finally {
+      });
+    } catch (e) {
+      if (e instanceof errors.ErrorPolykeyRemote) {
+        this.logger.warn(
+          `Notification recipient ${nodesUtils.encodeNodeId(
+            nodeId,
+          )} responded with error: ${e.cause.description}`,
+        );
+        throw e;
+      } else {
+        this.logger.warn(
+          `Could not send to ${
+            notificationDb.data.type
+          } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
+        );
+      }
+      // This will only happen on connection errors.
+      if (attempt < retries) {
+        // Recursively return inner task, so that the handler can process them.
+        const newTask = await this.taskManager.scheduleTask({
+          handlerId: this.sendNotificationHandlerId,
+          path: [this.sendNotificationHandlerId],
+          parameters: [
+            {
+              nodeIdEncoded,
+              notificationIdEncoded,
+              retries,
+              attempt: attempt + 1,
+            },
+          ],
+          delay: 1000 * 2 ** attempt,
+          lazy: false,
+        });
+        newTaskId = newTask.id;
+        return newTask;
+      } else {
+        throw e;
+      }
+    } finally {
+      await this.db.withTransactionF(async (tran) => {
         // If a new task has been scheduled, set it in the map. If not, delete it.
         if (newTaskId == null) {
           this.outboxNotificationIdEncodedToTaskIdMap.delete(
@@ -249,8 +245,8 @@ class NotificationsManager {
             newTaskId,
           );
         }
-      }
-    });
+      });
+    }
   };
 
   constructor({
@@ -356,17 +352,21 @@ class NotificationsManager {
    * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async sendNotification({
-    nodeId,
-    data,
-    blocking = false,
-    retries = 64,
-  }: {
-    nodeId: NodeId;
-    data: NotificationData;
-    blocking?: boolean;
-    retries?: number;
-  }): Promise<void> {
+  public async sendNotification(
+    {
+      nodeId,
+      data,
+      retries = 64,
+    }: {
+      nodeId: NodeId;
+      data: NotificationData;
+      retries?: number;
+    },
+    tran?: DBTransaction,
+  ): Promise<{
+    notificationId: NotificationId;
+    sendProm: Promise<void>;
+  }> {
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     const notificationId = this.outboxNotificationIdGenerator();
     const notificationIdEncoded =
@@ -379,7 +379,7 @@ class NotificationsManager {
       sub: nodeIdEncoded,
     };
     let pendingTask: Task | undefined;
-    await this.db.withTransactionF(async (tran) => {
+    const transactionCallback = async (tran: DBTransaction) => {
       await tran.put(
         [
           ...this.notificationsManagerOutboxNotificationsDbPath,
@@ -401,7 +401,6 @@ class NotificationsManager {
             {
               nodeIdEncoded,
               notificationIdEncoded,
-              blocking,
               retries,
               attempt: 0,
             },
@@ -415,12 +414,22 @@ class NotificationsManager {
         notificationIdEncoded,
         pendingTask.id,
       );
-    });
-    if (blocking) {
+    };
+    if (tran == null) {
+      await this.db.withTransactionF(transactionCallback);
+    } else {
+      await transactionCallback(tran);
+    }
+    const sendProm = (async () => {
       while (pendingTask != null) {
         pendingTask = await pendingTask.promise();
       }
-    }
+    })();
+    sendProm.catch(() => {});
+    return {
+      notificationId,
+      sendProm,
+    };
   }
 
   protected async getOutboxNotificationIds(
@@ -511,7 +520,7 @@ class NotificationsManager {
     await tran.lock(
       this.notificationsManagerOutboxNotificationsCounterDbPath.join(''),
     );
-    const notificationIds = await this.getNotificationIds('all', tran);
+    const notificationIds = await this.getOutboxNotificationIds(tran);
     const numMessages = await tran.get<number>(
       this.notificationsManagerOutboxNotificationsCounterDbPath,
     );

@@ -279,7 +279,10 @@ describe('nodesClaim', () => {
       .mockResolvedValue(dummyNotification);
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
-      .mockResolvedValue(undefined);
+      .mockResolvedValue({
+        notificationId: generateNotificationId(),
+        sendProm: Promise.resolve(),
+      });
     mockedClaimNode = jest
       .spyOn(NodeManager.prototype, 'claimNode')
       .mockResolvedValue(undefined);

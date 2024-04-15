@@ -212,7 +212,6 @@ describe('NotificationsManager', () => {
         keyRing,
         logger,
       });
-    await taskManager.startProcessing();
     const generalNotification: NotificationData = {
       type: 'General',
       message: 'msg',
@@ -235,38 +234,72 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
-    await notificationsManager.sendNotification({
-      nodeId: receiver.keyRing.getNodeId(),
-      data: generalNotification,
-      blocking: true,
-      retries: 0,
-    });
-    await notificationsManager.sendNotification({
-      nodeId: receiver.keyRing.getNodeId(),
-      data: gestaltNotification,
-      blocking: true,
-      retries: 0,
-    });
-    await notificationsManager.sendNotification({
-      nodeId: receiver.keyRing.getNodeId(),
-      data: vaultNotification,
-      blocking: true,
-      retries: 0,
-    });
+    const sendProms = await db
+      .withTransactionF(async (tran) => [
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: generalNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: gestaltNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: vaultNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+      ])
+      .then((value) => value.map((value) => value.sendProm));
+    const outboxNotifications =
+      await notificationsManager.readOutboxNotifications();
+    expect(outboxNotifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: vaultNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: gestaltNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: generalNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+      ]),
+    );
+    await taskManager.startProcessing();
+    await Promise.all(sendProms);
     const receivedNotifications =
       await receiver.notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(3);
-    expect(receivedNotifications[0].data).toEqual(vaultNotification);
-    expect(receivedNotifications[0].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
-    );
-    expect(receivedNotifications[1].data).toEqual(gestaltNotification);
-    expect(receivedNotifications[1].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
-    );
-    expect(receivedNotifications[2].data).toEqual(generalNotification);
-    expect(receivedNotifications[2].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
+    expect(receivedNotifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: vaultNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: gestaltNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: generalNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+      ]),
     );
     // Reverse side-effects
     await receiver.notificationsManager.clearNotifications();
@@ -302,30 +335,33 @@ describe('NotificationsManager', () => {
     };
 
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification({
-        nodeId: receiver.keyRing.getNodeId(),
-        data: generalNotification,
-        blocking: true,
-        retries: 0,
-      }),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: generalNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendProm),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification({
-        nodeId: receiver.keyRing.getNodeId(),
-        data: gestaltNotification,
-        blocking: true,
-        retries: 0,
-      }),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: gestaltNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendProm),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification({
-        nodeId: receiver.keyRing.getNodeId(),
-        data: vaultNotification,
-        blocking: true,
-        retries: 0,
-      }),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: vaultNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendProm),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     const receivedNotifications =
@@ -935,6 +971,38 @@ describe('NotificationsManager', () => {
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
+  test('clears outbox notifications', async () => {
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await receiver.acl.setNodePerm(keyRing.getNodeId(), {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+    });
+    await notificationsManager.clearOutboxNotifications();
+    const outboxNotifications =
+      await notificationsManager.readOutboxNotifications();
+    expect(outboxNotifications).toHaveLength(0);
+    // Reverse side-effects
+    await receiver.notificationsManager.clearNotifications();
+    await receiver.acl.unsetNodePerm(keyRing.getNodeId());
+    await notificationsManager.stop();
+  });
   test('notifications are persistent across restarts', async () => {
     const generateNotificationId =
       notificationsUtils.createNotificationIdGenerator();
@@ -1032,13 +1100,31 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
+    await receiver.acl.setNodePerm(keyRing.getNodeId(), {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
     await notificationsManager.receiveNotification(notification);
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+    });
     await notificationsManager.stop();
     await notificationsManager.start({ fresh: true });
     const receivedNotifications =
       await notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(0);
+    const outboxNotifications =
+      await notificationsManager.readOutboxNotifications();
+    expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
+    await receiver.notificationsManager.clearNotifications();
+    await receiver.acl.unsetNodePerm(keyRing.getNodeId());
     await notificationsManager.clearNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
