@@ -1,6 +1,6 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { NodeId } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
@@ -22,7 +22,7 @@ import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { Task, TaskHandler, TaskHandlerId } from '../tasks/types';
 import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
-import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
+import type { DiscoveryQueueInfo } from './types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -32,6 +32,7 @@ import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
 import * as discoveryEvents from './events';
 import * as tasksErrors from '../tasks/errors';
+import * as tasksUtils from '../tasks/utils';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
@@ -346,6 +347,37 @@ class Discovery {
       undefined,
       lastProcessedCutoffTime,
     );
+  }
+
+  /**
+   * This returns the discovery queue
+   */
+  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
+  public async *getDiscoveryQueue(
+    tran?: DBTransaction,
+  ): AsyncGenerator<DiscoveryQueueInfo, void, void> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getDiscoveryQueue(tran),
+      );
+    }
+    for await (const task of this.taskManager.getTasks(
+      'asc',
+      true,
+      [this.constructor.name, this.discoverVertexHandlerId],
+      tran,
+    )) {
+      yield {
+        id: tasksUtils.encodeTaskId(task.id),
+        status: task.status,
+        parameters: task.parameters,
+        delay: task.delay,
+        deadline: task.deadline,
+        priority: task.priority,
+        created: task.created.getTime(),
+        scheduled: task.scheduled.getTime(),
+      };
+    }
   }
 
   protected processVertex(

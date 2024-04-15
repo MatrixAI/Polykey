@@ -1,4 +1,6 @@
 import type { GestaltIdEncoded } from '../ids';
+import type { TaskIdEncoded } from '../ids';
+import type { TaskParameters, TaskStatus } from '../tasks/types';
 
 type VertexEventIdentifier = {
   vertex: GestaltIdEncoded;
@@ -10,4 +12,15 @@ type VertexEventError = VertexEventIdentifier & {
   code?: number;
 };
 
-export type { VertexEventIdentifier, VertexEventError };
+type DiscoveryQueueInfo = {
+  id: TaskIdEncoded;
+  status: TaskStatus;
+  parameters: TaskParameters;
+  delay: number;
+  deadline: number;
+  priority: number;
+  created: number;
+  scheduled: number;
+};
+
+export type { VertexEventIdentifier, VertexEventError, DiscoveryQueueInfo };

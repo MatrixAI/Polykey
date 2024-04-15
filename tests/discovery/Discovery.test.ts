@@ -5,6 +5,7 @@ import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
+import type { DiscoveryQueueInfo } from '@/discovery/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -603,6 +604,34 @@ describe('Discovery', () => {
     ).toBe(3);
 
     await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
+  test('can list discovery tasks', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+
+    // Queue a bunch of vertices
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    await discovery.queueDiscoveryByNode(nodeB.keyRing.getNodeId());
+    await discovery.queueDiscoveryByIdentity(
+      testToken.providerId,
+      testToken.identityId,
+    );
+
+    const results: Array<DiscoveryQueueInfo> = [];
+    for await (const queueInfo of discovery.getDiscoveryQueue()) {
+      results.push(queueInfo);
+    }
+    expect(results).toHaveLength(3);
+
     await discovery.stop();
     await discovery.destroy();
   });
