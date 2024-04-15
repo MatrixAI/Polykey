@@ -211,6 +211,11 @@ type NotificationReadMessage = {
   order?: 'newest' | 'oldest';
 };
 
+type NotificationOutboxReadMessage = {
+  number?: number | 'all';
+  order?: 'newest' | 'oldest';
+};
+
 type NotificationMessage = {
   notification: Notification;
 };
@@ -374,6 +379,7 @@ export type {
   SuccessMessage,
   NotificationMessage,
   NotificationReadMessage,
+  NotificationOutboxReadMessage,
   NotificationSendMessage,
   VaultNameMessage,
   VaultIdMessage,

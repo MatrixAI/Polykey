@@ -47,6 +47,7 @@ import nodesListConnections from './nodesListConnections';
 import nodesPing from './nodesPing';
 import notificationsClear from './notificationsClear';
 import notificationsOutboxClear from './notificationsOutboxClear';
+import notificationsOutboxRead from './notificationsOutboxRead';
 import notificationsRead from './notificationsRead';
 import notificationsSend from './notificationsSend';
 import vaultsClone from './vaultsClone';
@@ -125,6 +126,7 @@ const clientManifest = {
   nodesPing,
   notificationsClear,
   notificationsOutboxClear,
+  notificationsOutboxRead,
   notificationsRead,
   notificationsSend,
   vaultsClone,

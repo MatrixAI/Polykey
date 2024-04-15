@@ -62,6 +62,7 @@ import NodesListConnections from './NodesListConnections';
 import NodesPing from './NodesPing';
 import NotificationsClear from './NotificationsClear';
 import NotificationsOutboxClear from './NotificationsOutboxClear';
+import NotificationsOutboxRead from './NotificationsOutboxRead';
 import NotificationsRead from './NotificationsRead';
 import NotificationsSend from './NotificationsSend';
 import VaultsClone from './VaultsClone';
@@ -165,6 +166,7 @@ const serverManifest = (container: {
     nodesPing: new NodesPing(container),
     notificationsClear: new NotificationsClear(container),
     notificationsOutboxClear: new NotificationsOutboxClear(container),
+    notificationsOutboxRead: new NotificationsOutboxRead(container),
     notificationsRead: new NotificationsRead(container),
     notificationsSend: new NotificationsSend(container),
     vaultsClone: new VaultsClone(container),
