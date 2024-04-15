@@ -31,10 +31,6 @@ import * as aclUtils from '../acl/utils';
 import { never } from '../utils';
 import * as utils from '../utils';
 
-// TODO: add tracking for the oldest claimID for a node.
-//  This needs to be removed if the node is removed.
-//  ALso possible undefined.
-
 interface GestaltGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
   new gestaltsErrors.ErrorGestaltsGraphRunning(),
