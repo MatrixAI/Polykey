@@ -41,7 +41,9 @@ class NotificationsSend extends UnaryHandler<
       type: 'General',
       message: input.message,
     };
-    await notificationsManager.sendNotification(nodeId, data, {
+    await notificationsManager.sendNotification({
+      nodeId,
+      data,
       blocking: input.blocking,
       retries: input.retries,
     });

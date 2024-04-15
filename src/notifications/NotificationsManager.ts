@@ -33,7 +33,9 @@ import { never } from '../utils/utils';
 
 const NOTIFICATIONS_COUNT_KEY = 'numNotifications';
 
-const abortSendNotificationTaskReason = Symbol('abort send notification task reason');
+const abortSendNotificationTaskReason = Symbol(
+  'abort send notification task reason',
+);
 
 /**
  * Manage Node Notifications between Gestalts
@@ -99,7 +101,10 @@ class NotificationsManager {
    * Map for hashing NotificationIds to find TaskIds.
    * The key must be NotificationIdEncoded, so that the string representation is hashed rather than the reference to the NotificationId object.
    */
-  protected outboxNotificationIdEncodedToTaskIdMap: Map<NotificationIdEncoded, TaskId>;
+  protected outboxNotificationIdEncodedToTaskIdMap: Map<
+    NotificationIdEncoded,
+    TaskId
+  >;
 
   /**
    * Top level stores inbox/outbox -> Notifications, numMessages
@@ -227,7 +232,9 @@ class NotificationsManager {
       } finally {
         // If a new task has been scheduled, set it in the map. If not, delete it.
         if (newTaskId == null) {
-          this.outboxNotificationIdEncodedToTaskIdMap.delete(notificationIdEncoded);
+          this.outboxNotificationIdEncodedToTaskIdMap.delete(
+            notificationIdEncoded,
+          );
           await tran.del(notificationKeyPath);
           const counter = await tran.get<number>(
             this.notificationsManagerOutboxNotificationsCounterDbPath,
@@ -237,7 +244,10 @@ class NotificationsManager {
             counter != null ? counter - 1 : 0,
           );
         } else {
-          this.outboxNotificationIdEncodedToTaskIdMap.set(notificationIdEncoded, newTaskId);
+          this.outboxNotificationIdEncodedToTaskIdMap.set(
+            notificationIdEncoded,
+            newTaskId,
+          );
         }
       }
     });
@@ -346,17 +356,17 @@ class NotificationsManager {
    * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async sendNotification(
-    nodeId: NodeId,
-    data: NotificationData,
-    {
-      blocking = false,
-      retries = 64,
-    }: {
-      blocking?: boolean;
-      retries?: number;
-    } = {},
-  ): Promise<void> {
+  public async sendNotification({
+    nodeId,
+    data,
+    blocking = false,
+    retries = 64,
+  }: {
+    nodeId: NodeId;
+    data: NotificationData;
+    blocking?: boolean;
+    retries?: number;
+  }): Promise<void> {
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     const notificationId = this.outboxNotificationIdGenerator();
     const notificationIdEncoded =
@@ -401,7 +411,10 @@ class NotificationsManager {
         },
         tran,
       );
-      this.outboxNotificationIdEncodedToTaskIdMap.set(notificationIdEncoded, pendingTask.id);
+      this.outboxNotificationIdEncodedToTaskIdMap.set(
+        notificationIdEncoded,
+        pendingTask.id,
+      );
     });
     if (blocking) {
       while (pendingTask != null) {
@@ -484,15 +497,15 @@ class NotificationsManager {
     return notifications;
   }
 
-  p
-
   /**
    * Clears the pending outbox notifications
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async clearOutboxNotifications(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.clearOutboxNotifications(tran));
+      return this.db.withTransactionF((tran) =>
+        this.clearOutboxNotifications(tran),
+      );
     }
 
     await tran.lock(
@@ -522,7 +535,9 @@ class NotificationsManager {
     if (numMessages === undefined) {
       throw new notificationsErrors.ErrorNotificationsDb();
     }
-    const taskId = this.outboxNotificationIdEncodedToTaskIdMap.get(notificationsUtils.encodeNotificationId(notificationId))!;
+    const taskId = this.outboxNotificationIdEncodedToTaskIdMap.get(
+      notificationsUtils.encodeNotificationId(notificationId),
+    )!;
     const task = (await this.taskManager.getTask(taskId, false, tran))!;
     task.cancel(abortSendNotificationTaskReason);
     await tran.del([

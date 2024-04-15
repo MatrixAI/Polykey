@@ -235,30 +235,24 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      generalNotification,
-      {
-        blocking: true,
-        retries: 0,
-      },
-    );
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      gestaltNotification,
-      {
-        blocking: true,
-        retries: 0,
-      },
-    );
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      vaultNotification,
-      {
-        blocking: true,
-        retries: 0,
-      },
-    );
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: generalNotification,
+      blocking: true,
+      retries: 0,
+    });
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: gestaltNotification,
+      blocking: true,
+      retries: 0,
+    });
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: vaultNotification,
+      blocking: true,
+      retries: 0,
+    });
     const receivedNotifications =
       await receiver.notificationsManager.readNotifications();
     expect(receivedNotifications).toHaveLength(3);
@@ -308,36 +302,30 @@ describe('NotificationsManager', () => {
     };
 
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        generalNotification,
-        {
-          blocking: true,
-          retries: 0,
-        },
-      ),
+      notificationsManager.sendNotification({
+        nodeId: receiver.keyRing.getNodeId(),
+        data: generalNotification,
+        blocking: true,
+        retries: 0,
+      }),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        gestaltNotification,
-        {
-          blocking: true,
-          retries: 0,
-        },
-      ),
+      notificationsManager.sendNotification({
+        nodeId: receiver.keyRing.getNodeId(),
+        data: gestaltNotification,
+        blocking: true,
+        retries: 0,
+      }),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        vaultNotification,
-        {
-          blocking: true,
-          retries: 0,
-        },
-      ),
+      notificationsManager.sendNotification({
+        nodeId: receiver.keyRing.getNodeId(),
+        data: vaultNotification,
+        blocking: true,
+        retries: 0,
+      }),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     const receivedNotifications =

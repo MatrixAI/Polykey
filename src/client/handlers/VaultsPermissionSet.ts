@@ -74,11 +74,14 @@ class VaultsPermissionSet extends UnaryHandler<
         actionsSet[action] = null;
       }
       // Sending notification
-      await notificationsManager.sendNotification(nodeId, {
-        type: 'VaultShare',
-        vaultId: vaultsUtils.encodeVaultId(vaultId),
-        vaultName: vaultMeta.vaultName,
-        actions: actionsSet,
+      await notificationsManager.sendNotification({
+        nodeId,
+        data: {
+          type: 'VaultShare',
+          vaultId: vaultsUtils.encodeVaultId(vaultId),
+          vaultName: vaultMeta.vaultName,
+          actions: actionsSet,
+        },
       });
     });
     return {
