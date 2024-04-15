@@ -21,7 +21,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { fc, testProp } from '@fast-check/jest';
+import { fc, test } from '@fast-check/jest';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import ACL from '@/acl/ACL';
@@ -32,7 +32,9 @@ import * as keysUtils from '@/keys/utils';
 import Token from '@/tokens/Token';
 import { encodeGestaltNodeId, encodeGestaltIdentityId } from '@/gestalts/utils';
 import * as nodesUtils from '@/nodes/utils';
+import * as claimsUtils from '@/claims/utils';
 import * as testsGestaltsUtils from './utils';
+import * as testsUtils from '../utils';
 import * as testsIdentitiesUtils from '../identities/utils';
 import * as testsKeysUtils from '../keys/utils';
 import * as ids from '../../src/ids';
@@ -265,9 +267,8 @@ describe('GestaltGraph', () => {
       gestaltsErrors.ErrorGestaltsGraphNotRunning,
     );
   });
-  testProp(
+  test.prop([gestaltNodeInfoComposedArb])(
     'getNode, setNode and unsetNode',
-    [gestaltNodeInfoComposedArb],
     async (gestaltNodeInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -289,9 +290,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([gestaltNodeInfoComposedArb])(
     'setNode updates node information',
-    [gestaltNodeInfoComposedArb],
     async (gestaltNodeInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -317,9 +317,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([linkNodeComposedArb])(
     'linkNodeAndNode and unlinkNodeAndNode',
-    [linkNodeComposedArb],
     async ({ gestaltNodeInfo1, gestaltNodeInfo2, linkNode }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -372,9 +371,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([gestaltIdentityInfoComposedArb])(
     'get, set and unset identity',
-    [gestaltIdentityInfoComposedArb],
     async (gestaltIdentityInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -403,9 +401,8 @@ describe('GestaltGraph', () => {
       }
     },
   );
-  testProp(
+  test.prop([gestaltIdentityInfoComposedArb])(
     'setIdentity updates identity info',
-    [gestaltIdentityInfoComposedArb],
     async (gestaltIdentityInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -444,9 +441,8 @@ describe('GestaltGraph', () => {
       }
     },
   );
-  testProp(
+  test.prop([linkIdentityComposedArb])(
     'linkNodeAndIdentity and unlinkNodeAndIdentity',
-    [linkIdentityComposedArb],
     async ({ gestaltNodeInfo, gestaltIdentityInfo, linkIdentity }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -500,9 +496,8 @@ describe('GestaltGraph', () => {
       }
     },
   );
-  testProp(
+  test.prop([gestaltInfoComposedArb])(
     'getVertex, setVertex and unsetVertex',
-    [gestaltInfoComposedArb],
     async (gestaltInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -523,9 +518,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([gestaltInfoComposedArb])(
     'setVertex updates vertex information',
-    [gestaltInfoComposedArb],
     async (gestaltInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -553,9 +547,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([linkVertexComposedArb])(
     'linkVertexAndVertex and unlinkVertexAndVertex',
-    [linkVertexComposedArb],
     async ({ gestaltVertexInfo1, gestaltVertexInfo2, gestaltLink }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -630,9 +623,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([gestaltNodeInfoComposedArb])(
     'getGestaltByNode',
-    [gestaltNodeInfoComposedArb],
     async (gestaltNodeInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -662,9 +654,8 @@ describe('GestaltGraph', () => {
       });
     },
   );
-  testProp(
+  test.prop([gestaltIdentityInfoComposedArb])(
     'getGestaltByIdentity',
-    [gestaltIdentityInfoComposedArb],
     async (gestaltIdentityInfo) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -697,7 +688,7 @@ describe('GestaltGraph', () => {
       });
     },
   );
-  testProp('getGestalt', [gestaltInfoComposedArb], async (gestaltInfo) => {
+  test.prop([gestaltInfoComposedArb])('getGestalt', async (gestaltInfo) => {
     const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
@@ -750,50 +741,48 @@ describe('GestaltGraph', () => {
         fail('invalid type');
     }
   });
-  testProp(
-    'getGestalts with nodes',
-    [fc.array(gestaltNodeInfoComposedArb, { minLength: 2, maxLength: 10 })],
-    async (gestaltNodeInfos) => {
-      const ids = new Set<string>();
-      for (const gestaltNodeInfo of gestaltNodeInfos) {
-        ids.add(nodesUtils.encodeNodeId(gestaltNodeInfo.nodeId));
-      }
-      fc.pre(ids.size === gestaltNodeInfos.length);
-      const gestaltGraph = await GestaltGraph.createGestaltGraph({
-        db,
-        acl,
-        logger,
-        fresh: true,
+  test.prop([
+    fc.array(gestaltNodeInfoComposedArb, { minLength: 2, maxLength: 10 }),
+  ])('getGestalts with nodes', async (gestaltNodeInfos) => {
+    const ids = new Set<string>();
+    for (const gestaltNodeInfo of gestaltNodeInfos) {
+      ids.add(nodesUtils.encodeNodeId(gestaltNodeInfo.nodeId));
+    }
+    fc.pre(ids.size === gestaltNodeInfos.length);
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+      fresh: true,
+    });
+    for (const gestaltNodeInfo of gestaltNodeInfos) {
+      await gestaltGraph.setNode(gestaltNodeInfo);
+    }
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    expect(gestalts).toHaveLength(gestaltNodeInfos.length);
+    for (const gestalt of gestalts) {
+      const gestaltId = Object.keys(gestalt.nodes)[0];
+      const [, nodeId] = gestaltsUtils.decodeGestaltNodeId(gestaltId)!;
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltId]: {},
+        },
+        nodes: {
+          [gestaltId]: { nodeId },
+        },
+        identities: {},
       });
-      for (const gestaltNodeInfo of gestaltNodeInfos) {
-        await gestaltGraph.setNode(gestaltNodeInfo);
-      }
-      const gestalts = await AsyncIterable.as(
-        gestaltGraph.getGestalts(),
-      ).toArray();
-      expect(gestalts).toHaveLength(gestaltNodeInfos.length);
-      for (const gestalt of gestalts) {
-        const gestaltId = Object.keys(gestalt.nodes)[0];
-        const [, nodeId] = gestaltsUtils.decodeGestaltNodeId(gestaltId)!;
-        expect(gestalt).toMatchObject({
-          matrix: {
-            [gestaltId]: {},
-          },
-          nodes: {
-            [gestaltId]: { nodeId },
-          },
-          identities: {},
-        });
-      }
-    },
-  );
-  testProp(
+    }
+  });
+  test.prop([
+    fc
+      .array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 })
+      .noShrink(),
+  ])(
     'getGestalts with identities',
-    [
-      fc
-        .array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 })
-        .noShrink(),
-    ],
+
     async (gestaltIdentityInfos) => {
       const ids = new Set<string>();
       for (const gestaltIdentityInfo of gestaltIdentityInfos) {
@@ -834,80 +823,77 @@ describe('GestaltGraph', () => {
       }
     },
   );
-  testProp(
-    'getGestalts with nodes and identities',
-    [fc.array(gestaltInfoComposedArb, { minLength: 2, maxLength: 10 })],
-    async (gestaltInfos) => {
-      const ids = new Set<string>();
-      for (const gestaltInfo of gestaltInfos) {
-        const [type, data] = gestaltInfo;
-        switch (type) {
-          case 'identity':
-            ids.add(data.providerId + data.identityId);
-            break;
-          case 'node':
-            ids.add(nodesUtils.encodeNodeId(data.nodeId));
-            break;
-          default:
-            break;
-        }
+  test.prop([
+    fc.array(gestaltInfoComposedArb, { minLength: 2, maxLength: 10 }),
+  ])('getGestalts with nodes and identities', async (gestaltInfos) => {
+    const ids = new Set<string>();
+    for (const gestaltInfo of gestaltInfos) {
+      const [type, data] = gestaltInfo;
+      switch (type) {
+        case 'identity':
+          ids.add(data.providerId + data.identityId);
+          break;
+        case 'node':
+          ids.add(nodesUtils.encodeNodeId(data.nodeId));
+          break;
+        default:
+          break;
       }
-      fc.pre(ids.size === gestaltInfos.length);
-      const gestaltGraph = await GestaltGraph.createGestaltGraph({
-        db,
-        acl,
-        logger,
-        fresh: true,
-      });
-      for (const gestaltinfo of gestaltInfos) {
-        await gestaltGraph.setVertex(gestaltinfo);
+    }
+    fc.pre(ids.size === gestaltInfos.length);
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+      fresh: true,
+    });
+    for (const gestaltinfo of gestaltInfos) {
+      await gestaltGraph.setVertex(gestaltinfo);
+    }
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    expect(gestalts).toHaveLength(gestaltInfos.length);
+    for (const gestalt of gestalts) {
+      const gestaltId = Object.keys(gestalt.matrix)[0];
+      const [type, id] = gestaltsUtils.decodeGestaltId(gestaltId)!;
+      switch (type) {
+        case 'node':
+          {
+            expect(gestalt).toMatchObject({
+              matrix: {
+                [gestaltId]: {},
+              },
+              nodes: {
+                [gestaltId]: { nodeId: id },
+              },
+              identities: {},
+            });
+          }
+          break;
+        case 'identity':
+          {
+            expect(gestalt).toMatchObject({
+              matrix: {
+                [gestaltId]: {},
+              },
+              nodes: {},
+              identities: {
+                [gestaltId]: {
+                  providerId: id[0],
+                  identityId: id[1],
+                },
+              },
+            });
+          }
+          break;
+        default:
+          fail('invalid type');
       }
-      const gestalts = await AsyncIterable.as(
-        gestaltGraph.getGestalts(),
-      ).toArray();
-      expect(gestalts).toHaveLength(gestaltInfos.length);
-      for (const gestalt of gestalts) {
-        const gestaltId = Object.keys(gestalt.matrix)[0];
-        const [type, id] = gestaltsUtils.decodeGestaltId(gestaltId)!;
-        switch (type) {
-          case 'node':
-            {
-              expect(gestalt).toMatchObject({
-                matrix: {
-                  [gestaltId]: {},
-                },
-                nodes: {
-                  [gestaltId]: { nodeId: id },
-                },
-                identities: {},
-              });
-            }
-            break;
-          case 'identity':
-            {
-              expect(gestalt).toMatchObject({
-                matrix: {
-                  [gestaltId]: {},
-                },
-                nodes: {},
-                identities: {
-                  [gestaltId]: {
-                    providerId: id[0],
-                    identityId: id[1],
-                  },
-                },
-              });
-            }
-            break;
-          default:
-            fail('invalid type');
-        }
-      }
-    },
-  );
-  testProp(
+    }
+  });
+  test.prop([linkNodeComposedArb])(
     'getGestalt with node links',
-    [linkNodeComposedArb],
     async ({ gestaltNodeInfo1, gestaltNodeInfo2, linkNode }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -967,9 +953,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([linkIdentityComposedArb])(
     'getGestalt with identity links',
-    [linkIdentityComposedArb],
     async ({ gestaltNodeInfo, gestaltIdentityInfo, linkIdentity }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -1030,9 +1015,8 @@ describe('GestaltGraph', () => {
       await gestaltGraph.stop();
     },
   );
-  testProp(
+  test.prop([linkVertexComposedArb])(
     'getGestalt with node and identity links',
-    [linkVertexComposedArb],
     async ({ gestaltVertexInfo1, gestaltVertexInfo2, gestaltLink }) => {
       const gestaltGraph = await GestaltGraph.createGestaltGraph({
         db,
@@ -1362,37 +1346,62 @@ describe('GestaltGraph', () => {
         })
         .noShrink();
 
-    testProp(
-      'model',
-      [altCommandsArb],
-      async (cmds) => {
-        await acl.start({ fresh: true });
-        const gestaltGraph = await GestaltGraph.createGestaltGraph({
-          db,
-          acl,
-          logger,
-          fresh: true,
-        });
-        try {
-          const model: testsGestaltsUtils.GestaltGraphModel = {
-            matrix: {},
-            nodes: {},
-            identities: {},
-            permissions: {},
+    test.prop([altCommandsArb], { numRuns: 20 })('model', async (cmds) => {
+      await acl.start({ fresh: true });
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+        fresh: true,
+      });
+      try {
+        const model: testsGestaltsUtils.GestaltGraphModel = {
+          matrix: {},
+          nodes: {},
+          identities: {},
+          permissions: {},
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: gestaltGraph,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: gestaltGraph,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await gestaltGraph.stop();
-          await acl.stop();
-        }
-      },
-      { numRuns: 20 },
-    );
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await gestaltGraph.stop();
+        await acl.stop();
+      }
+    });
+  });
+  test('Should only set the newest ClaimId', async () => {
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+      fresh: true,
+    });
+
+    // Creating 3 claimIDs.
+    const nodeId = testsUtils.generateRandomNodeId();
+    const claimIdGenerator = claimsUtils.createClaimIdGenerator(nodeId);
+    const claimId1 = claimIdGenerator();
+    const claimId2 = claimIdGenerator();
+    const claimId3 = claimIdGenerator();
+
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId1);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId1.toMultibase('base32hex'));
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId3);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId3.toMultibase('base32hex'));
+    await gestaltGraph.setClaimIdNewest(nodeId, claimId2);
+    expect(
+      (await gestaltGraph.getClaimIdNewest(nodeId))?.toMultibase('base32hex'),
+    ).toEqual(claimId3.toMultibase('base32hex'));
+
+    await gestaltGraph.stop();
   });
 });

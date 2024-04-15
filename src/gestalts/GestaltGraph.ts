@@ -13,8 +13,9 @@ import type {
   GestaltInfo,
   GestaltLinkIdentity,
   GestaltId,
+  GestaltIdEncoded,
 } from './types';
-import type { NodeId, ProviderIdentityId } from '../ids/types';
+import type { ClaimId, NodeId, ProviderIdentityId } from '../ids/types';
 import type ACL from '../acl/ACL';
 import type { GestaltLinkJSON } from './types';
 import Logger from '@matrixai/logger';
@@ -28,6 +29,11 @@ import * as gestaltsErrors from './errors';
 import * as gestaltsEvents from './events';
 import * as aclUtils from '../acl/utils';
 import { never } from '../utils';
+import * as utils from '../utils';
+
+// TODO: add tracking for the oldest claimID for a node.
+//  This needs to be removed if the node is removed.
+//  ALso possible undefined.
 
 interface GestaltGraph extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -104,6 +110,29 @@ class GestaltGraph {
   public readonly dbIdentitiesPath: LevelPath = [
     this.constructor.name,
     'identities',
+  ];
+
+  /**
+   * Last processed collection
+   * `GestaltGraph/VertexProcessedTime/{GestaltIdEncoded} -> number`
+   */
+  protected vertexProcessedTimePath: LevelPath = [
+    this.constructor.name,
+    'vertexProcessedTime',
+  ];
+
+  /**
+   * Last processed collection
+   * `GestaltGraph/vertexProcessedTimeOrder/{number}/{GestaltIdEncoded} -> gestaltIdEncoded`
+   */
+  protected vertexProcessedTimeOrderPath: LevelPath = [
+    this.constructor.name,
+    'vertexProcessedTimeOrder',
+  ];
+
+  protected nodeClaimIdOldestPath: LevelPath = [
+    this.constructor.name,
+    'nodeClaimIdOldestPath',
   ];
 
   protected generateGestaltLinkId: () => GestaltLinkId;
@@ -308,6 +337,194 @@ class GestaltGraph {
       default:
         never();
     }
+  }
+
+  /**
+   * Updates the last processed time in the database for the given vertex
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async setVertexProcessedTime(
+    vertex: GestaltId,
+    processedTime: number,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setVertexProcessedTime(vertex, processedTime, tran),
+      );
+    }
+
+    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
+    await tran.lock(
+      [this.constructor.name, 'vertexProcessedTime', gestaltIdEncoded].join(''),
+    );
+
+    await tran.put(
+      [...this.vertexProcessedTimePath, gestaltIdEncoded],
+      processedTime,
+    );
+    await tran.put(
+      [
+        ...this.vertexProcessedTimeOrderPath,
+        utils.lexiPackBuffer(processedTime),
+        gestaltIdEncoded,
+      ],
+      gestaltIdEncoded,
+    );
+  }
+
+  /**
+   * Removes the last processed time for a vertex
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async unsetVertexProcessedTime(
+    vertex: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.unsetVertexProcessedTime(vertex, tran),
+      );
+    }
+
+    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
+    await tran.lock(
+      [this.constructor.name, 'vertexProcessedTime', gestaltIdEncoded].join(''),
+    );
+
+    const processedTime = await tran.get<number>([
+      ...this.vertexProcessedTimePath,
+      gestaltIdEncoded,
+    ]);
+    if (processedTime == null) return;
+    await tran.del([...this.vertexProcessedTimePath, gestaltIdEncoded]);
+    await tran.del([
+      ...this.vertexProcessedTimeOrderPath,
+      utils.lexiPackBuffer(processedTime),
+      gestaltIdEncoded,
+    ]);
+  }
+
+  /**
+   * Gets the last processed time for a vertex
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async getVertexProcessedTime(
+    vertex: GestaltId,
+    tran?: DBTransaction,
+  ): Promise<number | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getVertexProcessedTime(vertex, tran),
+      );
+    }
+
+    const gestaltIdEncoded = gestaltsUtils.encodeGestaltId(vertex);
+    return await tran.get<number>([
+      ...this.vertexProcessedTimePath,
+      gestaltIdEncoded,
+    ]);
+  }
+
+  /**
+   * Gets the last processed time for a vertex
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async *getVertexProcessedTimes(
+    {
+      order = 'asc',
+      seek,
+      limit,
+    }: {
+      order?: 'asc' | 'desc';
+      seek?: number;
+      limit?: number;
+    } = {},
+    tran?: DBTransaction,
+  ): AsyncGenerator<[GestaltId, number]> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.getVertexProcessedTimes({ order, seek, limit }, tran),
+      );
+    }
+
+    const iterator = tran.iterator<GestaltIdEncoded>(
+      this.vertexProcessedTimeOrderPath,
+      {
+        keyAsBuffer: true,
+        keys: true,
+        values: true,
+        valueAsBuffer: false,
+        reverse: order !== 'asc',
+        lte:
+          seek != null
+            ? [utils.lexiPackBuffer(seek), Buffer.alloc(1, 0)]
+            : undefined,
+      },
+    );
+    for await (const [path, gestaltIdEncoded] of iterator) {
+      const lastProcessedTime = utils.lexiUnpackBuffer(path[0] as Buffer);
+      if (lastProcessedTime == null) {
+        never('lastProcessedTime should be valid here');
+      }
+      const gestaltId = gestaltsUtils.decodeGestaltId(gestaltIdEncoded);
+      if (gestaltId == null) never('GestaltId should be valid here');
+      yield [gestaltId, lastProcessedTime];
+    }
+  }
+
+  /**
+   * Updates the newest `ClaimId` for a node if it's newer than the current id stored
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async setClaimIdNewest(
+    nodeId: NodeId,
+    claimId: ClaimId,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.setClaimIdNewest(nodeId, claimId, tran),
+      );
+    }
+
+    await tran.lock(
+      [...this.nodeClaimIdOldestPath, nodeId.toString()].join(''),
+    );
+    // Getting existing ClaimId
+    const claimIdExisting = await this.getClaimIdNewest(nodeId, tran);
+    // If an old claimId already exists and is older, then we don't update
+    if (
+      claimIdExisting != null &&
+      Buffer.compare(claimIdExisting, claimId) === 1
+    ) {
+      return;
+    }
+    // Setting new one
+    await tran.put(
+      [...this.nodeClaimIdOldestPath, nodeId.toBuffer()],
+      claimId.toBuffer(),
+      true,
+    );
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  public async getClaimIdNewest(
+    nodeId: NodeId,
+    tran?: DBTransaction,
+  ): Promise<ClaimId | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getClaimIdNewest(nodeId, tran),
+      );
+    }
+
+    const claimIdRaw = await tran.get(
+      [...this.nodeClaimIdOldestPath, nodeId.toBuffer()],
+      true,
+    );
+    if (claimIdRaw == null) return;
+    return IdInternal.fromBuffer<ClaimId>(claimIdRaw);
   }
 
   // LINKING AND UNLINKING VERTICES

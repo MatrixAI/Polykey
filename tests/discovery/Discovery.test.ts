@@ -473,6 +473,29 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
+  test('processed vertices are queued for rediscovery', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+      fresh: true,
+    });
+    await taskManager.startProcessing();
+    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
+    let existingTasks: number = 0;
+    do {
+      existingTasks = await discovery.waitForDiscoveryTasks();
+    } while (existingTasks > 0);
+    await discovery.waitForDiscoveryTasks(true);
+
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
   test('should skip recently discovered vertices', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
@@ -538,7 +561,7 @@ describe('Discovery', () => {
     do {
       existingTasks = await discovery.waitForDiscoveryTasks();
     } while (existingTasks > 0);
-    // Only the queued vertex should be processed
+    // All vertices should be reprocessed
     expect(processVertexMock).toHaveBeenCalledTimes(3);
 
     await taskManager.stopProcessing();
