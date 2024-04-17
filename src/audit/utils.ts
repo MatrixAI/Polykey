@@ -1,15 +1,8 @@
 import type {
   AuditEventNodeConnectionForward,
   AuditEventNodeConnectionReverse,
-  AuditEventDiscoveryVertexQueued,
-  AuditEventDiscoveryVertexProcessed,
-  AuditEventDiscoveryVertexFailed,
-  AuditEventDiscoveryVertexCulled,
-  AuditEventDiscoveryVertexCancelled,
-  AuditEventDiscoveryCheckRediscovery,
 } from './types';
 import type * as nodesEvents from '../nodes/events';
-import type * as discoveryEvents from '../discovery/events';
 import type { AuditEventId } from '../ids';
 import { IdInternal } from '@matrixai/id';
 import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
@@ -84,107 +77,11 @@ function fromEventNodeConnectionManagerConnectionForward(
   };
 }
 
-// Discovery
-
-const discoveryVertexQueuedTopicPath = [
-  'discovery',
-  'vertex',
-  'queued',
-] as const;
-
-function fromEventDiscoveryVertexQueued(
-  evt: discoveryEvents.EventDiscoveryVertexQueued,
-): AuditEventDiscoveryVertexQueued['data'] {
-  return {
-    vertex: evt.detail.vertex,
-    parent: evt.detail.parent,
-  };
-}
-
-const discoveryVertexProcessedTopicPath = [
-  'discovery',
-  'vertex',
-  'processed',
-] as const;
-
-function fromEventDiscoveryVertexProcessed(
-  evt: discoveryEvents.EventDiscoveryVertexProcessed,
-): AuditEventDiscoveryVertexProcessed['data'] {
-  return {
-    vertex: evt.detail.vertex,
-    parent: evt.detail.parent,
-  };
-}
-
-const discoveryVertexFailedTopicPath = [
-  'discovery',
-  'vertex',
-  'failed',
-] as const;
-
-function fromEventDiscoveryVertexFailed(
-  evt: discoveryEvents.EventDiscoveryVertexFailed,
-): AuditEventDiscoveryVertexFailed['data'] {
-  return {
-    vertex: evt.detail.vertex,
-    parent: evt.detail.parent,
-    message: evt.detail.message,
-    code: evt.detail.code,
-  };
-}
-
-const discoveryVertexCulledTopicPath = [
-  'discovery',
-  'vertex',
-  'culled',
-] as const;
-
-function fromEventDiscoveryVertexCulled(
-  evt: discoveryEvents.EventDiscoveryVertexCulled,
-): AuditEventDiscoveryVertexCulled['data'] {
-  return {
-    vertex: evt.detail.vertex,
-    parent: evt.detail.parent,
-  };
-}
-
-const discoveryVertexCancelledTopicPath = [
-  'discovery',
-  'vertex',
-  'cancelled',
-] as const;
-
-function fromEventDiscoveryVertexCancelled(
-  evt: discoveryEvents.EventDiscoveryVertexCancelled,
-): AuditEventDiscoveryVertexCancelled['data'] {
-  return {
-    vertex: evt.detail.vertex,
-    parent: evt.detail.parent,
-  };
-}
-
-const discoveryCheckRediscoveryTopicPath = [
-  'discovery',
-  'checkRediscovery',
-] as const;
-
-function fromEventDiscoveryCheckRediscovery(
-  _evt: discoveryEvents.EventDiscoveryCheckRediscovery,
-): AuditEventDiscoveryCheckRediscovery['data'] {
-  return {};
-}
-
 const nodeGraphTopicPath = ['node', 'graph'] as const;
 
 const topicPaths = [
   nodeConnectionForwardTopicPath,
   nodeConnectionReverseTopicPath,
-  discoveryVertexQueuedTopicPath,
-  discoveryVertexProcessedTopicPath,
-  discoveryVertexFailedTopicPath,
-  discoveryVertexCulledTopicPath,
-  discoveryVertexCancelledTopicPath,
-  discoveryCheckRediscoveryTopicPath,
 ] as const;
 
 // Metrics
@@ -220,18 +117,6 @@ export {
   fromEventNodeConnectionManagerConnectionReverse,
   nodeConnectionForwardTopicPath,
   fromEventNodeConnectionManagerConnectionForward,
-  discoveryVertexQueuedTopicPath,
-  fromEventDiscoveryVertexQueued,
-  discoveryVertexProcessedTopicPath,
-  fromEventDiscoveryVertexProcessed,
-  discoveryVertexFailedTopicPath,
-  fromEventDiscoveryVertexFailed,
-  discoveryVertexCulledTopicPath,
-  fromEventDiscoveryVertexCulled,
-  discoveryVertexCancelledTopicPath,
-  fromEventDiscoveryVertexCancelled,
-  discoveryCheckRediscoveryTopicPath,
-  fromEventDiscoveryCheckRediscovery,
   nodeGraphTopicPath,
   topicPaths,
   nodeConnectionMetricPath,

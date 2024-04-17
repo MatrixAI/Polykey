@@ -5,19 +5,16 @@ import type { SignedClaim } from '../../src/claims/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { DiscoveryQueueInfo } from '@/discovery/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { EventAll } from '@matrixai/events';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
-import * as discoveryEvents from '@/discovery/events';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
@@ -568,70 +565,6 @@ describe('Discovery', () => {
     expect(processVertexMock).toHaveBeenCalledTimes(3);
 
     await taskManager.stopProcessing();
-    await discovery.stop();
-    await discovery.destroy();
-  });
-  test('discovery events', async () => {
-    const discovery = await Discovery.createDiscovery({
-      db,
-      keyRing,
-      gestaltGraph,
-      identitiesManager,
-      nodeManager,
-      taskManager,
-      logger,
-      fresh: true,
-    });
-    const eventMap: Map<string, number> = new Map();
-    discovery.addEventListener(EventAll.name, async (evt: EventAll) => {
-      const event = evt.detail;
-      const eventName = event.constructor.name;
-      eventMap.set(eventName, (eventMap.get(eventName) ?? 0) + 1);
-    });
-    await taskManager.startProcessing();
-    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
-
-    // Just checking basic functionality of queued and processed
-    expect(eventMap.get(discoveryEvents.EventDiscoveryVertexQueued.name)).toBe(
-      3,
-    );
-    expect(
-      eventMap.get(discoveryEvents.EventDiscoveryVertexProcessed.name),
-    ).toBe(3);
-
-    await taskManager.stopProcessing();
-    await discovery.stop();
-    await discovery.destroy();
-  });
-  test('can list discovery tasks', async () => {
-    const discovery = await Discovery.createDiscovery({
-      db,
-      keyRing,
-      gestaltGraph,
-      identitiesManager,
-      nodeManager,
-      taskManager,
-      logger,
-    });
-
-    // Queue a bunch of vertices
-    await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    await discovery.queueDiscoveryByNode(nodeB.keyRing.getNodeId());
-    await discovery.queueDiscoveryByIdentity(
-      testToken.providerId,
-      testToken.identityId,
-    );
-
-    const results: Array<DiscoveryQueueInfo> = [];
-    for await (const queueInfo of discovery.getDiscoveryQueue()) {
-      results.push(queueInfo);
-    }
-    expect(results).toHaveLength(3);
-
     await discovery.stop();
     await discovery.destroy();
   });

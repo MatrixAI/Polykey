@@ -1,6 +1,6 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
+import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId } from '../nodes/types';
 import type NodeManager from '../nodes/NodeManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
@@ -22,7 +22,7 @@ import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
 import type TaskManager from '../tasks/TaskManager';
 import type { Task, TaskHandler, TaskHandlerId } from '../tasks/types';
 import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
-import type { DiscoveryQueueInfo } from './types';
+import type { ContextTimedInput } from '@matrixai/contexts/dist/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -32,7 +32,6 @@ import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
 import * as discoveryErrors from './errors';
 import * as discoveryEvents from './events';
 import * as tasksErrors from '../tasks/errors';
-import * as tasksUtils from '../tasks/utils';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
@@ -148,21 +147,12 @@ class Discovery {
     _taskInfo,
     vertex: GestaltIdEncoded,
     lastProcessedCutoffTime: number | null,
-    parent: GestaltIdEncoded | null,
   ) => {
     try {
       await this.processVertex(
         vertex,
         lastProcessedCutoffTime ?? undefined,
         ctx,
-      );
-      this.dispatchEvent(
-        new discoveryEvents.EventDiscoveryVertexProcessed({
-          detail: {
-            vertex,
-            parent: parent ?? undefined,
-          },
-        }),
       );
     } catch (e) {
       if (
@@ -172,28 +162,13 @@ class Discovery {
         // We need to recreate the task for the vertex
         const vertexId = gestaltsUtils.decodeGestaltId(vertex);
         if (vertexId == null) never();
-        await this.scheduleDiscoveryForVertex(
-          vertexId,
-          undefined,
-          undefined,
-          gestaltsUtils.decodeGestaltId(parent ?? undefined),
-        );
+        await this.scheduleDiscoveryForVertex(vertexId);
         return;
       }
       // Aborting a duplicate task is not an error
       if (e === abortSingletonTaskReason) return;
       // Destroying tasks is not an error
       if (e === discoveryDestroyedTaskReason) return;
-      this.dispatchEvent(
-        new discoveryEvents.EventDiscoveryVertexFailed({
-          detail: {
-            vertex,
-            parent: parent ?? undefined,
-            message: e.message,
-            code: e.code,
-          },
-        }),
-      );
       throw e;
     }
   };
@@ -349,37 +324,6 @@ class Discovery {
     );
   }
 
-  /**
-   * This returns the discovery queue
-   */
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
-  public async *getDiscoveryQueue(
-    tran?: DBTransaction,
-  ): AsyncGenerator<DiscoveryQueueInfo, void, void> {
-    if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.getDiscoveryQueue(tran),
-      );
-    }
-    for await (const task of this.taskManager.getTasks(
-      'asc',
-      true,
-      [this.constructor.name, this.discoverVertexHandlerId],
-      tran,
-    )) {
-      yield {
-        id: tasksUtils.encodeTaskId(task.id),
-        status: task.status,
-        parameters: task.parameters,
-        delay: task.delay,
-        deadline: task.deadline,
-        priority: task.priority,
-        created: task.created.getTime(),
-        scheduled: task.scheduled.getTime(),
-      };
-    }
-  }
-
   protected processVertex(
     vertex: GestaltIdEncoded,
     lastProcessedCutoffTime?: number,
@@ -527,7 +471,6 @@ class Discovery {
         linkedGestaltId,
         undefined,
         lastProcessedCutoffTime,
-        ['node', nodeId],
       );
     }
   }
@@ -614,7 +557,6 @@ class Discovery {
         identityGestaltId,
         undefined,
         lastProcessedCutoffTime,
-        ['node', nodeId],
       );
     }
   }
@@ -674,7 +616,6 @@ class Discovery {
           gestaltNodeId,
           undefined,
           lastProcessedCutoffTime,
-          ['identity', providerIdentityId],
         );
       }
     }
@@ -731,7 +672,6 @@ class Discovery {
     vertex: GestaltId,
     delay?: number,
     lastProcessedCutoffTime?: number,
-    parent?: GestaltId,
     tran?: DBTransaction,
   ) {
     if (tran == null) {
@@ -740,7 +680,6 @@ class Discovery {
           vertex,
           delay,
           lastProcessedCutoffTime,
-          parent,
           tran,
         ),
       );
@@ -768,14 +707,6 @@ class Discovery {
       }
       // Any extra tasks should be cancelled, this shouldn't normally happen
       task.cancel(abortSingletonTaskReason);
-      this.dispatchEvent(
-        new discoveryEvents.EventDiscoveryVertexCancelled({
-          detail: {
-            vertex: task.parameters[0] as GestaltIdEncoded,
-            parent: task.parameters[2] as GestaltIdEncoded,
-          },
-        }),
-      );
     }
     // Only create if it doesn't exist
     if (taskExisting != null) return;
@@ -793,15 +724,6 @@ class Discovery {
         delay,
       },
       tran,
-    );
-    this.dispatchEvent(
-      new discoveryEvents.EventDiscoveryVertexQueued({
-        detail: {
-          vertex: gestaltIdEncoded,
-          parent:
-            parent != null ? gestaltsUtils.encodeGestaltId(parent) : undefined,
-        },
-      }),
     );
   }
 
@@ -900,8 +822,6 @@ class Discovery {
       );
     }
 
-    this.dispatchEvent(new discoveryEvents.EventDiscoveryCheckRediscovery());
-
     const staleVertexCutoff = Date.now() - this.staleVertexThresholdTime;
     const gestaltIds: Array<[GestaltIdEncoded, number]> = [];
     for await (const [
@@ -934,13 +854,6 @@ class Discovery {
       if (lastProcessedTime < staleVertexCutoff) {
         await this.gestaltGraph.unsetVertexProcessedTime(
           gestaltsUtils.decodeGestaltId(gestaltIdEncoded)!,
-        );
-        this.dispatchEvent(
-          new discoveryEvents.EventDiscoveryVertexCulled({
-            detail: {
-              vertex: gestaltIdEncoded,
-            },
-          }),
         );
       }
       let taskExisting: Task | null = null;

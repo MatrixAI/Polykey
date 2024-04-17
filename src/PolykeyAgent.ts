@@ -445,7 +445,6 @@ class PolykeyAgent {
       audit = await Audit.createAudit({
         db,
         nodeConnectionManager,
-        discovery,
         fresh,
         logger: logger.getChild(Audit.name),
       });
