@@ -64,6 +64,7 @@ describe(Audit.name, () => {
     const audit = await Audit.createAudit({
       db,
       nodeConnectionManager: new EventTarget() as any,
+      discovery: new EventTarget() as any,
       logger,
     });
     await expect(async () => {
@@ -88,6 +89,7 @@ describe(Audit.name, () => {
     const audit = await Audit.createAudit({
       db,
       nodeConnectionManager: new EventTarget() as any,
+      discovery: new EventTarget() as any,
       logger,
     });
     // @ts-ignore: kidnap protected
@@ -133,6 +135,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -173,6 +176,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -223,6 +227,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -257,6 +262,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -289,6 +295,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -316,7 +323,10 @@ describe(Audit.name, () => {
             detail: eventDetail,
           }),
         );
-      let iterator = audit.getAuditEvents(['node', 'connection']);
+      let iterator: AsyncGenerator<any, any, any> = audit.getAuditEvents([
+        'node',
+        'connection',
+      ]);
       await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
         {
           ...auditEventData,
@@ -362,6 +372,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -409,6 +420,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -478,6 +490,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -530,6 +543,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const eventDetail: ConnectionData = {
@@ -557,7 +571,10 @@ describe(Audit.name, () => {
             detail: eventDetail,
           }),
         );
-      let iterator = audit.getAuditEvents(['node', 'connection']);
+      let iterator: AsyncGenerator<any, any, any> = audit.getAuditEvents([
+        'node',
+        'connection',
+      ]);
       await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
         {
           ...auditEventData,
@@ -592,6 +609,7 @@ describe(Audit.name, () => {
       const audit = await Audit.createAudit({
         db,
         nodeConnectionManager: mockNodeConnectionManager,
+        discovery: new EventTarget() as any,
         logger,
       });
       const nodeId = testNodesUtils.generateRandomNodeId();

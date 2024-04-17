@@ -1,14 +1,24 @@
 import type { AuditEventId, AuditEventIdEncoded } from '../ids';
-import type { POJO } from '../types';
+import type { ObjectEmpty, POJO } from '../types';
 import type {
   nodeConnectionInboundMetricPath,
   nodeConnectionReverseTopicPath,
   nodeConnectionOutboundMetricPath,
   nodeConnectionForwardTopicPath,
+  discoveryVertexQueuedTopicPath,
+  discoveryVertexProcessedTopicPath,
+  discoveryVertexFailedTopicPath,
+  discoveryVertexCulledTopicPath,
+  discoveryVertexCancelledTopicPath,
+  discoveryCheckRediscoveryTopicPath,
   nodeConnectionMetricPath,
   topicPaths,
   metricPaths,
 } from './utils';
+import type {
+  VertexEventError,
+  VertexEventIdentifier,
+} from '../discovery/types';
 
 // Events
 
@@ -70,7 +80,14 @@ type TopicSubPath<T = TopicPath> =
 type TopicSubPathToAuditEvent<T extends TopicSubPath> =
   // Nodes
   | InferAuditEventFromSubpath<T, AuditEventNodeConnectionReverse>
-  | InferAuditEventFromSubpath<T, AuditEventNodeConnectionForward>;
+  | InferAuditEventFromSubpath<T, AuditEventNodeConnectionForward>
+  // Discovery
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryVertexQueued>
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryVertexProcessed>
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryVertexFailed>
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryVertexCulled>
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryVertexCancelled>
+  | InferAuditEventFromSubpath<T, AuditEventDiscoveryCheckRediscovery>;
 
 // Nodes
 
@@ -99,6 +116,47 @@ type AuditEventNodeConnectionForward = AuditEventNodeConnectionBase &
     },
     typeof nodeConnectionForwardTopicPath
   >;
+
+type AuditEventDiscovery =
+  | AuditEventDiscoveryVertex
+  | AuditEventDiscoveryCheckRediscovery;
+
+type AuditEventDiscoveryVertex =
+  | AuditEventDiscoveryVertexQueued
+  | AuditEventDiscoveryVertexProcessed
+  | AuditEventDiscoveryVertexFailed
+  | AuditEventDiscoveryVertexCulled
+  | AuditEventDiscoveryVertexCancelled;
+
+type AuditEventDiscoveryVertexQueued = AuditEventBase<
+  VertexEventIdentifier,
+  typeof discoveryVertexQueuedTopicPath
+>;
+
+type AuditEventDiscoveryVertexProcessed = AuditEventBase<
+  VertexEventIdentifier,
+  typeof discoveryVertexProcessedTopicPath
+>;
+
+type AuditEventDiscoveryVertexFailed = AuditEventBase<
+  VertexEventError,
+  typeof discoveryVertexFailedTopicPath
+>;
+
+type AuditEventDiscoveryVertexCulled = AuditEventBase<
+  VertexEventIdentifier,
+  typeof discoveryVertexCulledTopicPath
+>;
+
+type AuditEventDiscoveryVertexCancelled = AuditEventBase<
+  VertexEventIdentifier,
+  typeof discoveryVertexCancelledTopicPath
+>;
+
+type AuditEventDiscoveryCheckRediscovery = AuditEventBase<
+  ObjectEmpty,
+  typeof discoveryCheckRediscoveryTopicPath
+>;
 
 // Metrics
 
@@ -147,6 +205,14 @@ export type {
   AuditEventNodeConnection,
   AuditEventNodeConnectionReverse,
   AuditEventNodeConnectionForward,
+  AuditEventDiscovery,
+  AuditEventDiscoveryVertex,
+  AuditEventDiscoveryVertexQueued,
+  AuditEventDiscoveryVertexProcessed,
+  AuditEventDiscoveryVertexFailed,
+  AuditEventDiscoveryVertexCulled,
+  AuditEventDiscoveryVertexCancelled,
+  AuditEventDiscoveryCheckRediscovery,
   // Metric
   MetricPath,
   MetricPathToAuditMetric,
