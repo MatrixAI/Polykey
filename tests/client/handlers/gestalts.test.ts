@@ -17,6 +17,7 @@ import type { SignedClaim } from '@/claims/types';
 import type { Host } from '@/network/types';
 import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
+import type { DiscoveryQueueInfo } from '@/discovery/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -46,6 +47,7 @@ import {
   GestaltsActionsUnsetByNode,
   GestaltsDiscoveryByIdentity,
   GestaltsDiscoveryByNode,
+  GestaltsDiscoveryQueue,
   GestaltsGestaltGetByIdentity,
   GestaltsGestaltGetByNode,
   GestaltsGestaltList,
@@ -61,6 +63,7 @@ import {
   gestaltsActionsUnsetByNode,
   gestaltsDiscoveryByIdentity,
   gestaltsDiscoveryByNode,
+  gestaltsDiscoveryQueue,
   gestaltsGestaltGetByIdentity,
   gestaltsGestaltGetByNode,
   gestaltsGestaltList,
@@ -717,6 +720,192 @@ describe('gestaltsDiscoveryByNode', () => {
     await rpcClient.methods.gestaltsDiscoveryByNode(request);
     expect(mockDiscoveryByNode).toHaveBeenCalled();
     mockDiscoveryByNode.mockRestore();
+  });
+});
+describe('gestaltsDiscoveryQueue', () => {
+  const logger = new Logger('gestaltsDiscoverByNode test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let taskManager: TaskManager;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    gestaltsDiscoveryQueue: typeof gestaltsDiscoveryQueue;
+  }>;
+  let tlsConfig: TLSConfig;
+  let acl: ACL;
+  let gestaltGraph: GestaltGraph;
+  let identitiesManager: IdentitiesManager;
+  let nodeGraph: NodeGraph;
+  let sigchain: Sigchain;
+  let nodeManager: NodeManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let discovery: Discovery;
+
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    });
+    keyRing = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      acl,
+      db,
+      logger,
+    });
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      keyRing,
+      sigchain,
+      db,
+      gestaltGraph,
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      nodeGraph,
+      // @ts-ignore: TLS not needed for this test
+      tlsConfig: {},
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      gestaltGraph,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    discovery = await Discovery.createDiscovery({
+      db,
+      gestaltGraph,
+      identitiesManager,
+      keyRing,
+      logger,
+      nodeManager,
+      taskManager,
+    });
+    await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        gestaltsDiscoveryQueue: new GestaltsDiscoveryQueue({
+          discovery,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        gestaltsDiscoveryQueue,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await discovery.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
+    await nodeManager.stop();
+    await sigchain.stop();
+    await identitiesManager.stop();
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await acl.stop();
+    await gestaltGraph.stop();
+    await taskManager.stop();
+    await keyRing.stop();
+    await db.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+
+  test('discovers by node', async () => {
+    // I need to pause and queue up some verticies
+    await taskManager.stopProcessing();
+    await discovery.queueDiscoveryByNode(testsUtils.generateRandomNodeId());
+    await discovery.queueDiscoveryByNode(testsUtils.generateRandomNodeId());
+    await discovery.queueDiscoveryByNode(testsUtils.generateRandomNodeId());
+    await discovery.queueDiscoveryByIdentity(
+      'github.com' as ProviderId,
+      'identity1' as IdentityId,
+    );
+    await discovery.queueDiscoveryByIdentity(
+      'github.com' as ProviderId,
+      'identity2' as IdentityId,
+    );
+    const results: Array<DiscoveryQueueInfo> = [];
+    for await (const discoveryQueueInfo of await rpcClient.methods.gestaltsDiscoveryQueue(
+      {},
+    )) {
+      results.push(discoveryQueueInfo);
+    }
+    expect(results).toHaveLength(5);
   });
 });
 describe('gestaltsGestaltGetByIdentity', () => {
