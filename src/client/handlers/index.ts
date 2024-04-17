@@ -32,6 +32,7 @@ import GestaltsGestaltGetByNode from './GestaltsGestaltGetByNode';
 import GestaltsGestaltList from './GestaltsGestaltList';
 import GestaltsGestaltTrustByIdentity from './GestaltsGestaltTrustByIdentity';
 import GestaltsGestaltTrustByNode from './GestaltsGestaltTrustByNode';
+import GestaltsDiscoveryQueue from './GestaltsDiscoveryQueue';
 import IdentitiesAuthenticate from './IdentitiesAuthenticate';
 import IdentitiesAuthenticatedGet from './IdentitiesAuthenticatedGet';
 import IdentitiesClaim from './IdentitiesClaim';
@@ -133,6 +134,7 @@ const serverManifest = (container: {
       container,
     ),
     gestaltsGestaltTrustByNode: new GestaltsGestaltTrustByNode(container),
+    gestaltsDiscoveryQueue: new GestaltsDiscoveryQueue(container),
     identitiesAuthenticate: new IdentitiesAuthenticate(container),
     identitiesAuthenticatedGet: new IdentitiesAuthenticatedGet(container),
     identitiesClaim: new IdentitiesClaim(container),
@@ -203,6 +205,7 @@ export {
   GestaltsActionsUnsetByNode,
   GestaltsDiscoveryByIdentity,
   GestaltsDiscoveryByNode,
+  GestaltsDiscoveryQueue,
   GestaltsGestaltGetByIdentity,
   GestaltsGestaltGetByNode,
   GestaltsGestaltList,

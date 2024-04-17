@@ -10,6 +10,7 @@ import type {
 } from './types';
 import type { AuditEventId } from '../ids/types';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager';
+import type Discovery from '../discovery/Discovery';
 import type { AbstractEvent } from '@matrixai/events';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -23,6 +24,7 @@ import * as auditErrors from './errors';
 import * as auditEvents from './events';
 import * as auditUtils from './utils';
 import * as nodesEvents from '../nodes/events';
+import * as discoveryEvents from '../discovery/events';
 
 interface Audit extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -41,16 +43,18 @@ class Audit {
   static async createAudit({
     db,
     nodeConnectionManager,
+    discovery,
     logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
+    discovery: Discovery;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<Audit> {
     logger.info(`Creating ${this.name}`);
-    const audit = new this({ db, nodeConnectionManager, logger });
+    const audit = new this({ db, nodeConnectionManager, discovery, logger });
     await audit.start({ fresh });
     logger.info(`Created ${this.name}`);
     return audit;
@@ -59,6 +63,7 @@ class Audit {
   protected logger: Logger;
   protected db: DB;
   protected nodeConnectionManager: NodeConnectionManager;
+  protected discovery: Discovery;
 
   protected eventHandlerMap: Map<
     typeof AbstractEvent,
@@ -80,14 +85,17 @@ class Audit {
   constructor({
     db,
     nodeConnectionManager,
+    discovery,
     logger,
   }: {
     db: DB;
     nodeConnectionManager: NodeConnectionManager;
+    discovery: Discovery;
     logger: Logger;
   }) {
     this.logger = logger;
     this.nodeConnectionManager = nodeConnectionManager;
+    this.discovery = discovery;
     this.db = db;
   }
 
@@ -104,6 +112,7 @@ class Audit {
     this.generateAuditEventId =
       auditUtils.createAuditEventIdGenerator(lastAuditEventId);
     // Setup event handlers
+    // NodeConnectionManager handlers
     this.setEventHandler(
       this.nodeConnectionManager,
       nodesEvents.EventNodeConnectionManagerConnectionForward,
@@ -116,6 +125,44 @@ class Audit {
       auditUtils.nodeConnectionReverseTopicPath,
       auditUtils.fromEventNodeConnectionManagerConnectionReverse,
     );
+    // Discovery Handlers
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryVertexQueued,
+      auditUtils.discoveryVertexQueuedTopicPath,
+      auditUtils.fromEventDiscoveryVertexQueued,
+    );
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryVertexProcessed,
+      auditUtils.discoveryVertexProcessedTopicPath,
+      auditUtils.fromEventDiscoveryVertexProcessed,
+    );
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryVertexFailed,
+      auditUtils.discoveryVertexFailedTopicPath,
+      auditUtils.fromEventDiscoveryVertexFailed,
+    );
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryVertexCulled,
+      auditUtils.discoveryVertexCulledTopicPath,
+      auditUtils.fromEventDiscoveryVertexCulled,
+    );
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryVertexCancelled,
+      auditUtils.discoveryVertexCancelledTopicPath,
+      auditUtils.fromEventDiscoveryVertexCancelled,
+    );
+    this.setEventHandler(
+      this.discovery,
+      discoveryEvents.EventDiscoveryCheckRediscovery,
+      auditUtils.discoveryCheckRediscoveryTopicPath,
+      auditUtils.fromEventDiscoveryCheckRediscovery,
+    );
+
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -134,7 +181,7 @@ class Audit {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public async destroy() {
+  public async destroy(): Promise<void> {
     this.logger.info(`Destroying ${this.constructor.name}`);
     await this.db.clear(this.auditDbPath);
     this.logger.info(`Destroyed ${this.constructor.name}`);
@@ -165,7 +212,7 @@ class Audit {
     ) =>
       | Promise<TopicSubPathToAuditEvent<P>['data']>
       | TopicSubPathToAuditEvent<P>['data'],
-  ) {
+  ): void {
     const handler = async (evt: InstanceType<T>) => {
       const eventData = await toAuditEvent(evt);
       await this.db.withTransactionF(async (tran) => {

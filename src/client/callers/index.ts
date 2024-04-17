@@ -14,6 +14,7 @@ import gestaltsDiscoveryByIdentity from './gestaltsDiscoveryByIdentity';
 import gestaltsDiscoveryByNode from './gestaltsDiscoveryByNode';
 import gestaltsGestaltGetByIdentity from './gestaltsGestaltGetByIdentity';
 import gestaltsGestaltGetByNode from './gestaltsGestaltGetByNode';
+import gestaltsDiscoveryQueue from './gestaltsDiscoveryQueue';
 import gestaltsGestaltList from './gestaltsGestaltList';
 import gestaltsGestaltTrustByIdentity from './gestaltsGestaltTrustByIdentity';
 import gestaltsGestaltTrustByNode from './gestaltsGestaltTrustByNode';
@@ -90,6 +91,7 @@ const clientManifest = {
   gestaltsDiscoveryByNode,
   gestaltsGestaltGetByIdentity,
   gestaltsGestaltGetByNode,
+  gestaltsDiscoveryQueue,
   gestaltsGestaltList,
   gestaltsGestaltTrustByIdentity,
   gestaltsGestaltTrustByNode,
@@ -165,6 +167,7 @@ export {
   gestaltsDiscoveryByNode,
   gestaltsGestaltGetByIdentity,
   gestaltsGestaltGetByNode,
+  gestaltsDiscoveryQueue,
   gestaltsGestaltList,
   gestaltsGestaltTrustByIdentity,
   gestaltsGestaltTrustByNode,

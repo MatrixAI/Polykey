@@ -1,5 +1,9 @@
 import type { ConnectionData, Host, Port, TLSConfig } from '@/network/types';
 import type { OverrideRPClientType } from '@/client/types';
+import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import type Discovery from '@/discovery/Discovery';
+import type { GestaltIdEncoded } from '@/ids';
+import type { POJO } from '@';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -9,17 +13,18 @@ import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import KeyRing from '@/keys/KeyRing';
 import ClientService from '@/client/ClientService';
-import { auditEventsGet } from '@/client/callers';
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesEvents from '@/nodes/events';
+import * as discoveryEvents from '@/discovery/events';
 import * as networkUtils from '@/network/utils';
-import AuditEventsGet from '@/client/handlers/AuditEventsGet';
 import { Audit } from '@/audit';
 import AuditMetricGet from '@/client/handlers/AuditMetricGet';
+import AuditEventsGet from '@/client/handlers/AuditEventsGet';
 import auditMetricGet from '@/client/callers/auditMetricGet';
-import * as testNodesUtils from '../../nodes/utils';
+import auditEventsGet from '@/client/callers/auditEventsGet';
 import * as testsUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 
 describe('auditEventGet', () => {
   const logger = new Logger('auditEventsGet test', LogLevel.WARN, [
@@ -41,6 +46,8 @@ describe('auditEventGet', () => {
     }>
   >;
   let tlsConfig: TLSConfig;
+  let nodeConnectionManager: NodeConnectionManager; // Event target pretending to be discovery
+  let discovery: Discovery; // Event target pretending to be discovery
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -65,9 +72,12 @@ describe('auditEventGet', () => {
       tlsConfig,
       logger: logger.getChild(ClientService.name),
     });
+    nodeConnectionManager = new EventTarget() as any;
+    discovery = new EventTarget() as any;
     audit = await Audit.createAudit({
       db,
-      nodeConnectionManager: new EventTarget() as any,
+      nodeConnectionManager,
+      discovery,
       logger: logger.getChild(Audit.name),
     });
     clientService = new ClientService({
@@ -173,6 +183,71 @@ describe('auditEventGet', () => {
       type: 'forward',
     });
   });
+  test('gets discovery events', async () => {
+    // Set up some events
+    // @ts-ignore: kidnap protected handlerMap so we can send events in the foreground
+    const handlerMap = audit.eventHandlerMap;
+    const handleEvent = async (evt) => {
+      await handlerMap.get(evt.constructor)?.handler(evt);
+    };
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexQueued({
+        detail: {
+          vertex: 'vertex1' as GestaltIdEncoded,
+        },
+      }),
+    );
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexQueued({
+        detail: {
+          vertex: 'vertex2' as GestaltIdEncoded,
+          parent: 'vertex1' as GestaltIdEncoded,
+        },
+      }),
+    );
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexQueued({
+        detail: {
+          vertex: 'vertex3' as GestaltIdEncoded,
+          parent: 'vertex1' as GestaltIdEncoded,
+        },
+      }),
+    );
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexProcessed({
+        detail: {
+          vertex: 'vertex1' as GestaltIdEncoded,
+        },
+      }),
+    );
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexFailed({
+        detail: {
+          vertex: 'vertex2' as GestaltIdEncoded,
+          parent: 'vertex1' as GestaltIdEncoded,
+          code: 255,
+          message: 'some message',
+        },
+      }),
+    );
+    await handleEvent(
+      new discoveryEvents.EventDiscoveryVertexCancelled({
+        detail: {
+          vertex: 'vertex3' as GestaltIdEncoded,
+          parent: 'vertex1' as GestaltIdEncoded,
+        },
+      }),
+    );
+
+    const readableStream = await rpcClient.methods.auditEventsGet({
+      path: ['discovery', 'vertex'],
+    });
+    const results: Array<POJO> = [];
+    for await (const result of readableStream) {
+      results.push(result);
+    }
+    expect(results).toHaveLength(6);
+  });
 });
 
 describe('auditMetricGet', () => {
@@ -195,6 +270,8 @@ describe('auditMetricGet', () => {
     }>
   >;
   let tlsConfig: TLSConfig;
+  let nodeConnectionManager: NodeConnectionManager; // Event target pretending to be discovery
+  let discovery: Discovery; // Event target pretending to be discovery
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -219,9 +296,12 @@ describe('auditMetricGet', () => {
       tlsConfig,
       logger: logger.getChild(ClientService.name),
     });
+    nodeConnectionManager = new EventTarget() as any;
+    discovery = new EventTarget() as any;
     audit = await Audit.createAudit({
       db,
-      nodeConnectionManager: new EventTarget() as any,
+      nodeConnectionManager,
+      discovery,
       logger: logger.getChild(Audit.name),
     });
     clientService = new ClientService({
