@@ -10,6 +10,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -29,6 +30,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import * as testUtils from '../../../utils/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -296,8 +298,9 @@ describe('notificationsSend', () => {
       signedNotificationEncoded: signedNotification,
     });
     // Check notification was received
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].data).toEqual(notification.data);
     expect(receivedNotifications[0].iss).toEqual(notification.iss);
@@ -337,7 +340,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsVerificationFailed,
     );
     // Check notification was not received
-    let receivedNotifications = await notificationsManager.readNotifications();
+    let receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Improperly typed notification
     const notification2 = {
@@ -359,7 +364,9 @@ describe('notificationsSend', () => {
       validationErrors.ErrorParse,
     );
     // Check notification was not received
-    receivedNotifications = await notificationsManager.readNotifications();
+    receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side effects
     await acl.unsetNodePerm(senderNodeId);
@@ -392,8 +399,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     // Check notification was not received
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
   });
 });

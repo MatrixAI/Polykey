@@ -371,20 +371,29 @@ class NotificationsManager {
     };
   }
 
-  protected async getOutboxNotificationIds(
-    tran: DBTransaction,
-  ): Promise<Array<NotificationId>> {
-    const notificationIds: Array<NotificationId> = [];
+  protected async *getOutboxNotificationIds({
+    number = 'all',
+    order = 'newest',
+    tran,
+  }: {
+    number?: number | 'all';
+    order?: 'newest' | 'oldest';
+    tran: DBTransaction;
+  }): AsyncGenerator<NotificationId> {
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerOutboxDbPath,
-      { valueAsBuffer: false },
+      { valueAsBuffer: false, reverse: order === 'newest' },
     );
+    let i = 0;
     for await (const [keyPath] of messageIterator) {
+      if (number !== 'all' && i >= number) {
+        break;
+      }
       const key = keyPath[0] as Buffer;
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-      notificationIds.push(notificationId);
+      yield notificationId;
+      i++;
     }
-    return notificationIds;
   }
 
   protected async readOutboxNotificationById(
@@ -409,40 +418,34 @@ class NotificationsManager {
    * Read pending notifications in the outbox.
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async readOutboxNotifications({
+  public async *readOutboxNotifications({
     number = 'all',
     order = 'newest',
     tran,
   }: {
-    unread?: boolean;
     number?: number | 'all';
     order?: 'newest' | 'oldest';
     tran?: DBTransaction;
-  } = {}): Promise<Array<Notification>> {
+  } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.readOutboxNotifications({ number, order, tran }),
-      );
-    }
-    let outboxIds = await this.getOutboxNotificationIds(tran);
-
-    if (order === 'newest') {
-      outboxIds.reverse();
+      const readOutboxNotifications = (tran) =>
+        this.readOutboxNotifications({ number, order, tran });
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* readOutboxNotifications(tran);
+      });
     }
 
-    if (number === 'all' || number > outboxIds.length) {
-      number = outboxIds.length;
-    }
-    outboxIds = outboxIds.slice(0, number);
+    const outboxIds = this.getOutboxNotificationIds({
+      number,
+      order,
+      tran,
+    });
 
-    const notifications: Array<Notification> = [];
-    for (const id of outboxIds) {
+    for await (const id of outboxIds) {
       const notification = await this.readOutboxNotificationById(id, tran);
       if (notification == null) never();
-      notifications.push(notification);
+      yield notification;
     }
-
-    return notifications;
   }
 
   /**
@@ -455,8 +458,8 @@ class NotificationsManager {
         this.clearOutboxNotifications(tran),
       );
     }
-    const notificationIds = await this.getOutboxNotificationIds(tran);
-    for (const id of notificationIds) {
+    const notificationIds = this.getOutboxNotificationIds({ tran });
+    for await (const id of notificationIds) {
       await this.removeOutboxNotification(id, tran);
     }
   }
@@ -530,7 +533,7 @@ class NotificationsManager {
    * Read a notification
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async readNotifications({
+  public async *readNotifications({
     unread = false,
     number = 'all',
     order = 'newest',
@@ -540,36 +543,25 @@ class NotificationsManager {
     number?: number | 'all';
     order?: 'newest' | 'oldest';
     tran?: DBTransaction;
-  } = {}): Promise<Array<Notification>> {
+  } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.readNotifications({ unread, number, order, tran }),
-      );
+      const readNotifications = (tran) =>
+        this.readNotifications({ unread, number, order, tran });
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* readNotifications(tran);
+      });
     }
-    let notificationIds: Array<NotificationId>;
-    if (unread) {
-      notificationIds = await this.getNotificationIds('unread', tran);
-    } else {
-      notificationIds = await this.getNotificationIds('all', tran);
-    }
-
-    if (order === 'newest') {
-      notificationIds.reverse();
-    }
-
-    if (number === 'all' || number > notificationIds.length) {
-      number = notificationIds.length;
-    }
-    notificationIds = notificationIds.slice(0, number);
-
-    const notifications: Array<Notification> = [];
-    for (const id of notificationIds) {
+    const notificationIds = this.getNotificationIds({
+      unread,
+      number,
+      order,
+      tran,
+    });
+    for await (const id of notificationIds) {
       const notification = await this.readNotificationById(id, tran);
       if (notification == null) never();
-      notifications.push(notification);
+      yield notification;
     }
-
-    return notifications;
   }
 
   /**
@@ -605,8 +597,8 @@ class NotificationsManager {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.clearNotifications(tran));
     }
-    const notificationIds = await this.getNotificationIds('all', tran);
-    for (const id of notificationIds) {
+    const notificationIds = this.getNotificationIds({ tran });
+    for await (const id of notificationIds) {
       await this.removeNotification(id, tran);
     }
   }
@@ -628,33 +620,40 @@ class NotificationsManager {
       notificationDb,
     );
     return {
+      ...notificationDb,
       notificationIdEncoded:
         notificationsUtils.encodeNotificationId(notificationId),
-      ...notificationDb,
     };
   }
 
-  protected async getNotificationIds(
-    type: 'unread' | 'all',
-    tran: DBTransaction,
-  ): Promise<Array<NotificationId>> {
-    const notificationIds: Array<NotificationId> = [];
+  protected async *getNotificationIds({
+    unread = false,
+    number = 'all',
+    order = 'newest',
+    tran,
+  }: {
+    unread?: boolean;
+    number?: number | 'all';
+    order?: 'newest' | 'oldest';
+    tran: DBTransaction;
+  }): AsyncGenerator<NotificationId> {
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerInboxDbPath,
-      { valueAsBuffer: false },
+      { valueAsBuffer: false, reverse: order === 'newest' },
     );
-    for await (const [keyPath, notification] of messageIterator) {
+    let i = 0;
+    for await (const [keyPath, notificationDb] of messageIterator) {
+      if (number !== 'all' && i >= number) {
+        break;
+      }
+      if (notificationDb.isRead && unread) {
+        continue;
+      }
       const key = keyPath[0] as Buffer;
       const notificationId = IdInternal.fromBuffer<NotificationId>(key);
-      if (type === 'all') {
-        notificationIds.push(notificationId);
-      } else if (type === 'unread') {
-        if (!notification.isRead) {
-          notificationIds.push(notificationId);
-        }
-      }
+      yield notificationId;
+      i++;
     }
-    return notificationIds;
   }
 
   protected async getNotifications(
@@ -689,11 +688,13 @@ class NotificationsManager {
   protected async getOldestNotificationId(
     tran: DBTransaction,
   ): Promise<NotificationId | undefined> {
-    const notificationIds = await this.getNotificationIds('all', tran);
-    if (notificationIds.length === 0) {
-      return undefined;
+    for await (const notification of this.getNotificationIds({
+      order: 'oldest',
+      tran,
+    })) {
+      return notification;
     }
-    return notificationIds[0];
+    return undefined;
   }
 
   protected async removeNotification(

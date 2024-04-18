@@ -11,6 +11,7 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
@@ -28,6 +29,7 @@ import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -195,12 +197,12 @@ describe('NotificationsManager', () => {
     await expect(notificationsManager.start()).rejects.toThrow(
       notificationsErrors.ErrorNotificationsDestroyed,
     );
-    await expect(async () => {
-      await notificationsManager.readNotifications();
-    }).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
-    await expect(async () => {
-      await notificationsManager.clearNotifications();
-    }).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
+    await expect(
+      notificationsManager.readNotifications().next(),
+    ).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
+    await expect(notificationsManager.clearNotifications()).rejects.toThrow(
+      notificationsErrors.ErrorNotificationsNotRunning,
+    );
   });
   test('can send notifications with permission', async () => {
     const notificationsManager =
@@ -262,8 +264,9 @@ describe('NotificationsManager', () => {
         ),
       ])
       .then((value) => value.map((value) => value.sendP));
-    const outboxNotifications =
-      await notificationsManager.readOutboxNotifications();
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
     expect(outboxNotifications).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -282,8 +285,9 @@ describe('NotificationsManager', () => {
     );
     await taskManager.startProcessing();
     await Promise.all(sendProms);
-    const receivedNotifications =
-      await receiver.notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      receiver.notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications).toEqual(
       expect.arrayContaining([
@@ -364,8 +368,9 @@ describe('NotificationsManager', () => {
         .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    const receivedNotifications =
-      await receiver.notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      receiver.notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.stop();
@@ -434,8 +439,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(notification3.data);
     expect(receivedNotifications[0].iss).toEqual(senderIdEncoded);
@@ -479,7 +485,9 @@ describe('NotificationsManager', () => {
     ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    let receivedNotifications = await notificationsManager.readNotifications();
+    let receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Missing permission
     await acl.setNodePerm(senderId, {
@@ -487,7 +495,9 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    receivedNotifications = await notificationsManager.readNotifications();
+    receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
@@ -525,8 +535,9 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].isRead).toBeTruthy();
     // Reverse side-effects
@@ -594,8 +605,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
@@ -665,10 +677,14 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    await notificationsManager.readNotifications();
-    const unreadNotifications = await notificationsManager.readNotifications({
-      unread: true,
-    });
+    for await (const _ of notificationsManager.readNotifications()) {
+      // Noop
+    }
+    const unreadNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications({
+        unread: true,
+      }),
+    ).toArray();
     expect(unreadNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.clearNotifications();
@@ -735,9 +751,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const lastNotification = await notificationsManager.readNotifications({
-      number: 1,
-    });
+    const lastNotification = await AsyncIterable.as(
+      notificationsManager.readNotifications({
+        number: 1,
+      }),
+    ).toArray();
     expect(lastNotification).toHaveLength(1);
     // Reverse side-effects
     await notificationsManager.clearNotifications();
@@ -804,9 +822,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const reversedNotifications = await notificationsManager.readNotifications({
-      order: 'oldest',
-    });
+    const reversedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications({
+        order: 'oldest',
+      }),
+    ).toArray();
     expect(reversedNotifications).toHaveLength(3);
     expect(reversedNotifications[0].data['message']).toBe('msg1');
     expect(reversedNotifications[1].data['message']).toBe('msg2');
@@ -877,8 +897,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(2);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
@@ -964,8 +985,9 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.receiveNotification(notification);
     await notificationsManager.clearNotifications();
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
@@ -995,8 +1017,9 @@ describe('NotificationsManager', () => {
       },
     });
     await notificationsManager.clearOutboxNotifications();
-    const outboxNotifications =
-      await notificationsManager.readOutboxNotifications();
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
     expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
     await receiver.notificationsManager.clearNotifications();
@@ -1049,18 +1072,26 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
-    await notificationsManager.readNotifications({ number: 1 });
+    for await (const _ of notificationsManager.readNotifications({
+      number: 1,
+    })) {
+      // Noop
+    }
     await notificationsManager.stop();
     await notificationsManager.start();
-    const unreadNotifications = await notificationsManager.readNotifications({
-      unread: true,
-    });
+    const unreadNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications({
+        unread: true,
+      }),
+    ).toArray();
     expect(unreadNotifications).toHaveLength(1);
     expect(unreadNotifications[0].data).toEqual(notification1.data);
     expect(unreadNotifications[0].iss).toBe(notification1.iss);
-    const latestNotification = await notificationsManager.readNotifications({
-      number: 1,
-    });
+    const latestNotification = await AsyncIterable.as(
+      notificationsManager.readNotifications({
+        number: 1,
+      }),
+    ).toArray();
     expect(latestNotification).toHaveLength(1);
     expect(latestNotification[0].data).toEqual(notification2.data);
     expect(latestNotification[0].iss).toBe(notification2.iss);
@@ -1116,11 +1147,13 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.stop();
     await notificationsManager.start({ fresh: true });
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
-    const outboxNotifications =
-      await notificationsManager.readOutboxNotifications();
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
     expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
     await receiver.notificationsManager.clearNotifications();

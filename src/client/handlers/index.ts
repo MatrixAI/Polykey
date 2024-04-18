@@ -243,6 +243,8 @@ export {
   NodesListConnections,
   NodesPing,
   NotificationsClear,
+  NotificationsOutboxClear,
+  NotificationsOutboxRead,
   NotificationsRead,
   NotificationsSend,
   VaultsClone,

@@ -203,6 +203,8 @@ export {
   nodesListConnections,
   nodesPing,
   notificationsClear,
+  notificationsOutboxClear,
+  notificationsOutboxRead,
   notificationsRead,
   notificationsSend,
   vaultsClone,

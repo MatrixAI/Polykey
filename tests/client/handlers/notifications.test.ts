@@ -22,6 +22,8 @@ import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import {
   NotificationsClear,
+  NotificationsOutboxClear,
+  NotificationsOutboxRead,
   NotificationsRead,
   NotificationsSend,
 } from '@/client/handlers';
@@ -29,6 +31,8 @@ import {
   notificationsClear,
   notificationsRead,
   notificationsSend,
+  notificationsOutboxClear,
+  notificationsOutboxRead,
 } from '@/client/callers';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
@@ -576,6 +580,491 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
     expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+  });
+});
+describe('notificationsOutboxClear', () => {
+  const logger = new Logger('notificationsClear test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsOutboxClear: typeof notificationsOutboxClear;
+  }>;
+  let nodeGraph: NodeGraph;
+  let taskManager: TaskManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
+  let notificationsManager: NotificationsManager;
+  let acl: ACL;
+  let sigchain: Sigchain;
+  let mockedOutboxClearNotifications: jest.SpyInstance;
+  beforeEach(async () => {
+    mockedOutboxClearNotifications = jest
+      .spyOn(NotificationsManager.prototype, 'clearOutboxNotifications')
+      .mockResolvedValue();
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger: logger.getChild('NodeGraph'),
+    });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      sigchain,
+      taskManager,
+      gestaltGraph: {} as GestaltGraph,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsOutboxClear: new NotificationsOutboxClear({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsOutboxClear,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    mockedOutboxClearNotifications.mockRestore();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await sigchain.stop();
+    await acl.stop();
+    await notificationsManager.stop();
+    await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await taskManager.stop();
+    await keyRing.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('puts/deletes/gets tokens', async () => {
+    await rpcClient.methods.notificationsOutboxClear({});
+    expect(mockedOutboxClearNotifications.mock.calls.length).toBe(1);
+  });
+});
+describe('notificationsOutboxRead', () => {
+  const logger = new Logger('notificationsOutboxRead test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  const nodeIdSender = testsNodesUtils.generateRandomNodeId();
+  const nodeIdSenderEncoded = nodesUtils.encodeNodeId(nodeIdSender);
+  const nodeIdReceiverEncoded = 'test';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsOutboxRead: typeof notificationsOutboxRead;
+  }>;
+  let nodeGraph: NodeGraph;
+  let taskManager: TaskManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
+  let notificationsManager: NotificationsManager;
+  let acl: ACL;
+  let sigchain: Sigchain;
+  let mockedOutboxReadNotifications: jest.SpyInstance;
+  beforeEach(async () => {
+    mockedOutboxReadNotifications = jest.spyOn(
+      NotificationsManager.prototype,
+      'readOutboxNotifications',
+    );
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger: logger.getChild('NodeGraph'),
+    });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      // TLS not needed for this test
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsOutboxRead: new NotificationsOutboxRead({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsOutboxRead,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    mockedOutboxReadNotifications.mockRestore();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await notificationsManager.stop();
+    await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
+    await nodeManager.stop();
+    await acl.stop();
+    await db.stop();
+    await keyRing.stop();
+    await taskManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('reads a single notification', async () => {
+    mockedOutboxReadNotifications.mockResolvedValueOnce([
+      {
+        typ: 'notification',
+        data: {
+          type: 'General',
+          message: 'test',
+        },
+        iss: nodeIdSenderEncoded,
+        sub: nodeIdReceiverEncoded,
+        isRead: true,
+      },
+    ]);
+    const response = await rpcClient.methods.notificationsOutboxRead({
+      order: 'newest',
+      number: 1,
+    });
+    const notificationList: Array<Notification> = [];
+    for await (const notificationMessage of response) {
+      notificationList.push(notificationMessage.notification);
+    }
+    expect(notificationList).toHaveLength(1);
+    const notification = notificationList[0];
+    expect(notification.data.type).toBe('General');
+    const messageData = notification.data as General;
+    expect(messageData.message).toBe('test');
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
+    // Check request was parsed correctly
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe(1);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+  });
+  test('reads notifications in reverse order', async () => {
+    mockedOutboxReadNotifications.mockResolvedValueOnce([
+      {
+        typ: 'notification',
+        data: {
+          type: 'General',
+          message: 'test2',
+        },
+        iss: nodeIdSenderEncoded,
+        sub: nodeIdReceiverEncoded,
+        isRead: true,
+      },
+      {
+        typ: 'notification',
+        data: {
+          type: 'General',
+          message: 'test1',
+        },
+        iss: nodeIdSenderEncoded,
+        sub: nodeIdReceiverEncoded,
+        isRead: true,
+      },
+    ]);
+    const response = await rpcClient.methods.notificationsOutboxRead({
+      number: 'all',
+      order: 'oldest',
+    });
+    const notificationList: Array<Notification> = [];
+    for await (const notificationMessage of response) {
+      notificationList.push(notificationMessage.notification);
+    }
+    expect(notificationList).toHaveLength(2);
+    const notification1 = notificationList[0];
+    const notification2 = notificationList[1];
+    expect(notification1.data.type).toBe('General');
+    const messageData1 = notification1.data as General;
+    expect(messageData1.message).toBe('test2');
+    expect(notification1.iss).toBe(nodeIdSenderEncoded);
+    expect(notification1.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification1.isRead).toBeTruthy();
+    expect(notification2.data.type).toBe('General');
+    const messageData2 = notification2.data as General;
+    expect(messageData2.message).toBe('test1');
+    expect(notification2.iss).toBe(nodeIdSenderEncoded);
+    expect(notification2.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification2.isRead).toBeTruthy();
+    // Check request was parsed correctly
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('oldest');
+  });
+  test('reads gestalt invite notifications', async () => {
+    mockedOutboxReadNotifications.mockResolvedValueOnce([
+      {
+        typ: 'notification',
+        data: {
+          type: 'GestaltInvite',
+        },
+        iss: nodeIdSenderEncoded,
+        sub: nodeIdReceiverEncoded,
+        isRead: true,
+      },
+    ]);
+    const response = await rpcClient.methods.notificationsOutboxRead({
+      number: 'all',
+      order: 'newest',
+    });
+    const notificationList: Array<Notification> = [];
+    for await (const notificationMessage of response) {
+      notificationList.push(notificationMessage.notification);
+    }
+    expect(notificationList).toHaveLength(1);
+    const notification = notificationList[0];
+    expect(notification.data.type).toBe('GestaltInvite');
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
+    // Check request was parsed correctly
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+  });
+  test('reads vault share notifications', async () => {
+    mockedOutboxReadNotifications.mockResolvedValueOnce([
+      {
+        typ: 'notification',
+        data: {
+          type: 'VaultShare',
+          vaultId: 'vault' as VaultIdEncoded,
+          vaultName: 'vault' as VaultName,
+          actions: {
+            clone: null,
+            pull: null,
+          },
+        },
+        iss: nodeIdSenderEncoded,
+        sub: nodeIdReceiverEncoded,
+        isRead: true,
+      },
+    ]);
+    const response = await rpcClient.methods.notificationsOutboxRead({
+      number: 'all',
+      order: 'newest',
+    });
+    const notificationList: Array<Notification> = [];
+    for await (const notificationMessage of response) {
+      notificationList.push(notificationMessage.notification);
+    }
+    expect(notificationList).toHaveLength(1);
+    const notification = notificationList[0];
+    expect(notification.data.type).toBe('VaultShare');
+    const notificationData = notification.data as VaultShare;
+    expect(notificationData.vaultId).toBe('vault');
+    expect(notificationData.vaultName).toBe('vault');
+    expect(notificationData.actions).toStrictEqual({
+      clone: null,
+      pull: null,
+    });
+    expect(notification.iss).toBe(nodeIdSenderEncoded);
+    expect(notification.sub).toBe(nodeIdReceiverEncoded);
+    expect(notification.isRead).toBeTruthy();
+    // Check request was parsed correctly
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+  });
+  test('reads no notifications', async () => {
+    mockedOutboxReadNotifications.mockResolvedValueOnce([]);
+    const response = await rpcClient.methods.notificationsOutboxRead({
+      number: 'all',
+      order: 'newest',
+    });
+    const notificationList: Array<Notification> = [];
+    for await (const notificationMessage of response) {
+      notificationList.push(notificationMessage.notification);
+    }
+    expect(notificationList).toHaveLength(0);
+    // Check request was parsed correctly
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
 });
 describe('notificationsSend', () => {
