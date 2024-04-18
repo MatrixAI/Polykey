@@ -261,7 +261,7 @@ describe('NotificationsManager', () => {
           tran,
         ),
       ])
-      .then((value) => value.map((value) => value.sendProm));
+      .then((value) => value.map((value) => value.sendP));
     const outboxNotifications =
       await notificationsManager.readOutboxNotifications();
     expect(outboxNotifications).toEqual(
@@ -341,7 +341,7 @@ describe('NotificationsManager', () => {
           data: generalNotification,
           retries: 0,
         })
-        .then((value) => value.sendProm),
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
@@ -351,7 +351,7 @@ describe('NotificationsManager', () => {
           data: gestaltNotification,
           retries: 0,
         })
-        .then((value) => value.sendProm),
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
@@ -361,7 +361,7 @@ describe('NotificationsManager', () => {
           data: vaultNotification,
           retries: 0,
         })
-        .then((value) => value.sendProm),
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     const receivedNotifications =

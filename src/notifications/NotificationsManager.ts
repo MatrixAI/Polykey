@@ -1,4 +1,4 @@
-import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type {
   NotificationId,
   Notification,
@@ -13,7 +13,6 @@ import type {
   NodeIdEncoded,
   NotificationIdEncoded,
   TaskHandlerId,
-  TaskId,
 } from '../ids/types';
 import type { Task, TaskHandler } from '../tasks/types';
 import type { TaskManager } from '../tasks';
@@ -23,15 +22,11 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsEvents from './events';
-import * as errors from '../errors';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
-
-const NOTIFICATIONS_COUNT_KEY = 'numNotifications';
 
 const abortSendNotificationTaskReason = Symbol(
   'abort send notification task reason',
@@ -61,6 +56,7 @@ class NotificationsManager {
     taskManager,
     keyRing,
     messageCap = 10000,
+    defaultRetries = 64,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -70,6 +66,7 @@ class NotificationsManager {
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap?: number;
+    defaultRetries?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NotificationsManager> {
@@ -80,6 +77,7 @@ class NotificationsManager {
       keyRing,
       logger,
       messageCap,
+      defaultRetries,
       nodeManager,
       taskManager,
     });
@@ -96,53 +94,28 @@ class NotificationsManager {
   protected nodeManager: NodeManager;
   protected taskManager: TaskManager;
   protected messageCap: number;
+  protected defaultRetries: number;
 
-  /**
-   * Map for hashing NotificationIds to find TaskIds.
-   * The key must be NotificationIdEncoded, so that the string representation is hashed rather than the reference to the NotificationId object.
-   */
-  protected outboxNotificationIdEncodedToTaskIdMap: Map<
-    NotificationIdEncoded,
-    TaskId
-  >;
-
-  /**
-   * Top level stores inbox/outbox -> Notifications, numMessages
-   */
   protected notificationsManagerDbPath: LevelPath = [this.constructor.name];
+  /**
+   * Inbox Notifications
+   * `NotificationsManager/inbox/{NotificationId} -> {NotificationDB}`
+   */
   protected notificationsManagerInboxDbPath: LevelPath = [
     ...this.notificationsManagerDbPath,
     'inbox',
   ];
+  /**
+   * Outbox Notifications
+   * `NotificationsManager/outbox/{NotificationId} -> {NotificationDB}`
+   */
   protected notificationsManagerOutboxDbPath: LevelPath = [
     ...this.notificationsManagerDbPath,
     'outbox',
   ];
-  /**
-   * Notifications stores NotificationId -> Notification
-   */
-  protected notificationsManagerInboxNotificationsDbPath: LevelPath = [
-    ...this.notificationsManagerInboxDbPath,
-    'notifications',
-  ];
-  protected notificationsManagerInboxNotificationsCounterDbPath: KeyPath = [
-    ...this.notificationsManagerInboxDbPath,
-    NOTIFICATIONS_COUNT_KEY,
-  ];
-  protected notificationsManagerOutboxNotificationsDbPath: LevelPath = [
-    ...this.notificationsManagerOutboxDbPath,
-    'notifications',
-  ];
-  protected notificationsManagerOutboxNotificationsCounterDbPath: KeyPath = [
-    ...this.notificationsManagerOutboxDbPath,
-    NOTIFICATIONS_COUNT_KEY,
-  ];
 
   protected inboxNotificationIdGenerator: () => NotificationId;
   protected outboxNotificationIdGenerator: () => NotificationId;
-
-  public readonly sendNotificationHandlerId =
-    `${this.constructor.name}.sendNotificationHandler` as TaskHandlerId;
 
   protected sendNotificationHandler: TaskHandler = async (
     _ctx,
@@ -159,95 +132,71 @@ class NotificationsManager {
       attempt: number;
     },
   ) => {
-    const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
-    const notificationId = notificationsUtils.decodeNotificationId(
-      notificationIdEncoded,
-    )!;
-    const notificationKeyPath = [
-      ...this.notificationsManagerOutboxNotificationsDbPath,
-      idUtils.toBuffer(notificationId),
-    ];
-
-    const notificationDb = await this.db.withTransactionF(
-      async (tran) => (await tran.get<NotificationDB>(notificationKeyPath))!,
-    );
-    const signedNotification = await notificationsUtils.generateNotification(
-      {
+    return await this.db.withTransactionF(async (tran) => {
+      const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded)!;
+      const notificationId = notificationsUtils.decodeNotificationId(
         notificationIdEncoded,
-        ...notificationDb,
-      },
-      this.keyRing.keyPair,
-    );
-    // The task id if a new task has been scheduled for a retry.
-    let newTaskId: TaskId | undefined;
-    try {
-      await this.nodeManager.withConnF(nodeId, async (connection) => {
-        const client = connection.getClient();
-        await client.methods.notificationsSend({
-          signedNotificationEncoded: signedNotification,
+      )!;
+      const notificationKeyPath = [
+        ...this.notificationsManagerOutboxDbPath,
+        notificationId.toBuffer(),
+      ];
+      const notificationDb =
+        (await tran.get<NotificationDB>(notificationKeyPath))!;
+      const signedNotification = await notificationsUtils.generateNotification(
+        {
+          notificationIdEncoded,
+          ...notificationDb,
+        },
+        this.keyRing.keyPair,
+      );
+      // The task id if a new task has been scheduled for a retry.
+      try {
+        await this.nodeManager.withConnF(nodeId, async (connection) => {
+          const client = connection.getClient();
+          await client.methods.notificationsSend({
+            signedNotificationEncoded: signedNotification,
+          });
         });
-      });
-    } catch (e) {
-      if (e instanceof errors.ErrorPolykeyRemote) {
+      } catch (e) {
+        if (nodesUtils.isConnectionError(e) && attempt < retries) {
+          this.logger.warn(
+            `Could not send to ${
+              notificationDb.data.type
+            } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
+          );
+          // Recursively return inner task, so that the handler can process them.
+          const newTask = await this.taskManager.scheduleTask(
+            {
+              handlerId: this.sendNotificationHandlerId,
+              path: [this.sendNotificationHandlerId, notificationIdEncoded],
+              parameters: [
+                {
+                  nodeIdEncoded,
+                  notificationIdEncoded,
+                  retries,
+                  attempt: attempt + 1,
+                },
+              ],
+              delay: 1000 * 2 ** attempt,
+              lazy: false,
+            },
+            tran,
+          );
+          return newTask;
+        }
         this.logger.warn(
           `Notification recipient ${nodesUtils.encodeNodeId(
             nodeId,
           )} responded with error: ${e.cause.description}`,
         );
-        throw e;
-      } else {
-        this.logger.warn(
-          `Could not send to ${
-            notificationDb.data.type
-          } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
-        );
-      }
-      // This will only happen on connection errors.
-      if (attempt < retries) {
-        // Recursively return inner task, so that the handler can process them.
-        const newTask = await this.taskManager.scheduleTask({
-          handlerId: this.sendNotificationHandlerId,
-          path: [this.sendNotificationHandlerId],
-          parameters: [
-            {
-              nodeIdEncoded,
-              notificationIdEncoded,
-              retries,
-              attempt: attempt + 1,
-            },
-          ],
-          delay: 1000 * 2 ** attempt,
-          lazy: false,
-        });
-        newTaskId = newTask.id;
-        return newTask;
-      } else {
+        await this.db.del(notificationKeyPath);
         throw e;
       }
-    } finally {
-      await this.db.withTransactionF(async (tran) => {
-        // If a new task has been scheduled, set it in the map. If not, delete it.
-        if (newTaskId == null) {
-          this.outboxNotificationIdEncodedToTaskIdMap.delete(
-            notificationIdEncoded,
-          );
-          await tran.del(notificationKeyPath);
-          const counter = await tran.get<number>(
-            this.notificationsManagerOutboxNotificationsCounterDbPath,
-          );
-          await tran.put(
-            this.notificationsManagerOutboxNotificationsCounterDbPath,
-            counter != null ? counter - 1 : 0,
-          );
-        } else {
-          this.outboxNotificationIdEncodedToTaskIdMap.set(
-            notificationIdEncoded,
-            newTaskId,
-          );
-        }
-      });
-    }
+    });
   };
+  public readonly sendNotificationHandlerId =
+    `${this.constructor.name}.sendNotificationHandler` as TaskHandlerId;
 
   constructor({
     acl,
@@ -256,6 +205,7 @@ class NotificationsManager {
     taskManager,
     keyRing,
     messageCap,
+    defaultRetries,
     logger,
   }: {
     acl: ACL;
@@ -264,16 +214,17 @@ class NotificationsManager {
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap: number;
+    defaultRetries: number;
     logger: Logger;
   }) {
     this.logger = logger;
     this.messageCap = messageCap;
+    this.defaultRetries = defaultRetries;
     this.acl = acl;
     this.db = db;
     this.keyRing = keyRing;
     this.nodeManager = nodeManager;
     this.taskManager = taskManager;
-    this.outboxNotificationIdEncodedToTaskIdMap = new Map();
   }
 
   public async start({
@@ -287,7 +238,7 @@ class NotificationsManager {
       // Getting latest ID and creating ID generator
       let latestInboxId: NotificationId | undefined;
       for await (const [keyPath] of tran.iterator(
-        this.notificationsManagerInboxNotificationsDbPath,
+        this.notificationsManagerInboxDbPath,
         {
           limit: 1,
           reverse: true,
@@ -302,7 +253,7 @@ class NotificationsManager {
         notificationsUtils.createNotificationIdGenerator(latestInboxId);
       let latestOutboxId: NotificationId | undefined;
       for await (const [keyPath] of tran.iterator(
-        this.notificationsManagerOutboxNotificationsDbPath,
+        this.notificationsManagerOutboxDbPath,
         {
           limit: 1,
           reverse: true,
@@ -315,15 +266,6 @@ class NotificationsManager {
       }
       this.outboxNotificationIdGenerator =
         notificationsUtils.createNotificationIdGenerator(latestOutboxId);
-      // Set the notificationIds of the saved taskIds to the map.
-      for await (const task of this.taskManager.getTasks('asc', false, [
-        this.sendNotificationHandlerId,
-      ])) {
-        this.outboxNotificationIdEncodedToTaskIdMap.set(
-          task.parameters[0].notificationIdEncoded,
-          task.id,
-        );
-      }
       this.taskManager.registerHandler(
         this.sendNotificationHandlerId,
         this.sendNotificationHandler,
@@ -335,7 +277,6 @@ class NotificationsManager {
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
     this.taskManager.deregisterHandler(this.sendNotificationHandlerId);
-    this.outboxNotificationIdEncodedToTaskIdMap.clear();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -356,7 +297,7 @@ class NotificationsManager {
     {
       nodeId,
       data,
-      retries = 64,
+      retries = this.defaultRetries,
     }: {
       nodeId: NodeId;
       data: NotificationData;
@@ -364,9 +305,28 @@ class NotificationsManager {
     },
     tran?: DBTransaction,
   ): Promise<{
+    /**
+     * The ID of the notification that was sent.
+     */
     notificationId: NotificationId;
-    sendProm: Promise<void>;
+    /**
+     * A promise that resolves when the notification is successfully sent,
+     * and rejects when the peer responds with an error or if the notification was never successfully sent
+     */
+    sendP: Promise<void>;
   }> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.sendNotification(
+          {
+            nodeId,
+            data,
+            retries,
+          },
+          tran,
+        ),
+      );
+    }
     const nodeIdEncoded = nodesUtils.encodeNodeId(nodeId);
     const notificationId = this.outboxNotificationIdGenerator();
     const notificationIdEncoded =
@@ -379,56 +339,35 @@ class NotificationsManager {
       sub: nodeIdEncoded,
     };
     let pendingTask: Task | undefined;
-    const transactionCallback = async (tran: DBTransaction) => {
-      await tran.put(
-        [
-          ...this.notificationsManagerOutboxNotificationsDbPath,
-          idUtils.toBuffer(notificationId),
+    await tran.put(
+      [...this.notificationsManagerOutboxDbPath, notificationId.toBuffer()],
+      notificationDb,
+    );
+    pendingTask = await this.taskManager.scheduleTask(
+      {
+        handlerId: this.sendNotificationHandlerId,
+        parameters: [
+          {
+            nodeIdEncoded,
+            notificationIdEncoded,
+            retries,
+            attempt: 0,
+          },
         ],
-        notificationDb,
-      );
-      const counter = await tran.get<number>(
-        this.notificationsManagerOutboxNotificationsCounterDbPath,
-      );
-      await tran.put(
-        this.notificationsManagerOutboxNotificationsCounterDbPath,
-        counter != null ? counter + 1 : 1,
-      );
-      pendingTask = await this.taskManager.scheduleTask(
-        {
-          handlerId: this.sendNotificationHandlerId,
-          parameters: [
-            {
-              nodeIdEncoded,
-              notificationIdEncoded,
-              retries,
-              attempt: 0,
-            },
-          ],
-          path: [this.sendNotificationHandlerId],
-          lazy: false,
-        },
-        tran,
-      );
-      this.outboxNotificationIdEncodedToTaskIdMap.set(
-        notificationIdEncoded,
-        pendingTask.id,
-      );
-    };
-    if (tran == null) {
-      await this.db.withTransactionF(transactionCallback);
-    } else {
-      await transactionCallback(tran);
-    }
-    const sendProm = (async () => {
+        path: [this.sendNotificationHandlerId, notificationIdEncoded],
+        lazy: false,
+      },
+      tran,
+    );
+    const sendP = (async () => {
       while (pendingTask != null) {
         pendingTask = await pendingTask.promise();
       }
     })();
-    sendProm.catch(() => {});
+    sendP.catch(() => {});
     return {
       notificationId,
-      sendProm,
+      sendP,
     };
   }
 
@@ -437,7 +376,7 @@ class NotificationsManager {
   ): Promise<Array<NotificationId>> {
     const notificationIds: Array<NotificationId> = [];
     const messageIterator = tran.iterator<NotificationDB>(
-      this.notificationsManagerOutboxNotificationsDbPath,
+      this.notificationsManagerOutboxDbPath,
       { valueAsBuffer: false },
     );
     for await (const [keyPath] of messageIterator) {
@@ -453,8 +392,8 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<Notification | undefined> {
     const notificationDb = await tran.get<NotificationDB>([
-      ...this.notificationsManagerOutboxNotificationsDbPath,
-      idUtils.toBuffer(notificationId),
+      ...this.notificationsManagerOutboxDbPath,
+      notificationId.toBuffer(),
     ]);
     if (notificationDb == null) {
       return undefined;
@@ -516,18 +455,9 @@ class NotificationsManager {
         this.clearOutboxNotifications(tran),
       );
     }
-
-    await tran.lock(
-      this.notificationsManagerOutboxNotificationsCounterDbPath.join(''),
-    );
     const notificationIds = await this.getOutboxNotificationIds(tran);
-    const numMessages = await tran.get<number>(
-      this.notificationsManagerOutboxNotificationsCounterDbPath,
-    );
-    if (numMessages !== undefined) {
-      for (const id of notificationIds) {
-        await this.removeOutboxNotification(id, tran);
-      }
+    for (const id of notificationIds) {
+      await this.removeOutboxNotification(id, tran);
     }
   }
 
@@ -535,28 +465,22 @@ class NotificationsManager {
     notificationId: NotificationId,
     tran: DBTransaction,
   ): Promise<void> {
-    await tran.lock(
-      this.notificationsManagerOutboxNotificationsCounterDbPath.join(''),
+    const taskIterator = this.taskManager.getTasks(
+      undefined,
+      false,
+      [
+        this.sendNotificationHandlerId,
+        notificationsUtils.encodeNotificationId(notificationId),
+      ],
+      tran,
     );
-    const numMessages = await tran.get<number>(
-      this.notificationsManagerOutboxNotificationsCounterDbPath,
-    );
-    if (numMessages === undefined) {
-      throw new notificationsErrors.ErrorNotificationsDb();
-    }
-    const taskId = this.outboxNotificationIdEncodedToTaskIdMap.get(
-      notificationsUtils.encodeNotificationId(notificationId),
-    )!;
-    const task = (await this.taskManager.getTask(taskId, false, tran))!;
+    const task: Task = await taskIterator.next().then((value) => value.value);
+    await taskIterator.return(undefined);
     task.cancel(abortSendNotificationTaskReason);
     await tran.del([
-      ...this.notificationsManagerOutboxNotificationsDbPath,
-      idUtils.toBuffer(notificationId),
+      ...this.notificationsManagerOutboxDbPath,
+      notificationId.toBuffer(),
     ]);
-    await tran.put(
-      this.notificationsManagerOutboxNotificationsCounterDbPath,
-      numMessages - 1,
-    );
   }
 
   /**
@@ -572,10 +496,6 @@ class NotificationsManager {
         this.receiveNotification(notification, tran),
       );
     }
-
-    await tran.lock(
-      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
-    );
     const nodePerms = await this.acl.getNodePerm(
       nodesUtils.decodeNodeId(notification.iss)!,
     );
@@ -585,16 +505,9 @@ class NotificationsManager {
     // Only keep the message if the sending node has the correct permissions
     if (Object.keys(nodePerms.gestalt).includes('notify')) {
       // If the number stored in notificationsDb >= 10000
-      let numMessages = await tran.get<number>(
-        this.notificationsManagerInboxNotificationsCounterDbPath,
+      const numMessages = await tran.count(
+        this.notificationsManagerInboxDbPath,
       );
-      if (numMessages === undefined) {
-        numMessages = 0;
-        await tran.put(
-          this.notificationsManagerInboxNotificationsCounterDbPath,
-          0,
-        );
-      }
       if (numMessages >= this.messageCap) {
         // Remove the oldest notification from notificationsMessagesDb
         const oldestId = await this.getOldestNotificationId(tran);
@@ -603,21 +516,12 @@ class NotificationsManager {
       // Store the new notification in notificationsMessagesDb
       const notificationId = this.inboxNotificationIdGenerator();
       await tran.put(
-        [
-          ...this.notificationsManagerInboxNotificationsDbPath,
-          idUtils.toBuffer(notificationId),
-        ],
+        [...this.notificationsManagerInboxDbPath, notificationId.toBuffer()],
         {
           ...notification,
           peerNotificationIdEncoded: notification.notificationIdEncoded,
           notificationIdEncoded: undefined,
         } as NotificationDB,
-      );
-      // Number of messages += 1
-      const newNumMessages = numMessages + 1;
-      await tran.put(
-        this.notificationsManagerInboxNotificationsCounterDbPath,
-        newNumMessages,
       );
     }
   }
@@ -701,18 +605,9 @@ class NotificationsManager {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.clearNotifications(tran));
     }
-
-    await tran.lock(
-      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
-    );
     const notificationIds = await this.getNotificationIds('all', tran);
-    const numMessages = await tran.get<number>(
-      this.notificationsManagerInboxNotificationsCounterDbPath,
-    );
-    if (numMessages !== undefined) {
-      for (const id of notificationIds) {
-        await this.removeNotification(id, tran);
-      }
+    for (const id of notificationIds) {
+      await this.removeNotification(id, tran);
     }
   }
 
@@ -721,18 +616,15 @@ class NotificationsManager {
     tran: DBTransaction,
   ): Promise<Notification | undefined> {
     const notificationDb = await tran.get<NotificationDB>([
-      ...this.notificationsManagerInboxNotificationsDbPath,
-      idUtils.toBuffer(notificationId),
+      ...this.notificationsManagerInboxDbPath,
+      notificationId.toBuffer(),
     ]);
     if (notificationDb === undefined) {
       return undefined;
     }
     notificationDb.isRead = true;
     await tran.put(
-      [
-        ...this.notificationsManagerInboxNotificationsDbPath,
-        idUtils.toBuffer(notificationId),
-      ],
+      [...this.notificationsManagerInboxDbPath, notificationId.toBuffer()],
       notificationDb,
     );
     return {
@@ -748,7 +640,7 @@ class NotificationsManager {
   ): Promise<Array<NotificationId>> {
     const notificationIds: Array<NotificationId> = [];
     const messageIterator = tran.iterator<NotificationDB>(
-      this.notificationsManagerInboxNotificationsDbPath,
+      this.notificationsManagerInboxDbPath,
       { valueAsBuffer: false },
     );
     for await (const [keyPath, notification] of messageIterator) {
@@ -771,7 +663,7 @@ class NotificationsManager {
   ): Promise<Array<Notification>> {
     const notifications: Array<Notification> = [];
     for await (const [keyPath, notificationDb] of tran.iterator<NotificationDB>(
-      this.notificationsManagerInboxNotificationsDbPath,
+      this.notificationsManagerInboxDbPath,
       { valueAsBuffer: false },
     )) {
       const notificationIdEncoded = notificationsUtils.encodeNotificationId(
@@ -808,24 +700,10 @@ class NotificationsManager {
     messageId: NotificationId,
     tran: DBTransaction,
   ): Promise<void> {
-    await tran.lock(
-      this.notificationsManagerInboxNotificationsCounterDbPath.join(''),
-    );
-    const numMessages = await tran.get<number>(
-      this.notificationsManagerInboxNotificationsCounterDbPath,
-    );
-    if (numMessages === undefined) {
-      throw new notificationsErrors.ErrorNotificationsDb();
-    }
-
     await tran.del([
-      ...this.notificationsManagerInboxNotificationsDbPath,
-      idUtils.toBuffer(messageId),
+      ...this.notificationsManagerInboxDbPath,
+      messageId.toBuffer(),
     ]);
-    await tran.put(
-      this.notificationsManagerInboxNotificationsCounterDbPath,
-      numMessages - 1,
-    );
   }
 }
 

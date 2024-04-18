@@ -281,7 +281,7 @@ describe('nodesClaim', () => {
       .spyOn(NotificationsManager.prototype, 'sendNotification')
       .mockResolvedValue({
         notificationId: generateNotificationId(),
-        sendProm: Promise.resolve(),
+        sendP: Promise.resolve(),
       });
     mockedClaimNode = jest
       .spyOn(NodeManager.prototype, 'claimNode')
