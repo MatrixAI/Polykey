@@ -8,6 +8,7 @@ import type {
   GestaltIdEncoded,
   IdentityId,
   NodeIdEncoded,
+  NotificationIdEncoded,
   ProviderId,
   VaultIdEncoded,
 } from '../ids';
@@ -226,6 +227,10 @@ type NotificationSendMessage = NodeIdMessage & {
   retries?: number;
 };
 
+type NotificationRemoveMessage = {
+  notificationIdEncoded: NotificationIdEncoded;
+};
+
 // Vaults messages
 
 type VaultNameMessage = {
@@ -381,6 +386,7 @@ export type {
   NotificationReadMessage,
   NotificationOutboxReadMessage,
   NotificationSendMessage,
+  NotificationRemoveMessage,
   VaultNameMessage,
   VaultIdMessage,
   VaultIdentifierMessage,

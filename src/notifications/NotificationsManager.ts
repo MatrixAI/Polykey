@@ -462,10 +462,15 @@ class NotificationsManager {
     }
   }
 
-  protected async removeOutboxNotification(
+  public async removeOutboxNotification(
     notificationId: NotificationId,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.removeOutboxNotification(notificationId, tran),
+      );
+    }
     const taskIterator = this.taskManager.getTasks(
       undefined,
       false,
@@ -475,9 +480,11 @@ class NotificationsManager {
       ],
       tran,
     );
-    const task: Task = await taskIterator.next().then((value) => value.value);
+    const task: Task | undefined = await taskIterator
+      .next()
+      .then((value) => value.value);
     await taskIterator.return(undefined);
-    task.cancel(abortSendNotificationTaskReason);
+    task?.cancel(abortSendNotificationTaskReason);
     await tran.del([
       ...this.notificationsManagerOutboxDbPath,
       notificationId.toBuffer(),
@@ -695,10 +702,15 @@ class NotificationsManager {
     return undefined;
   }
 
-  protected async removeNotification(
+  public async removeNotification(
     messageId: NotificationId,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
+    if (tran == null) {
+      return this.db.withTransactionF(async (tran) =>
+        this.removeNotification(messageId, tran),
+      );
+    }
     await tran.del([
       ...this.notificationsManagerInboxDbPath,
       messageId.toBuffer(),

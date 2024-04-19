@@ -1,7 +1,7 @@
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { Host, TLSConfig } from '@/network/types';
 import type { General, Notification, VaultShare } from '@/notifications/types';
-import type { VaultIdEncoded, NodeIdEncoded } from '@/ids/types';
+import type { VaultIdEncoded, NodeIdEncoded, NotificationIdEncoded } from '@/ids/types';
 import type { VaultName } from '@/vaults/types';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
@@ -24,7 +24,9 @@ import {
   NotificationsClear,
   NotificationsOutboxClear,
   NotificationsOutboxRead,
+  NotificationsOutboxRemove,
   NotificationsRead,
+  NotificationsRemove,
   NotificationsSend,
 } from '@/client/handlers';
 import {
@@ -33,6 +35,8 @@ import {
   notificationsSend,
   notificationsOutboxClear,
   notificationsOutboxRead,
+  notificationsOutboxRemove,
+  notificationsRemove,
 } from '@/client/callers';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
@@ -582,8 +586,168 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
 });
+describe('notificationsRemove', () => {
+  const logger = new Logger('notificationsRemove test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsRemove: typeof notificationsRemove;
+  }>;
+  let nodeGraph: NodeGraph;
+  let taskManager: TaskManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
+  let notificationsManager: NotificationsManager;
+  let acl: ACL;
+  let sigchain: Sigchain;
+  let mockedRemoveNotification: jest.SpyInstance;
+  beforeEach(async () => {
+    mockedRemoveNotification = jest.spyOn(NotificationsManager.prototype, 'removeNotification');
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger: logger.getChild('NodeGraph'),
+    });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsRemove: new NotificationsRemove({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsRemove,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    mockedRemoveNotification.mockRestore();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await notificationsManager.stop();
+    await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
+    await nodeManager.stop();
+    await acl.stop();
+    await db.stop();
+    await keyRing.stop();
+    await taskManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('removes a notification', async () => {
+    mockedRemoveNotification.mockImplementation();
+    const receiverNotificationIdEncoded =
+      'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
+    const response = await rpcClient.methods.notificationsRemove({
+      notificationIdEncoded: receiverNotificationIdEncoded,
+    });
+    expect(mockedRemoveNotification.mock.calls.length).toBe(1);
+    expect(
+      nodesUtils.encodeNodeId(mockedRemoveNotification.mock.calls[0][0]),
+    ).toEqual(receiverNotificationIdEncoded);
+  });
+});
 describe('notificationsOutboxClear', () => {
-  const logger = new Logger('notificationsClear test', LogLevel.WARN, [
+  const logger = new Logger('notificationsOutboxClear test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -1065,6 +1229,166 @@ describe('notificationsOutboxRead', () => {
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
     expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
     expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+  });
+});
+describe('notificationsOutboxRemove', () => {
+  const logger = new Logger('notificationsOutboxRemove test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    notificationsOutboxRemove: typeof notificationsOutboxRemove;
+  }>;
+  let nodeGraph: NodeGraph;
+  let taskManager: TaskManager;
+  let nodeConnectionManager: NodeConnectionManager;
+  let nodeManager: NodeManager;
+  let notificationsManager: NotificationsManager;
+  let acl: ACL;
+  let sigchain: Sigchain;
+  let mockedRemoveOutboxNotification: jest.SpyInstance;
+  beforeEach(async () => {
+    mockedRemoveOutboxNotification = jest.spyOn(NotificationsManager.prototype, 'removeOutboxNotification');
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password,
+      keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath,
+      logger,
+    });
+    acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+    });
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyRing,
+      logger: logger.getChild('NodeGraph'),
+    });
+    taskManager = await TaskManager.createTaskManager({
+      db,
+      logger,
+      lazy: true,
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyRing,
+      tlsConfig: {} as TLSConfig,
+      connectionConnectTimeoutTime: 2000,
+      connectionIdleTimeoutTimeMin: 2000,
+      connectionIdleTimeoutTimeScale: 0,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    nodeManager = new NodeManager({
+      db,
+      keyRing,
+      nodeConnectionManager,
+      nodeGraph,
+      gestaltGraph: {} as GestaltGraph,
+      sigchain,
+      taskManager,
+      logger,
+    });
+    await nodeManager.start();
+    await nodeConnectionManager.start({
+      host: localhost as Host,
+      agentService: {} as AgentServerManifest,
+    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    clientService = new ClientService({
+      tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        notificationsOutboxRemove: new NotificationsOutboxRemove({
+          db,
+          notificationsManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        notificationsOutboxRemove,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    mockedRemoveOutboxNotification.mockRestore();
+    await taskManager.stopProcessing();
+    await taskManager.stopTasks();
+    await clientService.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await notificationsManager.stop();
+    await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
+    await nodeManager.stop();
+    await acl.stop();
+    await db.stop();
+    await keyRing.stop();
+    await taskManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('removes a notification', async () => {
+    mockedRemoveOutboxNotification.mockImplementation();
+    const receiverNotificationIdEncoded =
+      'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
+    const response = await rpcClient.methods.notificationsOutboxRemove({
+      notificationIdEncoded: receiverNotificationIdEncoded,
+    });
+    expect(mockedRemoveOutboxNotification.mock.calls.length).toBe(1);
+    expect(
+      nodesUtils.encodeNodeId(mockedRemoveOutboxNotification.mock.calls[0][0]),
+    ).toEqual(receiverNotificationIdEncoded);
   });
 });
 describe('notificationsSend', () => {

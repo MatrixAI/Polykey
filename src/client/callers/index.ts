@@ -48,7 +48,9 @@ import nodesPing from './nodesPing';
 import notificationsClear from './notificationsClear';
 import notificationsOutboxClear from './notificationsOutboxClear';
 import notificationsOutboxRead from './notificationsOutboxRead';
+import notificationsOutboxRemove from './notificationsOutboxRemove';
 import notificationsRead from './notificationsRead';
+import notificationsRemove from './notificationsRemove';
 import notificationsSend from './notificationsSend';
 import vaultsClone from './vaultsClone';
 import vaultsCreate from './vaultsCreate';
@@ -127,7 +129,9 @@ const clientManifest = {
   notificationsClear,
   notificationsOutboxClear,
   notificationsOutboxRead,
+  notificationsOutboxRemove,
   notificationsRead,
+  notificationsRemove,
   notificationsSend,
   vaultsClone,
   vaultsCreate,
@@ -205,7 +209,9 @@ export {
   notificationsClear,
   notificationsOutboxClear,
   notificationsOutboxRead,
+  notificationsOutboxRemove,
   notificationsRead,
+  notificationsRemove,
   notificationsSend,
   vaultsClone,
   vaultsCreate,
