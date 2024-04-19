@@ -119,17 +119,15 @@ class NotificationsManager {
 
   protected sendNotificationHandler: TaskHandler = async (
     _ctx,
-    _taskInfo,
+    taskInfo,
     {
       nodeIdEncoded,
       notificationIdEncoded,
       retries,
-      attempt,
     }: {
       nodeIdEncoded: NodeIdEncoded;
       notificationIdEncoded: NotificationIdEncoded;
       retries: number;
-      attempt: number;
     },
   ) => {
     return await this.db.withTransactionF(async (tran) => {
@@ -159,12 +157,14 @@ class NotificationsManager {
           });
         });
       } catch (e) {
-        if (nodesUtils.isConnectionError(e) && attempt < retries) {
+        if (nodesUtils.isConnectionError(e) && 0 < retries) {
           this.logger.warn(
             `Could not send to ${
               notificationDb.data.type
             } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
           );
+          // delay is 1 hr at the start, and then double of the last task after that, capped at one day
+          const delay = taskInfo.delay === 0 ? 60 * 60 * 1000 : Math.min(taskInfo.delay * 2, 24 * 60 * 60 * 1000);
           // Recursively return inner task, so that the handler can process them.
           const newTask = await this.taskManager.scheduleTask(
             {
@@ -174,11 +174,10 @@ class NotificationsManager {
                 {
                   nodeIdEncoded,
                   notificationIdEncoded,
-                  retries,
-                  attempt: attempt + 1,
+                  retries: retries - 1,
                 },
               ],
-              delay: 1000 * 2 ** attempt,
+              delay: delay,
               lazy: false,
             },
             tran,
@@ -351,7 +350,6 @@ class NotificationsManager {
             nodeIdEncoded,
             notificationIdEncoded,
             retries,
-            attempt: 0,
           },
         ],
         path: [this.sendNotificationHandlerId, notificationIdEncoded],
