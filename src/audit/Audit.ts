@@ -286,9 +286,23 @@ class Audit {
     let blockP: PromiseCancellable<void> | undefined;
     let resolveBlockP: (() => void) | undefined;
     let blockPSignal: AbortSignal | undefined;
+    const seekEndTime: number | undefined =
+      seekEnd != null
+        ? auditUtils.extractFromSeek(seekEnd, (size) =>
+            new Uint8Array(size).fill(0xff),
+          ).timestamp
+        : undefined;
+    let seekEndTimer: NodeJS.Timeout | undefined;
+    if (seekEndTime != null) {
+      // Create a timer that will resolve the block when the `seekEnd` has passed
+      seekEndTimer = setTimeout(() => {
+        resolveBlockP?.();
+      }, seekEndTime - Date.now());
+    }
     const handleEventAuditAuditEventSet = (
       evt: auditEvents.EventAuditAuditEventSet,
     ) => {
+      // If the path equals or is a subpath of our topicPath then we resolve the block
       let isSupTopic = true;
       for (let i = 0; i < topicPath.length; i++) {
         if (evt.detail.topicPath.at(i) !== topicPath[i]) {
@@ -302,7 +316,9 @@ class Audit {
     try {
       let remainingLimit = limit;
       let seekCursor = seek;
-      let firstRunComplete = false;
+      let idPrevious: AuditEventId = IdInternal.fromBuffer<AuditEventId>(
+        Buffer.alloc(0, 0),
+      );
       this.addEventListener(
         auditEvents.EventAuditAuditEventSet.name,
         handleEventAuditAuditEventSet,
@@ -319,48 +335,27 @@ class Audit {
         });
         this.taskPromises.add(blockP);
 
-        let limit: number | undefined;
-        if (remainingLimit != null) {
-          limit = !firstRunComplete ? remainingLimit : remainingLimit + 1;
-        }
         const iterator = this.getAuditEvents(topicPath, {
           seek: seekCursor,
           seekEnd,
           order: 'asc',
-          limit,
         });
-        let i = 0;
         for await (const auditEvent of iterator) {
-          seekCursor = auditEvent.id;
-          // Skip the first element if this is not the first run as it is a duplicate
-          if (firstRunComplete && i === 0) {
-            i++;
-            blockPSignal?.throwIfAborted();
-            continue;
-          }
-          yield auditEvent;
+          // Clone auditEvent.id since its possible to modify after `auditEvent` is yielded
+          const auditEventId: AuditEventId =
+            IdInternal.fromBuffer<AuditEventId>(auditEvent.id.toBuffer());
+          seekCursor = auditEventId;
           blockPSignal?.throwIfAborted();
-          i++;
-        }
-        // If only the first element was found after the initial loop, then we have reached the end
-        // if this is the first loop and there are no elements found, we have also reached the end
-        if ((firstRunComplete && i === 1) || i === 0) {
-          return;
-        }
-        if (remainingLimit != null) {
-          // The first element is a duplicate after the first run, so we ignore it.
-          if (!firstRunComplete) {
-            remainingLimit -= i;
-          } else {
-            remainingLimit -= i - 1;
-          }
+          // Skip event if it is a duplicate with the previous yielded event
+          if (Buffer.compare(auditEvent.id, idPrevious) === 0) continue;
+          yield auditEvent;
+          idPrevious = auditEventId;
           // Return if the remaining limit is 0, we no longer need to yield any more events.
-          if (remainingLimit === 0) {
-            return;
-          }
+          if (remainingLimit != null && --remainingLimit === 0) return;
         }
-        firstRunComplete = true;
+        if (seekEndTime != null && seekEndTime <= Date.now()) return;
         await blockP;
+        if (seekEndTime != null && seekEndTime <= Date.now()) return;
       }
     } finally {
       this.removeEventListener(
@@ -371,6 +366,7 @@ class Audit {
       if (blockP != null) {
         this.taskPromises.delete(blockP);
       }
+      clearTimeout(seekEndTimer);
     }
   }
 
@@ -391,7 +387,7 @@ class Audit {
     tran?: DBTransaction,
   ): AsyncGenerator<TopicSubPathToAuditEvent<T>> {
     if (tran == null) {
-      const getEvents = (tran) =>
+      const getEvents = (tran: DBTransaction) =>
         this.getAuditEvents(
           topicPath,
           {

@@ -386,33 +386,40 @@ describe(Audit.name, () => {
       };
       // @ts-ignore: kidnap protected
       const handlerMap = audit.eventHandlerMap;
-      const iterator = audit.getAuditEventsLongRunning(['node']);
-      await handlerMap
-        .get(nodeEvents.EventNodeConnectionManagerConnectionReverse)
-        ?.handler(
+      const handleEvent = async (evt) => {
+        await handlerMap.get(evt.constructor)!.handler(evt);
+      };
+      const streamP = (async () => {
+        const iterator = audit.getAuditEventsLongRunning(['node']);
+        let count = 0;
+        for await (const result of iterator) {
+          expect(result.data).toEqual({
+            ...auditEventData,
+            type: 'reverse',
+          });
+          if (++count === 3) break;
+        }
+      })();
+      const eventsP = (async () => {
+        await handleEvent(
           new nodeEvents.EventNodeConnectionManagerConnectionReverse({
             detail: eventDetail,
           }),
         );
-      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
-        {
-          ...auditEventData,
-          type: 'reverse',
-        },
-      );
-      await handlerMap
-        .get(nodeEvents.EventNodeConnectionManagerConnectionForward)
-        ?.handler(
-          new nodeEvents.EventNodeConnectionManagerConnectionForward({
+        await handleEvent(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
             detail: eventDetail,
           }),
         );
-      await expect(iterator.next().then((e) => e.value!.data)).resolves.toEqual(
-        {
-          ...auditEventData,
-          type: 'forward',
-        },
-      );
+        await handleEvent(
+          new nodeEvents.EventNodeConnectionManagerConnectionReverse({
+            detail: eventDetail,
+          }),
+        );
+      })();
+
+      await Promise.all([eventsP, streamP]);
+
       await audit.stop();
     });
     test('long running with limit', async () => {
