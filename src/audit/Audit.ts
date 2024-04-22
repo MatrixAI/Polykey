@@ -341,14 +341,15 @@ class Audit {
           order: 'asc',
         });
         for await (const auditEvent of iterator) {
-          seekCursor = auditEvent.id;
+          // Clone auditEvent.id since its possible to modify after `auditEvent` is yielded
+          const auditEventId: AuditEventId =
+            IdInternal.fromBuffer<AuditEventId>(auditEvent.id.toBuffer());
+          seekCursor = auditEventId;
           blockPSignal?.throwIfAborted();
           // Skip event if it is a duplicate with the previous yielded event
-          if (Buffer.compare(auditEvent.id, idPrevious) === 0) {
-            continue;
-          }
+          if (Buffer.compare(auditEvent.id, idPrevious) === 0) continue;
           yield auditEvent;
-          idPrevious = auditEvent.id;
+          idPrevious = auditEventId;
           // Return if the remaining limit is 0, we no longer need to yield any more events.
           if (remainingLimit != null && --remainingLimit === 0) return;
         }
