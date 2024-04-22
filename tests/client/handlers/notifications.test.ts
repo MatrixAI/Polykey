@@ -1392,7 +1392,7 @@ describe('notificationsOutboxRemove', () => {
     mockedRemoveOutboxNotification.mockImplementation();
     const receiverNotificationIdEncoded =
       'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
-    rpcClient.methods.notificationsOutboxRemove({
+    await rpcClient.methods.notificationsOutboxRemove({
       notificationIdEncoded: receiverNotificationIdEncoded,
     });
     expect(mockedRemoveOutboxNotification.mock.calls.length).toBe(1);

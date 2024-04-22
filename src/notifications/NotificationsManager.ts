@@ -25,6 +25,7 @@ import {
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsEvents from './events';
+import config from '../config';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
 
@@ -55,8 +56,13 @@ class NotificationsManager {
     nodeManager,
     taskManager,
     keyRing,
+    sendNotificationRetries = config.defaultsSystem
+      .notificationsManagerSendNotificationRetries,
+    sendNotificationRetryIntervalTimeMin = config.defaultsSystem
+      .notificationsManagerSendNotificationRetryIntervalTimeMin,
+    sendNotificationRetryIntervalTimeMax = config.defaultsSystem
+      .notificationsManagerSendNotificationRetryIntervalTimeMax,
     messageCap = 10000,
-    defaultRetries = 64,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -66,7 +72,9 @@ class NotificationsManager {
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap?: number;
-    defaultRetries?: number;
+    sendNotificationRetries?: number;
+    sendNotificationRetryIntervalTimeMin?: number;
+    sendNotificationRetryIntervalTimeMax?: number;
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NotificationsManager> {
@@ -77,7 +85,9 @@ class NotificationsManager {
       keyRing,
       logger,
       messageCap,
-      defaultRetries,
+      sendNotificationRetries,
+      sendNotificationRetryIntervalTimeMin,
+      sendNotificationRetryIntervalTimeMax,
       nodeManager,
       taskManager,
     });
@@ -94,7 +104,9 @@ class NotificationsManager {
   protected nodeManager: NodeManager;
   protected taskManager: TaskManager;
   protected messageCap: number;
-  protected defaultRetries: number;
+  protected sendNotificationRetries: number;
+  protected sendNotificationRetryIntervalTimeMin: number;
+  protected sendNotificationRetryIntervalTimeMax: number;
 
   protected notificationsManagerDbPath: LevelPath = [this.constructor.name];
   /**
@@ -124,10 +136,14 @@ class NotificationsManager {
       nodeIdEncoded,
       notificationIdEncoded,
       retries,
+      retryIntervalTimeMin,
+      retryIntervalTimeMax,
     }: {
       nodeIdEncoded: NodeIdEncoded;
       notificationIdEncoded: NotificationIdEncoded;
       retries: number;
+      retryIntervalTimeMin: number;
+      retryIntervalTimeMax: number;
     },
   ) => {
     return await this.db.withTransactionF(async (tran) => {
@@ -157,17 +173,18 @@ class NotificationsManager {
           });
         });
       } catch (e) {
+        this.logger.warn(
+          `Could not send to ${
+            notificationDb.data.type
+          } notification to ${nodesUtils.encodeNodeId(
+            nodeId,
+          )}: ${e.toString()}`,
+        );
         if (nodesUtils.isConnectionError(e) && 0 < retries) {
-          this.logger.warn(
-            `Could not send to ${
-              notificationDb.data.type
-            } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
-          );
-          // Delay is 1 hr at the start, and then double of the last task after that, capped at one day
           const delay =
             taskInfo.delay === 0
-              ? 60 * 60 * 1000
-              : Math.min(taskInfo.delay * 2, 24 * 60 * 60 * 1000);
+              ? retryIntervalTimeMin
+              : Math.min(taskInfo.delay * 2, retryIntervalTimeMax);
           // Recursively return inner task, so that the handler can process them.
           const newTask = await this.taskManager.scheduleTask(
             {
@@ -178,6 +195,8 @@ class NotificationsManager {
                   nodeIdEncoded,
                   notificationIdEncoded,
                   retries: retries - 1,
+                  retryIntervalTimeMin,
+                  retryIntervalTimeMax,
                 },
               ],
               delay: delay,
@@ -187,11 +206,6 @@ class NotificationsManager {
           );
           return newTask;
         }
-        this.logger.warn(
-          `Notification recipient ${nodesUtils.encodeNodeId(
-            nodeId,
-          )} responded with error: ${e.cause.description}`,
-        );
         await this.db.del(notificationKeyPath);
         throw e;
       }
@@ -207,7 +221,9 @@ class NotificationsManager {
     taskManager,
     keyRing,
     messageCap,
-    defaultRetries,
+    sendNotificationRetries,
+    sendNotificationRetryIntervalTimeMin,
+    sendNotificationRetryIntervalTimeMax,
     logger,
   }: {
     acl: ACL;
@@ -216,12 +232,18 @@ class NotificationsManager {
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap: number;
-    defaultRetries: number;
+    sendNotificationRetries: number;
+    sendNotificationRetryIntervalTimeMin: number;
+    sendNotificationRetryIntervalTimeMax: number;
     logger: Logger;
   }) {
     this.logger = logger;
     this.messageCap = messageCap;
-    this.defaultRetries = defaultRetries;
+    this.sendNotificationRetries = sendNotificationRetries;
+    this.sendNotificationRetryIntervalTimeMin =
+      sendNotificationRetryIntervalTimeMin;
+    this.sendNotificationRetryIntervalTimeMax =
+      sendNotificationRetryIntervalTimeMax;
     this.acl = acl;
     this.db = db;
     this.keyRing = keyRing;
@@ -299,11 +321,15 @@ class NotificationsManager {
     {
       nodeId,
       data,
-      retries = this.defaultRetries,
+      retries = this.sendNotificationRetries,
+      retryIntervalTimeMin = this.sendNotificationRetryIntervalTimeMin,
+      retryIntervalTimeMax = this.sendNotificationRetryIntervalTimeMax,
     }: {
       nodeId: NodeId;
       data: NotificationData;
       retries?: number;
+      retryIntervalTimeMin?: number;
+      retryIntervalTimeMax?: number;
     },
     tran?: DBTransaction,
   ): Promise<{
@@ -324,6 +350,8 @@ class NotificationsManager {
             nodeId,
             data,
             retries,
+            retryIntervalTimeMin,
+            retryIntervalTimeMax,
           },
           tran,
         ),
@@ -353,6 +381,8 @@ class NotificationsManager {
             nodeIdEncoded,
             notificationIdEncoded,
             retries,
+            retryIntervalTimeMin,
+            retryIntervalTimeMax,
           },
         ],
         path: [this.sendNotificationHandlerId, notificationIdEncoded],

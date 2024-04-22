@@ -317,6 +317,7 @@ function generateRandomNodeIdForBucket(
 function isConnectionError(e): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
+    e instanceof nodesErrors.ErrorNodeManagerConnectionFailed ||
     e instanceof nodesErrors.ErrorNodeConnectionTimeout ||
     e instanceof nodesErrors.ErrorNodeConnectionMultiConnectionFailed ||
     e instanceof quicErrors.ErrorQUICConnectionPeer ||

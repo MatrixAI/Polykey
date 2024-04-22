@@ -21,6 +21,7 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import * as nodesErrors from '@/nodes/errors';
 import * as notificationsErrors from '@/notifications/errors';
 import * as notificationsUtils from '@/notifications/utils';
 import * as vaultsUtils from '@/vaults/utils';
@@ -374,6 +375,35 @@ describe('NotificationsManager', () => {
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.stop();
+  });
+  test('reattempt send notifications', async () => {
+    const spiedWithConnF = jest.spyOn(NodeManager.prototype, 'withConnF');
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        sendNotificationRetries: 5,
+        sendNotificationRetryIntervalTimeMin: 0,
+        sendNotificationRetryIntervalTimeMax: 0,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    const { sendP } = await notificationsManager.sendNotification({
+      nodeId: testUtils.generateRandomNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg',
+      },
+    });
+    await expect(sendP).rejects.toThrow(
+      nodesErrors.ErrorNodeManagerConnectionFailed,
+    );
+    expect(spiedWithConnF.mock.calls.length).toBe(6);
+    await notificationsManager.stop();
+    spiedWithConnF.mockRestore();
   });
   test('can receive notifications from senders with permission', async () => {
     const generateNotificationId =
