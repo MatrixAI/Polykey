@@ -286,6 +286,12 @@ describe('NotificationsManager', () => {
     );
     await taskManager.startProcessing();
     await Promise.all(sendProms);
+    await expect(
+      notificationsManager
+        .readOutboxNotifications()
+        .next()
+        .then((data) => data.done),
+    ).resolves.toBe(true);
     const receivedNotifications = await AsyncIterable.as(
       receiver.notificationsManager.readInboxNotifications(),
     ).toArray();
@@ -369,6 +375,12 @@ describe('NotificationsManager', () => {
         .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
+    await expect(
+      notificationsManager
+        .readOutboxNotifications()
+        .next()
+        .then((data) => data.done),
+    ).resolves.toBe(true);
     const receivedNotifications = await AsyncIterable.as(
       receiver.notificationsManager.readInboxNotifications(),
     ).toArray();
