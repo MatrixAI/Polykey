@@ -299,13 +299,13 @@ describe('notificationsSend', () => {
     });
     // Check notification was received
     const receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readNotifications(),
+      notificationsManager.readInboxNotifications(),
     ).toArray();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].data).toEqual(notification.data);
     expect(receivedNotifications[0].iss).toEqual(notification.iss);
     // Reverse side effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send invalidly formatted notification', async () => {
@@ -341,7 +341,7 @@ describe('notificationsSend', () => {
     );
     // Check notification was not received
     let receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readNotifications(),
+      notificationsManager.readInboxNotifications(),
     ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Improperly typed notification
@@ -365,7 +365,7 @@ describe('notificationsSend', () => {
     );
     // Check notification was not received
     receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readNotifications(),
+      notificationsManager.readInboxNotifications(),
     ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side effects
@@ -400,7 +400,7 @@ describe('notificationsSend', () => {
     );
     // Check notification was not received
     const receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readNotifications(),
+      notificationsManager.readInboxNotifications(),
     ).toArray();
     expect(receivedNotifications).toHaveLength(0);
   });

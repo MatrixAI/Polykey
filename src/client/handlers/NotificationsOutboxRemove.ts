@@ -2,13 +2,12 @@ import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
- NotificationRemoveMessage,
+  NotificationRemoveMessage,
 } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as notificationsUtils from '../../notifications/utils';
 import * as validationErrors from '../../validation/errors';
-
 
 class NotificationsOutboxRemove extends UnaryHandler<
   {
@@ -18,7 +17,9 @@ class NotificationsOutboxRemove extends UnaryHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult
 > {
-  public handle = async (input: ClientRPCRequestParams<NotificationRemoveMessage>): Promise<ClientRPCResponseResult> => {
+  public handle = async (
+    input: ClientRPCRequestParams<NotificationRemoveMessage>,
+  ): Promise<ClientRPCResponseResult> => {
     const { db, notificationsManager } = this.container;
     const notificationId = notificationsUtils.decodeNotificationId(
       input.notificationIdEncoded,

@@ -163,8 +163,11 @@ class NotificationsManager {
               notificationDb.data.type
             } notification to ${nodesUtils.encodeNodeId(nodeId)}`,
           );
-          // delay is 1 hr at the start, and then double of the last task after that, capped at one day
-          const delay = taskInfo.delay === 0 ? 60 * 60 * 1000 : Math.min(taskInfo.delay * 2, 24 * 60 * 60 * 1000);
+          // Delay is 1 hr at the start, and then double of the last task after that, capped at one day
+          const delay =
+            taskInfo.delay === 0
+              ? 60 * 60 * 1000
+              : Math.min(taskInfo.delay * 2, 24 * 60 * 60 * 1000);
           // Recursively return inner task, so that the handler can process them.
           const newTask = await this.taskManager.scheduleTask(
             {
@@ -518,8 +521,16 @@ class NotificationsManager {
       );
       if (numMessages >= this.messageCap) {
         // Remove the oldest notification from notificationsMessagesDb
-        const oldestId = await this.getOldestNotificationId(tran);
-        await this.removeNotification(oldestId!, tran);
+        const oldestIdIterator = this.getInboxNotificationIds({
+          order: 'oldest',
+          number: 1,
+          tran,
+        });
+        const oldestId = await oldestIdIterator
+          .next()
+          .then((data) => data.value);
+        await oldestIdIterator.return(undefined);
+        await this.removeInboxNotification(oldestId, tran);
       }
       // Store the new notification in notificationsMessagesDb
       const notificationId = this.inboxNotificationIdGenerator();
@@ -538,7 +549,7 @@ class NotificationsManager {
    * Read a notification
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async *readNotifications({
+  public async *readInboxNotifications({
     unread = false,
     number = 'all',
     order = 'newest',
@@ -551,19 +562,19 @@ class NotificationsManager {
   } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
       const readNotifications = (tran) =>
-        this.readNotifications({ unread, number, order, tran });
+        this.readInboxNotifications({ unread, number, order, tran });
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* readNotifications(tran);
       });
     }
-    const notificationIds = this.getNotificationIds({
+    const notificationIds = this.getInboxNotificationIds({
       unread,
       number,
       order,
       tran,
     });
     for await (const id of notificationIds) {
-      const notification = await this.readNotificationById(id, tran);
+      const notification = await this.readInboxNotificationById(id, tran);
       if (notification == null) never();
       yield notification;
     }
@@ -583,7 +594,7 @@ class NotificationsManager {
         this.findGestaltInvite(fromNode, tran),
       );
     }
-    const notifications = await this.getNotifications('all', tran);
+    const notifications = await this.getInboxNotifications('all', tran);
     for (const notification of notifications) {
       if (
         notification.data.type === 'GestaltInvite' &&
@@ -598,17 +609,19 @@ class NotificationsManager {
    * Removes all notifications
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
-  public async clearNotifications(tran?: DBTransaction): Promise<void> {
+  public async clearInboxNotifications(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.clearNotifications(tran));
+      return this.db.withTransactionF((tran) =>
+        this.clearInboxNotifications(tran),
+      );
     }
-    const notificationIds = this.getNotificationIds({ tran });
+    const notificationIds = this.getInboxNotificationIds({ tran });
     for await (const id of notificationIds) {
-      await this.removeNotification(id, tran);
+      await this.removeInboxNotification(id, tran);
     }
   }
 
-  protected async readNotificationById(
+  protected async readInboxNotificationById(
     notificationId: NotificationId,
     tran: DBTransaction,
   ): Promise<Notification | undefined> {
@@ -631,7 +644,7 @@ class NotificationsManager {
     };
   }
 
-  protected async *getNotificationIds({
+  protected async *getInboxNotificationIds({
     unread = false,
     number = 'all',
     order = 'newest',
@@ -661,7 +674,7 @@ class NotificationsManager {
     }
   }
 
-  protected async getNotifications(
+  protected async getInboxNotifications(
     type: 'unread' | 'all',
     tran: DBTransaction,
   ): Promise<Array<Notification>> {
@@ -690,25 +703,13 @@ class NotificationsManager {
     return notifications;
   }
 
-  protected async getOldestNotificationId(
-    tran: DBTransaction,
-  ): Promise<NotificationId | undefined> {
-    for await (const notification of this.getNotificationIds({
-      order: 'oldest',
-      tran,
-    })) {
-      return notification;
-    }
-    return undefined;
-  }
-
-  public async removeNotification(
+  public async removeInboxNotification(
     messageId: NotificationId,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF(async (tran) =>
-        this.removeNotification(messageId, tran),
+        this.removeInboxNotification(messageId, tran),
       );
     }
     await tran.del([

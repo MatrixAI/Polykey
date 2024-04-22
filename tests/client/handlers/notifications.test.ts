@@ -1,7 +1,11 @@
 import type GestaltGraph from '@/gestalts/GestaltGraph';
 import type { Host, TLSConfig } from '@/network/types';
 import type { General, Notification, VaultShare } from '@/notifications/types';
-import type { VaultIdEncoded, NodeIdEncoded, NotificationIdEncoded } from '@/ids/types';
+import type {
+  VaultIdEncoded,
+  NodeIdEncoded,
+  NotificationIdEncoded,
+} from '@/ids/types';
 import type { VaultName } from '@/vaults/types';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
@@ -21,22 +25,22 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import {
-  NotificationsClear,
+  NotificationsInboxClear,
   NotificationsOutboxClear,
   NotificationsOutboxRead,
   NotificationsOutboxRemove,
-  NotificationsRead,
-  NotificationsRemove,
+  NotificationsInboxRead,
+  NotificationsInboxRemove,
   NotificationsSend,
 } from '@/client/handlers';
 import {
-  notificationsClear,
-  notificationsRead,
+  notificationsInboxClear,
+  notificationsInboxRead,
   notificationsSend,
   notificationsOutboxClear,
   notificationsOutboxRead,
   notificationsOutboxRemove,
-  notificationsRemove,
+  notificationsInboxRemove,
 } from '@/client/callers';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
@@ -44,8 +48,8 @@ import * as networkUtils from '@/network/utils';
 import * as testsNodesUtils from '../../nodes/utils';
 import * as testsUtils from '../../utils';
 
-describe('notificationsClear', () => {
-  const logger = new Logger('notificationsClear test', LogLevel.WARN, [
+describe('notificationsInboxClear', () => {
+  const logger = new Logger('notificationsInboxClear test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -59,7 +63,7 @@ describe('notificationsClear', () => {
   let clientService: ClientService;
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
-    notificationsClear: typeof notificationsClear;
+    notificationsInboxClear: typeof notificationsInboxClear;
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -71,7 +75,7 @@ describe('notificationsClear', () => {
   let mockedClearNotifications: jest.SpyInstance;
   beforeEach(async () => {
     mockedClearNotifications = jest
-      .spyOn(NotificationsManager.prototype, 'clearNotifications')
+      .spyOn(NotificationsManager.prototype, 'clearInboxNotifications')
       .mockResolvedValue();
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -150,7 +154,7 @@ describe('notificationsClear', () => {
     });
     await clientService.start({
       manifest: {
-        notificationsClear: new NotificationsClear({
+        notificationsInboxClear: new NotificationsInboxClear({
           db,
           notificationsManager,
         }),
@@ -167,7 +171,7 @@ describe('notificationsClear', () => {
     });
     rpcClient = new RPCClient({
       manifest: {
-        notificationsClear,
+        notificationsInboxClear,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
@@ -194,12 +198,12 @@ describe('notificationsClear', () => {
     });
   });
   test('puts/deletes/gets tokens', async () => {
-    await rpcClient.methods.notificationsClear({});
+    await rpcClient.methods.notificationsInboxClear({});
     expect(mockedClearNotifications.mock.calls.length).toBe(1);
   });
 });
-describe('notificationsRead', () => {
-  const logger = new Logger('notificationsRead test', LogLevel.WARN, [
+describe('notificationsInboxRead', () => {
+  const logger = new Logger('notificationsInboxRead test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -216,7 +220,7 @@ describe('notificationsRead', () => {
   let clientService: ClientService;
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
-    notificationsRead: typeof notificationsRead;
+    notificationsInboxRead: typeof notificationsInboxRead;
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -229,7 +233,7 @@ describe('notificationsRead', () => {
   beforeEach(async () => {
     mockedReadNotifications = jest.spyOn(
       NotificationsManager.prototype,
-      'readNotifications',
+      'readInboxNotifications',
     );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -308,7 +312,7 @@ describe('notificationsRead', () => {
     });
     await clientService.start({
       manifest: {
-        notificationsRead: new NotificationsRead({
+        notificationsInboxRead: new NotificationsInboxRead({
           db,
           notificationsManager,
         }),
@@ -325,7 +329,7 @@ describe('notificationsRead', () => {
     });
     rpcClient = new RPCClient({
       manifest: {
-        notificationsRead,
+        notificationsInboxRead,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
@@ -365,7 +369,7 @@ describe('notificationsRead', () => {
         isRead: true,
       },
     ]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       order: 'newest',
       number: 1,
       unread: false,
@@ -410,7 +414,7 @@ describe('notificationsRead', () => {
         isRead: true,
       },
     ]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       unread: true,
       number: 'all',
       order: 'newest',
@@ -462,7 +466,7 @@ describe('notificationsRead', () => {
         isRead: true,
       },
     ]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       number: 'all',
       order: 'oldest',
@@ -503,7 +507,7 @@ describe('notificationsRead', () => {
         isRead: true,
       },
     ]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       number: 'all',
       order: 'newest',
@@ -541,7 +545,7 @@ describe('notificationsRead', () => {
         isRead: true,
       },
     ]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       number: 'all',
       order: 'newest',
@@ -570,7 +574,7 @@ describe('notificationsRead', () => {
   });
   test('reads no notifications', async () => {
     mockedReadNotifications.mockResolvedValueOnce([]);
-    const response = await rpcClient.methods.notificationsRead({
+    const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       number: 'all',
       order: 'newest',
@@ -586,8 +590,8 @@ describe('notificationsRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
 });
-describe('notificationsRemove', () => {
-  const logger = new Logger('notificationsRemove test', LogLevel.WARN, [
+describe('notificationsInboxRemove', () => {
+  const logger = new Logger('notificationsInboxRemove test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -601,7 +605,7 @@ describe('notificationsRemove', () => {
   let clientService: ClientService;
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
-    notificationsRemove: typeof notificationsRemove;
+    notificationsInboxRemove: typeof notificationsInboxRemove;
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
@@ -612,7 +616,10 @@ describe('notificationsRemove', () => {
   let sigchain: Sigchain;
   let mockedRemoveNotification: jest.SpyInstance;
   beforeEach(async () => {
-    mockedRemoveNotification = jest.spyOn(NotificationsManager.prototype, 'removeNotification');
+    mockedRemoveNotification = jest.spyOn(
+      NotificationsManager.prototype,
+      'removeInboxNotification',
+    );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -689,7 +696,7 @@ describe('notificationsRemove', () => {
     });
     await clientService.start({
       manifest: {
-        notificationsRemove: new NotificationsRemove({
+        notificationsInboxRemove: new NotificationsInboxRemove({
           db,
           notificationsManager,
         }),
@@ -706,7 +713,7 @@ describe('notificationsRemove', () => {
     });
     rpcClient = new RPCClient({
       manifest: {
-        notificationsRemove,
+        notificationsInboxRemove,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
@@ -737,7 +744,7 @@ describe('notificationsRemove', () => {
     mockedRemoveNotification.mockImplementation();
     const receiverNotificationIdEncoded =
       'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
-    const response = await rpcClient.methods.notificationsRemove({
+    await rpcClient.methods.notificationsInboxRemove({
       notificationIdEncoded: receiverNotificationIdEncoded,
     });
     expect(mockedRemoveNotification.mock.calls.length).toBe(1);
@@ -1257,7 +1264,10 @@ describe('notificationsOutboxRemove', () => {
   let sigchain: Sigchain;
   let mockedRemoveOutboxNotification: jest.SpyInstance;
   beforeEach(async () => {
-    mockedRemoveOutboxNotification = jest.spyOn(NotificationsManager.prototype, 'removeOutboxNotification');
+    mockedRemoveOutboxNotification = jest.spyOn(
+      NotificationsManager.prototype,
+      'removeOutboxNotification',
+    );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -1382,7 +1392,7 @@ describe('notificationsOutboxRemove', () => {
     mockedRemoveOutboxNotification.mockImplementation();
     const receiverNotificationIdEncoded =
       'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
-    const response = await rpcClient.methods.notificationsOutboxRemove({
+    rpcClient.methods.notificationsOutboxRemove({
       notificationIdEncoded: receiverNotificationIdEncoded,
     });
     expect(mockedRemoveOutboxNotification.mock.calls.length).toBe(1);

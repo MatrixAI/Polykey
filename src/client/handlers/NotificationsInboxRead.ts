@@ -8,7 +8,7 @@ import type {
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { ServerHandler } from '@matrixai/rpc';
 
-class NotificationsRead extends ServerHandler<
+class NotificationsInboxRead extends ServerHandler<
   {
     db: DB;
     notificationsManager: NotificationsManager;
@@ -25,7 +25,7 @@ class NotificationsRead extends ServerHandler<
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, notificationsManager } = this.container;
     const notifications = await db.withTransactionF(async (tran) =>
-      notificationsManager.readNotifications({
+      notificationsManager.readInboxNotifications({
         unread: input.unread,
         number: input.number,
         order: input.order,
@@ -41,4 +41,4 @@ class NotificationsRead extends ServerHandler<
   }
 }
 
-export default NotificationsRead;
+export default NotificationsInboxRead;

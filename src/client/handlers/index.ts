@@ -60,12 +60,12 @@ import NodesFind from './NodesFind';
 import NodesGetAll from './NodesGetAll';
 import NodesListConnections from './NodesListConnections';
 import NodesPing from './NodesPing';
-import NotificationsClear from './NotificationsClear';
+import NotificationsInboxClear from './NotificationsInboxClear';
+import NotificationsInboxRead from './NotificationsInboxRead';
+import NotificationsInboxRemove from './NotificationsInboxRemove';
 import NotificationsOutboxClear from './NotificationsOutboxClear';
 import NotificationsOutboxRead from './NotificationsOutboxRead';
 import NotificationsOutboxRemove from './NotificationsOutboxRemove';
-import NotificationsRead from './NotificationsRead';
-import NotificationsRemove from './NotificationsRemove';
 import NotificationsSend from './NotificationsSend';
 import VaultsClone from './VaultsClone';
 import VaultsCreate from './VaultsCreate';
@@ -166,12 +166,12 @@ const serverManifest = (container: {
     nodesGetAll: new NodesGetAll(container),
     nodesListConnections: new NodesListConnections(container),
     nodesPing: new NodesPing(container),
-    notificationsClear: new NotificationsClear(container),
+    notificationsInboxClear: new NotificationsInboxClear(container),
+    notificationsInboxRead: new NotificationsInboxRead(container),
+    notificationsInboxRemove: new NotificationsInboxRemove(container),
     notificationsOutboxClear: new NotificationsOutboxClear(container),
     notificationsOutboxRead: new NotificationsOutboxRead(container),
     notificationsOutboxRemove: new NotificationsOutboxRemove(container),
-    notificationsRead: new NotificationsRead(container),
-    notificationsRemove: new NotificationsRemove(container),
     notificationsSend: new NotificationsSend(container),
     vaultsClone: new VaultsClone(container),
     vaultsCreate: new VaultsCreate(container),
@@ -246,12 +246,12 @@ export {
   NodesGetAll,
   NodesListConnections,
   NodesPing,
-  NotificationsClear,
+  NotificationsInboxClear,
+  NotificationsInboxRead,
+  NotificationsInboxRemove,
   NotificationsOutboxClear,
   NotificationsOutboxRead,
   NotificationsOutboxRemove,
-  NotificationsRead,
-  NotificationsRemove,
   NotificationsSend,
   VaultsClone,
   VaultsCreate,
