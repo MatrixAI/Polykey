@@ -217,8 +217,17 @@ type NotificationOutboxReadMessage = {
   order?: 'newest' | 'oldest';
 };
 
-type NotificationMessage = {
+type NotificationInboxMessage = {
   notification: Notification;
+};
+
+type NotificationOutboxMessage = {
+  notification: Notification;
+  taskMetadata?: {
+    remainingRetries: number;
+    created: number;
+    scheduled: number;
+  };
 };
 
 type NotificationSendMessage = NodeIdMessage & {
@@ -382,7 +391,8 @@ export type {
   NodesGetMessage,
   NodesAddMessage,
   SuccessMessage,
-  NotificationMessage,
+  NotificationInboxMessage,
+  NotificationOutboxMessage,
   NotificationReadMessage,
   NotificationOutboxReadMessage,
   NotificationSendMessage,

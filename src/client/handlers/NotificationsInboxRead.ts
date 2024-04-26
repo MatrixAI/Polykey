@@ -2,7 +2,7 @@ import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-  NotificationMessage,
+  NotificationInboxMessage,
   NotificationReadMessage,
 } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
@@ -14,30 +14,30 @@ class NotificationsInboxRead extends ServerHandler<
     notificationsManager: NotificationsManager;
   },
   ClientRPCRequestParams<NotificationReadMessage>,
-  ClientRPCResponseResult<NotificationMessage>
+  ClientRPCResponseResult<NotificationInboxMessage>
 > {
-  public async *handle(
+  public handle(
     input: ClientRPCRequestParams<NotificationReadMessage>,
     _cancel,
     _meta,
     ctx,
-  ): AsyncGenerator<ClientRPCResponseResult<NotificationMessage>> {
+  ): AsyncGenerator<ClientRPCResponseResult<NotificationInboxMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, notificationsManager } = this.container;
-    const notifications = await db.withTransactionF(async (tran) =>
-      notificationsManager.readInboxNotifications({
+    return db.withTransactionG(async function* (tran) {
+      const notifications = notificationsManager.readInboxNotifications({
         unread: input.unread,
         number: input.number,
         order: input.order,
         tran,
-      }),
-    );
-    for await (const notification of notifications) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      yield {
-        notification: notification,
-      };
-    }
+      });
+      for await (const notification of notifications) {
+        if (ctx.signal.aborted) throw ctx.signal.reason;
+        yield {
+          notification: notification,
+        };
+      }
+    });
   }
 }
 

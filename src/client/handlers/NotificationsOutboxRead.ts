@@ -2,11 +2,12 @@ import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-  NotificationMessage,
+  NotificationOutboxMessage,
   NotificationOutboxReadMessage,
 } from '../types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { ServerHandler } from '@matrixai/rpc';
+import * as notificationsUtils from '../../notifications/utils';
 
 class NotificationsOutboxRead extends ServerHandler<
   {
@@ -14,29 +15,44 @@ class NotificationsOutboxRead extends ServerHandler<
     notificationsManager: NotificationsManager;
   },
   ClientRPCRequestParams<NotificationOutboxReadMessage>,
-  ClientRPCResponseResult<NotificationMessage>
+  ClientRPCResponseResult<NotificationOutboxMessage>
 > {
-  public async *handle(
+  public handle(
     input: ClientRPCRequestParams<NotificationOutboxReadMessage>,
     _cancel,
     _meta,
     ctx,
-  ): AsyncGenerator<ClientRPCResponseResult<NotificationMessage>> {
+  ): AsyncGenerator<ClientRPCResponseResult<NotificationOutboxMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, notificationsManager } = this.container;
-    const notifications = await db.withTransactionF(async (tran) =>
-      notificationsManager.readOutboxNotifications({
+    return db.withTransactionG(async function* (tran) {
+      const notifications = notificationsManager.readOutboxNotifications({
         number: input.number,
         order: input.order,
         tran,
-      }),
-    );
-    for await (const notification of notifications) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      yield {
-        notification: notification,
-      };
-    }
+      });
+      for await (const notification of notifications) {
+        if (ctx.signal.aborted) throw ctx.signal.reason;
+        const taskInfo =
+          await notificationsManager.getOutboxNotificationTaskInfoById(
+            notificationsUtils.decodeNotificationId(
+              notification.notificationIdEncoded,
+            )!,
+            tran,
+          );
+        yield {
+          notification: notification,
+          taskMetadata:
+            taskInfo != null
+              ? {
+                  remainingRetries: taskInfo.parameters[0].retries,
+                  created: taskInfo.created.getTime(),
+                  scheduled: taskInfo.scheduled.getTime(),
+                }
+              : undefined,
+        };
+      }
+    });
   }
 }
 

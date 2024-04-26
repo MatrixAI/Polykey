@@ -14,7 +14,7 @@ import type {
   NotificationIdEncoded,
   TaskHandlerId,
 } from '../ids/types';
-import type { Task, TaskHandler } from '../tasks/types';
+import type { Task, TaskHandler, TaskInfo } from '../tasks/types';
 import type { TaskManager } from '../tasks';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
@@ -176,9 +176,7 @@ class NotificationsManager {
       this.logger.warn(
         `Could not send ${
           notificationDb.data.type
-        } notification to ${nodesUtils.encodeNodeId(
-          nodeId,
-        )}: ${e.toString()}`,
+        } notification to ${nodesUtils.encodeNodeId(nodeId)}: ${e.toString()}`,
       );
       if (nodesUtils.isConnectionError(e) && 0 < retries) {
         const delay =
@@ -186,23 +184,21 @@ class NotificationsManager {
             ? retryIntervalTimeMin
             : Math.min(taskInfo.delay * 2, retryIntervalTimeMax);
         // Recursively return inner task, so that the handler can process them.
-        const newTask = await this.taskManager.scheduleTask(
-          {
-            handlerId: this.sendNotificationHandlerId,
-            path: [this.sendNotificationHandlerId, notificationIdEncoded],
-            parameters: [
-              {
-                nodeIdEncoded,
-                notificationIdEncoded,
-                retries: retries - 1,
-                retryIntervalTimeMin,
-                retryIntervalTimeMax,
-              },
-            ],
-            delay: delay,
-            lazy: false,
-          },
-        );
+        const newTask = await this.taskManager.scheduleTask({
+          handlerId: this.sendNotificationHandlerId,
+          path: [this.sendNotificationHandlerId, notificationIdEncoded],
+          parameters: [
+            {
+              nodeIdEncoded,
+              notificationIdEncoded,
+              retries: retries - 1,
+              retryIntervalTimeMin,
+              retryIntervalTimeMax,
+            },
+          ],
+          delay: delay,
+          lazy: false,
+        });
         return newTask;
       }
       await this.db.del(notificationKeyPath);
@@ -464,16 +460,60 @@ class NotificationsManager {
       });
     }
 
-    const outboxIds = this.getOutboxNotificationIds({
+    const notificationIds = this.getOutboxNotificationIds({
       number,
       order,
       tran,
     });
 
-    for await (const id of outboxIds) {
+    for await (const id of notificationIds) {
       const notification = await this.readOutboxNotificationById(id, tran);
       if (notification == null) never();
       yield notification;
+    }
+  }
+
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  public async getOutboxNotificationTaskInfoById(
+    notificationId: NotificationId,
+    tran?: DBTransaction,
+  ): Promise<TaskInfo | undefined> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.getOutboxNotificationTaskInfoById(notificationId, tran),
+      );
+    }
+    const tasks = this.taskManager.getTasks(
+      'asc',
+      false,
+      [
+        this.sendNotificationHandlerId,
+        notificationsUtils.encodeNotificationId(notificationId),
+      ],
+      tran,
+    );
+    for await (const {
+      created,
+      deadline,
+      delay,
+      handlerId,
+      id,
+      parameters,
+      path,
+      priority,
+      scheduled,
+    } of tasks) {
+      return {
+        created,
+        deadline,
+        delay,
+        handlerId,
+        id,
+        parameters,
+        path,
+        priority,
+        scheduled,
+      };
     }
   }
 

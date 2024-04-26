@@ -45,6 +45,7 @@ import {
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
+import * as notificationsUtils from '@/notifications/utils';
 import * as testsNodesUtils from '../../nodes/utils';
 import * as testsUtils from '../../utils';
 
@@ -208,6 +209,8 @@ describe('notificationsInboxRead', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
+  const generateNotificationId =
+    notificationsUtils.createNotificationIdGenerator();
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
   const nodeIdSender = testsNodesUtils.generateRandomNodeId();
@@ -357,8 +360,11 @@ describe('notificationsInboxRead', () => {
     });
   });
   test('reads a single notification', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([
+    mockedReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -392,8 +398,11 @@ describe('notificationsInboxRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads unread notifications', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([
+    mockedReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -444,8 +453,11 @@ describe('notificationsInboxRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads notifications in reverse order', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([
+    mockedReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -496,8 +508,11 @@ describe('notificationsInboxRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('oldest');
   });
   test('reads gestalt invite notifications', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([
+    mockedReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'GestaltInvite',
@@ -528,8 +543,11 @@ describe('notificationsInboxRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads vault share notifications', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([
+    mockedReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'VaultShare',
@@ -573,7 +591,7 @@ describe('notificationsInboxRead', () => {
     expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads no notifications', async () => {
-    mockedReadNotifications.mockResolvedValueOnce([]);
+    mockedReadNotifications.mockReturnValueOnce([]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       number: 'all',
@@ -913,6 +931,8 @@ describe('notificationsOutboxRead', () => {
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
   ]);
+  const generateNotificationId =
+    notificationsUtils.createNotificationIdGenerator();
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
   const nodeIdSender = testsNodesUtils.generateRandomNodeId();
@@ -1062,8 +1082,11 @@ describe('notificationsOutboxRead', () => {
     });
   });
   test('reads a single notification', async () => {
-    mockedOutboxReadNotifications.mockResolvedValueOnce([
+    mockedOutboxReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -1096,8 +1119,11 @@ describe('notificationsOutboxRead', () => {
     expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads notifications in reverse order', async () => {
-    mockedOutboxReadNotifications.mockResolvedValueOnce([
+    mockedOutboxReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -1108,6 +1134,9 @@ describe('notificationsOutboxRead', () => {
         isRead: true,
       },
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'General',
@@ -1147,8 +1176,11 @@ describe('notificationsOutboxRead', () => {
     expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('oldest');
   });
   test('reads gestalt invite notifications', async () => {
-    mockedOutboxReadNotifications.mockResolvedValueOnce([
+    mockedOutboxReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'GestaltInvite',
@@ -1178,8 +1210,11 @@ describe('notificationsOutboxRead', () => {
     expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads vault share notifications', async () => {
-    mockedOutboxReadNotifications.mockResolvedValueOnce([
+    mockedOutboxReadNotifications.mockReturnValueOnce([
       {
+        notificationIdEncoded: notificationsUtils.encodeNotificationId(
+          generateNotificationId(),
+        ),
         typ: 'notification',
         data: {
           type: 'VaultShare',
@@ -1222,7 +1257,7 @@ describe('notificationsOutboxRead', () => {
     expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
   });
   test('reads no notifications', async () => {
-    mockedOutboxReadNotifications.mockResolvedValueOnce([]);
+    mockedOutboxReadNotifications.mockReturnValueOnce([]);
     const response = await rpcClient.methods.notificationsOutboxRead({
       number: 'all',
       order: 'newest',
