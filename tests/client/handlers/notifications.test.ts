@@ -376,8 +376,8 @@ describe('notificationsInboxRead', () => {
       },
     ]);
     const response = await rpcClient.methods.notificationsInboxRead({
-      order: 'newest',
-      number: 1,
+      order: 'desc',
+      limit: 1,
       unread: false,
     });
     const notificationList: Array<Notification> = [];
@@ -394,8 +394,8 @@ describe('notificationsInboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe(1);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(1);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads unread notifications', async () => {
     mockedReadNotifications.mockReturnValueOnce([
@@ -425,8 +425,8 @@ describe('notificationsInboxRead', () => {
     ]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: true,
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -449,8 +449,8 @@ describe('notificationsInboxRead', () => {
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeTruthy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads notifications in reverse order', async () => {
     mockedReadNotifications.mockReturnValueOnce([
@@ -480,8 +480,8 @@ describe('notificationsInboxRead', () => {
     ]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
-      number: 'all',
-      order: 'oldest',
+      limit: Infinity,
+      order: 'asc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -504,8 +504,8 @@ describe('notificationsInboxRead', () => {
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('oldest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('asc');
   });
   test('reads gestalt invite notifications', async () => {
     mockedReadNotifications.mockReturnValueOnce([
@@ -524,8 +524,8 @@ describe('notificationsInboxRead', () => {
     ]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'asc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -539,8 +539,8 @@ describe('notificationsInboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('asc');
   });
   test('reads vault share notifications', async () => {
     mockedReadNotifications.mockReturnValueOnce([
@@ -565,8 +565,8 @@ describe('notificationsInboxRead', () => {
     ]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -587,15 +587,15 @@ describe('notificationsInboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads no notifications', async () => {
     mockedReadNotifications.mockReturnValueOnce([]);
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -604,8 +604,8 @@ describe('notificationsInboxRead', () => {
     expect(notificationList).toHaveLength(0);
     // Check request was parsed correctly
     expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
 });
 describe('notificationsInboxRemove', () => {
@@ -1098,8 +1098,8 @@ describe('notificationsOutboxRead', () => {
       },
     ]);
     const response = await rpcClient.methods.notificationsOutboxRead({
-      order: 'newest',
-      number: 1,
+      order: 'desc',
+      limit: 1,
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -1115,8 +1115,8 @@ describe('notificationsOutboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe(1);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(1);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads notifications in reverse order', async () => {
     mockedOutboxReadNotifications.mockReturnValueOnce([
@@ -1148,8 +1148,8 @@ describe('notificationsOutboxRead', () => {
       },
     ]);
     const response = await rpcClient.methods.notificationsOutboxRead({
-      number: 'all',
-      order: 'oldest',
+      limit: Infinity,
+      order: 'asc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -1172,8 +1172,8 @@ describe('notificationsOutboxRead', () => {
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('oldest');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('asc');
   });
   test('reads gestalt invite notifications', async () => {
     mockedOutboxReadNotifications.mockReturnValueOnce([
@@ -1191,8 +1191,8 @@ describe('notificationsOutboxRead', () => {
       },
     ]);
     const response = await rpcClient.methods.notificationsOutboxRead({
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -1206,8 +1206,8 @@ describe('notificationsOutboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads vault share notifications', async () => {
     mockedOutboxReadNotifications.mockReturnValueOnce([
@@ -1231,8 +1231,8 @@ describe('notificationsOutboxRead', () => {
       },
     ]);
     const response = await rpcClient.methods.notificationsOutboxRead({
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -1253,14 +1253,14 @@ describe('notificationsOutboxRead', () => {
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
   test('reads no notifications', async () => {
     mockedOutboxReadNotifications.mockReturnValueOnce([]);
     const response = await rpcClient.methods.notificationsOutboxRead({
-      number: 'all',
-      order: 'newest',
+      limit: Infinity,
+      order: 'desc',
     });
     const notificationList: Array<Notification> = [];
     for await (const notificationMessage of response) {
@@ -1269,8 +1269,8 @@ describe('notificationsOutboxRead', () => {
     expect(notificationList).toHaveLength(0);
     // Check request was parsed correctly
     expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].number).toBe('all');
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('newest');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
   });
 });
 describe('notificationsOutboxRemove', () => {

@@ -482,7 +482,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
     const receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readInboxNotifications(),
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
     ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(notification3.data);
@@ -648,7 +650,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
     const receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readInboxNotifications(),
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
     ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
@@ -795,7 +799,7 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification3);
     const lastNotification = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
-        number: 1,
+        limit: 1,
       }),
     ).toArray();
     expect(lastNotification).toHaveLength(1);
@@ -866,7 +870,7 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification3);
     const reversedNotifications = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
-        order: 'oldest',
+        order: 'asc',
       }),
     ).toArray();
     expect(reversedNotifications).toHaveLength(3);
@@ -940,7 +944,9 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
     const receivedNotifications = await AsyncIterable.as(
-      notificationsManager.readInboxNotifications(),
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
     ).toArray();
     expect(receivedNotifications).toHaveLength(2);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
@@ -1115,7 +1121,8 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     for await (const _ of notificationsManager.readInboxNotifications({
-      number: 1,
+      limit: 1,
+      order: 'desc',
     })) {
       // Noop
     }
@@ -1124,6 +1131,7 @@ describe('NotificationsManager', () => {
     const unreadNotifications = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
         unread: true,
+        order: 'desc',
       }),
     ).toArray();
     expect(unreadNotifications).toHaveLength(1);
@@ -1131,7 +1139,8 @@ describe('NotificationsManager', () => {
     expect(unreadNotifications[0].iss).toBe(notification1.iss);
     const latestNotification = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
-        number: 1,
+        limit: 1,
+        order: 'desc',
       }),
     ).toArray();
     expect(latestNotification).toHaveLength(1);

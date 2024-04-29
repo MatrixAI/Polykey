@@ -27,8 +27,8 @@ class NotificationsOutboxRead extends ServerHandler<
     const { db, notificationsManager } = this.container;
     return db.withTransactionG(async function* (tran) {
       const notifications = notificationsManager.readOutboxNotifications({
-        number: input.number,
         order: input.order,
+        limit: input.limit,
         tran,
       });
       for await (const notification of notifications) {

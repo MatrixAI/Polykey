@@ -397,21 +397,21 @@ class NotificationsManager {
   }
 
   protected async *getOutboxNotificationIds({
-    number = 'all',
-    order = 'newest',
+    order = 'asc',
+    limit,
     tran,
   }: {
-    number?: number | 'all';
-    order?: 'newest' | 'oldest';
+    order?: 'asc' | 'desc';
+    limit?: number;
     tran: DBTransaction;
   }): AsyncGenerator<NotificationId> {
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerOutboxDbPath,
-      { valueAsBuffer: false, reverse: order === 'newest' },
+      { valueAsBuffer: false, reverse: order !== 'asc' },
     );
     let i = 0;
     for await (const [keyPath] of messageIterator) {
-      if (number !== 'all' && i >= number) {
+      if (limit != null && i >= limit) {
         break;
       }
       const key = keyPath[0] as Buffer;
@@ -444,24 +444,24 @@ class NotificationsManager {
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async *readOutboxNotifications({
-    number = 'all',
-    order = 'newest',
+    limit,
+    order = 'asc',
     tran,
   }: {
-    number?: number | 'all';
-    order?: 'newest' | 'oldest';
+    order?: 'asc' | 'desc';
+    limit?: number;
     tran?: DBTransaction;
   } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
       const readOutboxNotifications = (tran) =>
-        this.readOutboxNotifications({ number, order, tran });
+        this.readOutboxNotifications({ limit, order, tran });
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* readOutboxNotifications(tran);
       });
     }
 
     const notificationIds = this.getOutboxNotificationIds({
-      number,
+      limit,
       order,
       tran,
     });
@@ -590,8 +590,8 @@ class NotificationsManager {
       if (numMessages >= this.messageCap) {
         // Remove the oldest notification from notificationsMessagesDb
         const oldestIdIterator = this.getInboxNotificationIds({
-          order: 'oldest',
-          number: 1,
+          order: 'asc',
+          limit: 1,
           tran,
         });
         const oldestId = await oldestIdIterator
@@ -619,25 +619,25 @@ class NotificationsManager {
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async *readInboxNotifications({
     unread = false,
-    number = 'all',
-    order = 'newest',
+    order = 'asc',
+    limit,
     tran,
   }: {
     unread?: boolean;
-    number?: number | 'all';
-    order?: 'newest' | 'oldest';
+    order?: 'asc' | 'desc';
+    limit?: number;
     tran?: DBTransaction;
   } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
       const readNotifications = (tran) =>
-        this.readInboxNotifications({ unread, number, order, tran });
+        this.readInboxNotifications({ unread, limit, order, tran });
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* readNotifications(tran);
       });
     }
     const notificationIds = this.getInboxNotificationIds({
       unread,
-      number,
+      limit,
       order,
       tran,
     });
@@ -714,22 +714,22 @@ class NotificationsManager {
 
   protected async *getInboxNotificationIds({
     unread = false,
-    number = 'all',
-    order = 'newest',
+    order = 'asc',
+    limit,
     tran,
   }: {
     unread?: boolean;
-    number?: number | 'all';
-    order?: 'newest' | 'oldest';
+    order?: 'asc' | 'desc';
+    limit?: number;
     tran: DBTransaction;
   }): AsyncGenerator<NotificationId> {
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerInboxDbPath,
-      { valueAsBuffer: false, reverse: order === 'newest' },
+      { valueAsBuffer: false, reverse: order !== 'asc' },
     );
     let i = 0;
     for await (const [keyPath, notificationDb] of messageIterator) {
-      if (number !== 'all' && i >= number) {
+      if (limit != null && i >= limit) {
         break;
       }
       if (notificationDb.isRead && unread) {

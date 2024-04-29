@@ -208,14 +208,11 @@ type SuccessMessage = {
 
 type NotificationReadMessage = {
   unread?: boolean;
-  number?: number | 'all';
-  order?: 'newest' | 'oldest';
+  limit?: number;
+  order?: 'asc' | 'desc';
 };
 
-type NotificationOutboxReadMessage = {
-  number?: number | 'all';
-  order?: 'newest' | 'oldest';
-};
+type NotificationOutboxReadMessage = Omit<NotificationReadMessage, 'unread'>
 
 type NotificationInboxMessage = {
   notification: Notification;
