@@ -11,6 +11,7 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import ACL from '@/acl/ACL';
@@ -20,13 +21,16 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
+import * as nodesErrors from '@/nodes/errors';
 import * as notificationsErrors from '@/notifications/errors';
+import * as notificationsUtils from '@/notifications/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -132,7 +136,6 @@ describe('NotificationsManager', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.start();
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
@@ -181,6 +184,7 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
@@ -194,12 +198,12 @@ describe('NotificationsManager', () => {
     await expect(notificationsManager.start()).rejects.toThrow(
       notificationsErrors.ErrorNotificationsDestroyed,
     );
-    await expect(async () => {
-      await notificationsManager.readNotifications();
-    }).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
-    await expect(async () => {
-      await notificationsManager.clearNotifications();
-    }).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
+    await expect(
+      notificationsManager.readInboxNotifications().next(),
+    ).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
+    await expect(
+      notificationsManager.clearInboxNotifications(),
+    ).rejects.toThrow(notificationsErrors.ErrorNotificationsNotRunning);
   });
   test('can send notifications with permission', async () => {
     const notificationsManager =
@@ -207,6 +211,7 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
@@ -232,35 +237,83 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      generalNotification,
+    const sendProms = await db
+      .withTransactionF(async (tran) => [
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: generalNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: gestaltNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+        await notificationsManager.sendNotification(
+          {
+            nodeId: receiver.keyRing.getNodeId(),
+            data: vaultNotification,
+            retries: 0,
+          },
+          tran,
+        ),
+      ])
+      .then((value) => value.map((value) => value.sendP));
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
+    expect(outboxNotifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: vaultNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: gestaltNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: generalNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+      ]),
     );
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      gestaltNotification,
-    );
-    await notificationsManager.sendNotification(
-      receiver.keyRing.getNodeId(),
-      vaultNotification,
-    );
-    const receivedNotifications =
-      await receiver.notificationsManager.readNotifications();
+    await taskManager.startProcessing();
+    await Promise.all(sendProms);
+    await expect(
+      notificationsManager
+        .readOutboxNotifications()
+        .next()
+        .then((data) => data.done),
+    ).resolves.toBe(true);
+    const receivedNotifications = await AsyncIterable.as(
+      receiver.notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
-    expect(receivedNotifications[0].data).toEqual(vaultNotification);
-    expect(receivedNotifications[0].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
-    );
-    expect(receivedNotifications[1].data).toEqual(gestaltNotification);
-    expect(receivedNotifications[1].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
-    );
-    expect(receivedNotifications[2].data).toEqual(generalNotification);
-    expect(receivedNotifications[2].iss).toBe(
-      nodesUtils.encodeNodeId(keyRing.getNodeId()),
+    expect(receivedNotifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          data: vaultNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: gestaltNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+        expect.objectContaining({
+          data: generalNotification,
+          iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
+        }),
+      ]),
     );
     // Reverse side-effects
-    await receiver.notificationsManager.clearNotifications();
+    await receiver.notificationsManager.clearInboxNotifications();
     await receiver.acl.unsetNodePerm(keyRing.getNodeId());
     await notificationsManager.stop();
   });
@@ -270,9 +323,11 @@ describe('NotificationsManager', () => {
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     const generalNotification: NotificationData = {
       type: 'General',
       message: 'msg',
@@ -291,42 +346,93 @@ describe('NotificationsManager', () => {
     };
 
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        generalNotification,
-      ),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: generalNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        gestaltNotification,
-      ),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: gestaltNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     await testUtils.expectRemoteError(
-      notificationsManager.sendNotification(
-        receiver.keyRing.getNodeId(),
-        vaultNotification,
-      ),
+      notificationsManager
+        .sendNotification({
+          nodeId: receiver.keyRing.getNodeId(),
+          data: vaultNotification,
+          retries: 0,
+        })
+        .then((value) => value.sendP),
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    const receivedNotifications =
-      await receiver.notificationsManager.readNotifications();
+    await expect(
+      notificationsManager
+        .readOutboxNotifications()
+        .next()
+        .then((data) => data.done),
+    ).resolves.toBe(true);
+    const receivedNotifications = await AsyncIterable.as(
+      receiver.notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.stop();
   });
-  test('can receive notifications from senders with permission', async () => {
+  test('reattempt send notifications', async () => {
+    const spiedWithConnF = jest.spyOn(NodeManager.prototype, 'withConnF');
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
+        sendNotificationRetries: 5,
+        sendNotificationRetryIntervalTimeMin: 0,
+        sendNotificationRetryIntervalTimeMax: 0,
+        keyRing,
+        logger,
+      });
+    await taskManager.startProcessing();
+    const { sendP } = await notificationsManager.sendNotification({
+      nodeId: testUtils.generateRandomNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg',
+      },
+    });
+    await expect(sendP).rejects.toThrow(
+      nodesErrors.ErrorNodeManagerConnectionFailed,
+    );
+    expect(spiedWithConnF.mock.calls.length).toBe(6);
+    await notificationsManager.stop();
+    spiedWithConnF.mockRestore();
+  });
+  test('can receive notifications from senders with permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -337,6 +443,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'GestaltInvite',
@@ -346,6 +455,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'VaultShare',
@@ -369,8 +481,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(notification3.data);
     expect(receivedNotifications[0].iss).toEqual(senderIdEncoded);
@@ -379,20 +494,26 @@ describe('NotificationsManager', () => {
     expect(receivedNotifications[2].data).toEqual(notification1.data);
     expect(receivedNotifications[2].iss).toEqual(senderIdEncoded);
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('cannot receive notifications from senders without permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -408,7 +529,9 @@ describe('NotificationsManager', () => {
     ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    let receivedNotifications = await notificationsManager.readNotifications();
+    let receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Missing permission
     await acl.setNodePerm(senderId, {
@@ -416,22 +539,30 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    receivedNotifications = await notificationsManager.readNotifications();
+    receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('marks notifications as read', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -448,25 +579,32 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].isRead).toBeTruthy();
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('all notifications are read oldest to newest by default', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -477,6 +615,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -487,6 +628,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -505,27 +649,36 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
     expect(receivedNotifications[2].data['message']).toBe('msg1');
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('can read only unread notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -536,6 +689,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -546,6 +702,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -564,26 +723,36 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    await notificationsManager.readNotifications();
-    const unreadNotifications = await notificationsManager.readNotifications({
-      unread: true,
-    });
+    for await (const _ of notificationsManager.readInboxNotifications()) {
+      // Noop
+    }
+    const unreadNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        unread: true,
+      }),
+    ).toArray();
     expect(unreadNotifications).toHaveLength(0);
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('can read a single notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -594,6 +763,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -604,6 +776,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -622,25 +797,33 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const lastNotification = await notificationsManager.readNotifications({
-      number: 1,
-    });
+    const lastNotification = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        limit: 1,
+      }),
+    ).toArray();
     expect(lastNotification).toHaveLength(1);
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('can read notifications in reverse order', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -651,6 +834,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -661,6 +847,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -679,29 +868,36 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const reversedNotifications = await notificationsManager.readNotifications({
-      order: 'oldest',
-    });
+    const reversedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+      }),
+    ).toArray();
     expect(reversedNotifications).toHaveLength(3);
     expect(reversedNotifications[0].data['message']).toBe('msg1');
     expect(reversedNotifications[1].data['message']).toBe('msg2');
     expect(reversedNotifications[2].data['message']).toBe('msg3');
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
-  test('notifications can be capped and oldest notifications deleted', async () => {
+  test('can read notifications with seek', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
-        messageCap: 2,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -712,6 +908,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -722,6 +921,104 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg3',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    await acl.setNodePerm(senderId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await notificationsManager.receiveNotification(notification1);
+    const beforeNotification2Timestamp = Date.now();
+    await notificationsManager.receiveNotification(notification2);
+    const afterNotification2Timestamp = Date.now();
+    await notificationsManager.receiveNotification(notification3);
+    let notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seek: beforeNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(2);
+    expect(notifications[0].data['message']).toBe('msg2');
+    expect(notifications[1].data['message']).toBe('msg3');
+    notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seekEnd: afterNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(2);
+    expect(notifications[0].data['message']).toBe('msg1');
+    expect(notifications[1].data['message']).toBe('msg2');
+    notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seek: beforeNotification2Timestamp,
+        seekEnd: afterNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].data['message']).toBe('msg2');
+    // Reverse side-effects
+    await notificationsManager.clearInboxNotifications();
+    await acl.unsetNodePerm(senderId);
+    await notificationsManager.stop();
+  });
+  test('notifications can be capped and oldest notifications deleted', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        messageCap: 2,
+        logger,
+      });
+    const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg2',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -740,26 +1037,36 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'desc',
+      }),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(2);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('can find a gestalt invite notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationIdEncoded = notificationsUtils.encodeNotificationId(
+      generateNotificationId(),
+    );
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded,
       typ: 'notification',
       data: {
         type: 'GestaltInvite',
@@ -777,22 +1084,32 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification);
     const receivedInvite =
       await notificationsManager.findGestaltInvite(senderId);
-    expect(receivedInvite).toEqual(notification);
+    expect(receivedInvite).toEqual({
+      ...notification,
+      notificationIdEncoded: expect.any(String),
+      peerNotificationIdEncoded: notificationIdEncoded,
+    });
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('clears notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -809,24 +1126,64 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    await notificationsManager.clearNotifications();
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    await notificationsManager.clearInboxNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
-  test('notifications are persistent across restarts', async () => {
+  test('clears outbox notifications', async () => {
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    await receiver.acl.setNodePerm(keyRing.getNodeId(), {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+    });
+    await notificationsManager.clearOutboxNotifications();
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
+    expect(outboxNotifications).toHaveLength(0);
+    // Reverse side-effects
+    await receiver.notificationsManager.clearInboxNotifications();
+    await receiver.acl.unsetNodePerm(keyRing.getNodeId());
+    await notificationsManager.stop();
+  });
+  test('notifications are persistent across restarts', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -837,6 +1194,9 @@ describe('NotificationsManager', () => {
       isRead: false,
     };
     const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -854,36 +1214,53 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
-    await notificationsManager.readNotifications({ number: 1 });
+    for await (const _ of notificationsManager.readInboxNotifications({
+      limit: 1,
+      order: 'desc',
+    })) {
+      // Noop
+    }
     await notificationsManager.stop();
     await notificationsManager.start();
-    const unreadNotifications = await notificationsManager.readNotifications({
-      unread: true,
-    });
+    const unreadNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        unread: true,
+        order: 'desc',
+      }),
+    ).toArray();
     expect(unreadNotifications).toHaveLength(1);
     expect(unreadNotifications[0].data).toEqual(notification1.data);
     expect(unreadNotifications[0].iss).toBe(notification1.iss);
-    const latestNotification = await notificationsManager.readNotifications({
-      number: 1,
-    });
+    const latestNotification = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        limit: 1,
+        order: 'desc',
+      }),
+    ).toArray();
     expect(latestNotification).toHaveLength(1);
     expect(latestNotification[0].data).toEqual(notification2.data);
     expect(latestNotification[0].iss).toBe(notification2.iss);
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
   test('creating fresh notifications manager', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -899,14 +1276,34 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
+    await receiver.acl.setNodePerm(keyRing.getNodeId(), {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
     await notificationsManager.receiveNotification(notification);
+    await notificationsManager.sendNotification({
+      nodeId: receiver.keyRing.getNodeId(),
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+    });
     await notificationsManager.stop();
     await notificationsManager.start({ fresh: true });
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
+    const outboxNotifications = await AsyncIterable.as(
+      notificationsManager.readOutboxNotifications(),
+    ).toArray();
+    expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
-    await notificationsManager.clearNotifications();
+    await receiver.notificationsManager.clearInboxNotifications();
+    await receiver.acl.unsetNodePerm(keyRing.getNodeId());
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });

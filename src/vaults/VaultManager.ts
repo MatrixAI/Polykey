@@ -643,13 +643,16 @@ class VaultManager {
     await this.gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'pull', tran);
     await this.acl.setVaultAction(vaultId, nodeId, 'clone', tran);
-    await this.notificationsManager.sendNotification(nodeId, {
-      type: 'VaultShare',
-      vaultId: vaultsUtils.encodeVaultId(vaultId),
-      vaultName: vaultMeta.vaultName,
-      actions: {
-        clone: null,
-        pull: null,
+    await this.notificationsManager.sendNotification({
+      nodeId,
+      data: {
+        type: 'VaultShare',
+        vaultId: vaultsUtils.encodeVaultId(vaultId),
+        vaultName: vaultMeta.vaultName,
+        actions: {
+          clone: null,
+          pull: null,
+        },
       },
     });
   }

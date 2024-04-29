@@ -1845,8 +1845,11 @@ describe('identitiesInvite', () => {
       nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),
     });
     expect(acl.setNodeAction).toHaveBeenCalledWith(nodeId, 'claim');
-    expect(notificationsManager.sendNotification).toHaveBeenCalledWith(nodeId, {
-      type: 'GestaltInvite',
+    expect(notificationsManager.sendNotification).toHaveBeenCalledWith({
+      nodeId,
+      data: {
+        type: 'GestaltInvite',
+      },
     });
   });
 });

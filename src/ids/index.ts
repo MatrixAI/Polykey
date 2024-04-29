@@ -27,6 +27,23 @@ import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
 import * as keysUtilsRandom from '../keys/utils/random';
 import * as validationErrors from '../validation/errors';
 
+/**
+ * Generates an auditId from an epoch timestamp.
+ *
+ * @param epoch
+ * @param randomSource
+ */
+function generateSortableIdFromTimestamp<T extends IdInternal & number>(
+  epoch: number,
+  randomSource: (size: number) => Uint8Array = keysUtilsRandom.getRandomBytes,
+): T {
+  const generator = new IdSortable<T>({
+    timeSource: () => () => epoch,
+    randomSource,
+  });
+  return generator.get();
+}
+
 function createPermIdGenerator(): () => PermissionId {
   const generator = new IdRandom<PermissionId>({
     randomSource: keysUtilsRandom.getRandomBytes,
@@ -78,16 +95,8 @@ function decodeAuditEventId(
  * @param epoch
  * @param randomSource
  */
-function generateAuditEventIdFromTimestamp(
-  epoch: number,
-  randomSource: (size: number) => Uint8Array = keysUtilsRandom.getRandomBytes,
-): AuditEventId {
-  const generator = new IdSortable<AuditEventId>({
-    timeSource: () => () => epoch,
-    randomSource,
-  });
-  return generator.get();
-}
+const generateAuditEventIdFromTimestamp =
+  generateSortableIdFromTimestamp<AuditEventId>;
 
 /**
  * Creates a NodeId generator.
@@ -518,6 +527,15 @@ function decodeNotificationId(
   return notificationId;
 }
 
+/**
+ * Generates a NotificationId from an epoch timestamp.
+ *
+ * @param epoch
+ * @param randomSource
+ */
+const generateNotificationIdFromTimestamp =
+  generateSortableIdFromTimestamp<NotificationId>;
+
 export {
   createPermIdGenerator,
   createAuditEventIdGenerator,
@@ -563,6 +581,7 @@ export {
   createNotificationIdGenerator,
   encodeNotificationId,
   decodeNotificationId,
+  generateNotificationIdFromTimestamp,
 };
 
 export * from './types';

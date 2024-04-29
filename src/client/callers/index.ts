@@ -45,8 +45,12 @@ import nodesFind from './nodesFind';
 import nodesGetAll from './nodesGetAll';
 import nodesListConnections from './nodesListConnections';
 import nodesPing from './nodesPing';
-import notificationsClear from './notificationsClear';
-import notificationsRead from './notificationsRead';
+import notificationsInboxClear from './notificationsInboxClear';
+import notificationsInboxRead from './notificationsInboxRead';
+import notificationsInboxRemove from './notificationsInboxRemove';
+import notificationsOutboxClear from './notificationsOutboxClear';
+import notificationsOutboxRead from './notificationsOutboxRead';
+import notificationsOutboxRemove from './notificationsOutboxRemove';
 import notificationsSend from './notificationsSend';
 import vaultsClone from './vaultsClone';
 import vaultsCreate from './vaultsCreate';
@@ -122,8 +126,12 @@ const clientManifest = {
   nodesGetAll,
   nodesListConnections,
   nodesPing,
-  notificationsClear,
-  notificationsRead,
+  notificationsInboxClear,
+  notificationsInboxRead,
+  notificationsInboxRemove,
+  notificationsOutboxClear,
+  notificationsOutboxRead,
+  notificationsOutboxRemove,
   notificationsSend,
   vaultsClone,
   vaultsCreate,
@@ -198,8 +206,12 @@ export {
   nodesGetAll,
   nodesListConnections,
   nodesPing,
-  notificationsClear,
-  notificationsRead,
+  notificationsInboxClear,
+  notificationsInboxRead,
+  notificationsInboxRemove,
+  notificationsOutboxClear,
+  notificationsOutboxRead,
+  notificationsOutboxRemove,
   notificationsSend,
   vaultsClone,
   vaultsCreate,

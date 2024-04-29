@@ -5,18 +5,20 @@ import type {
   Notification,
   SignedNotification,
 } from './types';
-import type { NodeId, VaultId } from '../ids/types';
+import type { NodeId, VaultId, NotificationId } from '../ids/types';
 import type { KeyPairLocked } from '../keys/types';
+import { IdInternal } from '@matrixai/id';
+import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
 import * as notificationsErrors from './errors';
 import { createNotificationIdGenerator } from '../ids';
+import { vaultActions } from '../vaults/types';
+import { never } from '../utils';
+import Token from '../tokens/Token';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
-import Token from '../tokens/Token';
 import * as validationErrors from '../validation/errors';
 import * as utils from '../utils';
 import * as ids from '../ids';
-import { vaultActions } from '../vaults/types';
-import { never } from '../utils';
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;
@@ -206,6 +208,37 @@ function assertVaultShare(
   }
 }
 
+function extractFromSeek(
+  seek: NotificationId | number | Date,
+  randomSource?: (size: number) => Uint8Array,
+): {
+  notificationId: NotificationId;
+  timestamp: number;
+} {
+  let notificationId: NotificationId;
+  let timestamp: number | undefined;
+  if (seek instanceof IdInternal) {
+    notificationId = seek;
+    timestamp = sortableIdUtils.extractTs(seek.toBuffer()) * 1000;
+  } else if (typeof seek === 'number') {
+    timestamp = seek;
+    notificationId = ids.generateNotificationIdFromTimestamp(
+      seek,
+      randomSource,
+    );
+  } else {
+    timestamp = seek.getTime();
+    notificationId = ids.generateNotificationIdFromTimestamp(
+      timestamp,
+      randomSource,
+    );
+  }
+  return {
+    notificationId: notificationId,
+    timestamp,
+  };
+}
+
 export {
   createNotificationIdGenerator,
   generateNotification,
@@ -217,4 +250,7 @@ export {
   assertGeneral,
   assertGestaltInvite,
   assertVaultShare,
+  extractFromSeek,
 };
+
+export { encodeNotificationId, decodeNotificationId } from '../ids';

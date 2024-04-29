@@ -8,6 +8,7 @@ import type {
   GestaltIdEncoded,
   IdentityId,
   NodeIdEncoded,
+  NotificationIdEncoded,
   ProviderId,
   VaultIdEncoded,
 } from '../ids';
@@ -206,17 +207,36 @@ type SuccessMessage = {
 // Notifications messages
 
 type NotificationReadMessage = {
+  seek?: NotificationIdEncoded | number;
+  seekEnd?: NotificationIdEncoded | number;
   unread?: boolean;
-  number?: number | 'all';
-  order?: 'newest' | 'oldest';
+  limit?: number;
+  order?: 'asc' | 'desc';
 };
 
-type NotificationMessage = {
+type NotificationOutboxReadMessage = Omit<NotificationReadMessage, 'unread'>;
+
+type NotificationInboxMessage = {
   notification: Notification;
+};
+
+type NotificationOutboxMessage = {
+  notification: Notification;
+  taskMetadata?: {
+    remainingRetries: number;
+    created: number;
+    scheduled: number;
+  };
 };
 
 type NotificationSendMessage = NodeIdMessage & {
   message: string;
+  blocking?: boolean;
+  retries?: number;
+};
+
+type NotificationRemoveMessage = {
+  notificationIdEncoded: NotificationIdEncoded;
 };
 
 // Vaults messages
@@ -370,9 +390,12 @@ export type {
   NodesGetMessage,
   NodesAddMessage,
   SuccessMessage,
-  NotificationMessage,
+  NotificationInboxMessage,
+  NotificationOutboxMessage,
   NotificationReadMessage,
+  NotificationOutboxReadMessage,
   NotificationSendMessage,
+  NotificationRemoveMessage,
   VaultNameMessage,
   VaultIdMessage,
   VaultIdentifierMessage,

@@ -10,6 +10,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
+import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import KeyRing from '@/keys/KeyRing';
 import * as nodesUtils from '@/nodes/utils';
 import NodeGraph from '@/nodes/NodeGraph';
@@ -29,6 +30,7 @@ import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
 import * as testUtils from '../../../utils/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
+import 'ix/add/asynciterable-operators/toarray';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -142,16 +144,16 @@ describe('notificationsSend', () => {
       host: localHost,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         db,
         keyRing,
         acl,
+        taskManager,
         nodeManager,
         logger,
       });
-
+    await taskManager.startProcessing();
     // Setting up server
     const serverManifest = {
       notificationsSend: new NotificationsSend({
@@ -267,6 +269,8 @@ describe('notificationsSend', () => {
   });
 
   test('successfully sends a notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Set notify permission for sender on receiver
     await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
@@ -274,6 +278,9 @@ describe('notificationsSend', () => {
     });
     // Construct and send notification
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -291,16 +298,19 @@ describe('notificationsSend', () => {
       signedNotificationEncoded: signedNotification,
     });
     // Check notification was received
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].data).toEqual(notification.data);
     expect(receivedNotifications[0].iss).toEqual(notification.iss);
     // Reverse side effects
-    await notificationsManager.clearNotifications();
+    await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send invalidly formatted notification', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Set notify permission for sender on receiver
     await acl.setNodePerm(senderNodeId, {
       gestalt: { notify: null },
@@ -308,6 +318,9 @@ describe('notificationsSend', () => {
     });
     // Unsigned notification
     const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -327,7 +340,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsVerificationFailed,
     );
     // Check notification was not received
-    let receivedNotifications = await notificationsManager.readNotifications();
+    let receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Improperly typed notification
     const notification2 = {
@@ -349,14 +364,21 @@ describe('notificationsSend', () => {
       validationErrors.ErrorParse,
     );
     // Check notification was not received
-    receivedNotifications = await notificationsManager.readNotifications();
+    receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side effects
     await acl.unsetNodePerm(senderNodeId);
   });
   test('cannot send notification without permission', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     // Construct and send notification
     const notification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -377,8 +399,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     // Check notification was not received
-    const receivedNotifications =
-      await notificationsManager.readNotifications();
+    const receivedNotifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications(),
+    ).toArray();
     expect(receivedNotifications).toHaveLength(0);
   });
 });

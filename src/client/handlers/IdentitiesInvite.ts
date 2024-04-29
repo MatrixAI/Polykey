@@ -42,8 +42,11 @@ class IdentitiesInvite extends UnaryHandler<
     );
     // Sending the notification, we don't care if it fails
     try {
-      await notificationsManager.sendNotification(nodeId, {
-        type: 'GestaltInvite',
+      await notificationsManager.sendNotification({
+        nodeId,
+        data: {
+          type: 'GestaltInvite',
+        },
       });
     } catch {
       logger.warn('Failed to send gestalt invitation to target node');

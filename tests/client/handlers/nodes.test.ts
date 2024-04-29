@@ -38,6 +38,7 @@ import {
 import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as networkUtils from '@/network/utils';
+import * as notificationsUtils from '@/notifications/utils';
 import * as validationErrors from '@/validation/errors';
 import { parseNodeId } from '@/ids';
 import * as testsUtils from '../../utils';
@@ -231,6 +232,8 @@ describe('nodesAdd', () => {
   });
 });
 describe('nodesClaim', () => {
+  const generateNotificationId =
+    notificationsUtils.createNotificationIdGenerator();
   const logger = new Logger('nodesClaim test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
@@ -239,6 +242,9 @@ describe('nodesClaim', () => {
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
   const dummyNotification: Notification = {
+    notificationIdEncoded: notificationsUtils.encodeNotificationId(
+      generateNotificationId(),
+    ),
     typ: 'notification',
     data: {
       type: 'GestaltInvite',
@@ -273,7 +279,10 @@ describe('nodesClaim', () => {
       .mockResolvedValue(dummyNotification);
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
-      .mockResolvedValue(undefined);
+      .mockResolvedValue({
+        notificationId: generateNotificationId(),
+        sendP: Promise.resolve(),
+      });
     mockedClaimNode = jest
       .spyOn(NodeManager.prototype, 'claimNode')
       .mockResolvedValue(undefined);
@@ -339,15 +348,16 @@ describe('nodesClaim', () => {
       host: localhost as Host,
       agentService: {} as AgentServerManifest,
     });
-    await taskManager.startProcessing();
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl,
         db,
         nodeManager,
+        taskManager,
         keyRing,
         logger,
       });
+    await taskManager.startProcessing();
     clientService = new ClientService({
       tlsConfig,
       logger: logger.getChild(ClientService.name),

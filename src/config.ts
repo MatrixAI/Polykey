@@ -294,7 +294,25 @@ const config = {
      * limit then the oldest addresses are removed first.
      */
     nodesGraphNodeContactAddressLimit: 5,
-
+    /**
+     * The retries that the NotificationsManager will attempt in sending a
+     * notification.
+     */
+    notificationsManagerSendNotificationRetries: 8,
+    /**
+     * The minimum interval time that the NotifciationsManager will wait before
+     * attempting to resend a failed notification. This is the interval time for
+     * the first retry of a pending notification. Every following retry will
+     * have double the interval time of the last retry. This is capped by
+     * sendNotificationRetryIntervalTimeMax.
+     */
+    notificationsManagerSendNotificationRetryIntervalTimeMin: 3_600_000, // 1 hour
+    /**
+     * The maximum interval time that the NotifciationsManager will wait before
+     * attempting to resend a failed notification. This is the interval time cap
+     * for the retries of pending notifications.
+     */
+    notificationsManagerSendNotificationRetryIntervalTimeMax: 86_400_000, // 1 day
     /**
      * Multicast group addresses that the MDNS stack will operate on.
      *

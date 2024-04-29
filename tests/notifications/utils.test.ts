@@ -43,7 +43,12 @@ describe('Notifications utils', () => {
   });
 
   test('verifies and decodes signed notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const generalNotification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -54,6 +59,9 @@ describe('Notifications utils', () => {
       isRead: false,
     };
     const gestaltInviteNotification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'GestaltInvite',
@@ -63,6 +71,9 @@ describe('Notifications utils', () => {
       isRead: false,
     };
     const vaultShareNotification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'VaultShare',
@@ -135,9 +146,14 @@ describe('Notifications utils', () => {
     expect(decodedVaultShareNotification.isRead).toBeFalsy();
   });
   test('validates correct notifications', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
     const nodeIdOther = testNodesUtils.generateRandomNodeId();
     const nodeIdOtherEncoded = nodesUtils.encodeNodeId(nodeIdOther);
     const generalNotification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'General',
@@ -161,6 +177,9 @@ describe('Notifications utils', () => {
     notificationsUtils.parseNotification(gestaltInviteNotification);
 
     const vaultShareNotification: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
       typ: 'notification',
       data: {
         type: 'VaultShare',
