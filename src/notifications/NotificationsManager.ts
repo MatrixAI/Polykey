@@ -397,17 +397,40 @@ class NotificationsManager {
   }
 
   protected async *getOutboxNotificationIds({
+    seek,
+    seekEnd,
     order = 'asc',
     limit,
     tran,
   }: {
+    seek?: NotificationId | number | Date;
+    seekEnd?: NotificationId | number | Date;
     order?: 'asc' | 'desc';
     limit?: number;
     tran: DBTransaction;
   }): AsyncGenerator<NotificationId> {
+    const seekId =
+      seek != null
+        ? notificationsUtils.extractFromSeek(
+            seek,
+            (size) => new Uint8Array(size),
+          ).notificationId
+        : undefined;
+    const seekEndId =
+      seekEnd != null
+        ? notificationsUtils.extractFromSeek(seekEnd, (size) =>
+            new Uint8Array(size).fill(0xff),
+          ).notificationId
+        : undefined;
+
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerOutboxDbPath,
-      { valueAsBuffer: false, reverse: order !== 'asc' },
+      {
+        valueAsBuffer: false,
+        reverse: order !== 'asc',
+        gte: seekId?.toBuffer(),
+        lte: seekEndId?.toBuffer(),
+      },
     );
     let i = 0;
     for await (const [keyPath] of messageIterator) {
@@ -444,23 +467,29 @@ class NotificationsManager {
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async *readOutboxNotifications({
+    seek,
+    seekEnd,
     limit,
     order = 'asc',
     tran,
   }: {
+    seek?: NotificationId | number | Date;
+    seekEnd?: NotificationId | number | Date;
     order?: 'asc' | 'desc';
     limit?: number;
     tran?: DBTransaction;
   } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
       const readOutboxNotifications = (tran) =>
-        this.readOutboxNotifications({ limit, order, tran });
+        this.readOutboxNotifications({ seek, seekEnd, limit, order, tran });
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* readOutboxNotifications(tran);
       });
     }
 
     const notificationIds = this.getOutboxNotificationIds({
+      seek,
+      seekEnd,
       limit,
       order,
       tran,
@@ -618,11 +647,15 @@ class NotificationsManager {
    */
   @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async *readInboxNotifications({
+    seek,
+    seekEnd,
     unread = false,
     order = 'asc',
     limit,
     tran,
   }: {
+    seek?: NotificationId | number | Date;
+    seekEnd?: NotificationId | number | Date;
     unread?: boolean;
     order?: 'asc' | 'desc';
     limit?: number;
@@ -630,12 +663,21 @@ class NotificationsManager {
   } = {}): AsyncGenerator<Notification> {
     if (tran == null) {
       const readNotifications = (tran) =>
-        this.readInboxNotifications({ unread, limit, order, tran });
+        this.readInboxNotifications({
+          seek,
+          seekEnd,
+          unread,
+          limit,
+          order,
+          tran,
+        });
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* readNotifications(tran);
       });
     }
     const notificationIds = this.getInboxNotificationIds({
+      seek,
+      seekEnd,
       unread,
       limit,
       order,
@@ -713,19 +755,42 @@ class NotificationsManager {
   }
 
   protected async *getInboxNotificationIds({
+    seek,
+    seekEnd,
     unread = false,
     order = 'asc',
     limit,
     tran,
   }: {
+    seek?: NotificationId | number | Date;
+    seekEnd?: NotificationId | number | Date;
     unread?: boolean;
     order?: 'asc' | 'desc';
     limit?: number;
     tran: DBTransaction;
   }): AsyncGenerator<NotificationId> {
+    const seekId =
+      seek != null
+        ? notificationsUtils.extractFromSeek(
+            seek,
+            (size) => new Uint8Array(size),
+          ).notificationId
+        : undefined;
+    const seekEndId =
+      seekEnd != null
+        ? notificationsUtils.extractFromSeek(seekEnd, (size) =>
+            new Uint8Array(size).fill(0xff),
+          ).notificationId
+        : undefined;
+
     const messageIterator = tran.iterator<NotificationDB>(
       this.notificationsManagerInboxDbPath,
-      { valueAsBuffer: false, reverse: order !== 'asc' },
+      {
+        valueAsBuffer: false,
+        reverse: order !== 'asc',
+        gte: seekId?.toBuffer(),
+        lte: seekEndId?.toBuffer(),
+      },
     );
     let i = 0;
     for await (const [keyPath, notificationDb] of messageIterator) {

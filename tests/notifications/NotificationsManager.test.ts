@@ -882,6 +882,100 @@ describe('NotificationsManager', () => {
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();
   });
+  test('can read notifications with seek', async () => {
+    const generateNotificationId =
+      notificationsUtils.createNotificationIdGenerator();
+    const notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl,
+        db,
+        nodeManager,
+        taskManager,
+        keyRing,
+        logger,
+      });
+    const notification1: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg1',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    const notification2: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg2',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    const notification3: Notification = {
+      notificationIdEncoded: notificationsUtils.encodeNotificationId(
+        generateNotificationId(),
+      ),
+      typ: 'notification',
+      data: {
+        type: 'General',
+        message: 'msg3',
+      },
+      iss: senderIdEncoded,
+      sub: targetIdEncoded,
+      isRead: false,
+    };
+    await acl.setNodePerm(senderId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await notificationsManager.receiveNotification(notification1);
+    const beforeNotification2Timestamp = Date.now();
+    await notificationsManager.receiveNotification(notification2);
+    const afterNotification2Timestamp = Date.now();
+    await notificationsManager.receiveNotification(notification3);
+    let notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seek: beforeNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(2);
+    expect(notifications[0].data['message']).toBe('msg2');
+    expect(notifications[1].data['message']).toBe('msg3');
+    notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seekEnd: afterNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(2);
+    expect(notifications[0].data['message']).toBe('msg1');
+    expect(notifications[1].data['message']).toBe('msg2');
+    notifications = await AsyncIterable.as(
+      notificationsManager.readInboxNotifications({
+        order: 'asc',
+        seek: beforeNotification2Timestamp,
+        seekEnd: afterNotification2Timestamp,
+      }),
+    ).toArray();
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].data['message']).toBe('msg2');
+    // Reverse side-effects
+    await notificationsManager.clearInboxNotifications();
+    await acl.unsetNodePerm(senderId);
+    await notificationsManager.stop();
+  });
   test('notifications can be capped and oldest notifications deleted', async () => {
     const generateNotificationId =
       notificationsUtils.createNotificationIdGenerator();

@@ -207,12 +207,14 @@ type SuccessMessage = {
 // Notifications messages
 
 type NotificationReadMessage = {
+  seek?: NotificationIdEncoded | number;
+  seekEnd?: NotificationIdEncoded | number;
   unread?: boolean;
   limit?: number;
   order?: 'asc' | 'desc';
 };
 
-type NotificationOutboxReadMessage = Omit<NotificationReadMessage, 'unread'>
+type NotificationOutboxReadMessage = Omit<NotificationReadMessage, 'unread'>;
 
 type NotificationInboxMessage = {
   notification: Notification;

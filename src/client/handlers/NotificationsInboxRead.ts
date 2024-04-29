@@ -5,8 +5,10 @@ import type {
   NotificationInboxMessage,
   NotificationReadMessage,
 } from '../types';
+import type { NotificationId } from '../../ids/types';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import { ServerHandler } from '@matrixai/rpc';
+import * as notificationsUtils from '../../notifications/utils';
 
 class NotificationsInboxRead extends ServerHandler<
   {
@@ -24,11 +26,29 @@ class NotificationsInboxRead extends ServerHandler<
   ): AsyncGenerator<ClientRPCResponseResult<NotificationInboxMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, notificationsManager } = this.container;
+    const { seek, seekEnd, unread, order, limit } = input;
+
+    let seek_: NotificationId | number | undefined;
+    if (seek != null) {
+      seek_ =
+        typeof seek === 'string'
+          ? notificationsUtils.decodeNotificationId(seek)
+          : seek;
+    }
+    let seekEnd_: NotificationId | number | undefined;
+    if (seekEnd != null) {
+      seekEnd_ =
+        typeof seekEnd === 'string'
+          ? notificationsUtils.decodeNotificationId(seekEnd)
+          : seekEnd;
+    }
     return db.withTransactionG(async function* (tran) {
       const notifications = notificationsManager.readInboxNotifications({
-        unread: input.unread,
-        order: input.order,
-        limit: input.limit,
+        seek: seek_,
+        seekEnd: seekEnd_,
+        unread,
+        order,
+        limit,
         tran,
       });
       for await (const notification of notifications) {
