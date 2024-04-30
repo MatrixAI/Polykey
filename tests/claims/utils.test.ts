@@ -1,12 +1,11 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as claimsUtils from '@/claims/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testsClaimsUtils from './utils';
 
 describe('claims/utils', () => {
-  testProp(
+  test.prop([testsClaimsUtils.claimEncodedArb, fc.string()])(
     'parse claim',
-    [testsClaimsUtils.claimEncodedArb, fc.string()],
     (claimEncodedCorrect, claimEncodedIncorrect) => {
       expect(() => {
         claimsUtils.parseClaim(claimEncodedCorrect);
@@ -16,15 +15,14 @@ describe('claims/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([
+    testsClaimsUtils.signedClaimEncodedArb,
+    fc.record({
+      payload: fc.string(),
+      signatures: fc.array(fc.string()),
+    }),
+  ])(
     'parse signed claim',
-    [
-      testsClaimsUtils.signedClaimEncodedArb,
-      fc.record({
-        payload: fc.string(),
-        signatures: fc.array(fc.string()),
-      }),
-    ],
     (signedClaimEncodedCorrect, signedClaimEncodedIncorrect) => {
       expect(() => {
         claimsUtils.parseSignedClaim(signedClaimEncodedCorrect);
@@ -34,9 +32,8 @@ describe('claims/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([testsClaimsUtils.signedClaimArb])(
     'hashing signed claims',
-    [testsClaimsUtils.signedClaimArb],
     (signedClaim) => {
       const signedClaimDigest = claimsUtils.hashSignedClaim(
         signedClaim,
@@ -51,9 +48,8 @@ describe('claims/utils', () => {
       expect(signedClaimDigest_).toEqual(signedClaimDigest);
     },
   );
-  testProp(
+  test.prop([testsClaimsUtils.signedClaimArb])(
     'encode and decode signed claims digests',
-    [testsClaimsUtils.signedClaimArb],
     (signedClaim) => {
       const signedClaimDigest = claimsUtils.hashSignedClaim(
         signedClaim,

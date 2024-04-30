@@ -7,7 +7,7 @@ import type {
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import * as asynciterable from 'ix/asynciterable';
@@ -310,8 +310,7 @@ describe(CertManager.name, () => {
     await certMgr.stop();
   });
   describe('model-check renewing and resetting the certificates', () => {
-    testProp(
-      'renewing and resetting with current key pair',
+    test.prop(
       [
         fc.commands([
           // Sleep command
@@ -330,38 +329,34 @@ describe(CertManager.name, () => {
             ),
         ]),
       ],
-      async (cmds) => {
-        // Start a fresh certificate manager for each property test
-        // ensure that we are using lazy to avoid testing the background task
-        const certMgr = await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          logger,
-          lazy: true,
-          fresh: true,
-        });
-        try {
-          const model = {
-            certs: [await certMgr.getCurrentCert()],
+      { numRuns: 10 },
+    )('renewing and resetting with current key pair', async (cmds) => {
+      // Start a fresh certificate manager for each property test
+      // ensure that we are using lazy to avoid testing the background task
+      const certMgr = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        logger,
+        lazy: true,
+        fresh: true,
+      });
+      try {
+        const model = {
+          certs: [await certMgr.getCurrentCert()],
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: certMgr,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: certMgr,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await certMgr.stop();
-        }
-      },
-      {
-        numRuns: 10,
-      },
-    );
-    testProp(
-      'renewing and resetting with new key pair',
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await certMgr.stop();
+      }
+    });
+    test.prop(
       [
         fc.commands([
           // Sleep command
@@ -382,38 +377,34 @@ describe(CertManager.name, () => {
             ),
         ]),
       ],
-      async (cmds) => {
-        // Start a fresh certificate manager for each property test
-        // ensure that we are using lazy to avoid testing the background task
-        const certMgr = await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          logger,
-          lazy: true,
-          fresh: true,
-        });
-        try {
-          const model = {
-            certs: [await certMgr.getCurrentCert()],
+      { numRuns: 10 },
+    )('renewing and resetting with new key pair', async (cmds) => {
+      // Start a fresh certificate manager for each property test
+      // ensure that we are using lazy to avoid testing the background task
+      const certMgr = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        logger,
+        lazy: true,
+        fresh: true,
+      });
+      try {
+        const model = {
+          certs: [await certMgr.getCurrentCert()],
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: certMgr,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: certMgr,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await certMgr.stop();
-        }
-      },
-      {
-        numRuns: 10,
-      },
-    );
-    testProp(
-      'renewing with current and new key pair',
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await certMgr.stop();
+      }
+    });
+    test.prop(
       [
         fc.commands([
           // Sleep command
@@ -433,38 +424,34 @@ describe(CertManager.name, () => {
             ),
         ]),
       ],
-      async (cmds) => {
-        // Start a fresh certificate manager for each property test
-        // ensure that we are using lazy to avoid testing the background task
-        const certMgr = await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          logger,
-          lazy: true,
-          fresh: true,
-        });
-        try {
-          const model = {
-            certs: [await certMgr.getCurrentCert()],
+      { numRuns: 10 },
+    )('renewing with current and new key pair', async (cmds) => {
+      // Start a fresh certificate manager for each property test
+      // ensure that we are using lazy to avoid testing the background task
+      const certMgr = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        logger,
+        lazy: true,
+        fresh: true,
+      });
+      try {
+        const model = {
+          certs: [await certMgr.getCurrentCert()],
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: certMgr,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: certMgr,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await certMgr.stop();
-        }
-      },
-      {
-        numRuns: 10,
-      },
-    );
-    testProp(
-      'resetting with current and new key pair',
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await certMgr.stop();
+      }
+    });
+    test.prop(
       [
         fc.commands([
           // Sleep command
@@ -484,38 +471,34 @@ describe(CertManager.name, () => {
             ),
         ]),
       ],
-      async (cmds) => {
-        // Start a fresh certificate manager for each property test
-        // ensure that we are using lazy to avoid testing the background task
-        const certMgr = await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          logger,
-          lazy: true,
-          fresh: true,
-        });
-        try {
-          const model = {
-            certs: [await certMgr.getCurrentCert()],
+      { numRuns: 10 },
+    )('resetting with current and new key pair', async (cmds) => {
+      // Start a fresh certificate manager for each property test
+      // ensure that we are using lazy to avoid testing the background task
+      const certMgr = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        logger,
+        lazy: true,
+        fresh: true,
+      });
+      try {
+        const model = {
+          certs: [await certMgr.getCurrentCert()],
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: certMgr,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: certMgr,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await certMgr.stop();
-        }
-      },
-      {
-        numRuns: 10,
-      },
-    );
-    testProp(
-      'renewing and resetting with current and new key pair',
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await certMgr.stop();
+      }
+    });
+    test.prop(
       [
         fc.commands([
           // Sleep command
@@ -546,35 +529,32 @@ describe(CertManager.name, () => {
             ),
         ]),
       ],
-      async (cmds) => {
-        // Start a fresh certificate manager for each property test
-        // ensure that we are using lazy to avoid testing the background task
-        const certMgr = await CertManager.createCertManager({
-          db,
-          keyRing,
-          taskManager,
-          logger,
-          lazy: true,
-          fresh: true,
-        });
-        try {
-          const model = {
-            certs: [await certMgr.getCurrentCert()],
+      { numRuns: 10 },
+    )('renewing and resetting with current and new key pair', async (cmds) => {
+      // Start a fresh certificate manager for each property test
+      // ensure that we are using lazy to avoid testing the background task
+      const certMgr = await CertManager.createCertManager({
+        db,
+        keyRing,
+        taskManager,
+        logger,
+        lazy: true,
+        fresh: true,
+      });
+      try {
+        const model = {
+          certs: [await certMgr.getCurrentCert()],
+        };
+        const modelSetup = async () => {
+          return {
+            model,
+            real: certMgr,
           };
-          const modelSetup = async () => {
-            return {
-              model,
-              real: certMgr,
-            };
-          };
-          await fc.asyncModelRun(modelSetup, cmds);
-        } finally {
-          await certMgr.stop();
-        }
-      },
-      {
-        numRuns: 10,
-      },
-    );
+        };
+        await fc.asyncModelRun(modelSetup, cmds);
+      } finally {
+        await certMgr.stop();
+      }
+    });
   });
 });

@@ -1,11 +1,10 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as hash from '@/keys/utils/hash';
 import * as utils from '@/utils';
 
 describe('keys/utils/hash', () => {
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'sha2-256',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digest1 = hash.sha2256(data);
       const digest2 = hash.sha2256(data);
@@ -13,9 +12,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'sha2-512',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digest1 = hash.sha2512(data);
       const digest2 = hash.sha2512(data);
@@ -23,9 +21,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'sha2-512-256',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digest1 = hash.sha2512256(data);
       const digest2 = hash.sha2512256(data);
@@ -33,9 +30,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'blake2b-256',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digest1 = hash.blake2b256(data);
       const digest2 = hash.blake2b256(data);
@@ -43,9 +39,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'sha2-256 iterable',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digest1 = hash.sha2256I(datas);
       const digest2 = hash.sha2256(Buffer.concat(datas));
@@ -53,9 +48,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'sha2-512 iterable',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digest1 = hash.sha2512I(datas);
       const digest2 = hash.sha2512(Buffer.concat(datas));
@@ -63,9 +57,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'sha2-512-256 iterable',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digest1 = hash.sha2512256I(datas);
       const digest2 = hash.sha2512256(Buffer.concat(datas));
@@ -73,9 +66,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'blake2b-256 iterable',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digest1 = hash.blake2b256I(datas);
       const digest2 = hash.blake2b256(Buffer.concat(datas));
@@ -83,9 +75,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'sha2-256 generator',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const hasher = hash.sha2256G();
       hasher.next();
@@ -100,9 +91,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'sha2-512 generator',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const hasher = hash.sha2512G();
       hasher.next();
@@ -117,27 +107,25 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
-    'sha2-512-256 generator',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
-    (datas) => {
-      const hasher = hash.sha2512256G();
-      hasher.next();
-      for (const data of datas) {
-        hasher.next(data);
-      }
-      const result = hasher.next(null);
-      const digest1 = result.value;
-      expect(result.done).toBe(true);
-      expect(digest1).toHaveLength(32);
-      const digest2 = hash.sha2512256(Buffer.concat(datas));
-      expect(digest1).toStrictEqual(digest2);
-    },
-    { seed: 1150342642, path: '0:0', endOnFailure: true },
-  );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))], {
+    seed: 1150342642,
+    path: '0:0',
+    endOnFailure: true,
+  })('sha2-512-256 generator', (datas) => {
+    const hasher = hash.sha2512256G();
+    hasher.next();
+    for (const data of datas) {
+      hasher.next(data);
+    }
+    const result = hasher.next(null);
+    const digest1 = result.value;
+    expect(result.done).toBe(true);
+    expect(digest1).toHaveLength(32);
+    const digest2 = hash.sha2512256(Buffer.concat(datas));
+    expect(digest1).toStrictEqual(digest2);
+  });
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'blake2b-256 generator',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const hasher = hash.blake2b256G();
       hasher.next();
@@ -152,9 +140,8 @@ describe('keys/utils/hash', () => {
       expect(digest1).toStrictEqual(digest2);
     },
   );
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'hash',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digestSHA2256 = hash.hash(data, 'sha2-256');
       const digestSHA2512 = hash.hash(data, 'sha2-512');
@@ -166,9 +153,8 @@ describe('keys/utils/hash', () => {
       expect(digestBLAKE2b256).toStrictEqual(hash.blake2b256(data));
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'hash iterable',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digestSHA2256 = hash.hashI(datas, 'sha2-256');
       const digestSHA2512 = hash.hashI(datas, 'sha2-512');
@@ -180,9 +166,8 @@ describe('keys/utils/hash', () => {
       expect(digestBLAKE2b256).toStrictEqual(hash.blake2b256I(datas));
     },
   );
-  testProp(
+  test.prop([fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))])(
     'hash generator',
-    [fc.array(fc.uint8Array({ minLength: 0, maxLength: 1024 }))],
     (datas) => {
       const digestSHA2256 = hash.hashG('sha2-256');
       const digestSHA2512 = hash.hashG('sha2-512');
@@ -220,9 +205,8 @@ describe('keys/utils/hash', () => {
       );
     },
   );
-  testProp(
+  test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(
     'to and from multidigest',
-    [fc.uint8Array({ minLength: 0, maxLength: 1024 })],
     (data) => {
       const digestSHA2256 = hash.hash(data, 'sha2-256');
       const digestSHA2512 = hash.hash(data, 'sha2-512');

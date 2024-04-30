@@ -1,4 +1,4 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as random from '@/keys/utils/random';
 
 describe('keys/utils/random', () => {
@@ -32,9 +32,8 @@ describe('keys/utils/random', () => {
       expect(data).toBeInstanceOf(Buffer);
     }
   });
-  testProp(
+  test.prop([fc.integer({ min: 0, max: 1000 })])(
     'get random bytes deterministically',
-    [fc.integer({ min: 0, max: 1000 })],
     (seed) => {
       const data1 = random.getRandomBytes(32, seed);
       const data2 = random.getRandomBytes(32, seed);

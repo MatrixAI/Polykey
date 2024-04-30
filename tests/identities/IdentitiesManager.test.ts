@@ -11,7 +11,7 @@ import type { ClaimLinkIdentity } from '@/claims/payloads';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { testProp } from '@fast-check/jest';
+import { test } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdentitiesManager, providers } from '@/identities';
@@ -99,109 +99,104 @@ describe('IdentitiesManager', () => {
       await identitiesManager.getTokens('abc' as ProviderId);
     }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
   });
-  testProp(
-    'get, set and unset tokens',
-    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
-    async (identityId, providerToken) => {
-      const identitiesManager = await IdentitiesManager.createIdentitiesManager(
-        {
-          db,
-          keyRing: dummyKeyRing,
-          gestaltGraph: dummyGestaltGraph,
-          sigchain: dummySigchain,
-          logger,
-          fresh: true,
-        },
-      );
-      const providerId = 'test-provider' as ProviderId;
-      await identitiesManager.putToken(providerId, identityId, providerToken);
-      const providerToken_ = await identitiesManager.getToken(
-        providerId,
-        identityId,
-      );
-      expect(providerToken).toStrictEqual(providerToken_);
-      await identitiesManager.delToken(providerId, identityId);
-      await identitiesManager.delToken(providerId, identityId);
-      const providerToken__ = await identitiesManager.getToken(
-        providerId,
-        identityId,
-      );
-      expect(providerToken__).toBeUndefined();
-      await identitiesManager.stop();
-    },
-  );
-  testProp(
-    'start and stop preserves state',
-    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
-    async (identityId, providerToken) => {
-      let identitiesManager = await IdentitiesManager.createIdentitiesManager({
-        db,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        sigchain: dummySigchain,
-        logger,
-        fresh: true,
-      });
-      const providerId = 'test-provider' as ProviderId;
-      await identitiesManager.putToken(providerId, identityId, providerToken);
-      const testProvider = new TestProvider();
-      identitiesManager.registerProvider(testProvider);
-      await identitiesManager.stop();
+  test.prop([
+    identitiesTestUtils.identitiyIdArb,
+    identitiesTestUtils.providerTokenArb,
+  ])('get, set and unset tokens', async (identityId, providerToken) => {
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
+      logger,
+      fresh: true,
+    });
+    const providerId = 'test-provider' as ProviderId;
+    await identitiesManager.putToken(providerId, identityId, providerToken);
+    const providerToken_ = await identitiesManager.getToken(
+      providerId,
+      identityId,
+    );
+    expect(providerToken).toStrictEqual(providerToken_);
+    await identitiesManager.delToken(providerId, identityId);
+    await identitiesManager.delToken(providerId, identityId);
+    const providerToken__ = await identitiesManager.getToken(
+      providerId,
+      identityId,
+    );
+    expect(providerToken__).toBeUndefined();
+    await identitiesManager.stop();
+  });
+  test.prop([
+    identitiesTestUtils.identitiyIdArb,
+    identitiesTestUtils.providerTokenArb,
+  ])('start and stop preserves state', async (identityId, providerToken) => {
+    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
+      logger,
+      fresh: true,
+    });
+    const providerId = 'test-provider' as ProviderId;
+    await identitiesManager.putToken(providerId, identityId, providerToken);
+    const testProvider = new TestProvider();
+    identitiesManager.registerProvider(testProvider);
+    await identitiesManager.stop();
 
-      identitiesManager = await IdentitiesManager.createIdentitiesManager({
-        db,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        sigchain: dummySigchain,
-        logger,
-      });
-      identitiesManager.registerProvider(testProvider);
-      const providerToken_ = await identitiesManager.getToken(
-        providerId,
-        identityId,
-      );
-      expect(providerToken).toStrictEqual(providerToken_);
-      expect(identitiesManager.getProviders()).toStrictEqual({
-        [testProvider.id]: testProvider,
-      });
-      await identitiesManager.stop();
-    },
-  );
-  testProp(
-    'fresh start deletes all state',
-    [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
-    async (identityId, providerToken) => {
-      let identitiesManager = await IdentitiesManager.createIdentitiesManager({
-        db,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        sigchain: dummySigchain,
-        logger,
-        fresh: true,
-      });
-      const providerId = 'test-provider' as ProviderId;
-      await identitiesManager.putToken(providerId, identityId, providerToken);
-      const testProvider = new TestProvider();
-      identitiesManager.registerProvider(testProvider);
-      await identitiesManager.stop();
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
+      logger,
+    });
+    identitiesManager.registerProvider(testProvider);
+    const providerToken_ = await identitiesManager.getToken(
+      providerId,
+      identityId,
+    );
+    expect(providerToken).toStrictEqual(providerToken_);
+    expect(identitiesManager.getProviders()).toStrictEqual({
+      [testProvider.id]: testProvider,
+    });
+    await identitiesManager.stop();
+  });
+  test.prop([
+    identitiesTestUtils.identitiyIdArb,
+    identitiesTestUtils.providerTokenArb,
+  ])('fresh start deletes all state', async (identityId, providerToken) => {
+    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
+      logger,
+      fresh: true,
+    });
+    const providerId = 'test-provider' as ProviderId;
+    await identitiesManager.putToken(providerId, identityId, providerToken);
+    const testProvider = new TestProvider();
+    identitiesManager.registerProvider(testProvider);
+    await identitiesManager.stop();
 
-      identitiesManager = await IdentitiesManager.createIdentitiesManager({
-        db,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        sigchain: dummySigchain,
-        logger,
-        fresh: true,
-      });
-      const providerToken_ = await identitiesManager.getToken(
-        providerId,
-        identityId,
-      );
-      expect(providerToken_).toBeUndefined();
-      expect(identitiesManager.getProviders()).toStrictEqual({});
-      await identitiesManager.stop();
-    },
-  );
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing: dummyKeyRing,
+      gestaltGraph: dummyGestaltGraph,
+      sigchain: dummySigchain,
+      logger,
+      fresh: true,
+    });
+    const providerToken_ = await identitiesManager.getToken(
+      providerId,
+      identityId,
+    );
+    expect(providerToken_).toBeUndefined();
+    expect(identitiesManager.getProviders()).toStrictEqual({});
+    await identitiesManager.stop();
+  });
   test('register and unregister providers', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -232,9 +227,8 @@ describe('IdentitiesManager', () => {
     expect(ps).toStrictEqual({});
     await identitiesManager.stop();
   });
-  testProp(
+  test.prop([claimsTestUtils.claimArb, keysTestUtils.privateKeyArb])(
     'using TestProvider',
-    [claimsTestUtils.claimArb, keysTestUtils.privateKeyArb],
     async (claim, privateKey) => {
       const identitiesManager = await IdentitiesManager.createIdentitiesManager(
         {
@@ -322,46 +316,42 @@ describe('IdentitiesManager', () => {
       await identitiesManager.stop();
     },
   );
-  testProp(
-    'handleClaimIdentity',
+  test.prop(
     [identitiesTestUtils.identitiyIdArb, identitiesTestUtils.providerTokenArb],
-    async (identitiyId, providerToken) => {
-      const keyRing = await KeyRing.createKeyRing({
-        password: 'password',
-        keysPath: path.join(dataDir, 'keys'),
-        strictMemoryLock: false,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        logger,
-        fresh: true,
-      });
-      const sigchain = await Sigchain.createSigchain({
-        db,
-        keyRing,
-        logger,
-        fresh: true,
-      });
-      const mockedLinkNodeAndIdentity = jest.fn();
-      const identitiesManager = await IdentitiesManager.createIdentitiesManager(
-        {
-          db,
-          keyRing,
-          gestaltGraph: {
-            linkNodeAndIdentity: mockedLinkNodeAndIdentity,
-          } as unknown as GestaltGraph,
-          sigchain,
-          logger,
-          fresh: true,
-        },
-      );
-      const providerId = 'test-provider' as ProviderId;
-      const testProvider = new TestProvider();
-      identitiesManager.registerProvider(testProvider);
-      await identitiesManager.putToken(providerId, identitiyId, providerToken);
-      await identitiesManager.handleClaimIdentity(providerId, identitiyId);
-      // Gestalt graph `linkNodeAndIdentity` should've been called
-      expect(mockedLinkNodeAndIdentity).toHaveBeenCalled();
-    },
     { numRuns: 1 },
-  );
+  )('handleClaimIdentity', async (identitiyId, providerToken) => {
+    const keyRing = await KeyRing.createKeyRing({
+      password: 'password',
+      keysPath: path.join(dataDir, 'keys'),
+      strictMemoryLock: false,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      logger,
+      fresh: true,
+    });
+    const sigchain = await Sigchain.createSigchain({
+      db,
+      keyRing,
+      logger,
+      fresh: true,
+    });
+    const mockedLinkNodeAndIdentity = jest.fn();
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      keyRing,
+      gestaltGraph: {
+        linkNodeAndIdentity: mockedLinkNodeAndIdentity,
+      } as unknown as GestaltGraph,
+      sigchain,
+      logger,
+      fresh: true,
+    });
+    const providerId = 'test-provider' as ProviderId;
+    const testProvider = new TestProvider();
+    identitiesManager.registerProvider(testProvider);
+    await identitiesManager.putToken(providerId, identitiyId, providerToken);
+    await identitiesManager.handleClaimIdentity(providerId, identitiyId);
+    // Gestalt graph `linkNodeAndIdentity` should've been called
+    expect(mockedLinkNodeAndIdentity).toHaveBeenCalled();
+  });
 });

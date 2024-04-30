@@ -4,7 +4,7 @@ import type { ClaimInput } from '@/sigchain/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
 import 'ix/add/asynciterable-operators/toarray';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -90,9 +90,8 @@ describe(Sigchain.name, () => {
       }
     }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
   });
-  testProp(
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'claims must have claim default properties',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,
@@ -128,9 +127,8 @@ describe(Sigchain.name, () => {
       await sigchain.stop();
     },
   );
-  testProp(
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'claim sequence number is monotonic',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,
@@ -147,61 +145,59 @@ describe(Sigchain.name, () => {
       await sigchain.stop();
     },
   );
-  testProp(
-    'adding claims is serialised',
-    [fc.scheduler(), fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
-    async (s, datas) => {
-      const sigchain = await Sigchain.createSigchain({
-        keyRing,
-        db,
-        logger,
-        fresh: true,
-      });
-      // Build up concurrent calls to add claim
-      const addClaimPs: Array<Promise<[ClaimId, SignedClaim]>> = [];
-      for (const data of datas) {
-        addClaimPs.push(
-          // Delay the `Sigchain.addClaim` call
-          s
-            .schedule(Promise.resolve())
-            .then(() => sigchain.addClaim(data as ClaimInput)),
+  test.prop([
+    fc.scheduler(),
+    fc.array(fc.object(), { minLength: 1, maxLength: 32 }),
+  ])('adding claims is serialised', async (s, datas) => {
+    const sigchain = await Sigchain.createSigchain({
+      keyRing,
+      db,
+      logger,
+      fresh: true,
+    });
+    // Build up concurrent calls to add claim
+    const addClaimPs: Array<Promise<[ClaimId, SignedClaim]>> = [];
+    for (const data of datas) {
+      addClaimPs.push(
+        // Delay the `Sigchain.addClaim` call
+        s
+          .schedule(Promise.resolve())
+          .then(() => sigchain.addClaim(data as ClaimInput)),
+      );
+    }
+    // Scheduler will randomly call add claim
+    await s.waitAll();
+    // All add claim operations should be serialised
+    const results = await Promise.allSettled(addClaimPs);
+    for (const result of results) {
+      expect(result.status).toBe('fulfilled');
+    }
+    // Get all chain of claims in descending order
+    const signedClaims = await AsyncIterable.as(
+      sigchain.getSignedClaims({
+        order: 'desc',
+      }),
+    ).toArray();
+    expect(signedClaims.length).toBe(datas.length);
+    let digest: string | null = null;
+    for (const [, signedClaim] of signedClaims) {
+      if (digest != null) {
+        const currentDigest = claimsUtils.hashSignedClaim(
+          signedClaim,
+          'blake2b-256',
         );
+        const currentDigestEncoded = claimsUtils.encodeSignedClaimDigest(
+          currentDigest,
+          'blake2b-256',
+        );
+        expect(currentDigestEncoded).toBe(digest);
       }
-      // Scheduler will randomly call add claim
-      await s.waitAll();
-      // All add claim operations should be serialised
-      const results = await Promise.allSettled(addClaimPs);
-      for (const result of results) {
-        expect(result.status).toBe('fulfilled');
-      }
-      // Get all chain of claims in descending order
-      const signedClaims = await AsyncIterable.as(
-        sigchain.getSignedClaims({
-          order: 'desc',
-        }),
-      ).toArray();
-      expect(signedClaims.length).toBe(datas.length);
-      let digest: string | null = null;
-      for (const [, signedClaim] of signedClaims) {
-        if (digest != null) {
-          const currentDigest = claimsUtils.hashSignedClaim(
-            signedClaim,
-            'blake2b-256',
-          );
-          const currentDigestEncoded = claimsUtils.encodeSignedClaimDigest(
-            currentDigest,
-            'blake2b-256',
-          );
-          expect(currentDigestEncoded).toBe(digest);
-        }
-        digest = signedClaim.payload.prevDigest;
-      }
-      await sigchain.stop();
-    },
-  );
-  testProp(
+      digest = signedClaim.payload.prevDigest;
+    }
+    await sigchain.stop();
+  });
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'claims are all signed by the current node',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,
@@ -217,9 +213,8 @@ describe(Sigchain.name, () => {
       await sigchain.stop();
     },
   );
-  testProp(
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'claims form a hash chain',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,
@@ -250,9 +245,8 @@ describe(Sigchain.name, () => {
       await sigchain.stop();
     },
   );
-  testProp(
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'get claim(s), get signed claim(s) and get signatures',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,
@@ -284,9 +278,8 @@ describe(Sigchain.name, () => {
       await sigchain.stop();
     },
   );
-  testProp(
+  test.prop([fc.array(fc.object(), { minLength: 1, maxLength: 32 })])(
     'get last claim, get last signed claim, get last claim ID, get last sequence',
-    [fc.array(fc.object(), { minLength: 1, maxLength: 32 })],
     async (datas) => {
       const sigchain = await Sigchain.createSigchain({
         keyRing,

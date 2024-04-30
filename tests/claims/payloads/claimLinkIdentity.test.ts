@@ -1,11 +1,13 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as claimsPayloadsClaimLinkIdentity from '@/claims/payloads/claimLinkIdentity';
 import * as testsClaimsPayloadsUtils from './utils';
 
 describe('claims/payloads/claimLinkIdentity', () => {
-  testProp(
+  test.prop([
+    testsClaimsPayloadsUtils.claimLinkIdentityEncodedArb,
+    fc.string(),
+  ])(
     'parse claim link identity',
-    [testsClaimsPayloadsUtils.claimLinkIdentityEncodedArb, fc.string()],
     (claimLinkIdentityEncodedCorrect, claimLinkIdentityEncodedIncorrect) => {
       expect(() => {
         claimsPayloadsClaimLinkIdentity.parseClaimLinkIdentity(
@@ -19,17 +21,16 @@ describe('claims/payloads/claimLinkIdentity', () => {
       }).toThrow();
     },
   );
-  testProp(
+  test.prop([
+    testsClaimsPayloadsUtils.signedClaimEncodedArb(
+      testsClaimsPayloadsUtils.claimLinkIdentityArb,
+    ),
+    fc.record({
+      payload: fc.string(),
+      signatures: fc.array(fc.string()),
+    }),
+  ])(
     'parse signed claim link identity',
-    [
-      testsClaimsPayloadsUtils.signedClaimEncodedArb(
-        testsClaimsPayloadsUtils.claimLinkIdentityArb,
-      ),
-      fc.record({
-        payload: fc.string(),
-        signatures: fc.array(fc.string()),
-      }),
-    ],
     (
       signedClaimLinkIdentityEncodedCorrect,
       signedClaimLinkIdentityEncodedIncorrect,

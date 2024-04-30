@@ -1,13 +1,12 @@
-import { testProp } from '@fast-check/jest';
+import { test } from '@fast-check/jest';
 import webcrypto, { importKeyPair } from '@/keys/utils/webcrypto';
 import * as pem from '@/keys/utils/pem';
 import * as utils from '@/utils';
 import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/pem', () => {
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb])(
     'keypair convert to and from PEM',
-    [testsKeysUtils.keyPairArb],
     async (keyPair) => {
       const keyPairPEM = pem.keyPairToPEM(keyPair);
       expect(keyPairPEM.publicKey).toBeString();

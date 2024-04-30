@@ -1,11 +1,10 @@
-import { testProp } from '@fast-check/jest';
+import { test } from '@fast-check/jest';
 import { importKeyPair, exportKeyPair } from '@/keys/utils/webcrypto';
 import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/webcrypto', () => {
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb])(
     'import and export ed25519 keypair',
-    [testsKeysUtils.keyPairArb],
     async (keyPair) => {
       const cryptoKeyPair = await importKeyPair(keyPair);
       expect(cryptoKeyPair.publicKey.type).toBe('public');

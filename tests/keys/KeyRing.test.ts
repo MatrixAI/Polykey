@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { testProp } from '@fast-check/jest';
+import { test } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyRing from '@/keys/KeyRing';
 import * as keysUtils from '@/keys/utils';
@@ -344,9 +344,8 @@ describe(KeyRing.name, () => {
     afterAll(async () => {
       await keyRing.stop();
     });
-    testProp(
+    test.prop([testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 })])(
       'encrypting and decrypting with root key',
-      [testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 })],
       async (plainText) => {
         const cipherText = keyRing.encrypt(
           keyRing.keyPair.publicKey,
@@ -356,9 +355,8 @@ describe(KeyRing.name, () => {
         expect(plainText_.equals(plainText)).toBe(true);
       },
     );
-    testProp(
+    test.prop([testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 })])(
       'signing and verifying with root key',
-      [testsKeysUtils.bufferArb({ minLength: 0, maxLength: 1024 })],
       async (data) => {
         const signature = keyRing.sign(data);
         const signed = keyRing.verify(

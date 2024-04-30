@@ -1,4 +1,4 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as generate from '@/keys/utils/generate';
 import * as x509 from '@/keys/utils/x509';
 import * as asymmetric from '@/keys/utils/asymmetric';
@@ -7,20 +7,19 @@ import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/x509', () => {
   const certIdGenerator = ids.createCertIdGenerator();
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyPairArb,
+    fc.integer({ min: 0, max: 1000 }),
+    fc.date({
+      // X509's minimum date is 1970-01-01T00:00:00.000Z
+      min: new Date(0),
+      // X509's maximum date is 2049-12-31T23:59:59.000Z
+      // here we use 1 ms less than 2050
+      max: new Date(new Date('2050').getTime() - 1),
+    }),
+  ])(
     'generate x509 certificates',
-    [
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyPairArb,
-      fc.integer({ min: 0, max: 1000 }),
-      fc.date({
-        // X509's minimum date is 1970-01-01T00:00:00.000Z
-        min: new Date(0),
-        // X509's maximum date is 2049-12-31T23:59:59.000Z
-        // here we use 1 ms less than 2050
-        max: new Date(new Date('2050').getTime() - 1),
-      }),
-    ],
     async (issuerKeyPair, subjectKeyPair, duration, now) => {
       // Truncate to the nearest second
       const nowS = new Date(now.getTime() - (now.getTime() % 1000));
@@ -56,9 +55,10 @@ describe('keys/utils/x509', () => {
       expect(x509.certNotExpiredBy(cert, now)).toBe(true);
     },
   );
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb], {
+    numRuns: 50,
+  })(
     'certificate is issued by parent certificate',
-    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
     async (issuerKeyPair, subjectKeyPair) => {
       // The issuer cert is self-signed with the issuer key pair
       const issuerCert = await x509.generateCertificate({
@@ -100,13 +100,9 @@ describe('keys/utils/x509', () => {
       });
       expect(x509.certIssuedBy(subjectCertIncorrect2, issuerCert)).toBe(false);
     },
-    {
-      numRuns: 50,
-    },
   );
-  testProp(
+  test.prop([fc.integer({ min: 0, max: 1000 })])(
     'certificate is not expired by date',
-    [fc.integer({ min: 0, max: 1000 })],
     async (duration) => {
       const subjectKeyPair = generate.generateKeyPair();
       // Truncate to the nearest second
@@ -147,9 +143,8 @@ describe('keys/utils/x509', () => {
       expect(x509.certNotExpiredBy(cert, nowS)).toBe(false);
     },
   );
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb])(
     'certificate convert to and from PEM',
-    [testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb],
     async (issuerKeyPair, subjectKeyPair) => {
       const cert = await x509.generateCertificate({
         certId: certIdGenerator(),

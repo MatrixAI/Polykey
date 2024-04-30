@@ -1,35 +1,30 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as asymmetric from '@/keys/utils/asymmetric';
 import * as ids from '@/ids';
 import * as utils from '@/utils';
 import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/asymmetric', () => {
-  testProp(
-    'encrypt and decrypt - ephemeral static',
-    [
-      testsKeysUtils.keyPairArb,
-      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
-    ],
-    (receiverKeyPair, plainText) => {
-      const cipherText = asymmetric.encryptWithPublicKey(
-        receiverKeyPair.publicKey,
-        plainText,
-      );
-      const plainText_ = asymmetric.decryptWithPrivateKey(
-        receiverKeyPair,
-        cipherText,
-      );
-      expect(plainText_).toStrictEqual(plainText);
-    },
-  );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
+  ])('encrypt and decrypt - ephemeral static', (receiverKeyPair, plainText) => {
+    const cipherText = asymmetric.encryptWithPublicKey(
+      receiverKeyPair.publicKey,
+      plainText,
+    );
+    const plainText_ = asymmetric.decryptWithPrivateKey(
+      receiverKeyPair,
+      cipherText,
+    );
+    expect(plainText_).toStrictEqual(plainText);
+  });
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyPairArb,
+    fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
+  ])(
     'encrypt and decrypt - static static',
-    [
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyPairArb,
-      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
-    ],
     (senderKeyPair, receiverKeyPair, plainText) => {
       const cipherText = asymmetric.encryptWithPublicKey(
         receiverKeyPair.publicKey,
@@ -44,13 +39,12 @@ describe('keys/utils/asymmetric', () => {
       expect(plainText_).toStrictEqual(plainText);
     },
   );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyPairArb,
+    fc.uint8Array({ minLength: 0, maxLength: 2048 }).map(utils.bufferWrap),
+  ])(
     'decrypt returns `undefined` for random data',
-    [
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyPairArb,
-      fc.uint8Array({ minLength: 0, maxLength: 2048 }).map(utils.bufferWrap),
-    ],
     (senderKeyPair, receiverKeyPair, cipherText) => {
       const plainText1 = asymmetric.decryptWithPrivateKey(
         receiverKeyPair,
@@ -65,40 +59,35 @@ describe('keys/utils/asymmetric', () => {
       expect(plainText2).toBeUndefined();
     },
   );
-  testProp(
-    'sign and verify',
-    [
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyPairArb,
-      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
-    ],
-    (keyPairCorrect, keyPairWrong, message) => {
-      const signature = asymmetric.signWithPrivateKey(
-        keyPairCorrect.privateKey,
-        message,
-      );
-      let verified: boolean;
-      verified = asymmetric.verifyWithPublicKey(
-        keyPairCorrect.publicKey,
-        message,
-        signature,
-      );
-      expect(verified).toBe(true);
-      verified = asymmetric.verifyWithPublicKey(
-        keyPairWrong.publicKey,
-        message,
-        signature,
-      );
-      expect(verified).toBe(false);
-    },
-  );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyPairArb,
+    fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
+  ])('sign and verify', (keyPairCorrect, keyPairWrong, message) => {
+    const signature = asymmetric.signWithPrivateKey(
+      keyPairCorrect.privateKey,
+      message,
+    );
+    let verified: boolean;
+    verified = asymmetric.verifyWithPublicKey(
+      keyPairCorrect.publicKey,
+      message,
+      signature,
+    );
+    expect(verified).toBe(true);
+    verified = asymmetric.verifyWithPublicKey(
+      keyPairWrong.publicKey,
+      message,
+      signature,
+    );
+    expect(verified).toBe(false);
+  });
+  test.prop([
+    testsKeysUtils.publicKeyArb,
+    fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
+    fc.uint8Array({ minLength: 0, maxLength: 2048 }).map(utils.bufferWrap),
+  ])(
     'verify returns `false` for random data',
-    [
-      testsKeysUtils.publicKeyArb,
-      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
-      fc.uint8Array({ minLength: 0, maxLength: 2048 }).map(utils.bufferWrap),
-    ],
     (publicKey, signature, message) => {
       const verified = asymmetric.verifyWithPublicKey(
         publicKey,
@@ -108,27 +97,22 @@ describe('keys/utils/asymmetric', () => {
       expect(verified).toBe(false);
     },
   );
-  testProp(
-    'signatures are deterministic',
-    [
-      testsKeysUtils.keyPairArb,
-      fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
-    ],
-    (keyPair, message) => {
-      const signature1 = asymmetric.signWithPrivateKey(
-        keyPair.privateKey,
-        message,
-      );
-      const signature2 = asymmetric.signWithPrivateKey(
-        keyPair.privateKey,
-        message,
-      );
-      expect(signature1).toStrictEqual(signature2);
-    },
-  );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    fc.uint8Array({ minLength: 0, maxLength: 1024 }).map(utils.bufferWrap),
+  ])('signatures are deterministic', (keyPair, message) => {
+    const signature1 = asymmetric.signWithPrivateKey(
+      keyPair.privateKey,
+      message,
+    );
+    const signature2 = asymmetric.signWithPrivateKey(
+      keyPair.privateKey,
+      message,
+    );
+    expect(signature1).toStrictEqual(signature2);
+  });
+  test.prop([testsKeysUtils.publicKeyArb])(
     'public keys are node IDs',
-    [testsKeysUtils.publicKeyArb],
     (publicKey) => {
       const nodeId = asymmetric.publicKeyToNodeId(publicKey);
       const nodeIdEncoded = ids.encodeNodeId(nodeId);
@@ -138,9 +122,8 @@ describe('keys/utils/asymmetric', () => {
       expect(publicKey).toStrictEqual(publicKey_);
     },
   );
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb, testsKeysUtils.keyJWKArb])(
     'encapsulate & decapsulate keys - ephemeral static',
-    [testsKeysUtils.keyPairArb, testsKeysUtils.keyJWKArb],
     (receiverKeyPair, keyJWK) => {
       const encapsulatedKey = asymmetric.encapsulateWithPublicKey(
         receiverKeyPair.publicKey,
@@ -153,13 +136,12 @@ describe('keys/utils/asymmetric', () => {
       expect(keyJWK_).toStrictEqual(keyJWK);
     },
   );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyPairArb,
+    testsKeysUtils.keyJWKArb,
+  ])(
     'encapsulate & decapsulate keys - static static',
-    [
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyPairArb,
-      testsKeysUtils.keyJWKArb,
-    ],
     (senderKeyPair, receiverKeyPair, keyJWK) => {
       const encapsulatedKey = asymmetric.encapsulateWithPublicKey(
         receiverKeyPair.publicKey,

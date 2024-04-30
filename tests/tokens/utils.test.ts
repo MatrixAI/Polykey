@@ -1,13 +1,12 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as keysUtils from '@/keys/utils';
 import * as tokensUtils from '@/tokens/utils';
 import * as validationErrors from '@/validation/errors';
 import * as testsTokensUtils from './utils';
 
 describe('tokens/utils', () => {
-  testProp(
+  test.prop([testsTokensUtils.tokenSignatureArb])(
     'generate token signature',
-    [testsTokensUtils.tokenSignatureArb],
     (tokenSignature) => {
       const tokenSignatureEncoded =
         tokensUtils.generateTokenSignature(tokenSignature);
@@ -17,9 +16,8 @@ describe('tokens/utils', () => {
       expect(tokenSignature_).toStrictEqual(tokenSignature);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenSignatureEncodedArb, fc.string()])(
     'parse token signature',
-    [testsTokensUtils.tokenSignatureEncodedArb, fc.string()],
     (tokenSignatureEncodedCorrect, tokenSignatureEncodedIncorrect) => {
       const tokenSignatureEncodedIncorrectBuffer = Buffer.from(
         tokenSignatureEncodedIncorrect,
@@ -37,9 +35,8 @@ describe('tokens/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenPayloadArb])(
     'generate token payload',
-    [testsTokensUtils.tokenPayloadArb],
     (tokenPayload) => {
       const tokenPayloadEncoded =
         tokensUtils.generateTokenPayload(tokenPayload);
@@ -48,9 +45,8 @@ describe('tokens/utils', () => {
       expect(tokenPayload_).toEqual(tokenPayload);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenPayloadEncodedArb, fc.string()])(
     'parse token payload',
-    [testsTokensUtils.tokenPayloadEncodedArb, fc.string()],
     (tokenPayloadEncodedCorrect, tokenPayloadEncodedIncorrect) => {
       expect(() => {
         tokensUtils.parseTokenPayload(tokenPayloadEncodedCorrect);
@@ -60,9 +56,8 @@ describe('tokens/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenProtectedHeaderArb])(
     'generate token protected header',
-    [testsTokensUtils.tokenProtectedHeaderArb],
     (tokenProtectedHeader) => {
       const tokenProtectedHeaderEncoded =
         tokensUtils.generateTokenProtectedHeader(tokenProtectedHeader);
@@ -73,9 +68,8 @@ describe('tokens/utils', () => {
       expect(tokenProtectedHeader_).toEqual(tokenProtectedHeader);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenProtectedHeaderEncodedArb, fc.string()])(
     'parse token protected header',
-    [testsTokensUtils.tokenProtectedHeaderEncodedArb, fc.string()],
     (
       tokenProtectedHeaderEncodedCorrect,
       tokenProtectedHeaderEncodedIncorrect,
@@ -92,9 +86,8 @@ describe('tokens/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenHeaderSignatureArb])(
     'generate token header signature',
-    [testsTokensUtils.tokenHeaderSignatureArb],
     (tokenHeaderSignature) => {
       const tokenHeaderSignatureEncoded =
         tokensUtils.generateTokenHeaderSignature(tokenHeaderSignature);
@@ -105,9 +98,8 @@ describe('tokens/utils', () => {
       expect(tokenHeaderSignature_).toEqual(tokenHeaderSignature);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.tokenHeaderSignatureEncodedArb, fc.string()])(
     'parse token header signature',
-    [testsTokensUtils.tokenHeaderSignatureEncodedArb, fc.string()],
     (
       tokenHeaderSignatureEncodedCorrect,
       tokenHeaderSignatureEncodedIncorrect,
@@ -124,9 +116,8 @@ describe('tokens/utils', () => {
       }).toThrow(validationErrors.ErrorParse);
     },
   );
-  testProp(
+  test.prop([testsTokensUtils.signedTokenArb])(
     'generate signed token',
-    [testsTokensUtils.signedTokenArb],
     (signedToken) => {
       const signedTokenEncoded = tokensUtils.generateSignedToken(signedToken);
       const signedToken_ = tokensUtils.parseSignedToken(signedTokenEncoded);
@@ -134,15 +125,14 @@ describe('tokens/utils', () => {
       expect(signedToken_).toEqual(signedToken);
     },
   );
-  testProp(
+  test.prop([
+    testsTokensUtils.signedTokenEncodedArb,
+    fc.record({
+      payload: fc.string(),
+      signatures: fc.array(fc.string()),
+    }),
+  ])(
     'parse signed token',
-    [
-      testsTokensUtils.signedTokenEncodedArb,
-      fc.record({
-        payload: fc.string(),
-        signatures: fc.array(fc.string()),
-      }),
-    ],
     (signedTokenEncodedCorrect, signedTokenEncodedIncorrect) => {
       expect(() => {
         tokensUtils.parseSignedToken(signedTokenEncodedCorrect);

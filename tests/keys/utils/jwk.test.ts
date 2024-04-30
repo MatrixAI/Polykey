@@ -1,9 +1,9 @@
-import { testProp, fc } from '@fast-check/jest';
+import { test, fc } from '@fast-check/jest';
 import * as jwk from '@/keys/utils/jwk';
 import * as testsKeysUtils from '../utils';
 
 describe('keys/utils/jwk', () => {
-  testProp('key convert to and from JWK', [testsKeysUtils.keyArb], (key) => {
+  test.prop([testsKeysUtils.keyArb])('key convert to and from JWK', (key) => {
     const keyJWK = jwk.keyToJWK(key);
     expect(keyJWK.alg).toBe('XChaCha20-Poly1305-IETF');
     expect(keyJWK.kty).toBe('oct');
@@ -13,9 +13,8 @@ describe('keys/utils/jwk', () => {
     const key_ = jwk.keyFromJWK(keyJWK);
     expect(key_).toStrictEqual(key);
   });
-  testProp(
+  test.prop([testsKeysUtils.publicKeyArb])(
     'public key convert to and from JWK',
-    [testsKeysUtils.publicKeyArb],
     (publicKey) => {
       const publicKeyJWK = jwk.publicKeyToJWK(publicKey);
       expect(publicKeyJWK.alg).toBe('EdDSA');
@@ -28,9 +27,8 @@ describe('keys/utils/jwk', () => {
       expect(publicKey_).toStrictEqual(publicKey);
     },
   );
-  testProp(
+  test.prop([testsKeysUtils.privateKeyArb])(
     'private key convert to and from JWK',
-    [testsKeysUtils.privateKeyArb],
     (privateKey) => {
       const privateKeyJWK = jwk.privateKeyToJWK(privateKey);
       expect(privateKeyJWK.alg).toBe('EdDSA');
@@ -44,61 +42,47 @@ describe('keys/utils/jwk', () => {
       expect(privateKey_).toStrictEqual(privateKey);
     },
   );
-  testProp(
+  test.prop([testsKeysUtils.keyPairArb])(
     'keypair convert to and from JWK',
-    [testsKeysUtils.keyPairArb],
     (keyPair) => {
       const keyPairJWK = jwk.keyPairToJWK(keyPair);
       const keyPair_ = jwk.keyPairFromJWK(keyPairJWK);
       expect(keyPair_).toStrictEqual(keyPair);
     },
   );
-  testProp(
-    'conversion from bad JWK key returns `undefined`',
-    [
-      testsKeysUtils.keyJWKArb.map((keyJWK) => {
-        return {
-          ...keyJWK,
-          k: fc.sample(fc.hexaString(), 1)[0],
-        };
-      }),
-    ],
-    (badJWK) => {
-      expect(jwk.keyFromJWK(badJWK)).toBeUndefined();
-    },
-  );
-  testProp(
-    'conversion from bad JWK public key returns `undefined`',
-    [
-      testsKeysUtils.publicKeyJWKArb.map((publicKeyJWK) => {
-        return {
-          ...publicKeyJWK,
-          x: fc.sample(fc.hexaString(), 1)[0],
-        };
-      }),
-    ],
-    (badJWK) => {
-      expect(jwk.publicKeyFromJWK(badJWK)).toBeUndefined();
-    },
-  );
-  testProp(
-    'conversion from bad JWK private key returns `undefined`',
-    [
-      testsKeysUtils.privateKeyJWKArb.map((privateKeyJWK) => {
-        return {
-          ...privateKeyJWK,
-          x: fc.sample(fc.hexaString(), 1)[0],
-          d: fc.sample(fc.hexaString(), 1)[0],
-        };
-      }),
-    ],
-    (badJWK) => {
-      expect(jwk.privateKeyFromJWK(badJWK)).toBeUndefined();
-    },
-  );
-  testProp(
+  test.prop([
+    testsKeysUtils.keyJWKArb.map((keyJWK) => {
+      return {
+        ...keyJWK,
+        k: fc.sample(fc.hexaString(), 1)[0],
+      };
+    }),
+  ])('conversion from bad JWK key returns `undefined`', (badJWK) => {
+    expect(jwk.keyFromJWK(badJWK)).toBeUndefined();
+  });
+  test.prop([
+    testsKeysUtils.publicKeyJWKArb.map((publicKeyJWK) => {
+      return {
+        ...publicKeyJWK,
+        x: fc.sample(fc.hexaString(), 1)[0],
+      };
+    }),
+  ])('conversion from bad JWK public key returns `undefined`', (badJWK) => {
+    expect(jwk.publicKeyFromJWK(badJWK)).toBeUndefined();
+  });
+  test.prop([
+    testsKeysUtils.privateKeyJWKArb.map((privateKeyJWK) => {
+      return {
+        ...privateKeyJWK,
+        x: fc.sample(fc.hexaString(), 1)[0],
+        d: fc.sample(fc.hexaString(), 1)[0],
+      };
+    }),
+  ])('conversion from bad JWK private key returns `undefined`', (badJWK) => {
+    expect(jwk.privateKeyFromJWK(badJWK)).toBeUndefined();
+  });
+  test.prop([fc.object()])(
     'conversion from JWK returns `undefined` for random object',
-    [fc.object()],
     (randomObject) => {
       expect(jwk.keyFromJWK(randomObject)).toBeUndefined();
       expect(jwk.publicKeyFromJWK(randomObject)).toBeUndefined();
