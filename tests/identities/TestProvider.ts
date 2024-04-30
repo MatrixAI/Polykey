@@ -155,7 +155,11 @@ class TestProvider extends Provider {
     this.linkIdCounter++;
     const identityClainEncoded = tokenUtils.generateSignedToken(identityClaim);
     this.links[linkId] = JSON.stringify(identityClainEncoded);
-    this.userLinks[authIdentityId] = this.userLinks[authIdentityId]
+    // Checking if the `authIdentityId` exists explicitly as an array, otherwise we could end up with
+    // `toString` identity causing us to insert a function into the `userLinks`
+    this.userLinks[authIdentityId] = Array.isArray(
+      this.userLinks[authIdentityId],
+    )
       ? this.userLinks[authIdentityId]
       : [];
     const links = this.userLinks[authIdentityId];
