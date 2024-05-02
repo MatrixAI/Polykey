@@ -52,8 +52,22 @@ class NotificationsOutboxRead extends ServerHandler<
       });
       for await (const notification of notifications) {
         if (ctx.signal.aborted) throw ctx.signal.reason;
+        const taskInfo =
+          await notificationsManager.getOutboxNotificationTaskInfoById(
+            notificationsUtils.decodeNotificationId(
+              notification.notificationIdEncoded,
+            )!,
+          );
         yield {
           notification: notification,
+          taskMetadata:
+            taskInfo != null
+              ? {
+                  created: taskInfo.created.getTime(),
+                  scheduled: taskInfo.scheduled.getTime(),
+                  remainingRetries: taskInfo.parameters[0].retries,
+                }
+              : undefined,
         };
       }
     });
