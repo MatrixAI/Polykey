@@ -72,6 +72,14 @@ type DeflatedObject = {
   source?: string | undefined;
 };
 
+type ObjectId = string;
+type Name = string;
+type RefObject = { objectId: ObjectId; name: Name };
+type ObjectList = Array<RefObject>;
+type ObjectGenerator = AsyncGenerator<[Name, ObjectId], void, void>;
+type Capability = string;
+type CapabilityList = Array<Capability>;
+
 export type {
   Refs,
   SymRefs,
@@ -83,4 +91,11 @@ export type {
   RawObject,
   WrappedObject,
   DeflatedObject,
+  ObjectId,
+  Name,
+  RefObject,
+  ObjectList,
+  ObjectGenerator,
+  Capability,
+  CapabilityList,
 };

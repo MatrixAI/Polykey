@@ -43,7 +43,7 @@ function commitAuthor(nodeId: NodeId): { name: string; email: string } {
   };
 }
 
-async function* readDirRecursively(fs, dir = '.') {
+async function* readDirRecursively(fs: EncryptedFS, dir = '.') {
   const dirents = await fs.promises.readdir(dir);
   for (const dirent of dirents) {
     const res = path.join(dir, dirent.toString());

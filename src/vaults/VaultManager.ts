@@ -21,7 +21,6 @@ import type { LockRequest } from '@matrixai/async-locks';
 import type { Key } from '../keys/types';
 import path from 'path';
 import { DB } from '@matrixai/db';
-import { PassThrough } from 'readable-stream';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
 import Logger from '@matrixai/logger';
 import {
@@ -36,8 +35,7 @@ import * as vaultsEvents from './events';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
 import * as utils from '../utils';
-import * as gitUtils from '../git/utils';
-import * as gitErrors from '../git/errors';
+import * as gitHttp from '../git/http';
 import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import config from '../config';
@@ -806,7 +804,7 @@ class VaultManager {
   public async *handleInfoRequest(
     vaultId: VaultId,
     tran?: DBTransaction,
-  ): AsyncGenerator<Buffer> {
+  ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
       const handleInfoRequest = (tran) => this.handleInfoRequest(vaultId, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
@@ -820,22 +818,13 @@ class VaultManager {
         this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read']),
         vault.getLock().read(),
       ],
-      async function* (): AsyncGenerator<Buffer, void> {
-        // Adherence to git protocol
-        yield Buffer.from(
-          gitUtils.createGitPacketLine('# service=git-upload-pack\n'),
-        );
-        yield Buffer.from('0000');
+      async function* (): AsyncGenerator<Buffer, void, void> {
         // Read the commit state of the vault
-        const uploadPack = await gitUtils.uploadPack({
-          fs: efs,
-          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-          advertiseRefs: true,
-        });
-        for (const buffer of uploadPack) {
-          yield buffer;
-        }
+        yield* gitHttp.advertiseRefGenerator(
+          efs,
+          path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+        );
       },
     );
   }
@@ -845,50 +834,34 @@ class VaultManager {
    * cloned or pulled from
    */
   @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  public async handlePackRequest(
+  public async *handlePackRequest(
     vaultId: VaultId,
-    body: Buffer,
+    body: Array<Buffer>,
     tran?: DBTransaction,
-  ): Promise<[PassThrough, PassThrough]> {
+  ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.handlePackRequest(vaultId, body, tran),
-      );
+      // Lambda to maintain `this` context
+      const handlePackRequest = (tran: DBTransaction) =>
+        this.handlePackRequest(vaultId, body, tran);
+      return yield* this.db.withTransactionG(async function* (tran) {
+        return yield* handlePackRequest(tran);
+      });
     }
 
     const vault = await this.getVault(vaultId, tran);
-    return await withF(
+    const efs = this.efs;
+    yield* withG(
       [
         this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read']),
         vault.getLock().read(),
       ],
-      async () => {
-        if (body.toString().slice(4, 8) === 'want') {
-          // Parse the request to get the wanted git object
-          const wantedObjectId = body.toString().slice(9, 49);
-          const packResult = await gitUtils.packObjects({
-            fs: this.efs,
-            dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-            gitdir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-            refs: [wantedObjectId],
-          });
-          // Generate a contents and progress stream
-          const readable = new PassThrough();
-          const progressStream = new PassThrough();
-          const sideBand = gitUtils.mux(
-            'side-band-64',
-            readable,
-            packResult.packstream,
-            progressStream,
-          );
-          return [sideBand, progressStream];
-        } else {
-          throw new gitErrors.ErrorGitUnimplementedMethod(
-            `Request of type '${body
-              .toString()
-              .slice(4, 8)}' not valid, expected 'want'`,
-          );
-        }
+      async function* (): AsyncGenerator<Buffer, void, void> {
+        yield* gitHttp.generatePackRequest(
+          efs,
+          path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+          body,
+        );
       },
     );
   }

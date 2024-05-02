@@ -793,11 +793,6 @@ class VaultInternal {
     const vaultName = result.vaultName;
     const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
 
-    // Collect the response buffers from the GET request
-    const infoResponse: Uint8Array[] = [];
-    for await (const chunk of vaultsGitInfoGetStream.readable) {
-      infoResponse.push(chunk);
-    }
     return [
       async function ({
         url,
@@ -808,20 +803,19 @@ class VaultInternal {
         url: string;
         method: string;
         headers: POJO;
-        body: Buffer[];
+        body: Array<Buffer>;
       }) {
         if (method === 'GET') {
           // Send back the GET request info response
           return {
             url: url,
             method: method,
-            body: infoResponse,
+            body: vaultsGitInfoGetStream.readable,
             headers: headers,
             statusCode: 200,
             statusMessage: 'OK',
           };
         } else if (method === 'POST') {
-          const responseBuffers: Array<Uint8Array> = [];
           const vaultsGitPackGetStream = await client.methods.vaultsGitPackGet({
             nameOrId: result.vaultIdEncoded as string,
             vaultAction,
@@ -829,13 +823,11 @@ class VaultInternal {
           const writer = vaultsGitPackGetStream.writable.getWriter();
           await writer.write(body[0]);
           await writer.close();
-          for await (const value of vaultsGitPackGetStream.readable) {
-            responseBuffers.push(value);
-          }
+
           return {
             url: url,
             method: method,
-            body: responseBuffers,
+            body: vaultsGitPackGetStream.readable,
             headers: headers,
             statusCode: 200,
             statusMessage: 'OK',
