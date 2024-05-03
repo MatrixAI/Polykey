@@ -14,7 +14,7 @@ class NotificationsOutboxRemove extends UnaryHandler<
     db: DB;
     notificationsManager: NotificationsManager;
   },
-  ClientRPCRequestParams,
+  ClientRPCRequestParams<NotificationRemoveMessage>,
   ClientRPCResponseResult
 > {
   public handle = async (
@@ -26,7 +26,7 @@ class NotificationsOutboxRemove extends UnaryHandler<
     );
     if (notificationId == null) {
       throw new validationErrors.ErrorParse(
-        '`notificationIdEncoded` property must be an encoded notification ID',
+        'notificationIdEncoded property must be an encoded notification ID',
       );
     }
     await db.withTransactionF(async (tran) =>
