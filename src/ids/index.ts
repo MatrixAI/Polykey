@@ -509,6 +509,22 @@ function createNotificationIdGenerator(
   return () => generator.get();
 }
 
+function generateNotificationId(
+  notificationId: NotificationId,
+): NotificationIdEncoded {
+  return encodeNotificationId(notificationId);
+}
+
+function parseNotificationId(notificationIdEncoded: unknown): NotificationId {
+  const notificationId = decodeNotificationId(notificationIdEncoded);
+  if (notificationId == null) {
+    throw new validationErrors.ErrorParse(
+      'Notification ID must be multibase base32hex encoded strings',
+    );
+  }
+  return notificationId;
+}
+
 function encodeNotificationId(
   notificationId: NotificationId,
 ): NotificationIdEncoded {
@@ -516,8 +532,11 @@ function encodeNotificationId(
 }
 
 function decodeNotificationId(
-  notificationIdEncoded: string,
+  notificationIdEncoded: unknown,
 ): NotificationId | undefined {
+  if (typeof notificationIdEncoded !== 'string') {
+    return;
+  }
   const notificationId = IdInternal.fromMultibase<NotificationId>(
     notificationIdEncoded,
   );
@@ -579,6 +598,8 @@ export {
   decodeGestaltIdentityId,
   createGestaltLinkIdGenerator,
   createNotificationIdGenerator,
+  generateNotificationId,
+  parseNotificationId,
   encodeNotificationId,
   decodeNotificationId,
   generateNotificationIdFromTimestamp,
