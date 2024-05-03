@@ -1,4 +1,4 @@
-import type { NodeId, NodeIdEncoded } from '@/ids/types';
+import type { NodeId, NodeIdEncoded, NotificationIdEncoded } from '@/ids/types';
 import type { Host } from '@/network/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { Notification, NotificationData } from '@/notifications/types';
@@ -23,6 +23,7 @@ import NodeManager from '@/nodes/NodeManager';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as nodesErrors from '@/nodes/errors';
 import * as notificationsErrors from '@/notifications/errors';
+import * as notificationsEvents from '@/notifications/events';
 import * as notificationsUtils from '@/notifications/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
@@ -939,15 +940,25 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
+    const notificationIdsEncoded: Array<NotificationIdEncoded> = [];
+    const notificationHandler = (
+      event: notificationsEvents.EventNotificationsManagerNotification,
+    ) => {
+      notificationIdsEncoded.push(event.detail.notificationIdEncoded);
+    };
+    notificationsManager.addEventListener(
+      notificationsEvents.EventNotificationsManagerNotification.name,
+      notificationHandler,
+    );
     await notificationsManager.receiveNotification(notification1);
-    const beforeNotification2Timestamp = Date.now();
     await notificationsManager.receiveNotification(notification2);
-    const afterNotification2Timestamp = Date.now();
     await notificationsManager.receiveNotification(notification3);
     let notifications = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
         order: 'asc',
-        seek: beforeNotification2Timestamp,
+        seek: notificationsUtils.decodeNotificationId(
+          notificationIdsEncoded[1],
+        ),
       }),
     ).toArray();
     expect(notifications).toHaveLength(2);
@@ -956,7 +967,9 @@ describe('NotificationsManager', () => {
     notifications = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
         order: 'asc',
-        seekEnd: afterNotification2Timestamp,
+        seekEnd: notificationsUtils.decodeNotificationId(
+          notificationIdsEncoded[1],
+        ),
       }),
     ).toArray();
     expect(notifications).toHaveLength(2);
@@ -965,13 +978,21 @@ describe('NotificationsManager', () => {
     notifications = await AsyncIterable.as(
       notificationsManager.readInboxNotifications({
         order: 'asc',
-        seek: beforeNotification2Timestamp,
-        seekEnd: afterNotification2Timestamp,
+        seek: notificationsUtils.decodeNotificationId(
+          notificationIdsEncoded[1],
+        ),
+        seekEnd: notificationsUtils.decodeNotificationId(
+          notificationIdsEncoded[1],
+        ),
       }),
     ).toArray();
     expect(notifications).toHaveLength(1);
     expect(notifications[0].data['message']).toBe('msg2');
     // Reverse side-effects
+    notificationsManager.removeEventListener(
+      notificationsEvents.EventNotificationsManagerNotification.name,
+      notificationHandler,
+    );
     await notificationsManager.clearInboxNotifications();
     await acl.unsetNodePerm(senderId);
     await notificationsManager.stop();

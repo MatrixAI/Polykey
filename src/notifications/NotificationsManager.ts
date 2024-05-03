@@ -631,13 +631,23 @@ class NotificationsManager {
       }
       // Store the new notification in notificationsMessagesDb
       const notificationId = this.inboxNotificationIdGenerator();
+      const newNotification: Notification = {
+        ...notification,
+        peerNotificationIdEncoded: notification.notificationIdEncoded,
+        notificationIdEncoded:
+          notificationsUtils.encodeNotificationId(notificationId),
+      };
       await tran.put(
         [...this.notificationsManagerInboxDbPath, notificationId.toBuffer()],
         {
-          ...notification,
-          peerNotificationIdEncoded: notification.notificationIdEncoded,
+          ...newNotification,
           notificationIdEncoded: undefined,
         } as NotificationDB,
+      );
+      this.dispatchEvent(
+        new notificationsEvents.EventNotificationsManagerNotification({
+          detail: newNotification,
+        }),
       );
     }
   }

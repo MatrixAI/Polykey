@@ -1,18 +1,21 @@
+import type { Notification } from './types';
 import EventPolykey from '../EventPolykey';
 
-abstract class EventNotificationsManager<T> extends EventPolykey<T> {}
+abstract class EventNotificationsManager<T = null> extends EventPolykey<T> {}
 
-class EventNotificationsManagerStart extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerStart extends EventNotificationsManager {}
 
-class EventNotificationsManagerStarted extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerStarted extends EventNotificationsManager {}
 
-class EventNotificationsManagerStop extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerStop extends EventNotificationsManager {}
 
-class EventNotificationsManagerStopped extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerStopped extends EventNotificationsManager {}
 
-class EventNotificationsManagerDestroy extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerDestroy extends EventNotificationsManager {}
 
-class EventNotificationsManagerDestroyed extends EventNotificationsManager<undefined> {}
+class EventNotificationsManagerDestroyed extends EventNotificationsManager {}
+
+class EventNotificationsManagerNotification extends EventNotificationsManager<Notification> {}
 
 export {
   EventNotificationsManager,
@@ -22,4 +25,5 @@ export {
   EventNotificationsManagerStopped,
   EventNotificationsManagerDestroy,
   EventNotificationsManagerDestroyed,
+  EventNotificationsManagerNotification,
 };
