@@ -329,13 +329,14 @@ async function* generatePackRequest(
   gitDir: string,
   body: Array<Buffer>,
 ): AsyncGenerator<Buffer, void, void> {
-  const [wants, _haves, _capabilities] = await parsePackRequest(body);
+  const [wants, haves, _capabilities] = await parsePackRequest(body);
   console.time('listObjects');
   const objectIds = await gitUtils.listObjects({
     fs,
     dir,
     gitdir: gitDir,
-    oids: wants,
+    wants,
+    haves,
   });
   console.timeEnd('listObjects');
   // Reply that we have no common history and that we need to send everything

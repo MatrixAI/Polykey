@@ -145,7 +145,7 @@ class VaultInternal {
         }),
       );
     }
-
+    console.time('cloneVaultInternal');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Cloning ${this.name} - ${vaultIdEncoded}`);
     const vault = new this({
@@ -169,6 +169,7 @@ class VaultInternal {
         targetNodeId,
         async (connection) => {
           const client = connection.getClient();
+
           const [request, vaultName, remoteVaultId] = await vault.request(
             client,
             targetVaultNameOrId,
@@ -205,6 +206,7 @@ class VaultInternal {
       remote,
     );
     logger.info(`Cloned ${this.name} - ${vaultIdEncoded}`);
+    console.timeEnd('cloneVaultInternal');
     return vault;
   }
 
