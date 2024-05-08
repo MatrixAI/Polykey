@@ -680,9 +680,7 @@ describe('VaultManager', () => {
           localNodeId,
           'pull',
         );
-        console.time('cloneVault');
         await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-        console.timeEnd('cloneVault');
         const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');
         const [file, secretsList] = await vaultManager.withVaults(

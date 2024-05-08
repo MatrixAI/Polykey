@@ -1,13 +1,10 @@
 import type { ReadCommitResult } from 'isomorphic-git';
-import type { PackIndex } from '@/git/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as gitErrors from '@/git/errors';
 import * as keysUtils from '@/keys/utils';
-import * as gitUtils from '@/git/utils';
 import * as gitTestUtils from './utils';
 
 describe('Git utils', () => {

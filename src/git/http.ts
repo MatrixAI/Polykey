@@ -1,3 +1,15 @@
+import type {
+  CapabilityList,
+  Reference,
+  ObjectId,
+  ObjectIdList,
+} from './types';
+import type { EncryptedFS } from 'encryptedfs';
+import { Buffer } from 'buffer';
+import git from 'isomorphic-git';
+import * as gitUtils from './utils';
+import * as utils from '../utils';
+
 /**
  * Reference discovery
  * Notes:
@@ -37,14 +49,7 @@
  *   LC_ALPHA         =  %x61-7A
  */
 
-import type { CapabilityList, ObjectGenerator, ObjectId } from './types';
-import type { EncryptedFS } from 'encryptedfs';
-import { Buffer } from 'buffer';
-import git from 'isomorphic-git';
-import * as gitUtils from './utils';
-import * as utils from '../utils';
-
-/**
+/*
  * Smart ref discovery response looks like
  *
  * ```
@@ -61,6 +66,7 @@ import * as utils from '../utils';
  * S: 0000
  * ```
  *
+ * ```
  * smart_reply     =  PKT-LINE("# service=$servicename" LF)
  *                    "0000"
  *                    *1("version 1")
@@ -77,70 +83,70 @@ import * as utils from '../utils';
  * any_ref         =  PKT-LINE(obj-id SP name LF)
  * peeled_ref      =  PKT-LINE(obj-id SP name LF)
  *                    PKT-LINE(obj-id SP name "^{}" LF
- *
- *   NUL       =  %x00
- *   zero-id   =  40*"0"
- *   obj-id    =  40*(HEXDIGIT)
+ * NUL             =  %x00
+ * zero-id         =  40*"0"
+ * obj-id          =  40*(HEXDIGIT)
+ * ```
  */
 
-// Total number of bytes per pack line minus the 4 size bytes and 1 channel byte
-const chunkSize = 65520 - 4 - 1;
-const headRef = 'HEAD';
-const sideBand64Capability = 'side-band-64k';
-const agentCapability = 'agent=git/isomorphic-git@1.8.1';
-const spaceString = ' ';
-const channelData = 1;
-const channelProgress = 2;
-const channelError = 3;
-
-// Initial string sent when doing a smart http discovery request
-const referenceDiscoveryHeader = Buffer.from('# service=git-upload-pack');
-// NUL       =  %x00
-const nullBuffer = Buffer.from('\0');
-// LF
-const lineFeedBuffer = Buffer.from('\n');
-// Zero-id   =  40*"0"
-const zeroIdBuffer = Buffer.from('0'.repeat(40));
-// Magic string used when no refs are provided
-const emptyListCapabilitiesBuffer = Buffer.from('capabilities^{}');
-// SP
-const spaceBuffer = Buffer.from(spaceString);
-// Flush-pkt    = "0000", used to indicate a special step or end of the stream.
-// This will not be padded with the `PKT-LINE` delimiter. In essence, it's a special delimiter
-// since a 0-len line would include the 4 bytes `0004` length delimiter which is explicitly not
-// allowed.
-const flushPacketBuffer = Buffer.from('0000');
-// Used to indicate no common commits during ref negotiation phase.
-const nakBuffer = Buffer.from('NAK\n');
-const dummyProgressBuffer = Buffer.from('progress is at 50%');
-
 /**
+ * This generates an async stream of the smart HTTP response for the reference discovery phase.
+ * The server advertises the available references
+ *
+ * Servers MUST terminate the response with the magic 0000 end pkt-line marker.
+ *
+ * The returned response is a pkt-line stream describing each ref and its known value. The stream SHOULD be sorted by
+ * name according to the C locale ordering. The stream SHOULD include the default ref named HEAD as the first ref.
+ * The stream MUST include capability declarations behind a NUL on the first ref.
+ *
+ * ```
  * Smart_reply     =  PKT-LINE("# service=$servicename" LF)
  *                    "0000"
  *                    *1("version 1")
  *                    ref_list
  *                    "0000"
+ * ```
  */
-async function* advertiseRefGenerator(
-  fs: EncryptedFS,
-  dir: string = '.',
-  gitDir: string,
-): AsyncGenerator<Buffer, void, void> {
+async function* advertiseRefGenerator({
+  fs,
+  dir,
+  gitDir,
+}: {
+  fs: EncryptedFS;
+  dir: string;
+  gitDir: string;
+}): AsyncGenerator<Buffer, void, void> {
+  // Providing side-band-64, symref for the HEAD and agent name capabilities
   const capabilityList = [
-    sideBand64Capability,
-    await gitUtils.refCapability(fs, dir, gitDir, headRef),
-    agentCapability,
+    gitUtils.SIDE_BAND_64_CAPABILITY,
+    await gitUtils.refCapability({
+      fs,
+      dir,
+      gitDir,
+      ref: gitUtils.HEAD_REFERENCE,
+    }),
+    gitUtils.AGENT_CAPABILITY,
   ];
-  const objectGenerator = gitUtils.listReferencesGenerator(fs, dir, gitDir);
+  const objectGenerator = gitUtils.listReferencesGenerator({
+    fs,
+    dir,
+    gitDir,
+  });
 
-  yield packetLineBuffer(referenceDiscoveryHeader);
-  yield flushPacketBuffer;
+  // PKT-LINE("# service=$servicename" LF)
+  yield packetLineBuffer(gitUtils.REFERENCE_DISCOVERY_HEADER);
+  // "0000"
+  yield gitUtils.FLUSH_PACKET_BUFFER;
+  // Ref_list
   yield* referenceList(objectGenerator, capabilityList);
-  yield flushPacketBuffer;
+  // "0000"
+  yield gitUtils.FLUSH_PACKET_BUFFER;
 }
 
 /**
+ * Generates `Ref_list` lines from resolved references streamed from the `objectGenerator`.
  *
+ * ```
  * Ref_list        =  empty_list / non_empty_list
  * empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
  * non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
@@ -150,13 +156,16 @@ async function* advertiseRefGenerator(
  * peeled_ref      =  PKT-LINE(obj-id SP name LF)
  *                    PKT-LINE(obj-id SP name "^{}" LF
  * cap-list        =  capability *(SP capability)
+ * ```
  */
 async function* referenceList(
-  objectGenerator: ObjectGenerator,
+  objectGenerator: AsyncGenerator<[Reference, ObjectId], void, void>,
   capabilities: CapabilityList,
 ): AsyncGenerator<Buffer, void, void> {
   // Cap-list        =  capability *(SP capability)
-  const capabilitiesListBuffer = Buffer.from(capabilities.join(spaceString));
+  const capabilitiesListBuffer = Buffer.from(
+    capabilities.join(gitUtils.SPACE_STRING),
+  );
   // Ref_list        =  empty_list / non_empty_list
   // Non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
   //                    *ref_record
@@ -164,15 +173,14 @@ async function* referenceList(
   for await (const [name, objectId] of objectGenerator) {
     if (first) {
       // PKT-LINE(obj-id SP name NUL cap_list LF)
-
       yield packetLineBuffer(
         Buffer.concat([
           Buffer.from(objectId),
-          spaceBuffer,
+          gitUtils.SPACE_BUFFER,
           Buffer.from(name),
-          nullBuffer,
+          gitUtils.NULL_BUFFER,
           capabilitiesListBuffer,
-          lineFeedBuffer,
+          gitUtils.LINE_FEED_BUFFER,
         ]),
       );
       first = false;
@@ -181,9 +189,9 @@ async function* referenceList(
       yield packetLineBuffer(
         Buffer.concat([
           Buffer.from(objectId),
-          spaceBuffer,
+          gitUtils.SPACE_BUFFER,
           Buffer.from(name),
-          lineFeedBuffer,
+          gitUtils.LINE_FEED_BUFFER,
         ]),
       );
     }
@@ -193,12 +201,12 @@ async function* referenceList(
     // Empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
     yield packetLineBuffer(
       Buffer.concat([
-        zeroIdBuffer,
-        spaceBuffer,
-        emptyListCapabilitiesBuffer,
-        nullBuffer,
+        gitUtils.ZERO_ID_BUFFER,
+        gitUtils.SPACE_BUFFER,
+        gitUtils.EMPTY_LIST_CAPABILITIES_BUFFER,
+        gitUtils.NULL_BUFFER,
         capabilitiesListBuffer,
-        lineFeedBuffer,
+        gitUtils.LINE_FEED_BUFFER,
       ]),
     );
   }
@@ -207,17 +215,14 @@ async function* referenceList(
 /**
  * This will take a raw line and encode it as the pkt-line format.
  * It adds a 4 byte length indicator to the beginning of a line.
- * If the line is an empty string then a special flush packet is used.
  * If a chanel is specified a chanel byte is appended just after the length indicator.
- * Newlines are added to the end unless it is a flush packet.
  *
+ * ```
  *   pkt-line     =  data-pkt / flush-pkt
- *
  *   data-pkt     =  pkt-len pkt-payload
  *   pkt-len      =  4*(HEXDIG)
  *   pkt-payload  =  (pkt-len - 4)*(OCTET)
- *
- *   flush-pkt    = "0000"
+ * ```
  */
 function packetLineBuffer(line: Buffer, channel?: 1 | 2 | 3): Buffer {
   let lineLength = line.byteLength;
@@ -234,7 +239,11 @@ function packetLineBuffer(line: Buffer, channel?: 1 | 2 | 3): Buffer {
 /**
  * Creates a 4 byte length delimiter.
  * It is formatted as a left padded hex number of the length
- * @param length
+ *
+ * ```
+ *   data-pkt     =  pkt-len pkt-payload
+ *   pkt-len      =  4*(HEXDIG)
+ * ```
  */
 function paddedLengthBuffer(length: number) {
   // Hex formatted length as a string, add 4 to account for the length string
@@ -256,20 +265,24 @@ function paddedLengthBuffer(length: number) {
  * command which did not appear in the response obtained through ref discovery unless the server advertises capability
  * allow-tip-sha1-in-want or allow-reachable-sha1-in-want.
  *
- * compute_request   =  want_list
- *                      have_list
- *                      request_end
- * request_end       =  "0000" / "done"
- * want_list         =  PKT-LINE(want SP cap_list LF)
- *                      *(want_pkt)
- * want_pkt          =  PKT-LINE(want LF)
- * want              =  "want" SP id
- * cap_list          =  capability *(SP capability)
- * have_list         =  *PKT-LINE("have" SP id LF)
+ * ```
+ *   compute_request   =  want_list
+ *                        have_list
+ *                        request_end
+ *   request_end       =  "0000" / "done"
+ *   want_list         =  PKT-LINE(want SP cap_list LF)
+ *                        *(want_pkt)
+ *   want_pkt          =  PKT-LINE(want LF)
+ *   want              =  "want" SP id
+ *   cap_list          =  capability *(SP capability)
+ *   have_list         =  *PKT-LINE("have" SP id LF)
+ * ```
+ *
+ * @returns [wants, haves, capabilities]
  */
 async function parsePackRequest(
   body: Array<Buffer>,
-): Promise<[Array<ObjectId>, Array<ObjectId>, CapabilityList]> {
+): Promise<[ObjectIdList, ObjectIdList, CapabilityList]> {
   let workingBuffer = Buffer.alloc(0, 0);
   const wants: Array<ObjectId> = [];
   const haves: Array<ObjectId> = [];
@@ -278,7 +291,7 @@ async function parsePackRequest(
     workingBuffer = Buffer.concat([workingBuffer, bodyElement]);
     let firstLine = true;
     while (true) {
-      const parsedData = parseRequestLine(workingBuffer);
+      const parsedData = gitUtils.parseRequestLine(workingBuffer);
       if (parsedData == null) break;
       const [type, objectId, parsedCapabilities, rest] = parsedData;
       workingBuffer = rest;
@@ -307,46 +320,47 @@ async function parsePackRequest(
   return [wants, haves, capabilities];
 }
 
-function parseRequestLine(
-  workingBuffer: Buffer,
-): [string, ObjectId, CapabilityList, Buffer] | undefined {
-  const length = parseInt(workingBuffer.subarray(0, 4).toString(), 16);
-  if (length > workingBuffer.byteLength) return;
-  if (length === 0) return ['SEPARATOR', '', [], workingBuffer.subarray(4)];
-  const rest = workingBuffer.subarray(length);
-  const lineBuffer = workingBuffer.subarray(4, length);
-  const lineString = lineBuffer.toString().trimEnd();
-  const [type, id, ...capabilities] = lineString.split(spaceString);
-  return [type, id, capabilities, rest];
-}
-
 /**
+ * Parses the client's requests and generates a response the contains the git packFile data
+ *
+ * It will respond with the `PKT-LINE(NAK_BUFFER)` and then the `packFile` data chunked into lines for the stream.
  *
  */
-async function* generatePackRequest(
-  fs: EncryptedFS,
-  dir: string = '.',
-  gitDir: string,
-  body: Array<Buffer>,
-): AsyncGenerator<Buffer, void, void> {
+async function* generatePackRequest({
+  fs,
+  dir,
+  gitDir,
+  body,
+}: {
+  fs: EncryptedFS;
+  dir: string;
+  gitDir: string;
+  body: Array<Buffer>;
+}): AsyncGenerator<Buffer, void, void> {
   const [wants, haves, _capabilities] = await parsePackRequest(body);
-  console.time('listObjects');
   const objectIds = await gitUtils.listObjects({
     fs,
     dir,
-    gitdir: gitDir,
+    gitDir: gitDir,
     wants,
     haves,
   });
-  console.timeEnd('listObjects');
   // Reply that we have no common history and that we need to send everything
-  yield packetLineBuffer(nakBuffer);
+  yield packetLineBuffer(gitUtils.NAK_BUFFER);
   // Send everything over in pack format
-  yield* generatePackData(fs, dir, gitDir, objectIds);
+  yield* generatePackData({
+    fs,
+    dir,
+    gitDir,
+    objectIds,
+  });
   // Send dummy progress data
-  yield packetLineBuffer(dummyProgressBuffer, channelProgress);
+  yield packetLineBuffer(
+    gitUtils.DUMMY_PROGRESS_BUFFER,
+    gitUtils.CHANNEL_PROGRESS,
+  );
   // Send flush
-  yield flushPacketBuffer;
+  yield gitUtils.FLUSH_PACKET_BUFFER;
 }
 
 /**
@@ -354,25 +368,34 @@ async function* generatePackRequest(
  * Iso-git provides the packFile for us, we just need to cut it into `chunkSize` bytes per line and multiplex on chanel 1.
  *
  */
-async function* generatePackData(
-  fs: EncryptedFS,
-  dir: string = '.',
-  gitDir: string,
-  objectIds: Array<ObjectId>,
-): AsyncGenerator<Buffer, void, void> {
+async function* generatePackData({
+  fs,
+  dir,
+  gitDir,
+  objectIds,
+  chunkSize = gitUtils.PACK_CHUNK_SIZE,
+}: {
+  fs: EncryptedFS;
+  dir: string;
+  gitDir: string;
+  objectIds: Array<ObjectId>;
+  chunkSize?: number;
+}): AsyncGenerator<Buffer, void, void> {
   const packFile = await git.packObjects({
     fs,
     dir,
     gitdir: gitDir,
     oids: objectIds,
   });
-  if (packFile.packfile == null) utils.never('packFile data was not found');
+  if (packFile.packfile == null) utils.never('failed to create packFile data');
   let packFileBuffer = Buffer.from(packFile.packfile.buffer);
 
+  // Streaming the packFile as chunks of the length specified by the `chunkSize`.
+  // Each line is formatted as a `PKT-LINE`
   do {
     const subBuffer = packFileBuffer.subarray(0, chunkSize);
     packFileBuffer = packFileBuffer.subarray(chunkSize);
-    yield packetLineBuffer(subBuffer, channelData);
+    yield packetLineBuffer(subBuffer, gitUtils.CHANNEL_DATA);
   } while (packFileBuffer.byteLength > chunkSize);
 }
 

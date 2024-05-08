@@ -820,11 +820,11 @@ class VaultManager {
       ],
       async function* (): AsyncGenerator<Buffer, void, void> {
         // Read the commit state of the vault
-        yield* gitHttp.advertiseRefGenerator(
-          efs,
-          path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-        );
+        yield* gitHttp.advertiseRefGenerator({
+          fs: efs,
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitDir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+        });
       },
     );
   }
@@ -856,12 +856,12 @@ class VaultManager {
         vault.getLock().read(),
       ],
       async function* (): AsyncGenerator<Buffer, void, void> {
-        yield* gitHttp.generatePackRequest(
-          efs,
-          path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
-          path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
-          body,
-        );
+        yield* gitHttp.generatePackRequest({
+          fs: efs,
+          dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+          gitDir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
+          body: body,
+        });
       },
     );
   }

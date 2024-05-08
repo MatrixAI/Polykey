@@ -1,5 +1,4 @@
 import fs from 'fs';
-import git from 'isomorphic-git';
 import * as gitHttp from '@/git/http';
 
 describe('Git utils', () => {
@@ -10,7 +9,11 @@ describe('Git utils', () => {
 003fd049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
 003c2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
 0000`;
-    const gen = gitHttp.advertiseRefGenerator(fs as any, '.', '.git');
+    const gen = gitHttp.advertiseRefGenerator({
+      fs: fs as any,
+      dir: '.',
+      gitDir: '.git',
+    });
     let acc = '';
     for await (const out of gen) {
       acc += out;
@@ -50,30 +53,5 @@ describe('Git utils', () => {
       'side-band-64k',
       'agent=git/isomorphic-git@1.24.5',
     ]);
-  });
-
-  test('sendPackData', async () => {
-    const gen = gitHttp.generatePackData(fs as any, '.', '.git', [
-      '2cfd5c97b8f90f0e613784b10f3dd0bfce1ba91e',
-    ]);
-    let acc = '';
-    for await (const out of gen) {
-      acc += out;
-    }
-    console.log(acc);
-  });
-
-  test('asdgsd', async () => {
-    const gen = gitHttp.generatePackRequest(
-      fs as any,
-      'tmp/testgit',
-      'tmp/testgit/.git',
-      [],
-    );
-    let acc = '';
-    for await (const asd of gen) {
-      acc += asd.toString();
-    }
-    console.log(acc);
   });
 });
