@@ -521,7 +521,7 @@ class GitHubProvider extends Provider {
    * Gets all IdentitySignedClaims from a given identity.
    */
   public async *getClaims(
-    authIdentityId: IdentityId,
+    _authIdentityId: IdentityId,
     identityId: IdentityId,
   ): AsyncGenerator<IdentitySignedClaim> {
     const gistsSearchUrl = 'https://gist.github.com/search';
@@ -541,14 +541,11 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
-      const claimIds = this.extractClaimIds(data);
-      for (const claimId of claimIds) {
-        const claim = await this.getClaim(authIdentityId, claimId);
-        if (claim != null) {
-          yield claim;
-        }
+      const claims = this.extractClaims(data);
+      for (const claim of claims) {
+        yield claim;
       }
-      if (claimIds.length === 0) {
+      if (claims.length === 0) {
         break;
       } else {
         pageNum = pageNum + 1;
@@ -589,6 +586,29 @@ class GitHubProvider extends Provider {
         }
       });
     return claimIds;
+  }
+
+  protected extractClaims(html: string): Array<IdentitySignedClaim> {
+    const claims: Array<IdentitySignedClaim> = [];
+    const $ = cheerio.load(html);
+    $('.gist-snippet').each((_, ele) => {
+      const claimId = $('.gist-snippet-meta > ul > li > a', ele)
+        .first()
+        .attr('href')
+        ?.match(/\/.+?\/(.+)/)
+        ?.at(1);
+      const signedClaim = this.parseClaim($(`.blob-code-inner`, ele).text());
+      if (claimId == null || signedClaim == null) {
+        return;
+      }
+      claims.push({
+        id: claimId as ProviderIdentityClaimId,
+        url: `https://gist.github.com/${claimId}`,
+        claim: signedClaim,
+      });
+    });
+
+    return claims;
   }
 }
 
