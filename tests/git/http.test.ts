@@ -1,25 +1,40 @@
 import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import git from 'isomorphic-git';
 import * as gitHttp from '@/git/http';
+import * as gitTestUtils from './utils';
 
 describe('Git utils', () => {
-  test('asd', async () => {
-    // Testing for the following
-    const output = `001e# service=git-upload-pack
-0000004895dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack
-003fd049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
-003c2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
-0000`;
-    const gen = gitHttp.advertiseRefGenerator({
-      fs: fs as any,
-      dir: '.',
-      gitDir: '.git',
+  const _logger = new Logger('VaultManager Test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+  let dataDir: string;
+  let gitDirs: {
+    fs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    dir: string;
+    gitDir: string;
+    gitdir: string;
+  };
+  beforeAll(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const dir = path.join(dataDir, 'repository');
+    const gitdir = path.join(dir, '.git');
+    gitDirs = {
+      fs,
+      dir,
+      gitDir: gitdir,
+      gitdir,
+    };
+  });
+  afterAll(async () => {
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
     });
-    let acc = '';
-    for await (const out of gen) {
-      acc += out;
-    }
-    console.log(acc);
-    // Expect(acc).toBe(output);
   });
   test('packetLine', async () => {
     /**
@@ -42,16 +57,197 @@ describe('Git utils', () => {
       expect(comp).toBe(0);
     }
   });
+  test('packetLineWithChannel', async () => {
+    /**
+     *   Pkt-line          actual value
+     *   ---------------------------------
+     *   "0007a\n"         "a\n"
+     *   "0006a"           "a"
+     *   "000cfoobar\n"    "foobar\n"
+     *   "0005"            ""
+     */
+    const tests = [
+      ['0007\x01a\n', 'a\n'],
+      ['0006\x01a', 'a'],
+      ['000c\x01foobar\n', 'foobar\n'],
+      ['0005\x01', ''],
+    ];
+    for (const [output, input] of tests) {
+      const result = gitHttp.packetLineBuffer(Buffer.from(input), 1);
+      const comp = Buffer.compare(result, Buffer.from(output));
+      expect(comp).toBe(0);
+    }
+  });
+  test('advertiseRefGenerator', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
+    });
+    const gen = gitHttp.advertiseRefGenerator(gitDirs);
+    let response = '';
+    for await (const result of gen) {
+      response += result.toString();
+    }
+    // Header
+    expect(response).toInclude('001e# service=git-upload-pack\n');
+    // Includes flush packets
+    expect(response).toInclude('0000');
+    // Includes capabilities
+    expect(response).toIncludeMultiple([
+      'side-band-64k',
+      'symref=HEAD:refs/heads/master',
+      'agent=git/isomorphic-git@1.8.1',
+    ]);
+    // HEAD commit is listed twice as `HEAD` and `master`
+    const headCommit = (await git.log({ ...gitDirs, ref: 'HEAD' }))[0].oid;
+    expect(response).toIncludeRepeated(headCommit, 2);
+    // `HEAD` and `master` are both listed
+    expect(response).toIncludeMultiple(['HEAD', 'master']);
+    // A null byte is included to delimit first line and capabilities
+    expect(response).toInclude('\0');
+  });
   test('parsePackRequest', async () => {
     const data = Buffer.from(
-      `0060want 2cfd5c97b8f90f0e613784b10f3dd0bfce1ba91e side-band-64k agent=git/isomorphic-git@1.24.5\n00000009done\n`,
+      `0060want aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa side-band-64k agent=git/isomorphic-git@1.24.5\n0032have bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n00000009done\n`,
     );
     const [wants, haves, capabilities] = await gitHttp.parsePackRequest([data]);
-    expect(wants).toMatchObject(['2cfd5c97b8f90f0e613784b10f3dd0bfce1ba91e']);
-    expect(haves).toMatchObject([]);
+    expect(wants).toMatchObject(['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']);
+    expect(haves).toMatchObject(['bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb']);
     expect(capabilities).toMatchObject([
       'side-band-64k',
       'agent=git/isomorphic-git@1.24.5',
     ]);
+  });
+  test('generatePackData', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
+    });
+    const objectIds = await gitTestUtils.listGitObjects(gitDirs);
+    const gen = gitHttp.generatePackData({
+      ...gitDirs,
+      objectIds,
+    });
+    let acc = Buffer.alloc(0);
+    for await (const line of gen) {
+      acc = Buffer.concat([acc, line.subarray(5)]);
+    }
+    const packPath = path.join(gitDirs.dir, 'pack');
+    await fs.promises.writeFile(packPath, acc);
+    // Checking that all objectIds are included and packFile is valid using isometric git
+    const result = await git.indexPack({
+      ...gitDirs,
+      filepath: 'pack',
+    });
+    expect(result.oids).toIncludeAllMembers(objectIds);
+  });
+  test('generatePackRequest', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
+    });
+    const gen = gitHttp.generatePackRequest({
+      ...gitDirs,
+      body: [],
+    });
+    let response = '';
+    for await (const line of gen) {
+      response += line.toString();
+    }
+    // NAK response for no common objects
+    expect(response).toInclude('0008NAK\n');
+    // Pack data included on chanel 1
+    expect(response).toInclude('\x01PACK');
+    // Progress data included on chanel 2
+    expect(response).toInclude('0017\x02progress is at 50%');
+    // Flush packet included
+    expect(response).toInclude('0000');
   });
 });

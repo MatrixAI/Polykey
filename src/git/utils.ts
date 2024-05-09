@@ -98,26 +98,26 @@ async function* listReferencesGenerator({
 /**
  * Reads the provided reference and formats it as a `symref` capability
  */
-async function refCapability({
+async function referenceCapability({
   fs,
   dir,
   gitDir,
-  ref,
+  reference,
 }: {
   fs: EncryptedFS;
   dir: string;
   gitDir: string;
-  ref: Reference;
+  reference: Reference;
 }): Promise<Capability> {
   try {
     const resolvedHead = await git.resolveRef({
       fs,
       dir,
       gitdir: gitDir,
-      ref,
+      ref: reference,
       depth: 2,
     });
-    return `symref=${ref}:${resolvedHead}`;
+    return `symref=${reference}:${resolvedHead}`;
   } catch (e) {
     if (e.code === 'ENOENT') throw e;
     return '';
@@ -217,7 +217,12 @@ async function listObjects({
 function parseRequestLine(
   workingBuffer: Buffer,
 ): [RequestType, ObjectId, CapabilityList, Buffer] | undefined {
-  const length = parseInt(workingBuffer.subarray(0, 4).toString(), 16);
+  if (workingBuffer.byteLength === 0) return;
+  const lengthBuffer = workingBuffer.subarray(0, 4).toString();
+  if (!/^[0-9a-f]{4}$/.test(lengthBuffer)) {
+    never('expected a 4-length hex number length indicator');
+  }
+  const length = parseInt(lengthBuffer, 16);
   if (length > workingBuffer.byteLength) return;
   if (length === 0) return ['SEPARATOR', '', [], workingBuffer.subarray(4)];
   const rest = workingBuffer.subarray(length);
@@ -253,7 +258,7 @@ export {
   NAK_BUFFER,
   DUMMY_PROGRESS_BUFFER,
   listReferencesGenerator,
-  refCapability,
+  referenceCapability,
   listObjects,
   parseRequestLine,
 };

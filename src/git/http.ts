@@ -119,11 +119,11 @@ async function* advertiseRefGenerator({
   // Providing side-band-64, symref for the HEAD and agent name capabilities
   const capabilityList = [
     gitUtils.SIDE_BAND_64_CAPABILITY,
-    await gitUtils.refCapability({
+    await gitUtils.referenceCapability({
       fs,
       dir,
       gitDir,
-      ref: gitUtils.HEAD_REFERENCE,
+      reference: gitUtils.HEAD_REFERENCE,
     }),
     gitUtils.AGENT_CAPABILITY,
   ];

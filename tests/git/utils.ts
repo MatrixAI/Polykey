@@ -1,72 +1,190 @@
-import type { EncryptedFS } from 'encryptedfs';
-import type { ReadCommitResult } from 'isomorphic-git';
+import type { FileSystem } from '@';
+import type { CapabilityList } from '@/git/types';
+import type { Arbitrary } from 'fast-check';
+import type fs from 'fs';
 import path from 'path';
 import git from 'isomorphic-git';
+import fc from 'fast-check';
+import * as gitUtils from '@/git/utils';
+import * as gitHttp from '@/git/http';
+import { never } from '@/utils';
 
+// Just to avoid confusing the type with the name
+type FsType = typeof fs;
+
+/**
+ * Utility for quickly creating a git repo with history
+ */
 async function createGitRepo({
-  efs,
-  packFile,
-  indexFile,
+  fs,
+  dir,
+  gitdir,
+  author,
+  commits,
 }: {
-  efs: EncryptedFS;
-  packFile?: boolean;
-  indexFile?: boolean;
-}): Promise<ReadCommitResult[]> {
-  await git.init({
-    fs: efs,
-    dir: '.',
-  });
-  await git.commit({
-    fs: efs,
-    dir: '.',
+  fs: FsType;
+  dir: string;
+  gitdir: string;
+  author: string;
+  commits: Array<{
+    message: string;
+    files: Array<{ name: string; contents: string }>;
+  }>;
+}) {
+  const gitDirs = {
+    fs,
+    dir,
+    gitdir,
+  };
+  const authorDetails = {
     author: {
-      name: 'TestCommitter',
+      name: author,
+      email: `${author}@test.com`,
     },
-    message: 'Initial Commit',
+    committer: {
+      name: author,
+      email: `${author}@test.com`,
+    },
+  };
+  await git.init({
+    ...gitDirs,
   });
-  await efs.promises.writeFile(
-    path.join('.git', 'packed-refs'),
-    '# pack-refs with: peeled fully-peeled sorted',
-  );
-  for (let i = 0; i < 10; i++) {
-    const fp = i.toString();
-    await efs.promises.writeFile(fp, 'secret ' + i.toString());
+  for (const { message, files } of commits) {
+    await Promise.all(
+      files.map(({ name, contents }) =>
+        fs.promises.writeFile(path.join(gitDirs.dir, name), contents),
+      ),
+    );
+    await git.add({
+      ...gitDirs,
+      filepath: files.map(({ name }) => name),
+    });
     await git.commit({
-      fs: efs,
-      dir: '.',
-      author: {
-        name: 'TestCommitter ' + i.toString(),
-      },
-      message: 'Commit ' + i.toString(),
+      ...gitDirs,
+      ...authorDetails,
+      message,
     });
   }
-  const log = await git.log({
-    fs: efs,
-    dir: '.',
-  });
-  if (packFile) {
-    const pack = await git.packObjects({
-      fs: efs,
-      dir: '.',
-      oids: [...log.map((item) => item.oid)],
-      write: true,
-    });
-    if (indexFile) {
-      await git.indexPack({
-        fs: efs,
-        dir: '.',
-        filepath: path.join('.git', 'objects', 'pack', pack.filename),
-      });
+}
+
+const objectsDirName = 'objects';
+const excludedDirs = ['pack', 'info'];
+
+/**
+ * Walks the filesystem to list out all git objects in the objects directory
+ * @param fs
+ * @param gitDir
+ */
+async function listGitObjects({
+  fs,
+  gitDir,
+}: {
+  fs: FileSystem;
+  gitDir: string;
+}) {
+  const objectsDirPath = path.join(gitDir, objectsDirName);
+  const objectSet: Set<string> = new Set();
+  const objectDirs = await fs.promises.readdir(objectsDirPath);
+  for (const objectDir of objectDirs) {
+    if (excludedDirs.includes(objectDir)) continue;
+    const objectIds = await fs.promises.readdir(
+      path.join(objectsDirPath, objectDir),
+    );
+    for (const objectId of objectIds) {
+      objectSet.add(objectDir + objectId);
     }
   }
-  return log;
+  return [...objectSet];
 }
 
-async function getPackID(efs: EncryptedFS): Promise<string> {
-  const pack = (
-    await efs.promises.readdir(path.join('.git', 'objects', 'pack'))
-  )[0];
-  return (pack as string).substring(5, 45);
+type NegotiationTestData =
+  | {
+      type: 'want';
+      objectId: string;
+      capabilityList: CapabilityList;
+    }
+  | {
+      type: 'have';
+      objectId: string;
+    }
+  | {
+      type: 'SEPARATOR' | 'done' | 'none';
+    };
+
+function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
+  switch (data.type) {
+    case 'want': {
+      const line = Buffer.concat([
+        Buffer.from(data.type),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.objectId),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.capabilityList.join(gitUtils.SPACE_STRING)),
+        gitUtils.LINE_FEED_BUFFER,
+      ]);
+      return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
+    }
+    case 'have': {
+      const line = Buffer.concat([
+        Buffer.from(data.type),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.objectId),
+        gitUtils.LINE_FEED_BUFFER,
+      ]);
+      return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
+    }
+    case 'SEPARATOR':
+      return Buffer.concat([Buffer.from('0000'), rest]);
+    case 'done':
+      return Buffer.concat([Buffer.from('0009done\n'), rest]);
+    case 'none':
+      return Buffer.alloc(0);
+    default:
+      never();
+  }
 }
 
-export { createGitRepo, getPackID };
+const objectIdArb = fc.hexaString({
+  maxLength: 40,
+  minLength: 40,
+});
+const capabilityArb = fc.stringOf(
+  fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
+  { minLength: 5 },
+);
+const capabilityListArb = fc.array(capabilityArb, { size: 'small' });
+const restArb = fc.uint8Array();
+const wantArb = fc.record({
+  type: fc.constant('want') as Arbitrary<'want'>,
+  objectId: objectIdArb,
+  capabilityList: capabilityListArb,
+});
+const haveArb = fc.record({
+  type: fc.constant('have') as Arbitrary<'have'>,
+  objectId: objectIdArb,
+});
+
+const lineDataArb = fc.oneof(
+  wantArb,
+  haveArb,
+  fc.record({
+    type: fc.constantFrom<'SEPARATOR' | 'done' | 'none'>(
+      'SEPARATOR',
+      'done',
+      'none',
+    ),
+  }),
+);
+
+export {
+  createGitRepo,
+  listGitObjects,
+  generateTestNegotiationLine,
+  objectIdArb,
+  capabilityArb,
+  capabilityListArb,
+  restArb,
+  wantArb,
+  haveArb,
+  lineDataArb,
+};
