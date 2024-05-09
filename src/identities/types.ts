@@ -6,6 +6,7 @@ import type {
 } from '../ids/types';
 import type { SignedClaim } from '../claims/types';
 import type { ClaimLinkIdentity } from '../claims/payloads';
+import type { Opaque } from 'encryptedfs';
 
 /**
  * Identity data contains key details about the
@@ -54,12 +55,15 @@ type ProviderAuthenticateRequest = {
   data: POJO;
 };
 
+type ProviderPaginationToken = Opaque<'ProviderPaginationToken', string>;
+
 export type {
   IdentityData,
   IdentitySignedClaim,
   ProviderToken,
   ProviderTokens,
   ProviderAuthenticateRequest,
+  ProviderPaginationToken,
 };
 
 export type {

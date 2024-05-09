@@ -6,6 +6,7 @@ import type {
   IdentitySignedClaim,
   ProviderIdentityClaimId,
   ProviderAuthenticateRequest,
+  ProviderPaginationToken,
 } from '../../types';
 import type { SignedClaim } from '../../../claims/types';
 import type { ClaimLinkIdentity } from '../../../claims/payloads/claimLinkIdentity';
@@ -27,6 +28,7 @@ class GitHubProvider extends Provider {
   protected readonly gistDescription: string =
     'Cryptolink between Polykey Keynode and Github Identity';
   protected readonly scope: string = 'gist user:email read:user';
+  protected readonly pageSize: number = 10; // GitHub Gists has a maximum page size, we can use this to figure out if there are anymore pages
   protected logger: Logger;
 
   public constructor({
@@ -518,38 +520,86 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Gets all IdentitySignedClaims from a given identity.
+   * Gets all ProviderIdentityClaimIds from a given identity.
    */
-  public async *getClaims(
+  public async *getClaimIdsPage(
     _authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<IdentitySignedClaim> {
+    paginationToken?: ProviderPaginationToken,
+  ): AsyncGenerator<{
+    claimId: ProviderIdentityClaimId;
+    nextPaginationToken?: ProviderPaginationToken;
+  }> {
     const gistsSearchUrl = 'https://gist.github.com/search';
-    let pageNum = 1;
-    while (true) {
-      const url = new URL(gistsSearchUrl);
-      url.searchParams.set('p', pageNum.toString());
-      url.searchParams.set(
-        'q',
-        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, // Githubidentityclaim
+    const url = new URL(gistsSearchUrl);
+    let query = `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`;
+    if (paginationToken != null) {
+      query += ` updated:<${paginationToken}`;
+    }
+    url.searchParams.set('q', query);
+    url.searchParams.set('s', 'updated'); // Sort by updated
+    url.searchParams.set('o', 'desc'); // Sort by descending
+    const request = new Request(url.toString(), { method: 'GET' });
+    const response = await fetch(request);
+    if (!response.ok) {
+      throw new identitiesErrors.ErrorProviderCall(
+        `Provider responded with ${response.status} ${response.statusText}`,
       );
-      const request = new Request(url.toString(), { method: 'GET' });
-      const response = await fetch(request);
-      if (!response.ok) {
-        throw new identitiesErrors.ErrorProviderCall(
-          `Provider responded with ${response.status} ${response.statusText}`,
-        );
-      }
-      const data = await response.text();
-      const claims = this.extractClaims(data);
-      for (const claim of claims) {
-        yield claim;
-      }
-      if (claims.length === 0) {
-        break;
-      } else {
-        pageNum = pageNum + 1;
-      }
+    }
+    const data = await response.text();
+    const claimIds = this.extractClaimIds(data);
+    let newPaginationToken: ProviderPaginationToken | undefined;
+    if (claimIds.length >= this.pageSize) {
+      newPaginationToken = this.extractPaginationToken(data);
+    }
+    for (const [i, claimId] of claimIds.entries()) {
+      yield {
+        claimId,
+        nextPaginationToken:
+          i === claimIds.length - 1 ? newPaginationToken : undefined,
+      };
+    }
+  }
+
+  /**
+   * Gets all IdentitySignedClaims from a given identity.
+   */
+  public async *getClaimsPage(
+    _authIdentityId: IdentityId,
+    identityId: IdentityId,
+    paginationToken?: ProviderPaginationToken,
+  ): AsyncGenerator<{
+    claim: IdentitySignedClaim;
+    nextPaginationToken?: ProviderPaginationToken;
+  }> {
+    const gistsSearchUrl = 'https://gist.github.com/search';
+    const url = new URL(gistsSearchUrl);
+    let query = `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`;
+    if (paginationToken != null) {
+      query += ` updated:<${paginationToken}`;
+    }
+    url.searchParams.set('q', query);
+    url.searchParams.set('s', 'updated'); // Sort by updated
+    url.searchParams.set('o', 'desc'); // Sort by descending
+    const request = new Request(url.toString(), { method: 'GET' });
+    const response = await fetch(request);
+    if (!response.ok) {
+      throw new identitiesErrors.ErrorProviderCall(
+        `Provider responded with ${response.status} ${response.statusText}`,
+      );
+    }
+    const data = await response.text();
+    const claims = this.extractClaims(data);
+    let newPaginationToken: ProviderPaginationToken | undefined;
+    if (claims.length >= this.pageSize) {
+      newPaginationToken = this.extractPaginationToken(data);
+    }
+    for (const [i, claim] of claims.entries()) {
+      yield {
+        claim,
+        nextPaginationToken:
+          i === claims.length - 1 ? newPaginationToken : undefined,
+      };
     }
   }
 
@@ -568,6 +618,15 @@ class GitHubProvider extends Provider {
       ...options,
       headers,
     }) as Request;
+  }
+
+  protected extractPaginationToken(
+    html: string,
+  ): ProviderPaginationToken | undefined {
+    const $ = cheerio.load(html);
+    return $('.gist-snippet > .gist-snippet-meta relative-time')
+      .last()
+      .attr('datetime') as ProviderPaginationToken | undefined;
   }
 
   protected extractClaimIds(html: string): Array<ProviderIdentityClaimId> {

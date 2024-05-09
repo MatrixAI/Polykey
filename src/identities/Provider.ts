@@ -7,6 +7,7 @@ import type {
   ProviderTokens,
   ProviderAuthenticateRequest,
   ProviderIdentityClaimId,
+  ProviderPaginationToken,
 } from './types';
 import type { SignedClaim } from '../claims/types';
 import type { ClaimLinkIdentity } from '../claims/payloads/claimLinkIdentity';
@@ -188,12 +189,78 @@ abstract class Provider {
   ): Promise<IdentitySignedClaim | undefined>;
 
   /**
-   * Stream identity claims from an identity
+   * Stream pages of identity claimIds from an identity
    */
-  public abstract getClaims(
+  public abstract getClaimIdsPage(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<IdentitySignedClaim>;
+    paginationToken?: ProviderPaginationToken,
+  ): AsyncGenerator<{
+    claimId: ProviderIdentityClaimId;
+    nextPaginationToken?: ProviderPaginationToken;
+  }>;
+
+  /**
+   * Stream identity claimIds from an identity
+   */
+  public async *getClaimIds(
+    authIdentityId: IdentityId,
+    identityId: IdentityId,
+  ): AsyncGenerator<ProviderIdentityClaimId> {
+    let nextPaginationToken: ProviderPaginationToken | undefined;
+    while (true) {
+      const iterator = this.getClaimIdsPage(
+        authIdentityId,
+        identityId,
+        nextPaginationToken,
+      );
+      nextPaginationToken = undefined;
+      for await (const wrapper of iterator) {
+        nextPaginationToken = wrapper.nextPaginationToken;
+        yield wrapper.claimId;
+      }
+      if (nextPaginationToken == null) {
+        break;
+      }
+    }
+  }
+
+  /**
+   * Stream identity claims from an identity
+   */
+  public abstract getClaimsPage(
+    authIdentityId: IdentityId,
+    identityId: IdentityId,
+    paginationToken?: ProviderPaginationToken,
+  ): AsyncGenerator<{
+    claim: IdentitySignedClaim;
+    nextPaginationToken?: ProviderPaginationToken;
+  }>;
+
+  /**
+   * Stream pages of identity claims from an identity
+   */
+  public async *getClaims(
+    authIdentityId: IdentityId,
+    identityId: IdentityId,
+  ): AsyncGenerator<IdentitySignedClaim> {
+    let nextPaginationToken: ProviderPaginationToken | undefined;
+    while (true) {
+      const iterator = this.getClaimsPage(
+        authIdentityId,
+        identityId,
+        nextPaginationToken,
+      );
+      nextPaginationToken = undefined;
+      for await (const wrapper of iterator) {
+        nextPaginationToken = wrapper.nextPaginationToken;
+        yield wrapper.claim;
+      }
+      if (nextPaginationToken == null) {
+        break;
+      }
+    }
+  }
 }
 
 export default Provider;
