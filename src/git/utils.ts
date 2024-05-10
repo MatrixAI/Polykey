@@ -166,7 +166,11 @@ async function listObjects({
             oid: objectId,
           });
           const tree = readCommitResult.commit.tree;
-          await walk(tree, 'tree');
+          const parents = readCommitResult.commit.parent;
+          await Promise.all([
+            walk(tree, 'tree'),
+            ...parents.map((parent) => walk(parent, 'commit')),
+          ]);
         }
         return;
       case 'tree':
