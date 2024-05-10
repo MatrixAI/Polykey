@@ -1,4 +1,4 @@
-import type { FileSystem } from '@';
+import type { FileSystem, POJO } from '@';
 import type { CapabilityList } from '@/git/types';
 import type { Arbitrary } from 'fast-check';
 import type fs from 'fs';
@@ -7,7 +7,7 @@ import git from 'isomorphic-git';
 import fc from 'fast-check';
 import * as gitUtils from '@/git/utils';
 import * as gitHttp from '@/git/http';
-import { never } from '@/utils';
+import * as utils from '@/utils';
 
 // Just to avoid confusing the type with the name
 type FsType = typeof fs;
@@ -21,6 +21,7 @@ async function createGitRepo({
   gitdir,
   author,
   commits,
+  init = true,
 }: {
   fs: FsType;
   dir: string;
@@ -30,6 +31,7 @@ async function createGitRepo({
     message: string;
     files: Array<{ name: string; contents: string }>;
   }>;
+  init?: boolean;
 }) {
   const gitDirs = {
     fs,
@@ -46,9 +48,11 @@ async function createGitRepo({
       email: `${author}@test.com`,
     },
   };
-  await git.init({
-    ...gitDirs,
-  });
+  if (init) {
+    await git.init({
+      ...gitDirs,
+    });
+  }
   for (const { message, files } of commits) {
     await Promise.all(
       files.map(({ name, contents }) =>
@@ -140,7 +144,7 @@ function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
     case 'none':
       return Buffer.alloc(0);
     default:
-      never();
+      utils.never();
   }
 }
 
@@ -155,6 +159,67 @@ async function* tapGen(
   }
   // eslint-disable-next-line no-console
   console.log(acc);
+}
+
+/**
+ * Create a test request handler for use with `git.clone` and `git.pull`
+ */
+function request({
+  fs,
+  dir,
+  gitDir,
+}: {
+  fs: any;
+  dir: string;
+  gitDir: string;
+}) {
+  return async ({
+    url,
+    method = 'GET',
+    headers = {},
+    body = [Buffer.from('')],
+  }: {
+    url: string;
+    method: string;
+    headers: POJO;
+    body: Array<Buffer>;
+  }) => {
+    // Console.log('body', body.map(v => v.toString()))
+    if (method === 'GET') {
+      // Send back the GET request info response
+      const advertiseRefGen = gitHttp.advertiseRefGenerator({
+        fs,
+        dir,
+        gitDir,
+      });
+
+      return {
+        url: url,
+        method: method,
+        body: advertiseRefGen,
+        headers: headers,
+        statusCode: 200,
+        statusMessage: 'OK',
+      };
+    } else if (method === 'POST') {
+      const packGen = gitHttp.generatePackRequest({
+        fs,
+        dir,
+        gitDir,
+        body,
+      });
+      return {
+        url: url,
+        method: method,
+        body: packGen,
+        headers: headers,
+        statusCode: 200,
+        statusMessage: 'OK',
+      };
+    } else {
+      utils.never();
+    }
+  };
 }
 
 const objectIdArb = fc.hexaString({
@@ -194,6 +259,7 @@ export {
   listGitObjects,
   generateTestNegotiationLine,
   tapGen,
+  request,
   objectIdArb,
   capabilityArb,
   capabilityListArb,
