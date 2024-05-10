@@ -82,7 +82,7 @@ describe('Git utils', () => {
         depth: 1,
       })
     )[0].oid;
-    const expectedReferences = ['HEAD', 'master'];
+    const expectedReferences = ['HEAD', 'refs/heads/master'];
     for await (const [reference, objectId] of gitUtils.listReferencesGenerator({
       ...gitDirs,
     })) {

@@ -144,6 +144,19 @@ function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
   }
 }
 
+// Used to print out the contents of an `Buffer` iterable for testing
+async function* tapGen(
+  gen: AsyncIterable<Buffer>,
+): AsyncGenerator<Buffer, void, void> {
+  let acc = '';
+  for await (const line of gen) {
+    acc += line.toString();
+    yield line;
+  }
+  // eslint-disable-next-line no-console
+  console.log(acc);
+}
+
 const objectIdArb = fc.hexaString({
   maxLength: 40,
   minLength: 40,
@@ -180,6 +193,7 @@ export {
   createGitRepo,
   listGitObjects,
   generateTestNegotiationLine,
+  tapGen,
   objectIdArb,
   capabilityArb,
   capabilityListArb,

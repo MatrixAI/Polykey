@@ -18,6 +18,8 @@ import * as validationErrors from '../validation/errors';
 const PACK_CHUNK_SIZE = 65520 - 4 - 1;
 // Ref identifier for the HEAD commit
 const HEAD_REFERENCE = 'HEAD';
+// Used to construct to full path for head references
+const REFERENCES_STRING = 'refs/heads/';
 // Used to specify the sideband with 3 channels, data, progress and error
 const SIDE_BAND_64_CAPABILITY = 'side-band-64k';
 // Specifies the agent name, Only used for logging output by the client
@@ -80,7 +82,10 @@ async function* listReferencesGenerator({
     })
     .then((refs) => {
       return refs.map((ref) => {
-        return [ref, git.resolveRef({ fs, dir, gitdir: gitDir, ref: ref })];
+        return [
+          `${REFERENCES_STRING}${ref}`,
+          git.resolveRef({ fs, dir, gitdir: gitDir, ref: ref }),
+        ];
       });
     });
   // HEAD always comes first
@@ -271,6 +276,7 @@ function assertRequestType(
 export {
   PACK_CHUNK_SIZE,
   HEAD_REFERENCE,
+  REFERENCES_STRING,
   SIDE_BAND_64_CAPABILITY,
   AGENT_CAPABILITY,
   SPACE_STRING,
