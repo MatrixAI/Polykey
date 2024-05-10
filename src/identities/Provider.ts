@@ -228,14 +228,30 @@ abstract class Provider {
   /**
    * Stream identity claims from an identity
    */
-  public abstract getClaimsPage(
+  public async *getClaimsPage(
     authIdentityId: IdentityId,
     identityId: IdentityId,
     paginationToken?: ProviderPaginationToken,
   ): AsyncGenerator<{
     claim: IdentitySignedClaim;
     nextPaginationToken?: ProviderPaginationToken;
-  }>;
+  }> {
+    const iterator = this.getClaimIdsPage(
+      authIdentityId,
+      identityId,
+      paginationToken,
+    );
+    for await (const { claimId, nextPaginationToken } of iterator) {
+      const claim = await this.getClaim(authIdentityId, claimId);
+      if (claim == null) {
+        continue;
+      }
+      yield {
+        claim,
+        nextPaginationToken,
+      };
+    }
+  }
 
   /**
    * Stream pages of identity claims from an identity
