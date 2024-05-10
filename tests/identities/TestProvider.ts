@@ -5,6 +5,7 @@ import type {
   ProviderToken,
   IdentityData,
   ProviderAuthenticateRequest,
+  ProviderPaginationToken,
 } from '@/identities/types';
 import type {
   IdentitySignedClaim,
@@ -25,6 +26,8 @@ class TestProvider extends Provider {
   public links: Record<ProviderIdentityClaimId, string>;
   protected userLinks: Record<IdentityId, Array<ProviderIdentityClaimId>>;
   protected userTokens: Record<string, IdentityId>;
+
+  protected readonly pageSize = 10;
 
   public constructor(providerId: ProviderId = 'test-provider' as ProviderId) {
     super();
@@ -171,6 +174,43 @@ class TestProvider extends Provider {
     };
   }
 
+  public async *getClaimIdsPage(
+    authIdentityId: IdentityId,
+    identityId: IdentityId,
+    paginationToken?: ProviderPaginationToken | undefined,
+  ): AsyncGenerator<{
+    claimId: ProviderIdentityClaimId;
+    nextPaginationToken?: ProviderPaginationToken;
+  }> {
+    const providerToken = await this.getToken(authIdentityId);
+    let startIndex = paginationToken == null ? 0 : parseInt(paginationToken);
+    if (isNaN(startIndex)) {
+      startIndex = 0;
+    }
+    if (!providerToken) {
+      throw new identitiesErrors.ErrorProviderUnauthenticated(
+        `${authIdentityId} has not been authenticated`,
+      );
+    }
+    await this.checkToken(providerToken, authIdentityId);
+    const claimIds =
+      this.userLinks[identityId].slice(
+        startIndex,
+        this.pageSize + startIndex,
+      ) ?? [];
+    for (const [i, claimId] of claimIds.entries()) {
+      yield {
+        claimId,
+        nextPaginationToken:
+          i === claimIds.length - 1
+            ? ((
+                startIndex + this.pageSize
+              ).toString() as ProviderPaginationToken)
+            : undefined,
+      };
+    }
+  }
+
   public async getClaim(
     authIdentityId: IdentityId,
     claimId: ProviderIdentityClaimId,
@@ -195,26 +235,6 @@ class TestProvider extends Provider {
       id: claimId,
       url: 'test.com',
     };
-  }
-
-  public async *getClaims(
-    authIdentityId: IdentityId,
-    identityId: IdentityId,
-  ): AsyncGenerator<IdentitySignedClaim> {
-    const providerToken = await this.getToken(authIdentityId);
-    if (!providerToken) {
-      throw new identitiesErrors.ErrorProviderUnauthenticated(
-        `${authIdentityId} has not been authenticated`,
-      );
-    }
-    await this.checkToken(providerToken, authIdentityId);
-    const claimIds = this.userLinks[identityId] ?? [];
-    for (const claimId of claimIds) {
-      const claimInfo = await this.getClaim(authIdentityId, claimId);
-      if (claimInfo != null) {
-        yield claimInfo;
-      }
-    }
   }
 }
 
