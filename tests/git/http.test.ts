@@ -3,11 +3,14 @@ import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import git from 'isomorphic-git';
+import { test } from '@fast-check/jest';
+import fc from 'fast-check';
 import * as gitHttp from '@/git/http';
+import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
 
-describe('Git utils', () => {
-  const _logger = new Logger('VaultManager Test', LogLevel.WARN, [
+describe('Git Http', () => {
+  const _logger = new Logger('Git Http Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -147,6 +150,14 @@ describe('Git utils', () => {
       'agent=git/isomorphic-git@1.24.5',
     ]);
   });
+  test.prop([fc.uint8Array({ minLength: 100 })])(
+    'parsePackRequest handles random data',
+    async (data) => {
+      await expect(
+        gitHttp.parsePackRequest([Buffer.from(data)]),
+      ).rejects.toThrow(validationErrors.ErrorParse);
+    },
+  );
   test('generatePackData', async () => {
     await gitTestUtils.createGitRepo({
       ...gitDirs,

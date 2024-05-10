@@ -30,17 +30,6 @@ const requestTypes = ['want', 'have', 'SEPARATOR', 'done'] as const;
  */
 type RequestType = (typeof requestTypes)[number];
 
-// Type guards
-
-function isObjectId(objectId: string): objectId is ObjectId {
-  return /[0-9a-f]{40}/.test(objectId);
-}
-
-function isRequestType(requestType: string): requestType is RequestType {
-  // Forcing conversion here just to do the check
-  return requestTypes.includes(requestType as RequestType);
-}
-
 export type {
   ObjectId,
   Reference,
@@ -51,4 +40,4 @@ export type {
   RequestType,
 };
 
-export { objectTypes, requestTypes, isObjectId, isRequestType };
+export { objectTypes, requestTypes };

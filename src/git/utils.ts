@@ -9,8 +9,9 @@ import type {
 } from './types';
 import type { EncryptedFS } from 'encryptedfs';
 import git from 'isomorphic-git';
-import { isObjectId, isRequestType, requestTypes } from './types';
+import { requestTypes } from './types';
 import { never } from '../utils';
+import * as validationErrors from '../validation/errors';
 
 // Constants
 // Total number of bytes per pack line minus the 4 size bytes and 1 channel byte
@@ -220,7 +221,9 @@ function parseRequestLine(
   if (workingBuffer.byteLength === 0) return;
   const lengthBuffer = workingBuffer.subarray(0, 4).toString();
   if (!/^[0-9a-f]{4}$/.test(lengthBuffer)) {
-    never('expected a 4-length hex number length indicator');
+    throw new validationErrors.ErrorParse(
+      'expected a 4-length hex number length indicator',
+    );
   }
   const length = parseInt(lengthBuffer, 16);
   if (length > workingBuffer.byteLength) return;
@@ -229,13 +232,40 @@ function parseRequestLine(
   const lineBuffer = workingBuffer.subarray(4, length);
   const lineString = lineBuffer.toString().trimEnd();
   const [requestType, id, ...capabilities] = lineString.split(SPACE_STRING);
-  if (!isRequestType(requestType)) {
-    never(`requestType must be ${requestTypes}, parsed ${requestType}`);
-  }
-  if (id != null && !isObjectId(id)) {
-    never(`id must be a 40-digit hex number in lowercase, received ${id}`);
-  }
+  assertRequestType(requestType);
+  if (id != null) assertObjectId(id);
   return [requestType, id ?? '', capabilities, rest];
+}
+
+// Type guards
+
+function isObjectId(objectId: unknown): objectId is ObjectId {
+  if (typeof objectId !== 'string') return false;
+  return /[0-9a-f]{40}/.test(objectId);
+}
+
+function assertObjectId(objectId: unknown): asserts objectId is ObjectId {
+  if (!isObjectId(objectId)) {
+    throw new validationErrors.ErrorParse(
+      `\`objectId\` must be a 40-digit hex number lowercase string, received (${objectId})`,
+    );
+  }
+}
+
+function isRequestType(requestType: unknown): requestType is RequestType {
+  if (typeof requestType !== 'string') return false;
+  // Forcing conversion here just to do the check
+  return requestTypes.includes(requestType as RequestType);
+}
+
+function assertRequestType(
+  requestType: unknown,
+): asserts requestType is RequestType {
+  if (!isRequestType(requestType)) {
+    throw new validationErrors.ErrorParse(
+      `\`requestType\` must be a string of \`want\`, \`have\`, \`SEPARATOR\`, or \`done\`, received (${requestType})`,
+    );
+  }
 }
 
 export {
@@ -261,4 +291,8 @@ export {
   referenceCapability,
   listObjects,
   parseRequestLine,
+  isObjectId,
+  assertObjectId,
+  isRequestType,
+  assertRequestType,
 };

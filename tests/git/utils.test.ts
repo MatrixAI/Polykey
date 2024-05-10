@@ -6,10 +6,11 @@ import git from 'isomorphic-git';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import * as gitUtils from '@/git/utils';
+import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
 
 describe('Git utils', () => {
-  const _logger = new Logger('VaultManager Test', LogLevel.WARN, [
+  const _logger = new Logger('Git utils Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -241,9 +242,9 @@ describe('Git utils', () => {
   test.prop([fc.uint8Array({ size: 'medium', minLength: 1 }).noShrink()])(
     'parseRequestLine handles bad data',
     async (randomData) => {
-      expect(() =>
-        gitUtils.parseRequestLine(Buffer.from(randomData)),
-      ).toThrow();
+      expect(() => gitUtils.parseRequestLine(Buffer.from(randomData))).toThrow(
+        validationErrors.ErrorParse,
+      );
     },
   );
 });
