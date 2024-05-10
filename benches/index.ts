@@ -12,7 +12,10 @@ async function main(): Promise<void> {
   for await (const suitePath of fsWalk(suitesPath)) {
     // Skip over non-ts and non-js files
     const ext = path.extname(suitePath);
-    if (ext !== '.ts' && ext !== '.js') {
+    if (
+      (ext !== '.ts' && ext !== '.js') ||
+      path.basename(suitePath) !== 'git_utils_fs.ts'
+    ) {
       continue;
     }
     const suite: () => Promise<Summary> = (await import(suitePath)).default;
