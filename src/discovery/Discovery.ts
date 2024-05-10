@@ -16,6 +16,7 @@ import type {
   ProviderId,
   ProviderIdentityClaimId,
   ProviderIdentityId,
+  ProviderPaginationToken,
 } from '../identities/types';
 import type KeyRing from '../keys/KeyRing';
 import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
@@ -569,6 +570,7 @@ class Discovery {
     const identityClaims = await this.verifyIdentityClaims(
       providerId,
       identityId,
+      ctx,
     );
     for (const [id, claim] of Object.entries(identityClaims)) {
       const issuerNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
@@ -638,7 +640,7 @@ class Discovery {
       return;
     }
     // Getting and verifying claims
-    const claims = await this.verifyIdentityClaims(providerId, identityId);
+    const claims = await this.verifyIdentityClaims(providerId, identityId, ctx);
     // Link the identity with each node from its claims on the provider
     // Iterate over each of the claims
     for (const [claimId, claim] of Object.entries(claims)) {
@@ -849,6 +851,7 @@ class Discovery {
   protected async verifyIdentityClaims(
     providerId: ProviderId,
     identityId: IdentityId,
+    ctx: ContextTimed,
   ): Promise<Record<ProviderIdentityClaimId, SignedClaim<ClaimLinkIdentity>>> {
     const provider = this.identitiesManager.getProvider(providerId);
     // If we don't have this provider, no identity info to find
@@ -866,22 +869,49 @@ class Discovery {
       ProviderIdentityClaimId,
       SignedClaim<ClaimLinkIdentity>
     > = {};
-    for await (const identitySignedClaim of provider.getClaims(
-      authIdentityId,
-      identityId,
-    )) {
-      identitySignedClaim.claim;
-      // Claims on an identity provider will always be node -> identity
-      const claim = identitySignedClaim.claim;
-      const data = claim.payload;
-      // Verify the claim with the public key of the node
-      const nodeId = nodesUtils.decodeNodeId(data.iss);
-      if (nodeId == null) never();
-      const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
-      const token = Token.fromSigned(claim);
-      // If verified, add to the record
-      if (token.verifyWithPublicKey(publicKey)) {
-        identityClaims[identitySignedClaim.id] = claim;
+
+    let nextPaginationToken: ProviderPaginationToken | undefined;
+    while (true) {
+      ctx.timer.refresh();
+      const iterator = provider.getClaimIdsPage(
+        authIdentityId,
+        identityId,
+        nextPaginationToken,
+      );
+      nextPaginationToken = undefined;
+      for await (const wrapper of iterator) {
+        // This will:
+        // 1. throw if the getClaimIdsPage takes too much time
+        // 2. the rest of this loop iteration takes too much time
+        if (ctx.signal.aborted) {
+          throw ctx.signal.reason;
+        }
+        const claimId = wrapper.claimId;
+        nextPaginationToken = wrapper.nextPaginationToken;
+        // Refresh timer in preparation for request
+        ctx.timer.refresh();
+        const identitySignedClaim = await provider.getClaim(
+          authIdentityId,
+          claimId,
+        );
+        if (identitySignedClaim == null) {
+          continue;
+        }
+        // Claims on an identity provider will always be node -> identity
+        const claim = identitySignedClaim.claim;
+        const data = claim.payload;
+        // Verify the claim with the public key of the node
+        const nodeId = nodesUtils.decodeNodeId(data.iss);
+        if (nodeId == null) never();
+        const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
+        const token = Token.fromSigned(claim);
+        // If verified, add to the record
+        if (token.verifyWithPublicKey(publicKey)) {
+          identityClaims[identitySignedClaim.id] = claim;
+        }
+      }
+      if (nextPaginationToken == null) {
+        break;
       }
     }
     return identityClaims;
