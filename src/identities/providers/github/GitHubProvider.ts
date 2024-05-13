@@ -520,7 +520,8 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Gets all ProviderIdentityClaimIds from a given identity.
+   * Gets a page of ProviderIdentityClaimIds from a given identity
+   * sorted by latest.
    */
   public async *getClaimIdsPage(
     _authIdentityId: IdentityId,
@@ -562,7 +563,8 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Gets all IdentitySignedClaims from a given identity.
+   * Gets all IdentitySignedClaims from a given identity
+   * sorted by latest.
    */
   public async *getClaimsPage(
     _authIdentityId: IdentityId,

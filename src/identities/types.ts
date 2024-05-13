@@ -55,6 +55,12 @@ type ProviderAuthenticateRequest = {
   data: POJO;
 };
 
+/**
+ * Generic opaque string used to represent a pagination token
+ * when making requests using an identity Provider.
+ * Do not expect this string to have any particular meaning
+ * outside of the Provider subclass it is used for.
+ */
 type ProviderPaginationToken = Opaque<'ProviderPaginationToken', string>;
 
 export type {

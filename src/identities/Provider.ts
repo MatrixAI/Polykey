@@ -189,7 +189,7 @@ abstract class Provider {
   ): Promise<IdentitySignedClaim | undefined>;
 
   /**
-   * Stream pages of identity claimIds from an identity
+   * Stream a page of identity claimIds from an identity
    */
   public abstract getClaimIdsPage(
     authIdentityId: IdentityId,
@@ -226,7 +226,7 @@ abstract class Provider {
   }
 
   /**
-   * Stream identity claims from an identity
+   * Stream a page of identity claims from an identity
    */
   public async *getClaimsPage(
     authIdentityId: IdentityId,
@@ -254,7 +254,7 @@ abstract class Provider {
   }
 
   /**
-   * Stream pages of identity claims from an identity
+   * Stream identity claims from an identity
    */
   public async *getClaims(
     authIdentityId: IdentityId,
