@@ -14,7 +14,7 @@ async function main(): Promise<void> {
     const ext = path.extname(suitePath);
     if (
       (ext !== '.ts' && ext !== '.js') ||
-      path.basename(suitePath) !== 'git_utils_fs.ts'
+      path.basename(suitePath) !== 'gitClone.ts'
     ) {
       continue;
     }
