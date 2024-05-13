@@ -22,6 +22,7 @@ import * as utils from '../../../utils';
 class GitHubProvider extends Provider {
   public readonly id = 'github.com' as ProviderId;
   public readonly clientId: string;
+  public readonly preferGetClaimsPage: boolean = true;
 
   protected readonly apiUrl: string = 'https://api.github.com';
   protected readonly gistFilename: string = 'cryptolink.txt';

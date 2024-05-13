@@ -29,6 +29,14 @@ abstract class Provider {
    */
   public abstract readonly id: ProviderId;
 
+  /**
+   * Set to true if getClaimsPage method should be preferred instead claim iteration operations.
+   * This could be useful if the Provider subclass has a getClaimsPage implentation that is able to
+   * obtain both Claims and ClaimsIds with a single HTTP request. For example, if the Provider were to
+   * supply a GraphQL API, or if the webscraped page were to contain the contents of both.
+   */
+  public readonly preferGetClaimsPage: boolean = false;
+
   public getTokens: GetTokens;
   public getToken: GetToken;
   public putToken: PutToken;

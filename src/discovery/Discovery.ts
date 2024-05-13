@@ -13,6 +13,7 @@ import type IdentitiesManager from '../identities/IdentitiesManager';
 import type {
   IdentityData,
   IdentityId,
+  IdentitySignedClaim,
   ProviderId,
   ProviderIdentityClaimId,
   ProviderIdentityId,
@@ -871,43 +872,69 @@ class Discovery {
     > = {};
 
     let nextPaginationToken: ProviderPaginationToken | undefined;
+    const identitySignedClaimDb = (
+      identitySignedClaim: IdentitySignedClaim,
+    ) => {
+      const claim = identitySignedClaim.claim;
+      const data = claim.payload;
+      // Verify the claim with the public key of the node
+      const nodeId = nodesUtils.decodeNodeId(data.iss);
+      if (nodeId == null) never();
+      const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
+      const token = Token.fromSigned(claim);
+      // If verified, add to the record
+      if (token.verifyWithPublicKey(publicKey)) {
+        identityClaims[identitySignedClaim.id] = claim;
+      }
+    };
     while (true) {
+      // Refresh before each request made with identitySignedClaimGenerator
       ctx.timer.refresh();
-      const iterator = provider.getClaimIdsPage(
-        authIdentityId,
-        identityId,
-        nextPaginationToken,
-      );
-      nextPaginationToken = undefined;
-      for await (const wrapper of iterator) {
-        // This will:
-        // 1. throw if the getClaimIdsPage takes too much time
-        // 2. the rest of this loop iteration takes too much time
-        if (ctx.signal.aborted) {
-          throw ctx.signal.reason;
-        }
-        const claimId = wrapper.claimId;
-        nextPaginationToken = wrapper.nextPaginationToken;
-        // Refresh timer in preparation for request
-        ctx.timer.refresh();
-        const identitySignedClaim = await provider.getClaim(
+      if (provider.preferGetClaimsPage) {
+        const iterator = provider.getClaimIdsPage(
           authIdentityId,
-          claimId,
+          identityId,
+          nextPaginationToken,
         );
-        if (identitySignedClaim == null) {
-          continue;
+        nextPaginationToken = undefined;
+        for await (const wrapper of iterator) {
+          // This will:
+          // 1. throw if the getClaimIdsPage takes too much time
+          // 2. the rest of this loop iteration takes too much time
+          if (ctx.signal.aborted) {
+            throw ctx.signal.reason;
+          }
+          const claimId = wrapper.claimId;
+          nextPaginationToken = wrapper.nextPaginationToken;
+          // Refresh timer in preparation for request
+          ctx.timer.refresh();
+          const identitySignedClaim = await provider.getClaim(
+            authIdentityId,
+            claimId,
+          );
+          if (identitySignedClaim == null) {
+            continue;
+          }
+          // Claims on an identity provider will always be node -> identity
+          identitySignedClaimDb(identitySignedClaim);
         }
-        // Claims on an identity provider will always be node -> identity
-        const claim = identitySignedClaim.claim;
-        const data = claim.payload;
-        // Verify the claim with the public key of the node
-        const nodeId = nodesUtils.decodeNodeId(data.iss);
-        if (nodeId == null) never();
-        const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
-        const token = Token.fromSigned(claim);
-        // If verified, add to the record
-        if (token.verifyWithPublicKey(publicKey)) {
-          identityClaims[identitySignedClaim.id] = claim;
+      } else {
+        const iterator = provider.getClaimsPage(
+          authIdentityId,
+          identityId,
+          nextPaginationToken,
+        );
+        nextPaginationToken = undefined;
+        for await (const wrapper of iterator) {
+          // This will:
+          // 1. throw if the getClaimIdsPage takes too much time
+          // 2. the rest of this loop iteration takes too much time
+          if (ctx.signal.aborted) {
+            throw ctx.signal.reason;
+          }
+          nextPaginationToken = wrapper.nextPaginationToken;
+          // Claims on an identity provider will always be node -> identity
+          identitySignedClaimDb(wrapper.claim);
         }
       }
       if (nextPaginationToken == null) {
