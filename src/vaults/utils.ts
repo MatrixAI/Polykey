@@ -9,6 +9,7 @@ import type { NodeId } from '../ids/types';
 import type { Path } from 'encryptedfs/dist/types';
 import path from 'path';
 import { pathJoin } from 'encryptedfs/dist/utils';
+import * as vaultsErrors from './errors';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
 import * as validationErrors from '../validation/errors';
@@ -27,6 +28,12 @@ const canonicalBranchRef = 'refs/heads/' + canonicalBranch;
  */
 function validateRef(ref: any): ref is VaultRef {
   return refs.includes(ref) || validateCommitId(ref);
+}
+
+function assertRef(ref: any): asserts ref is VaultRef {
+  if (!validateRef(ref)) {
+    throw new vaultsErrors.ErrorVaultReferenceInvalid();
+  }
 }
 
 /**
@@ -105,12 +112,23 @@ async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   }
 }
 
+async function mkdirExists(efs: EncryptedFS, directory: string) {
+  try {
+    await efs.mkdir(directory, { recursive: true });
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      throw e;
+    }
+  }
+}
+
 export {
   tagLast,
   refs,
   canonicalBranch,
   canonicalBranchRef,
   validateRef,
+  assertRef,
   validateCommitId,
   commitAuthor,
   isVaultAction,
@@ -118,6 +136,7 @@ export {
   readDirRecursively,
   walkFs,
   deleteObject,
+  mkdirExists,
 };
 
 export { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';

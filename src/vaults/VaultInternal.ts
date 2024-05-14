@@ -55,6 +55,11 @@ interface VaultInternal extends CreateDestroyStartStop {}
   },
 )
 class VaultInternal {
+  /**
+   *  Creates a VaultInternal.
+   *  If no state already exists then state for the vault is initialized.
+   *  If state already exists then this just creates the `VaultInternal` instance for managing that state.
+   */
   public static async createVaultInternal({
     vaultId,
     vaultName,
@@ -107,6 +112,9 @@ class VaultInternal {
     return vault;
   }
 
+  /**
+   * Will create a new vault by cloning the vault from a remote node.
+   */
   public static async cloneVaultInternal({
     targetNodeId,
     targetVaultNameOrId,
@@ -191,7 +199,7 @@ class VaultInternal {
         remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
       };
     } catch (e) {
-      // If the error flag set and we have the generalised SmartHttpError from
+      // If the error flag set, and we have the generalised SmartHttpError from
       // isomorphic git then we need to throw the polykey error
       if (e instanceof git.Errors.SmartHttpError && error) {
         throw error;
@@ -282,6 +290,10 @@ class VaultInternal {
     return await this.start_(fresh, tran, vaultName);
   }
 
+  /**
+   * We use a protected start method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
+   * create a DBTransaction.
+   */
   protected async start_(
     fresh: boolean,
     tran: DBTransaction,
@@ -292,7 +304,6 @@ class VaultInternal {
     );
     this.vaultMetadataDbPath = [...this.vaultsDbPath, this.vaultIdEncoded];
     this.vaultsNamesPath = [...this.vaultsDbPath, 'names'];
-    // Let's backup any metadata
     if (fresh) {
       await tran.clear(this.vaultMetadataDbPath);
       try {
@@ -305,25 +316,15 @@ class VaultInternal {
         }
       }
     }
-    await this.mkdirExists(this.vaultIdEncoded);
-    await this.mkdirExists(this.vaultDataDir);
-    await this.mkdirExists(this.vaultGitDir);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultIdEncoded);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultDataDir);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultGitDir);
     await this.setupMeta({ vaultName, tran });
     await this.setupGit(tran);
     this.efsVault = await this.efs.chroot(this.vaultDataDir);
     this.logger.info(
       `Started ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-  }
-
-  protected async mkdirExists(directory: string) {
-    try {
-      await this.efs.mkdir(directory, { recursive: true });
-    } catch (e) {
-      if (e.code !== 'EEXIST') {
-        throw e;
-      }
-    }
   }
 
   public async stop(): Promise<void> {
@@ -342,6 +343,10 @@ class VaultInternal {
     return await this.destroy_(tran);
   }
 
+  /**
+   * We use a protected destroy method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
+   * create a DBTransaction.
+   */
   protected async destroy_(tran: DBTransaction) {
     this.logger.info(
       `Destroying ${this.constructor.name} - ${this.vaultIdEncoded}`,
@@ -365,9 +370,7 @@ class VaultInternal {
     ref: string | VaultRef = 'HEAD',
     limit?: number,
   ): Promise<Array<CommitLog>> {
-    if (!vaultsUtils.validateRef(ref)) {
-      throw new vaultsErrors.ErrorVaultReferenceInvalid();
-    }
+    vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
       ref = vaultsUtils.canonicalBranch;
     }
@@ -401,9 +404,7 @@ class VaultInternal {
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async version(ref: string | VaultRef = tagLast): Promise<void> {
-    if (!vaultsUtils.validateRef(ref)) {
-      throw new vaultsErrors.ErrorVaultReferenceInvalid();
-    }
+    vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
       ref = vaultsUtils.canonicalBranch;
     }
@@ -428,6 +429,9 @@ class VaultInternal {
     }
   }
 
+  /**
+   * With context handler for using a vault in a read-only context.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async readF<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     return withF([this.lock.read()], async () => {
@@ -435,6 +439,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a read-only context for a generator.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public readG<T, TReturn, TNext>(
     g: (fs: FileSystemReadable) => AsyncGenerator<T, TReturn, TNext>,
@@ -445,6 +452,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a writable context.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
@@ -492,6 +502,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a writable context for a generator.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
@@ -518,7 +531,7 @@ class VaultInternal {
       );
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
-      let result;
+      let result: TReturn;
       // Do what you need to do here, create the commit
       try {
         result = yield* g(efsVault);
@@ -538,6 +551,10 @@ class VaultInternal {
     });
   }
 
+  /**
+   * Pulls changes to a vault from the vault's default remote.
+   * If `pullNodeId` and `pullVaultNameOrId` it uses that for the remote instead.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async pullVault({
     nodeManager,
@@ -564,7 +581,7 @@ class VaultInternal {
     // This error flag will contain the error returned by the cloning rpc stream
     let error;
     // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
-    // 0 = no change, 1 = change with vault Id, 2 = change with vault name
+    // 0 = no change, 1 = change with vault ID, 2 = change with vault name
     let metaChange = 0;
     const remoteInfo = await tran.get<RemoteInfo>([
       ...this.vaultMetadataDbPath,
@@ -622,7 +639,7 @@ class VaultInternal {
         },
       );
     } catch (err) {
-      // If the error flag set and we have the generalised SmartHttpError from
+      // If the error flag set, and we have the generalised SmartHttpError from
       // isomorphic git then we need to throw the polykey error
       if (err instanceof git.Errors.SmartHttpError && error) {
         throw error;
@@ -650,7 +667,9 @@ class VaultInternal {
   }
 
   /**
-   * Setup the vault metadata
+   * Sets up the vault metadata.
+   * Creates a `dirty` boolean in the database to track dirty state of the vault.
+   * Also adds the vault's name to the database.
    */
   protected async setupMeta({
     vaultName,
@@ -659,14 +678,7 @@ class VaultInternal {
     vaultName?: VaultName;
     tran: DBTransaction;
   }): Promise<void> {
-    // Setup the vault metadata
-    // and you need to make certain preparations
-    // the meta gets created first
-    // if the SoT is the database
-    // are we supposed to check this?
-
-    // If this is not existing
-    // setup default vaults db
+    // Set up dirty key defaulting to false
     if (
       (await tran.get<boolean>([
         ...this.vaultMetadataDbPath,
@@ -693,11 +705,15 @@ class VaultInternal {
       );
     }
 
-    // Remote: [NodeId, VaultId] | undefined
-    // dirty: boolean
+    // Dirty: boolean
     // name: string | undefined
   }
 
+  /**
+   * Does an idempotent initialization of the git repository for the vault.
+   * If the vault is in a dirty state then we clean up the working directory
+   * or any history not part of the canonicalBranch.
+   */
   protected async setupGit(tran: DBTransaction): Promise<string> {
     // Initialization is idempotent
     // It works even with an existing git repository
@@ -818,15 +834,17 @@ class VaultInternal {
       action: vaultAction,
     });
     const result = vaultsGitInfoGetStream.meta?.result;
-    if (result == null || !utils.isObject(result)) utils.never();
-    if (!('vaultName' in result) || typeof result.vaultName != 'string') {
-      utils.never();
+    if (result == null || !utils.isObject(result)) {
+      utils.never('`result` must be a defined object');
+    }
+    if (!('vaultName' in result) || typeof result.vaultName !== 'string') {
+      utils.never('`vaultName` must be defined and a string');
     }
     if (
       !('vaultIdEncoded' in result) ||
-      typeof result.vaultIdEncoded != 'string'
+      typeof result.vaultIdEncoded !== 'string'
     ) {
-      utils.never();
+      utils.never('`vaultIdEncoded` must be defined and a string');
     }
     const vaultName = result.vaultName;
     const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
@@ -880,7 +898,10 @@ class VaultInternal {
   }
 
   /**
-   * Creates a commit while moving the canonicalBranch reference
+   * Creates a commit while moving the canonicalBranch reference to that new commit.
+   * If the commit creates a branch from the canonical history. Then the new commit becomes the new canonical history
+   * and the old history is removed from the old canonical head to the branch point. This is to maintain the strict
+   * non-branching linear history.
    */
   protected async createCommit() {
     // Checking if commit is appending or branching
@@ -1005,7 +1026,9 @@ class VaultInternal {
   }
 
   /**
-   * Cleans the git working directory by checking out the canonicalBranch
+   * Cleans the git working directory by checking out the canonicalBranch.
+   * This will remove any un-committed changes since any untracked or modified files outside a commit is dirty state.
+   * Dirty state should only happen if the usual commit procedure was interrupted ungracefully.
    */
   protected async cleanWorkingDirectory() {
     // Check the status matrix for any un-staged file changes
@@ -1046,9 +1069,8 @@ class VaultInternal {
 
   /**
    * This will walk the current canonicalBranch history and delete any objects that are not a part of it.
-   * This is a dumb method since it will compare all objects to a walked path. There are better ways to do this.
+   * This is costly since it will compare the walked tree with all existing objects.
    */
-
   protected async garbageCollectGitObjectsGlobal() {
     const objectIdsAll = await gitUtils.listObjectsAll({
       fs: this.efs,
@@ -1062,7 +1084,7 @@ class VaultInternal {
       ref: vaultsUtils.canonicalBranch,
     });
     const reachableObjects = await gitUtils.listObjects({
-      fs: this.efs,
+      efs: this.efs,
       dir: this.vaultDataDir,
       gitDir: this.vaultGitDir,
       wants: [masterRef],
@@ -1092,7 +1114,7 @@ class VaultInternal {
     stopId: string,
   ) {
     const objects = await gitUtils.listObjects({
-      fs: this.efs,
+      efs: this.efs,
       dir: this.vaultDataDir,
       gitDir: this.vaultGitDir,
       wants: [startId],
