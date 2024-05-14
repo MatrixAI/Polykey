@@ -8,6 +8,7 @@ import type {
   RequestType,
 } from './types';
 import type { EncryptedFS } from 'encryptedfs';
+import path from 'path';
 import git from 'isomorphic-git';
 import { requestTypes } from './types';
 import * as utils from '../utils';
@@ -230,6 +231,35 @@ async function listObjects({
   return [...commits, ...trees, ...blobs, ...tags];
 }
 
+const objectsDirName = 'objects';
+const excludedDirs = ['pack', 'info'];
+
+/**
+ * Walks the filesystem to list out all git objects in the objects directory
+ */
+async function listObjectsAll({
+  fs,
+  gitDir,
+}: {
+  fs: EncryptedFS;
+  gitDir: string;
+}) {
+  const objectsDirPath = path.join(gitDir, objectsDirName);
+  const objectSet: Set<string> = new Set();
+  const objectDirs = await fs.promises.readdir(objectsDirPath);
+  for (const objectDir of objectDirs) {
+    if (typeof objectDir !== 'string') never();
+    if (excludedDirs.includes(objectDir)) continue;
+    const objectIds = await fs.promises.readdir(
+      path.join(objectsDirPath, objectDir),
+    );
+    for (const objectId of objectIds) {
+      objectSet.add(objectDir + objectId);
+    }
+  }
+  return [...objectSet];
+}
+
 /**
  * Parses a want/has line from ref negotiation phase.
  */
@@ -309,6 +339,7 @@ export {
   listReferencesGenerator,
   referenceCapability,
   listObjects,
+  listObjectsAll,
   parseRequestLine,
   isObjectId,
   assertObjectId,

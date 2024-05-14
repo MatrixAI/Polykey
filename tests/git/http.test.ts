@@ -5,6 +5,7 @@ import git from 'isomorphic-git';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import * as gitHttp from '@/git/http';
+import * as gitUtils from '@/git/utils';
 import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
 
@@ -191,7 +192,7 @@ describe('Git Http', () => {
         },
       ],
     });
-    const objectIds = await gitTestUtils.listGitObjects(gitDirs);
+    const objectIds = await gitUtils.listObjectsAll(gitDirs);
     const gen = gitHttp.generatePackData({
       ...gitDirs,
       objectIds,

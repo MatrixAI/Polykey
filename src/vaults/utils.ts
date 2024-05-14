@@ -44,7 +44,7 @@ function commitAuthor(nodeId: NodeId): { name: string; email: string } {
 }
 
 async function* readDirRecursively(
-  fs: FileSystemReadable,
+  fs,
   dir = '.',
 ): AsyncGenerator<string, void, void> {
   const dirents = await fs.promises.readdir(dir);

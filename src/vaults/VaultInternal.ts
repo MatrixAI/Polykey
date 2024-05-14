@@ -33,6 +33,7 @@ import * as vaultsEvents from './events';
 import { tagLast } from './types';
 import * as ids from '../ids';
 import * as nodesUtils from '../nodes/utils';
+import * as gitUtils from '../git/utils';
 import * as utils from '../utils';
 
 type RemoteInfo = {
@@ -754,7 +755,7 @@ class VaultInternal {
         // This ensures that any uncommitted state is dropped
         await this.cleanWorkingDirectory();
         // Do global GC operation
-        await this.garbageCollectGitObjects();
+        await this.garbageCollectGitObjectsGlobal();
 
         // Setting dirty back to false
         await tran.put(
@@ -998,27 +999,7 @@ class VaultInternal {
       });
       // We clean old history if a commit was made on previous version
       if (headRef !== masterRef) {
-        // Delete old commits following chain from masterRef -> headRef
-        let currentRef = masterRef;
-        while (currentRef !== headRef) {
-          // Read commit info
-          const commit = await git.readCommit({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            oid: currentRef,
-          });
-          // Delete commit
-          await vaultsUtils.deleteObject(
-            this.efs,
-            this.vaultGitDir,
-            commit.oid,
-          );
-          // Getting new ref
-          const nextRef = commit.commit.parent.pop();
-          if (nextRef == null) break;
-          currentRef = nextRef;
-        }
+        await this.garbageCollectGitObjectsLocal(masterRef, headRef);
       }
     }
   }
@@ -1064,69 +1045,66 @@ class VaultInternal {
   }
 
   /**
-   * Deletes any git objects that can't be reached from the canonicalBranch
+   * This will walk the current canonicalBranch history and delete any objects that are not a part of it.
+   * This is a dumb method since it will compare all objects to a walked path. There are better ways to do this.
    */
-  protected async garbageCollectGitObjects() {
-    // To garbage collect the git objects,
-    // we need to walk all objects connected to the master branch
-    // and delete the object files that are not touched by this walk
-    const touchedOids = {};
+
+  protected async garbageCollectGitObjectsGlobal() {
+    const objectIdsAll = await gitUtils.listObjectsAll({
+      fs: this.efs,
+      gitDir: this.vaultGitDir,
+    });
+    const objects = new Set(objectIdsAll);
     const masterRef = await git.resolveRef({
       fs: this.efs,
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
       ref: vaultsUtils.canonicalBranch,
     });
-    const queuedOids: string[] = [masterRef];
-    while (queuedOids.length > 0) {
-      const currentOid = queuedOids.shift()!;
-      if (touchedOids[currentOid] === null) continue;
-      const result = await git.readObject({
-        fs: this.efs,
-        dir: this.vaultDataDir,
-        gitdir: this.vaultGitDir,
-        oid: currentOid,
-      });
-      touchedOids[result.oid] = result.type;
-      if (result.format !== 'parsed') continue;
-      switch (result.type) {
-        case 'commit':
-          {
-            const object = result.object;
-            queuedOids.push(...object.parent);
-            queuedOids.push(object.tree);
-          }
-          break;
-        case 'tree':
-          {
-            const object = result.object;
-            for (const item of object) {
-              touchedOids[item.oid] = item.type;
-            }
-          }
-          break;
-        default: {
-          utils.never();
-        }
-      }
-    }
-    // Walking all objects
-    const objectPath = path.join(this.vaultGitDir, 'objects');
-    const buckets = (await this.efs.readdir(objectPath)).filter((item) => {
-      return item !== 'info' && item !== 'pack';
+    const reachableObjects = await gitUtils.listObjects({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitDir: this.vaultGitDir,
+      wants: [masterRef],
+      haves: [],
     });
-    for (const bucket of buckets) {
-      const bucketPath = path.join(objectPath, bucket.toString());
-      const oids = await this.efs.readdir(bucketPath);
-      for (const shortOid of oids) {
-        const oidPath = path.join(bucketPath, shortOid.toString());
-        const oid = bucket.toString() + shortOid.toString();
-        if (touchedOids[oid] === undefined) {
-          // Removing unused objects
-          await this.efs.unlink(oidPath);
-        }
-      }
+    // Walk from head to all reachable objects
+    for (const objectReachable of reachableObjects) {
+      objects.delete(objectReachable);
     }
+    // Any objects left in `objects` was unreachable, thus they are a part of orphaned branches
+    // So we want to delete them.
+    const deletePs: Array<Promise<void>> = [];
+    for (const objectId of objects) {
+      deletePs.push(
+        vaultsUtils.deleteObject(this.efs, this.vaultGitDir, objectId),
+      );
+    }
+    await Promise.all(deletePs);
+  }
+
+  /**
+   * This will walk from the `startId` to the `StopId` deleting objects as it goes.
+   * This is smarter since it only walks over the old history and not everything.
+   */
+  protected async garbageCollectGitObjectsLocal(
+    startId: string,
+    stopId: string,
+  ) {
+    const objects = await gitUtils.listObjects({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitDir: this.vaultGitDir,
+      wants: [startId],
+      haves: [stopId],
+    });
+    const deletePs: Array<Promise<void>> = [];
+    for (const objectId of objects) {
+      deletePs.push(
+        vaultsUtils.deleteObject(this.efs, this.vaultGitDir, objectId),
+      );
+    }
+    await Promise.all(deletePs);
   }
 }
 

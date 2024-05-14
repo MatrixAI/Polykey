@@ -68,39 +68,6 @@ async function createGitRepo({
   }
 }
 
-const objectsDirName = 'objects';
-const excludedDirs = ['pack', 'info'];
-
-/**
- * Walks the filesystem to list out all git objects in the objects directory
- * @param fs
- * @param gitDir
- */
-async function listGitObjects({
-  efs,
-  gitDir,
-}: {
-  efs: EncryptedFS;
-  gitDir: string;
-}) {
-  const objectsDirPath = path.join(gitDir, objectsDirName);
-  const objectSet: Set<string> = new Set();
-  const objectDirs = await efs.promises.readdir(objectsDirPath);
-  for (const objectDir of objectDirs) {
-    if (typeof objectDir !== 'string') {
-      utils.never('objectDir should be a string');
-    }
-    if (excludedDirs.includes(objectDir)) continue;
-    const objectIds = await efs.promises.readdir(
-      path.join(objectsDirPath, objectDir),
-    );
-    for (const objectId of objectIds) {
-      objectSet.add(objectDir + objectId);
-    }
-  }
-  return [...objectSet];
-}
-
 type NegotiationTestData =
   | {
       type: 'want';
@@ -256,7 +223,6 @@ const gitRequestDataArb = fc.oneof(
 
 export {
   createGitRepo,
-  listGitObjects,
   generateGitNegotiationLine,
   request,
   gitObjectIdArb,
