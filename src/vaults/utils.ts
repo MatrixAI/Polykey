@@ -103,8 +103,8 @@ function parseVaultAction(data: any): VaultAction {
 
 async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   const bucket = ref.slice(0, 2);
-  const shortref = ref.slice(2);
-  const objectPath = path.join(gitdir, 'objects', bucket, shortref);
+  const shortRef = ref.slice(2);
+  const objectPath = path.join(gitdir, 'objects', bucket, shortRef);
   try {
     await fs.unlink(objectPath);
   } catch (e) {

@@ -35,7 +35,7 @@ describe('VaultInternal', () => {
 
   const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
 
-  const fakeKeyRing = {
+  const dummyKeyRing = {
     getNodeId: () => {
       return nodeTestUtils.generateRandomNodeId();
     },
@@ -44,7 +44,7 @@ describe('VaultInternal', () => {
   const secret2 = { name: 'secret-2', content: 'secret-content-2' };
   const secret3 = { name: 'secret-3', content: 'secret-content-3' };
 
-  const runGen = async (gen) => {
+  const consumeGenerator = async (gen: AsyncGenerator<any, any, any>) => {
     for await (const _ of gen) {
       // Do nothing
     }
@@ -91,7 +91,7 @@ describe('VaultInternal', () => {
     vaultId = vaultIdGenerator();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyRing: fakeKeyRing,
+      keyRing: dummyKeyRing,
       efs,
       logger,
       fresh: true,
@@ -100,7 +100,6 @@ describe('VaultInternal', () => {
       vaultName: 'testVault',
     });
   });
-
   afterEach(async () => {
     await vault.stop();
     await vault.destroy();
@@ -151,7 +150,7 @@ describe('VaultInternal', () => {
     await vault.stop();
     vault = await VaultInternal.createVaultInternal({
       vaultId,
-      keyRing: fakeKeyRing,
+      keyRing: dummyKeyRing,
       efs,
       logger,
       fresh: false,
@@ -183,8 +182,7 @@ describe('VaultInternal', () => {
     });
     expect(file).toBe('testdata');
   });
-  // FIXME: addressed in agent migration stage 2
-  test.skip('can change commits and preserve the log with no intermediate vault mutation', async () => {
+  test('can change commits and preserve the log with no intermediate vault mutation', async () => {
     const initCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
       await efs.writeFile('test1', 'testdata1');
@@ -232,8 +230,7 @@ describe('VaultInternal', () => {
       vaultsErrors.ErrorVaultReferenceMissing,
     );
   });
-  // FIXME: addressed in agent migration stage 2
-  test.skip('can change to the latest commit', async () => {
+  test('can change to the latest commit', async () => {
     const initCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
       await efs.writeFile('test1', 'testdata1');
@@ -423,8 +420,7 @@ describe('VaultInternal', () => {
     // Has a new commit
     expect(await vault.log()).toHaveLength(2);
   });
-  // FIXME: addressed in agent migration stage 2
-  test.skip('concurrent read operations allowed', async () => {
+  test('concurrent read operations allowed', async () => {
     await vault.writeF(async (efs) => {
       await efs.writeFile(secret1.name, secret1.content);
       await efs.writeFile(secret2.name, secret2.content);
@@ -668,7 +664,7 @@ describe('VaultInternal', () => {
       yield await efs.rename('notValid', 'randomName'); // Throws
     });
     // Failing commit operation
-    await expect(() => runGen(gen)).rejects.toThrow();
+    await expect(() => consumeGenerator(gen)).rejects.toThrow();
 
     // Make sure secret1 wasn't written when the above commit failed
     await vault.readF(async (efs) => {
@@ -688,7 +684,7 @@ describe('VaultInternal', () => {
         secret1.content,
       );
     });
-    await runGen(gen);
+    await consumeGenerator(gen);
     const log = await vault.log();
     expect(log).toHaveLength(2);
     expect(log[0].commitId).toStrictEqual(commit);
@@ -735,8 +731,8 @@ describe('VaultInternal', () => {
       for (const logElement of log) {
         refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
       }
-      // @ts-ignore: private method
-      await vault.garbageCollectGitObjects();
+      // @ts-ignore: protected method
+      await vault.garbageCollectGitObjectsGlobal();
 
       for (const ref of refs) {
         await expect(
@@ -754,8 +750,7 @@ describe('VaultInternal', () => {
   // Locking tests
   const waitDelay = 200;
   test('writeF respects read and write locking', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseWrite] = await lock.write()();
 
@@ -780,8 +775,7 @@ describe('VaultInternal', () => {
     expect(finished).toBe(true);
   });
   test('writeG respects read and write locking', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseWrite] = await lock.write()();
 
@@ -791,7 +785,7 @@ describe('VaultInternal', () => {
       finished = true;
       yield;
     });
-    const runP = runGen(writeGen);
+    const runP = consumeGenerator(writeGen);
     await sleep(waitDelay);
     expect(finished).toBe(false);
     await releaseWrite();
@@ -805,15 +799,14 @@ describe('VaultInternal', () => {
       finished = true;
       yield;
     });
-    const runP2 = runGen(writeGen2);
+    const runP2 = consumeGenerator(writeGen2);
     await sleep(waitDelay);
     await releaseRead();
     await runP2;
     expect(finished).toBe(true);
   });
   test('readF respects write locking', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseWrite] = await lock.write()();
 
@@ -828,8 +821,7 @@ describe('VaultInternal', () => {
     expect(finished).toBe(true);
   });
   test('readG respects write locking', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseWrite] = await lock.write()();
     let finished = false;
@@ -838,7 +830,7 @@ describe('VaultInternal', () => {
       finished = true;
       yield;
     });
-    const runP = runGen(writeGen);
+    const runP = consumeGenerator(writeGen);
     await sleep(waitDelay);
     expect(finished).toBe(false);
     await releaseWrite();
@@ -846,8 +838,7 @@ describe('VaultInternal', () => {
     expect(finished).toBe(true);
   });
   test('readF allows concurrent reads', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseRead] = await lock.read()();
     const finished: boolean[] = [];
@@ -864,8 +855,7 @@ describe('VaultInternal', () => {
     await releaseRead();
   });
   test('readG allows concurrent reads', async () => {
-    // @ts-ignore: kidnap lock
-    const lock = vault.lock;
+    const lock = vault.getLock();
     // Hold a write lock
     const [releaseRead] = await lock.read()();
     const finished: boolean[] = [];
@@ -875,10 +865,10 @@ describe('VaultInternal', () => {
       yield;
     };
     await Promise.all([
-      runGen(vault.readG(doThing)),
-      runGen(vault.readG(doThing)),
-      runGen(vault.readG(doThing)),
-      runGen(vault.readG(doThing)),
+      consumeGenerator(vault.readG(doThing)),
+      consumeGenerator(vault.readG(doThing)),
+      consumeGenerator(vault.readG(doThing)),
+      consumeGenerator(vault.readG(doThing)),
     ]);
     expect(finished.length).toBe(4);
     await releaseRead();
@@ -891,7 +881,7 @@ describe('VaultInternal', () => {
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyRing: fakeKeyRing,
+        keyRing: dummyKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,
@@ -913,7 +903,7 @@ describe('VaultInternal', () => {
       vault1 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyRing: fakeKeyRing,
+        keyRing: dummyKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,
@@ -932,7 +922,7 @@ describe('VaultInternal', () => {
       vault2 = await VaultInternal.createVaultInternal({
         db,
         efs,
-        keyRing: fakeKeyRing,
+        keyRing: dummyKeyRing,
         vaultId: vaultId1,
         vaultsDbPath,
         logger,
