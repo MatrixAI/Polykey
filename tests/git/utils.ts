@@ -161,23 +161,6 @@ function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
 }
 
 /**
- * Used to debug generator outputs.
- * Will pass through generator data while converting the contents to a string and appending it to an accumulating string.
- * The full contents are printed when the generator is done.
- */
-async function* tapGen(
-  gen: AsyncIterable<Buffer>,
-): AsyncGenerator<Buffer, void, void> {
-  let acc = '';
-  for await (const line of gen) {
-    acc += line.toString();
-    yield line;
-  }
-  // eslint-disable-next-line no-console
-  console.log(acc);
-}
-
-/**
  * Create a test request handler for use with `git.clone` and `git.pull`
  */
 function request({
@@ -274,7 +257,6 @@ export {
   createGitRepo,
   listGitObjects,
   generateGitNegotiationLine,
-  tapGen,
   request,
   objectIdArb,
   capabilityArb,
