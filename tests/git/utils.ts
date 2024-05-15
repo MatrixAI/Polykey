@@ -115,9 +115,17 @@ type NegotiationTestData =
       type: 'SEPARATOR' | 'done' | 'none';
     };
 
-function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
+/**
+ * This will generate a request line that would be sent by the git client when requesting objects.
+ * It is explicitly used to generate test data for the `parseRequestLine` code.
+ *
+ * @param data - type of line with data to be generated
+ * @param rest - Random buffer data to be appended to the end to simulate more lines in the stream.
+ */
+function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
   switch (data.type) {
     case 'want': {
+      // Generate a `want` line that includes `want`, the `objectId` and capabilities
       const line = Buffer.concat([
         Buffer.from(data.type),
         gitUtils.SPACE_BUFFER,
@@ -129,6 +137,7 @@ function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
       return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
     }
     case 'have': {
+      // Generate a `have` line indicating an object that doesn't need to be sent
       const line = Buffer.concat([
         Buffer.from(data.type),
         gitUtils.SPACE_BUFFER,
@@ -138,17 +147,24 @@ function generateTestNegotiationLine(data: NegotiationTestData, rest: Buffer) {
       return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
     }
     case 'SEPARATOR':
+      // Generate a `0000` flush packet
       return Buffer.concat([Buffer.from('0000'), rest]);
     case 'done':
+      // Generate a `done` packet.
       return Buffer.concat([Buffer.from('0009done\n'), rest]);
     case 'none':
+      // Generate an empty buffer to simulate the stream running out of data to process
       return Buffer.alloc(0);
     default:
       utils.never();
   }
 }
 
-// Used to print out the contents of an `Buffer` iterable for testing
+/**
+ * Used to debug generator outputs.
+ * Will pass through generator data while converting the contents to a string and appending it to an accumulating string.
+ * The full contents are printed when the generator is done.
+ */
 async function* tapGen(
   gen: AsyncIterable<Buffer>,
 ): AsyncGenerator<Buffer, void, void> {
@@ -257,7 +273,7 @@ const lineDataArb = fc.oneof(
 export {
   createGitRepo,
   listGitObjects,
-  generateTestNegotiationLine,
+  generateGitNegotiationLine,
   tapGen,
   request,
   objectIdArb,

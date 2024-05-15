@@ -196,7 +196,7 @@ describe('Git utils', () => {
   test.prop([gitTestUtils.lineDataArb, gitTestUtils.restArb])(
     'parseRequestLine',
     async (lineData, rest) => {
-      const data = gitTestUtils.generateTestNegotiationLine(
+      const data = gitTestUtils.generateGitNegotiationLine(
         lineData,
         Buffer.from(rest),
       );
