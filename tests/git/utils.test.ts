@@ -1,247 +1,248 @@
-import type { ReadCommitResult } from 'isomorphic-git';
-import type { PackIndex } from '@/git/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { EncryptedFS } from 'encryptedfs';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as gitErrors from '@/git/errors';
-import * as keysUtils from '@/keys/utils';
+import git from 'isomorphic-git';
+import { test } from '@fast-check/jest';
+import fc from 'fast-check';
 import * as gitUtils from '@/git/utils';
+import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
 
 describe('Git utils', () => {
-  const logger = new Logger('VaultManager Test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
   let dataDir: string;
-  let commits: ReadCommitResult[];
-  let firstCommit: ReadCommitResult;
-  let objectsPath: string;
-  let efs: EncryptedFS;
-  let dbKey: Buffer;
-
+  let gitDirs: {
+    efs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    fs: any;
+    dir: string;
+    gitDir: string;
+    gitdir: string;
+  };
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    objectsPath = path.join('.git', 'objects');
-    dbKey = keysUtils.generateKey();
-    efs = await EncryptedFS.createEncryptedFS({
-      dbKey,
-      dbPath: dataDir,
-      logger,
-    });
-    await efs.start();
-    commits = await gitTestUtils.createGitRepo({
-      efs,
-      packFile: true,
-      indexFile: true,
-    });
-    firstCommit = commits[0];
+    const dir = path.join(dataDir, 'repository');
+    const gitdir = path.join(dir, '.git');
+    gitDirs = {
+      efs: fs,
+      fs,
+      dir,
+      gitDir: gitdir,
+      gitdir,
+    };
   });
-
   afterAll(async () => {
-    await efs.stop();
-    await efs.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  describe('read index', () => {
-    test('of a packfile', async () => {
-      const packDir = path.join('.git', 'objects', 'pack');
-      const packfile = (await efs.promises.readdir(packDir))[0] as string;
-      const idx = (await efs.promises.readFile(
-        path.join(packDir, packfile),
-      )) as Buffer;
-      const p = gitUtils.fromIdx(idx) as PackIndex;
-      expect(p).not.toBeUndefined();
-      const packSha = packfile.substring(5, 45);
-      expect(p.packfileSha).toBe(packSha);
-      const oids = commits.map((commit) => commit.oid);
-      for (const oid of oids) {
-        expect(p.offsets.has(oid)).toBeTruthy();
-      }
+
+  test('listReferencesGenerator', async () => {
+    // Start with creating a git repo with commits
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
     });
+
+    const headObjectId = (
+      await git.log({
+        ...gitDirs,
+        depth: 1,
+      })
+    )[0].oid;
+    const expectedReferences = ['HEAD', 'refs/heads/master'];
+    for await (const [reference, objectId] of gitUtils.listReferencesGenerator({
+      ...gitDirs,
+    })) {
+      expect(reference).toBeOneOf(expectedReferences);
+      expect(objectId).toBe(headObjectId);
+    }
   });
-  describe('list refs', () => {
-    test('on master', async () => {
-      const refs = await gitUtils.listRefs(
-        efs,
-        '.git',
-        path.join('refs', 'heads'),
-      );
-      expect(refs).toEqual(['master']);
+  test('refCapability', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
     });
+    const branches = await git.listBranches({ ...gitDirs });
+    for (const reference of ['HEAD', ...branches]) {
+      const referenceCapability = await gitUtils.referenceCapability({
+        ...gitDirs,
+        reference,
+      });
+      // Includes the `symref` indicator of the capability
+      expect(referenceCapability).toInclude('symref=');
+      // The `:` separator
+      expect(referenceCapability).toInclude(':');
+      // No spaces
+      expect(referenceCapability).not.toInclude(' ');
+    }
   });
-  describe('encoding', () => {
-    test('a string', async () => {
-      const gitEncodedString = gitUtils.encode('hello world\n');
-      expect(gitEncodedString.equals(Buffer.from('0010hello world\n'))).toBe(
-        true,
-      );
+  test('listObjects', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
     });
-    test('an empty string', async () => {
-      const gitEncodedString = gitUtils.encode('');
-      expect(gitEncodedString.equals(Buffer.from('0004'))).toBe(true);
+
+    const commitIds = (
+      await git.log({
+        ...gitDirs,
+        ref: 'HEAD',
+      })
+    ).map((v) => v.oid);
+
+    const objectList = await gitUtils.listObjects({
+      ...gitDirs,
+      wants: commitIds,
+      haves: [],
     });
-    test('an upload pack', async () => {
-      const uploadPackBuffers = (await gitUtils.uploadPack({
-        fs: efs,
-        advertiseRefs: true,
-      })) as Buffer[];
-      const uploadPack = Buffer.concat(uploadPackBuffers);
-      expect(uploadPack.toString('utf8')).toBe(
-        `007d${firstCommit.oid} HEAD\0side-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.8.1
-003f${firstCommit.oid} refs/heads/master
-0000`,
-      );
-    });
+    const expectedObjectIds = await gitTestUtils.listGitObjects(gitDirs);
+    // Found objects should include all the commits
+    expect(objectList).toIncludeAllMembers(commitIds);
+    // Since it was an exhaustive walk of all commits, all objectIds should be included
+    expect(objectList).toIncludeAllMembers(expectedObjectIds);
   });
-  describe('resolve refs', () => {
-    test('to a commit oid', async () => {
-      const ref = await gitUtils.resolve({
-        fs: efs,
-        ref: commits[0].oid,
-      });
-      expect(ref).toBe(firstCommit.oid);
-    });
-    test('to HEAD', async () => {
-      const ref = await gitUtils.resolve({ fs: efs, ref: 'HEAD' });
-      expect(ref).toBe(firstCommit.oid);
-    });
-    test('to HEAD including depth', async () => {
-      const ref = await gitUtils.resolve({ fs: efs, ref: 'HEAD', depth: 2 });
-      expect(ref).toBe('refs/heads/master');
-    });
-    test('to non-existant refs', async () => {
-      await expect(() =>
-        gitUtils.resolve({ fs: efs, ref: 'this-is-not-a-ref' }),
-      ).rejects.toThrow(gitErrors.ErrorGitUndefinedRefs);
-    });
+  test.prop([
+    gitTestUtils.gitRequestDataArb,
+    fc.uint8Array({ size: 'medium' }),
+  ])('parseRequestLine', async (lineData, rest) => {
+    const data = gitTestUtils.generateGitNegotiationLine(
+      lineData,
+      Buffer.from(rest),
+    );
+    const result = gitUtils.parseRequestLine(data);
+    switch (lineData.type) {
+      case 'want':
+        {
+          expect(result).toBeDefined();
+          const [type, objectId, capabilityList, resultRest] = result!;
+          expect(type).toBe(lineData.type);
+          expect(objectId).toBe(lineData.objectId);
+          expect(capabilityList).toMatchObject(lineData.capabilityList);
+          expect(Buffer.compare(resultRest, rest)).toBe(0);
+        }
+        break;
+      case 'have':
+        {
+          expect(result).toBeDefined();
+          const [type, objectId, capabilityList, resultRest] = result!;
+          expect(type).toBe(lineData.type);
+          expect(objectId).toBe(lineData.objectId);
+          expect(capabilityList.length).toBe(0);
+          expect(Buffer.compare(resultRest, rest)).toBe(0);
+        }
+        break;
+      case 'SEPARATOR':
+      case 'done':
+        {
+          expect(result).toBeDefined();
+          const [type, objectId, capabilityList, resultRest] = result!;
+          expect(type).toBe(lineData.type);
+          expect(objectId).toBe('');
+          expect(capabilityList.length).toBe(0);
+          expect(Buffer.compare(resultRest, rest)).toBe(0);
+        }
+        break;
+      case 'none':
+        {
+          expect(result).toBeUndefined();
+        }
+        break;
+    }
   });
-  describe('read an object', () => {
-    test('missing', async () => {
-      await expect(() =>
-        gitUtils.readObject({
-          fs: efs,
-          dir: '.',
-          gitdir: '.git',
-          oid: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        }),
-      ).rejects.toThrow(gitErrors.ErrorGitReadObject);
-    });
-    test('parsed', async () => {
-      const ref = await gitUtils.readObject({
-        fs: efs,
-        dir: '.',
-        gitdir: '.git',
-        oid: firstCommit.oid,
-      });
-      expect(ref.format).toEqual('parsed');
-      expect(ref.type).toEqual('commit');
-    });
-    test('content', async () => {
-      const ref = await gitUtils.readObject({
-        fs: efs,
-        dir: '.',
-        gitdir: '.git',
-        oid: firstCommit.oid,
-        format: 'content',
-      });
-      expect(ref.format).toEqual('content');
-      expect(ref.type).toEqual('commit');
-      expect(ref.source).toBe(
-        path.join(
-          'objects',
-          firstCommit.oid.substring(0, 2),
-          firstCommit.oid.substring(2),
-        ),
+  test.prop([fc.uint8Array({ size: 'medium', minLength: 1 }).noShrink()])(
+    'parseRequestLine handles bad data',
+    async (randomData) => {
+      expect(() => gitUtils.parseRequestLine(Buffer.from(randomData))).toThrow(
+        validationErrors.ErrorParse,
       );
-      const object = ref.object.toString();
-      expect(object).toContain(firstCommit.commit.tree);
-      expect(object).toContain(firstCommit.commit.parent[0]);
-      expect(object).toContain(firstCommit.commit.author.name);
-      expect(object).toContain(firstCommit.commit.author.timestamp.toString());
-      expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(
-        firstCommit.commit.committer.timestamp.toString(),
-      );
-    });
-    test('wrapped', async () => {
-      const ref = await gitUtils.readObject({
-        fs: efs,
-        dir: '.',
-        gitdir: '.git',
-        oid: firstCommit.oid,
-        format: 'wrapped',
-      });
-      expect(ref.format).toEqual('wrapped');
-      expect(ref.type).toEqual('wrapped');
-      expect(ref.source).toBe(
-        path.join(
-          'objects',
-          firstCommit.oid.substring(0, 2),
-          firstCommit.oid.substring(2),
-        ),
-      );
-      const object = ref.object.toString();
-      expect(object).toContain(firstCommit.commit.tree);
-      expect(object).toContain(firstCommit.commit.parent[0]);
-      expect(object).toContain(firstCommit.commit.author.name);
-      expect(object).toContain(firstCommit.commit.author.timestamp.toString());
-      expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(
-        firstCommit.commit.committer.timestamp.toString(),
-      );
-    });
-    test('deflated', async () => {
-      const ref = await gitUtils.readObject({
-        fs: efs,
-        dir: '.',
-        gitdir: '.git',
-        oid: firstCommit.oid,
-        format: 'deflated',
-      });
-      expect(ref.format).toEqual('deflated');
-      expect(ref.type).toEqual('deflated');
-      expect(ref.source).toBe(
-        path.join(
-          'objects',
-          firstCommit.oid.substring(0, 2),
-          firstCommit.oid.substring(2),
-        ),
-      );
-    });
-    test('from packfile', async () => {
-      const packName = await gitTestUtils.getPackID(efs);
-      await efs.promises.rename(
-        path.join(objectsPath, firstCommit.oid.substring(0, 2)),
-        path.join(objectsPath, 'TEST'),
-      );
-      const ref = await gitUtils.readObject({
-        fs: efs,
-        dir: '.',
-        gitdir: '.git',
-        oid: firstCommit.oid,
-        format: 'deflated',
-      });
-      expect(ref.format).toEqual('content');
-      expect(ref.type).toEqual('commit');
-      expect(ref.source).toBe(
-        path.join('objects', 'pack', `pack-${packName}.pack`),
-      );
-      const object = ref.object.toString();
-      expect(object).toContain(firstCommit.commit.tree);
-      expect(object).toContain(firstCommit.commit.parent[0]);
-      expect(object).toContain(firstCommit.commit.author.name);
-      expect(object).toContain(firstCommit.commit.author.timestamp.toString());
-      expect(object).toContain(firstCommit.commit.committer.name);
-      expect(object).toContain(
-        firstCommit.commit.committer.timestamp.toString(),
-      );
-    });
-  });
+    },
+  );
 });

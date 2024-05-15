@@ -1,86 +1,43 @@
-import type { PassThrough } from 'readable-stream';
+/**
+ * A hash referring to a git object.
+ * Has the format of a 40-digit hex number `40*(HEXDIGIT)`.
+ */
+type ObjectId = string;
+/**
+ * A reference is a branch name or path. There are special references such as `HEAD`.
+ */
+type Reference = string;
 
-type Config = {
-  line: string;
-  ref?: string;
-  peeled?: string;
-  oid?: string;
-  comment?: boolean;
-};
-
-type Refs = {
-  [key: string]: Config;
-};
-
-type SymRefs = {
-  [key: string]: string;
-};
-
-type Ack = {
-  oid: string;
-};
-
-type Packfile = {
-  [key: string]: any;
-};
-
-type Identity = {
-  name: string;
-  email: string;
-  timestamp: number;
-  timezoneOffset: number;
-};
-
-type Pack = {
-  packstream: PassThrough;
-  shallows: Set<string>;
-  unshallows: Set<string>;
-  acks: Array<Ack>;
-};
-
-type PackIndex = {
-  hashes: string[];
-  offsets: Map<string, number>;
-  packfileSha: string;
-  getExternalRefDelta?: (
-    oid: string,
-  ) => Promise<DeflatedObject | WrappedObject | RawObject>;
-  pack?: Buffer;
-};
-
-type RawObject = {
-  oid: string;
-  type: 'blob' | 'tree' | 'commit' | 'tag';
-  format: 'content';
-  object: Buffer | string | Uint8Array;
-  source?: string | undefined;
-};
-
-type WrappedObject = {
-  oid: string;
-  type: 'wrapped';
-  format: 'wrapped';
-  object: Buffer | string | Uint8Array;
-  source?: string | undefined;
-};
-
-type DeflatedObject = {
-  oid: string;
-  type: 'deflated';
-  format: 'deflated';
-  object: Buffer | string | Uint8Array;
-  source?: string | undefined;
-};
+/**
+ * An array of `ObjectID`s
+ */
+type ObjectIdList = Array<ObjectId>;
+type Capability = string;
+type CapabilityList = Array<Capability>;
+const objectTypes = ['blob', 'tree', 'commit', 'tag'] as const;
+/**
+ * The git object type.
+ * Commits point to a point in history.
+ * Tags point to a commit.
+ * Trees point to other objects forming the backbone of the graph.
+ * Blobs are collections of data and file contents.
+ */
+type ObjectType = (typeof objectTypes)[number];
+const requestTypes = ['want', 'have', 'SEPARATOR', 'done'] as const;
+/**
+ * The type of request line that was parsed.
+ * Want refers to a objectId the
+ */
+type RequestType = (typeof requestTypes)[number];
 
 export type {
-  Refs,
-  SymRefs,
-  Ack,
-  Packfile,
-  Identity,
-  Pack,
-  PackIndex,
-  RawObject,
-  WrappedObject,
-  DeflatedObject,
+  ObjectId,
+  Reference,
+  ObjectIdList,
+  Capability,
+  CapabilityList,
+  ObjectType,
+  RequestType,
 };
+
+export { objectTypes, requestTypes };

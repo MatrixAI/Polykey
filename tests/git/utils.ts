@@ -1,72 +1,265 @@
+import type { POJO } from '@';
+import type { CapabilityList } from '@/git/types';
+import type { Arbitrary } from 'fast-check';
 import type { EncryptedFS } from 'encryptedfs';
-import type { ReadCommitResult } from 'isomorphic-git';
 import path from 'path';
 import git from 'isomorphic-git';
+import fc from 'fast-check';
+import * as gitUtils from '@/git/utils';
+import * as gitHttp from '@/git/http';
+import * as utils from '@/utils';
 
+/**
+ * Utility for quickly creating a git repo with history
+ */
 async function createGitRepo({
   efs,
-  packFile,
-  indexFile,
+  dir,
+  gitdir,
+  author,
+  commits,
+  init = true,
 }: {
   efs: EncryptedFS;
-  packFile?: boolean;
-  indexFile?: boolean;
-}): Promise<ReadCommitResult[]> {
-  await git.init({
+  dir: string;
+  gitdir: string;
+  author: string;
+  commits: Array<{
+    message: string;
+    files: Array<{ name: string; contents: string }>;
+  }>;
+  init?: boolean;
+}) {
+  const gitDirs = {
     fs: efs,
-    dir: '.',
-  });
-  await git.commit({
-    fs: efs,
-    dir: '.',
+    dir,
+    gitdir,
+  };
+  const authorDetails = {
     author: {
-      name: 'TestCommitter',
+      name: author,
+      email: `${author}@test.com`,
     },
-    message: 'Initial Commit',
-  });
-  await efs.promises.writeFile(
-    path.join('.git', 'packed-refs'),
-    '# pack-refs with: peeled fully-peeled sorted',
-  );
-  for (let i = 0; i < 10; i++) {
-    const fp = i.toString();
-    await efs.promises.writeFile(fp, 'secret ' + i.toString());
-    await git.commit({
-      fs: efs,
-      dir: '.',
-      author: {
-        name: 'TestCommitter ' + i.toString(),
-      },
-      message: 'Commit ' + i.toString(),
+    committer: {
+      name: author,
+      email: `${author}@test.com`,
+    },
+  };
+  if (init) {
+    await git.init({
+      ...gitDirs,
     });
   }
-  const log = await git.log({
-    fs: efs,
-    dir: '.',
-  });
-  if (packFile) {
-    const pack = await git.packObjects({
-      fs: efs,
-      dir: '.',
-      oids: [...log.map((item) => item.oid)],
-      write: true,
+  for (const { message, files } of commits) {
+    await Promise.all(
+      files.map(({ name, contents }) =>
+        efs.promises.writeFile(path.join(gitDirs.dir, name), contents),
+      ),
+    );
+    await git.add({
+      ...gitDirs,
+      filepath: files.map(({ name }) => name),
     });
-    if (indexFile) {
-      await git.indexPack({
-        fs: efs,
-        dir: '.',
-        filepath: path.join('.git', 'objects', 'pack', pack.filename),
-      });
+    await git.commit({
+      ...gitDirs,
+      ...authorDetails,
+      message,
+    });
+  }
+}
+
+const objectsDirName = 'objects';
+const excludedDirs = ['pack', 'info'];
+
+/**
+ * Walks the filesystem to list out all git objects in the objects directory
+ * @param fs
+ * @param gitDir
+ */
+async function listGitObjects({
+  efs,
+  gitDir,
+}: {
+  efs: EncryptedFS;
+  gitDir: string;
+}) {
+  const objectsDirPath = path.join(gitDir, objectsDirName);
+  const objectSet: Set<string> = new Set();
+  const objectDirs = await efs.promises.readdir(objectsDirPath);
+  for (const objectDir of objectDirs) {
+    if (typeof objectDir !== 'string') {
+      utils.never('objectDir should be a string');
+    }
+    if (excludedDirs.includes(objectDir)) continue;
+    const objectIds = await efs.promises.readdir(
+      path.join(objectsDirPath, objectDir),
+    );
+    for (const objectId of objectIds) {
+      objectSet.add(objectDir + objectId);
     }
   }
-  return log;
+  return [...objectSet];
 }
 
-async function getPackID(efs: EncryptedFS): Promise<string> {
-  const pack = (
-    await efs.promises.readdir(path.join('.git', 'objects', 'pack'))
-  )[0];
-  return (pack as string).substring(5, 45);
+type NegotiationTestData =
+  | {
+      type: 'want';
+      objectId: string;
+      capabilityList: CapabilityList;
+    }
+  | {
+      type: 'have';
+      objectId: string;
+    }
+  | {
+      type: 'SEPARATOR' | 'done' | 'none';
+    };
+
+/**
+ * This will generate a request line that would be sent by the git client when requesting objects.
+ * It is explicitly used to generate test data for the `parseRequestLine` code.
+ *
+ * @param data - type of line with data to be generated
+ * @param rest - Random buffer data to be appended to the end to simulate more lines in the stream.
+ */
+function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
+  switch (data.type) {
+    case 'want': {
+      // Generate a `want` line that includes `want`, the `objectId` and capabilities
+      const line = Buffer.concat([
+        Buffer.from(data.type),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.objectId),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.capabilityList.join(gitUtils.SPACE_STRING)),
+        gitUtils.LINE_FEED_BUFFER,
+      ]);
+      return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
+    }
+    case 'have': {
+      // Generate a `have` line indicating an object that doesn't need to be sent
+      const line = Buffer.concat([
+        Buffer.from(data.type),
+        gitUtils.SPACE_BUFFER,
+        Buffer.from(data.objectId),
+        gitUtils.LINE_FEED_BUFFER,
+      ]);
+      return Buffer.concat([gitHttp.packetLineBuffer(line), rest]);
+    }
+    case 'SEPARATOR':
+      // Generate a `0000` flush packet
+      return Buffer.concat([Buffer.from('0000'), rest]);
+    case 'done':
+      // Generate a `done` packet.
+      return Buffer.concat([Buffer.from('0009done\n'), rest]);
+    case 'none':
+      // Generate an empty buffer to simulate the stream running out of data to process
+      return Buffer.alloc(0);
+    default:
+      utils.never();
+  }
 }
 
-export { createGitRepo, getPackID };
+/**
+ * Create a test request handler for use with `git.clone` and `git.pull`
+ */
+function request({
+  efs,
+  dir,
+  gitDir,
+}: {
+  efs: EncryptedFS;
+  dir: string;
+  gitDir: string;
+}) {
+  return async ({
+    url,
+    method = 'GET',
+    headers = {},
+    body = [Buffer.from('')],
+  }: {
+    url: string;
+    method: string;
+    headers: POJO;
+    body: Array<Buffer>;
+  }) => {
+    // Console.log('body', body.map(v => v.toString()))
+    if (method === 'GET') {
+      // Send back the GET request info response
+      const advertiseRefGen = gitHttp.advertiseRefGenerator({
+        efs,
+        dir,
+        gitDir,
+      });
+
+      return {
+        url: url,
+        method: method,
+        body: advertiseRefGen,
+        headers: headers,
+        statusCode: 200,
+        statusMessage: 'OK',
+      };
+    } else if (method === 'POST') {
+      const packGen = gitHttp.generatePackRequest({
+        efs,
+        dir,
+        gitDir,
+        body,
+      });
+      return {
+        url: url,
+        method: method,
+        body: packGen,
+        headers: headers,
+        statusCode: 200,
+        statusMessage: 'OK',
+      };
+    } else {
+      utils.never();
+    }
+  };
+}
+
+// Generates a git objectId in the form of a 40-digit hex number
+const gitObjectIdArb = fc.hexaString({
+  maxLength: 40,
+  minLength: 40,
+});
+// Generates a list of capabilities, theses are just random valid strings
+const gitCapabilityListArb = fc.array(
+  fc.stringOf(
+    fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
+    { minLength: 5 },
+  ),
+  { size: 'small' },
+);
+// Generates git request data used for testing `parseRequestLine`
+const gitRequestDataArb = fc.oneof(
+  fc.record({
+    type: fc.constant('want') as Arbitrary<'want'>,
+    objectId: gitObjectIdArb,
+    capabilityList: gitCapabilityListArb,
+  }),
+  fc.record({
+    type: fc.constant('have') as Arbitrary<'have'>,
+    objectId: gitObjectIdArb,
+  }),
+  fc.record({
+    type: fc.constantFrom<'SEPARATOR' | 'done' | 'none'>(
+      'SEPARATOR',
+      'done',
+      'none',
+    ),
+  }),
+);
+
+export {
+  createGitRepo,
+  listGitObjects,
+  generateGitNegotiationLine,
+  request,
+  gitObjectIdArb,
+  gitCapabilityListArb,
+  gitRequestDataArb,
+};

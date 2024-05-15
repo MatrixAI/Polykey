@@ -1,6 +1,5 @@
 import type { DB } from '@matrixai/db';
 import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
-import type { PassThrough } from 'readable-stream';
 import type { VaultName } from '../../../vaults/types';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
@@ -69,37 +68,22 @@ class VaultsGitPackGet extends RawHandler<{
     }
 
     // Getting data
-    let sideBand: PassThrough;
-    let progressStream: PassThrough;
-    const outputStream = new ReadableStream({
-      start: async (controller) => {
-        const body = new Array<Uint8Array>();
+    let packRequestGen: AsyncGenerator<Buffer, void, void>;
+    const outputStream = new ReadableStream<Buffer>({
+      start: async () => {
+        const body: Array<Buffer> = [];
         for await (const message of inputStream) {
-          body.push(message);
+          body.push(Buffer.from(message));
         }
-        [sideBand, progressStream] = await vaultManager.handlePackRequest(
-          vaultId,
-          Buffer.concat(body),
-        );
-        controller.enqueue(Buffer.from('0008NAK\n'));
-        sideBand.on('data', async (data: Uint8Array) => {
-          controller.enqueue(data);
-          sideBand.pause();
-        });
-        sideBand.on('end', async () => {
-          controller.close();
-        });
-        sideBand.on('error', (e) => {
-          controller.error(e);
-        });
-        progressStream.write(Buffer.from('0014progress is at 50%\n'));
-        progressStream.end();
+        packRequestGen = vaultManager.handlePackRequest(vaultId, body);
       },
-      pull: () => {
-        sideBand.resume();
+      pull: async (controller) => {
+        const next = await packRequestGen.next();
+        if (next.done === true) return controller.close();
+        controller.enqueue(next.value);
       },
-      cancel: (e) => {
-        sideBand.destroy(e);
+      cancel: async () => {
+        await packRequestGen.return();
       },
     });
     return [{}, outputStream];
