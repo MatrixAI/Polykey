@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import git from 'isomorphic-git';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
@@ -10,9 +9,6 @@ import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
 
 describe('Git Http', () => {
-  const _logger = new Logger('Git Http Test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
   let dataDir: string;
   // This is just a collection of commonly used objects that we can just spread into calls
   let gitDirs: {

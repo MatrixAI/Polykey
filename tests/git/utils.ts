@@ -221,29 +221,30 @@ function request({
   };
 }
 
-const objectIdArb = fc.hexaString({
+// Generates a git objectId in the form of a 40-digit hex number
+const gitObjectIdArb = fc.hexaString({
   maxLength: 40,
   minLength: 40,
 });
-const capabilityArb = fc.stringOf(
-  fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
-  { minLength: 5 },
+// Generates a list of capabilities, theses are just random valid strings
+const gitCapabilityListArb = fc.array(
+  fc.stringOf(
+    fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
+    { minLength: 5 },
+  ),
+  { size: 'small' },
 );
-const capabilityListArb = fc.array(capabilityArb, { size: 'small' });
-const restArb = fc.uint8Array();
-const wantArb = fc.record({
-  type: fc.constant('want') as Arbitrary<'want'>,
-  objectId: objectIdArb,
-  capabilityList: capabilityListArb,
-});
-const haveArb = fc.record({
-  type: fc.constant('have') as Arbitrary<'have'>,
-  objectId: objectIdArb,
-});
-
-const lineDataArb = fc.oneof(
-  wantArb,
-  haveArb,
+// Generates git request data used for testing `parseRequestLine`
+const gitRequestDataArb = fc.oneof(
+  fc.record({
+    type: fc.constant('want') as Arbitrary<'want'>,
+    objectId: gitObjectIdArb,
+    capabilityList: gitCapabilityListArb,
+  }),
+  fc.record({
+    type: fc.constant('have') as Arbitrary<'have'>,
+    objectId: gitObjectIdArb,
+  }),
   fc.record({
     type: fc.constantFrom<'SEPARATOR' | 'done' | 'none'>(
       'SEPARATOR',
@@ -258,11 +259,7 @@ export {
   listGitObjects,
   generateGitNegotiationLine,
   request,
-  objectIdArb,
-  capabilityArb,
-  capabilityListArb,
-  restArb,
-  wantArb,
-  haveArb,
-  lineDataArb,
+  gitObjectIdArb,
+  gitCapabilityListArb,
+  gitRequestDataArb,
 };
