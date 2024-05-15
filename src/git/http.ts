@@ -108,11 +108,11 @@ import * as utils from '../utils';
  * ```
  */
 async function* advertiseRefGenerator({
-  fs,
+  efs,
   dir,
   gitDir,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
 }): AsyncGenerator<Buffer, void, void> {
@@ -120,7 +120,7 @@ async function* advertiseRefGenerator({
   const capabilityList = [
     gitUtils.SIDE_BAND_64_CAPABILITY,
     await gitUtils.referenceCapability({
-      fs,
+      efs: efs,
       dir,
       gitDir,
       reference: gitUtils.HEAD_REFERENCE,
@@ -128,7 +128,7 @@ async function* advertiseRefGenerator({
     gitUtils.AGENT_CAPABILITY,
   ];
   const objectGenerator = gitUtils.listReferencesGenerator({
-    fs,
+    efs,
     dir,
     gitDir,
   });
@@ -327,19 +327,19 @@ async function parsePackRequest(
  *
  */
 async function* generatePackRequest({
-  fs,
+  efs,
   dir,
   gitDir,
   body,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
   body: Array<Buffer>;
 }): AsyncGenerator<Buffer, void, void> {
   const [wants, haves, _capabilities] = await parsePackRequest(body);
   const objectIds = await gitUtils.listObjects({
-    fs,
+    efs: efs,
     dir,
     gitDir: gitDir,
     wants,
@@ -349,7 +349,7 @@ async function* generatePackRequest({
   yield packetLineBuffer(gitUtils.NAK_BUFFER);
   // Send everything over in pack format
   yield* generatePackData({
-    fs,
+    efs: efs,
     dir,
     gitDir,
     objectIds,
@@ -369,20 +369,20 @@ async function* generatePackRequest({
  *
  */
 async function* generatePackData({
-  fs,
+  efs,
   dir,
   gitDir,
   objectIds,
   chunkSize = gitUtils.PACK_CHUNK_SIZE,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
   objectIds: Array<ObjectId>;
   chunkSize?: number;
 }): AsyncGenerator<Buffer, void, void> {
   const packFile = await git.packObjects({
-    fs,
+    fs: efs,
     dir,
     gitdir: gitDir,
     oids: objectIds,

@@ -15,7 +15,8 @@ describe('Git utils', () => {
   ]);
   let dataDir: string;
   let gitDirs: {
-    fs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    efs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    fs: any;
     dir: string;
     gitDir: string;
     gitdir: string;
@@ -27,6 +28,7 @@ describe('Git utils', () => {
     const dir = path.join(dataDir, 'repository');
     const gitdir = path.join(dir, '.git');
     gitDirs = {
+      efs: fs,
       fs,
       dir,
       gitDir: gitdir,

@@ -821,7 +821,7 @@ class VaultManager {
       async function* (): AsyncGenerator<Buffer, void, void> {
         // Read the commit state of the vault
         yield* gitHttp.advertiseRefGenerator({
-          fs: efs,
+          efs,
           dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
           gitDir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
         });
@@ -857,7 +857,7 @@ class VaultManager {
       ],
       async function* (): AsyncGenerator<Buffer, void, void> {
         yield* gitHttp.generatePackRequest({
-          fs: efs,
+          efs,
           dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
           gitDir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
           body: body,

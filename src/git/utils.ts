@@ -10,7 +10,7 @@ import type {
 import type { EncryptedFS } from 'encryptedfs';
 import git from 'isomorphic-git';
 import { requestTypes } from './types';
-import { never } from '../utils';
+import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
 
 // Constants
@@ -66,17 +66,17 @@ const DUMMY_PROGRESS_BUFFER = Buffer.from('progress is at 50%', BUFFER_FORMAT);
  *
  */
 async function* listReferencesGenerator({
-  fs,
+  efs,
   dir,
   gitDir,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
 }): AsyncGenerator<[Reference, ObjectId], void, void> {
   const refs: Array<[string, Promise<string>]> = await git
     .listBranches({
-      fs,
+      fs: efs,
       dir,
       gitdir: gitDir,
     })
@@ -84,13 +84,13 @@ async function* listReferencesGenerator({
       return refs.map((ref) => {
         return [
           `${REFERENCES_STRING}${ref}`,
-          git.resolveRef({ fs, dir, gitdir: gitDir, ref: ref }),
+          git.resolveRef({ fs: efs, dir, gitdir: gitDir, ref: ref }),
         ];
       });
     });
   // HEAD always comes first
   const resolvedHead = await git.resolveRef({
-    fs,
+    fs: efs,
     dir,
     gitdir: gitDir,
     ref: HEAD_REFERENCE,
@@ -105,19 +105,19 @@ async function* listReferencesGenerator({
  * Reads the provided reference and formats it as a `symref` capability
  */
 async function referenceCapability({
-  fs,
+  efs,
   dir,
   gitDir,
   reference,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
   reference: Reference;
 }): Promise<Capability> {
   try {
     const resolvedHead = await git.resolveRef({
-      fs,
+      fs: efs,
       dir,
       gitdir: gitDir,
       ref: reference,
@@ -134,13 +134,13 @@ async function referenceCapability({
  * Walks the git objects and returns a list of blobs, commits and trees.
  */
 async function listObjects({
-  fs,
+  efs,
   dir,
   gitDir,
   wants,
   haves,
 }: {
-  fs: EncryptedFS;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
   wants: ObjectIdList;
@@ -160,7 +160,7 @@ async function listObjects({
         {
           commits.add(objectId);
           const readCommitResult = await git.readCommit({
-            fs,
+            fs: efs,
             dir,
             gitdir: gitDir,
             oid: objectId,
@@ -177,7 +177,7 @@ async function listObjects({
         {
           trees.add(objectId);
           const readTreeResult = await git.readTree({
-            fs,
+            fs: efs,
             dir,
             gitdir: gitDir,
             oid: objectId,
@@ -198,7 +198,7 @@ async function listObjects({
         {
           tags.add(objectId);
           const readTagResult = await git.readTag({
-            fs,
+            fs: efs,
             dir,
             gitdir: gitDir,
             oid: objectId,
@@ -208,7 +208,7 @@ async function listObjects({
         }
         return;
       default:
-        never();
+        utils.never();
     }
   }
 

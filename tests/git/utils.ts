@@ -1,7 +1,7 @@
-import type { FileSystem, POJO } from '@';
+import type { POJO } from '@';
 import type { CapabilityList } from '@/git/types';
 import type { Arbitrary } from 'fast-check';
-import type fs from 'fs';
+import type { EncryptedFS } from 'encryptedfs';
 import path from 'path';
 import git from 'isomorphic-git';
 import fc from 'fast-check';
@@ -9,21 +9,18 @@ import * as gitUtils from '@/git/utils';
 import * as gitHttp from '@/git/http';
 import * as utils from '@/utils';
 
-// Just to avoid confusing the type with the name
-type FsType = typeof fs;
-
 /**
  * Utility for quickly creating a git repo with history
  */
 async function createGitRepo({
-  fs,
+  efs,
   dir,
   gitdir,
   author,
   commits,
   init = true,
 }: {
-  fs: FsType;
+  efs: EncryptedFS;
   dir: string;
   gitdir: string;
   author: string;
@@ -34,7 +31,7 @@ async function createGitRepo({
   init?: boolean;
 }) {
   const gitDirs = {
-    fs,
+    fs: efs,
     dir,
     gitdir,
   };
@@ -56,7 +53,7 @@ async function createGitRepo({
   for (const { message, files } of commits) {
     await Promise.all(
       files.map(({ name, contents }) =>
-        fs.promises.writeFile(path.join(gitDirs.dir, name), contents),
+        efs.promises.writeFile(path.join(gitDirs.dir, name), contents),
       ),
     );
     await git.add({
@@ -80,18 +77,21 @@ const excludedDirs = ['pack', 'info'];
  * @param gitDir
  */
 async function listGitObjects({
-  fs,
+  efs,
   gitDir,
 }: {
-  fs: FileSystem;
+  efs: EncryptedFS;
   gitDir: string;
 }) {
   const objectsDirPath = path.join(gitDir, objectsDirName);
   const objectSet: Set<string> = new Set();
-  const objectDirs = await fs.promises.readdir(objectsDirPath);
+  const objectDirs = await efs.promises.readdir(objectsDirPath);
   for (const objectDir of objectDirs) {
+    if (typeof objectDir !== 'string') {
+      utils.never('objectDir should be a string');
+    }
     if (excludedDirs.includes(objectDir)) continue;
-    const objectIds = await fs.promises.readdir(
+    const objectIds = await efs.promises.readdir(
       path.join(objectsDirPath, objectDir),
     );
     for (const objectId of objectIds) {
@@ -165,11 +165,11 @@ async function* tapGen(
  * Create a test request handler for use with `git.clone` and `git.pull`
  */
 function request({
-  fs,
+  efs,
   dir,
   gitDir,
 }: {
-  fs: any;
+  efs: EncryptedFS;
   dir: string;
   gitDir: string;
 }) {
@@ -188,7 +188,7 @@ function request({
     if (method === 'GET') {
       // Send back the GET request info response
       const advertiseRefGen = gitHttp.advertiseRefGenerator({
-        fs,
+        efs,
         dir,
         gitDir,
       });
@@ -203,7 +203,7 @@ function request({
       };
     } else if (method === 'POST') {
       const packGen = gitHttp.generatePackRequest({
-        fs,
+        efs,
         dir,
         gitDir,
         body,

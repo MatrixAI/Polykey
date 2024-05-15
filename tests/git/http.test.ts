@@ -14,8 +14,10 @@ describe('Git Http', () => {
     new StreamHandler(),
   ]);
   let dataDir: string;
+  // This is just a collection of commonly used objects that we can just spread into calls
   let gitDirs: {
-    fs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    efs: any; // Any here to act as fs or the efs since the overlap enough for testing
+    fs: any;
     dir: string;
     gitDir: string;
     gitdir: string;
@@ -27,6 +29,7 @@ describe('Git Http', () => {
     const dir = path.join(dataDir, 'repository');
     const gitdir = path.join(dir, '.git');
     gitDirs = {
+      efs: fs,
       fs,
       dir,
       gitDir: gitdir,
