@@ -63,7 +63,8 @@ const DUMMY_PROGRESS_BUFFER = Buffer.from('progress is at 50%', BUFFER_FORMAT);
 // Functions
 
 /**
- *
+ * This will generate references and the objects they point to as a tuple.
+ * `HEAD` is always yielded first along with all branches.
  */
 async function* listReferencesGenerator({
   efs,
@@ -102,7 +103,9 @@ async function* listReferencesGenerator({
 }
 
 /**
- * Reads the provided reference and formats it as a `symref` capability
+ * Reads the provided reference and formats it as a `symref` capability.
+ * This capability is used to indicate to the client where a certain ref points to if it doesn't point directly to an
+ * object. For now only used to indicate what `HEAD` points to.
  */
 async function referenceCapability({
   efs,
@@ -131,7 +134,13 @@ async function referenceCapability({
 }
 
 /**
- * Walks the git objects and returns a list of blobs, commits and trees.
+ * Preforms a walk of the git data structure, listing all objects found by the walk.
+ * This starts from all the objects in the `wants` list, walking across all dependent objects while skipping any
+ * objects in the `haves` list. This results in a complete list of objects that the `haves` require.
+ *
+ * Used by `generatePackRequest` to determine which objects are required in the `packFile`.
+ * The walk is preformed recursively and concurrently using promises.
+ * Inspecting the git data structure objects is done using `isomorphic-git`.
  */
 async function listObjects({
   efs,

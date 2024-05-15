@@ -90,7 +90,7 @@ import * as utils from '../utils';
  */
 
 /**
- * This generates an async stream of the smart HTTP response for the reference discovery phase.
+ * this is the main method for generating the smart HTTP response for the reference discovery phase.
  * The server advertises the available references
  *
  * Servers MUST terminate the response with the magic 0000 end pkt-line marker.
@@ -106,6 +106,8 @@ import * as utils from '../utils';
  *                    ref_list
  *                    "0000"
  * ```
+ *
+ * `referenceList` is called for generating the `ref_list` stage.
  */
 async function* advertiseRefGenerator({
   efs,
@@ -145,6 +147,7 @@ async function* advertiseRefGenerator({
 
 /**
  * Generates `Ref_list` lines from resolved references streamed from the `objectGenerator`.
+ * This is called by `advertiseRefGenerator` for generating each reference line in the reference discovery response.
  *
  * ```
  * Ref_list        =  empty_list / non_empty_list
@@ -256,6 +259,15 @@ function paddedLengthBuffer(length: number) {
 }
 
 /**
+ * This parses the clients request into a list of `wants', 'haves', and capabilities.
+ * 'wants' indicate objects that the client found and wants from the reference discovery phase. Generally this will be
+ * list of objects that references point to. It will not include all objects within that reference's branch.
+ * 'haves' indicate objects that the client has and doesn't need sent over by the server. It's used by the sever to
+ * decide which objects to send.
+ * `capabilities` is a list of features the client wants. In our simplified implementation, none of these are really
+ * used since we default to just handling `side-band-64k` for sending data. In the future we'll have to support the
+ * capability for the client to push data.
+ *
  * Clients MUST NOT reuse or revalidate a cached response. Servers MUST include sufficient Cache-Control headers to
  * prevent caching of the response.
  *
@@ -321,7 +333,11 @@ async function parsePackRequest(
 }
 
 /**
- * Parses the client's requests and generates a response the contains the git packFile data
+ * This is the main method for handing the packfile-send stage of the http protocol.
+ * It parses the http body send by the client into a list of `wants` and `haves` using `parsePackRequest`. It then
+ * uses these lists to walk the git datastructures to decide which objects to send back to the client.
+ * It does this by using `listObjects` to get all the relevant objects and `generatePackData` to generate the packfile
+ * part of the response.
  *
  * It will respond with the `PKT-LINE(NAK_BUFFER)` and then the `packFile` data chunked into lines for the stream.
  *
@@ -364,8 +380,9 @@ async function* generatePackRequest({
 }
 
 /**
- * Generates the packFile data to be included within the response.
- * Iso-git provides the packFile for us, we just need to cut it into `chunkSize` bytes per line and multiplex on chanel 1.
+ * Called by `generatePackRequest` to generate the `PackFile` data lines as part of the pack response stage.
+ * Uses `isomorphic-git` to generate the `packFile` data using the provided list of `ObjectIds`.
+ * The `packFile` is chunked into the `packetLineBuffer` with the size defined by `chunkSize`.
  *
  */
 async function* generatePackData({
