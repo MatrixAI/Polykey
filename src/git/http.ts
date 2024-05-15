@@ -140,7 +140,7 @@ async function* advertiseRefGenerator({
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
   // Ref_list
-  yield* referenceList(objectGenerator, capabilityList);
+  yield* referenceListGenerator(objectGenerator, capabilityList);
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
 }
@@ -161,7 +161,7 @@ async function* advertiseRefGenerator({
  * cap-list        =  capability *(SP capability)
  * ```
  */
-async function* referenceList(
+async function* referenceListGenerator(
   objectGenerator: AsyncGenerator<[Reference, ObjectId], void, void>,
   capabilities: CapabilityList,
 ): AsyncGenerator<Buffer, void, void> {

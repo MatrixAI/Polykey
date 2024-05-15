@@ -766,6 +766,43 @@ class VaultInternal {
     return commitIdLatest;
   }
 
+  /**
+   * Creates a request arrow function that implements an api that `isomorphic-git` expects to use when making a http
+   * request. It makes RPC calls to `vaultsGitInfoGet` for the ref advertisement phase and `vaultsGitPackGet` for the
+   * git pack phase.
+   *
+   * `vaultsGitInfoGet` wraps a call to `gitHttp.advertiseRefGenerator` and `vaultsGitPackGet` to
+   * `gitHttp.generatePackRequest`.
+   *
+   * ```
+   *                                  ┌─────────┐    ┌───────────────────────────┐
+   *                                  │         │    │                           │
+   *  ┌──────────────────────┐        │  RPC    │    │                           │
+   *  │                      │        │         │    │ *advertiseRefGenerator()  │
+   *  │                      ├────────┼─────────┼────►                           │
+   *  │     vault.request()  │        │         │    │                           │
+   *  │                      │        │         │    └────┬──────────────────────┘
+   *  │                      ├──┐     │         │         │
+   *  │                      │  │     │         │    ┌────▼──────────────────────┐
+   *  └──────────────────────┘  │     │         │    │                           │
+   *                            │     │         │    │ *referenceListGenerator() │
+   *                            │     │         │    │                           │
+   *                            │     │         │    └───────────────────────────┘
+   *                            │     │         │
+   *                            │     │         │    ┌───────────────────────────┐
+   *                            └─────┼─────────┼────┤                           │
+   *                                  │         │    │ *generatePackRequest()    │
+   *                                  │         │    │                           │
+   *                                  │         │    └────┬──────────────────────┘
+   *                                  └─────────┘         │
+   *                                                 ┌────▼──────────────────────┐
+   *                                                 │                           │
+   *                                                 │ *generatePackData()       │
+   *                                                 │                           │
+   *                                                 └───────────────────────────┘
+   *
+   * ```
+   */
   protected async request(
     client: RPCClient<typeof agentClientManifest>,
     vaultNameOrId: VaultId | VaultName,
