@@ -12,13 +12,6 @@ type FileOptions = {
   recursive?: boolean;
 };
 
-// TODO: tests
-// - add succeeded
-// - secret exists
-// - secret with directory
-// Might just drop the return type
-// I don't see a case where it would be false without an error
-// - Add locking?
 async function addSecret(
   vault: Vault,
   secretName: string,
@@ -33,12 +26,7 @@ async function addSecret(
     }
 
     // Create the directory to the secret if it doesn't exist
-    try {
-      await efs.mkdir(path.dirname(secretName), { recursive: true });
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-    }
-
+    await vaultsUtils.mkdirExists(efs, path.dirname(secretName));
     // Write the secret into the vault
     await efs.writeFile(secretName, content);
   });
@@ -49,9 +37,6 @@ async function addSecret(
 /**
  * Changes the contents of a secret
  */
-// TODO: tests
-// - updates
-// - invalid name
 async function updateSecret(
   vault: Vault,
   secretName: string,
@@ -76,89 +61,105 @@ async function updateSecret(
 /**
  * Changes the name of a secret in a vault
  */
-// Todo: tests
-// - Valid name
-// - invalid name
 async function renameSecret(
   vault: Vault,
-  currstring: string,
-  newstring: string,
+  secretName: string,
+  secretNameNew: string,
   logger?: Logger,
 ): Promise<void> {
   await vault.writeF(async (efs) => {
-    await efs.rename(currstring, newstring);
+    if (!(await efs.exists(secretName))) {
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(
+        'Secret does not exist, can not rename',
+      );
+    }
+    await efs.rename(secretName, secretNameNew);
   });
   logger?.info(
-    `Renamed secret at ${currstring} to ${newstring} in vault ${vault.vaultId}`,
+    `Renamed secret at ${secretName} to ${secretNameNew} in vault ${vault.vaultId}`,
   );
 }
 
 /**
  * Returns the contents of a secret
  */
-// TODO: tests
-// - read existing file
-// - try to read non-existent file
-// - read directory?
 async function getSecret(vault: Vault, secretName: string): Promise<Buffer> {
   try {
     return await vault.readF(async (efs) => {
       return (await efs.readFile(secretName)) as Buffer;
     });
-  } catch (err) {
-    if (err.code === 'ENOENT') {
+  } catch (e) {
+    if (e.code === 'ENOENT') {
       throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
-        { cause: err },
+        { cause: e },
       );
     }
-    throw err;
+    if (e.code === 'EISDIR') {
+      throw new vaultsErrors.ErrorSecretsIsDirectory(
+        `${secretName} is a directory and not a secret`,
+        { cause: e },
+      );
+    }
+    throw e;
   }
 }
 
+/**
+ * Returns the file stats of a secret
+ */
 async function statSecret(vault: Vault, secretName: string): Promise<Stat> {
   try {
     return await vault.readF(async (efs) => {
       return await efs.stat(secretName);
     });
-  } catch (err) {
-    if (err.code === 'ENOENT') {
+  } catch (e) {
+    if (e.code === 'ENOENT') {
       throw new vaultsErrors.ErrorSecretsSecretUndefined(
         `Secret with name: ${secretName} does not exist`,
-        { cause: err },
+        { cause: e },
       );
     }
-    throw err;
+    throw e;
   }
 }
 
 /**
  * Removes a secret from a vault
  */
-// TODO: tests
-// - delete a secret
-// - Secret doesn't exist
-// - delete a full and empty directory with and without recursive
 async function deleteSecret(
   vault: Vault,
   secretName: string,
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
-  await vault.writeF(async (efs) => {
-    if ((await efs.stat(secretName)).isDirectory()) {
-      await efs.rmdir(secretName, fileOptions);
-      logger?.info(`Deleted directory at '${secretName}'`);
-    } else if (await efs.exists(secretName)) {
-      // Remove the specified file
-      await efs.unlink(secretName);
-      logger?.info(`Deleted secret at '${secretName}'`);
-    } else {
+  try {
+    await vault.writeF(async (efs) => {
+      const stat = await efs.stat(secretName);
+      if (stat.isDirectory()) {
+        await efs.rmdir(secretName, fileOptions);
+        logger?.info(`Deleted directory at '${secretName}'`);
+      } else {
+        // Remove the specified file
+        await efs.unlink(secretName);
+        logger?.info(`Deleted secret at '${secretName}'`);
+      }
+    });
+  } catch (e) {
+    if (e.code === 'ENOENT') {
       throw new vaultsErrors.ErrorSecretsSecretUndefined(
-        `path '${secretName}' does not exist in vault`,
+        `Secret with name: ${secretName} does not exist`,
+        { cause: e },
       );
     }
-  });
+    if (e.code === 'ENOTEMPTY') {
+      throw new vaultsErrors.ErrorVaultsRecursive(
+        `Could not delete directory '${secretName}' without recursive option`,
+        { cause: e },
+      );
+    }
+    throw e;
+  }
 }
 
 /**
@@ -171,18 +172,25 @@ async function mkdir(
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
-  const recursive = !!fileOptions?.recursive;
+  const recursive = fileOptions?.recursive ?? false;
 
   await vault.writeF(async (efs) => {
     try {
       await efs.mkdir(dirPath, fileOptions);
-    } catch (err) {
-      if (err.code === 'ENOENT' && !recursive) {
+    } catch (e) {
+      if (e.code === 'ENOENT' && !recursive) {
         throw new vaultsErrors.ErrorVaultsRecursive(
           `Could not create directory '${dirPath}' without recursive option`,
-          { cause: err },
+          { cause: e },
         );
       }
+      if (e.code === 'EEXIST') {
+        throw new vaultsErrors.ErrorSecretsSecretDefined(
+          `${dirPath} already exists`,
+          { cause: e },
+        );
+      }
+      throw e;
     }
     logger?.info(`Created secret directory at '${dirPath}'`);
   });
@@ -218,26 +226,22 @@ async function addSecretDirectory(
           // Write secret into vault
           await efs.writeFile(relPath, content);
           logger?.info(`Added secret at directory '${relPath}'`);
-        } catch (err) {
+        } catch (e) {
           // Warn of a failed addition but continue operation
           logger?.warn(`Adding secret ${relPath} failed`);
-          throw err;
+          throw e;
         }
       } else {
         try {
           // Create directory if it doesn't exist
-          try {
-            await efs.mkdir(path.dirname(relPath), { recursive: true });
-          } catch (err) {
-            if (err.code !== 'EEXIST') throw err;
-          }
+          await vaultsUtils.mkdirExists(efs, path.dirname(relPath));
           // Write secret into vault
           await efs.writeFile(relPath, content, {});
           logger?.info(`Added secret to directory at '${relPath}'`);
-        } catch (err) {
+        } catch (e) {
           // Warn of a failed addition but continue operation
           logger?.warn(`Adding secret ${relPath} failed`);
-          throw err;
+          throw e;
         }
       }
     }
@@ -247,9 +251,6 @@ async function addSecretDirectory(
 /**
  * Retrieves a list of the secrets in a vault
  */
-// TODO: tests
-// - read secrets
-// - no secrets
 async function listSecrets(vault: Vault): Promise<string[]> {
   return await vault.readF(async (efs) => {
     const secrets: string[] = [];

@@ -4,6 +4,7 @@ import type {
   VaultAction,
   CommitId,
   FileSystemReadable,
+  FileSystemWritable,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { Path } from 'encryptedfs/dist/types';
@@ -112,7 +113,7 @@ async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   }
 }
 
-async function mkdirExists(efs: EncryptedFS, directory: string) {
+async function mkdirExists(efs: FileSystemWritable, directory: string) {
   try {
     await efs.mkdir(directory, { recursive: true });
   } catch (e) {

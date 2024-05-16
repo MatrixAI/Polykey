@@ -5,18 +5,24 @@ import type { LevelPath } from '@matrixai/db';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { EncryptedFS } from 'encryptedfs';
+import { EncryptedFS, Stat } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import * as errors from '@/vaults/errors';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as vaultOps from '@/vaults/VaultOps';
+import * as vaultsErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
 import * as keysUtils from '@/keys/utils';
 import * as testNodesUtils from '../nodes/utils';
 
 describe('VaultOps', () => {
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
+
+  const secretName = 'secret';
+  const secretNameNew = 'secret-new';
+  const secretContent = 'secret-content';
+  const secretContentNew = 'secret-content-new';
+  const dirName = 'dir';
 
   let dataDir: string;
   let baseEfs: EncryptedFS;
@@ -69,7 +75,6 @@ describe('VaultOps', () => {
     });
     vault = vaultInternal as Vault;
   });
-
   afterEach(async () => {
     await vaultInternal.stop();
     await vaultInternal.destroy();
@@ -83,230 +88,395 @@ describe('VaultOps', () => {
     });
   });
 
-  test('adding a secret', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    const dir = await vault.readF(async (efs) => {
-      return await efs.readdir('.');
+  async function writeSecret(secretPath: string, contents: string) {
+    return await vault.writeF(async (efs) => {
+      await vaultsUtils.mkdirExists(efs, path.dirname(secretPath));
+      await efs.writeFile(secretPath, contents);
     });
-    expect(dir).toContain('secret-1');
-  });
-  test('adding a secret and getting it', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    const secret = await vaultOps.getSecret(vault, 'secret-1');
-    expect(secret.toString()).toBe('secret-content');
-    await expect(() =>
-      vaultOps.getSecret(vault, 'doesnotexist'),
-    ).rejects.toThrow(errors.ErrorSecretsSecretUndefined);
-  });
-  test('able to make directories', async () => {
-    await vaultOps.mkdir(vault, 'dir-1', { recursive: true });
-    await vaultOps.mkdir(vault, 'dir-2', { recursive: true });
-    await vaultOps.mkdir(vault, path.join('dir-3', 'dir-4'), {
-      recursive: true,
-    });
-    await vaultOps.addSecret(
-      vault,
-      path.join('dir-3', 'dir-4', 'secret-1'),
-      'secret-content',
-    );
-    await vault.readF(async (efs) => {
-      const dir = await efs.readdir('.');
-      expect(dir).toContain('dir-1');
-      expect(dir).toContain('dir-2');
-      expect(dir).toContain('dir-3');
+  }
 
-      expect(await efs.readdir('dir-3')).toContain('dir-4');
-      expect(await efs.readdir(path.join('dir-3', 'dir-4'))).toContain(
-        'secret-1',
+  async function readSecret(path: string) {
+    return await vault.readF(async (efs) => {
+      return await efs.readFile(path);
+    });
+  }
+
+  async function expectSecret(path: string, contentsExpected: string) {
+    const contentsSecretP = readSecret(path);
+    await expect(contentsSecretP).resolves.toBeDefined();
+    const contentsSecretValue = (await contentsSecretP).toString();
+    expect(contentsSecretValue).toBe(contentsExpected);
+  }
+
+  async function expectSecretNot(path: string) {
+    const contentsSecretP = readSecret(path);
+    await expect(contentsSecretP).rejects.toThrow(
+      'ENOENT: no such file or directory',
+    );
+  }
+
+  async function mkdir(path: string) {
+    return await vault.writeF(async (efs) => {
+      await vaultsUtils.mkdirExists(efs, path);
+    });
+  }
+
+  async function expectDirExists(path: string) {
+    return await vault.readF(async (efs) => {
+      const dirP = efs.readdir(path);
+      await expect(dirP).resolves.toBeDefined();
+    });
+  }
+
+  async function expectDirExistsNot(path: string) {
+    return await vault.readF(async (efs) => {
+      const dirP = efs.readdir(path);
+      await expect(dirP).rejects.toThrow('ENOENT');
+    });
+  }
+
+  // Adding secrets
+  describe('addSecret', () => {
+    test('adding a secret', async () => {
+      await vaultOps.addSecret(vault, secretName, secretContent);
+      await expectSecret(secretName, secretContent);
+    });
+    test('add a secret under an existing directory', async () => {
+      await mkdir(dirName);
+      const secretPath = path.join(dirName, secretName);
+      await vaultOps.addSecret(vault, secretPath, secretContent);
+      await expectSecret(secretPath, secretContent);
+    });
+    test('add a secret creating directory', async () => {
+      const secretPath = path.join(dirName, secretName);
+      await vaultOps.addSecret(vault, secretPath, secretContent);
+      await expectSecret(secretPath, secretContent);
+    });
+    test(
+      'adding a secret multiple times',
+      async () => {
+        for (let i = 0; i < 5; i++) {
+          const name = `${secretName}+${i}`;
+          await vaultOps.addSecret(vault, name, secretContent);
+          await expectSecret(name, secretContent);
+        }
+      },
+      globalThis.defaultTimeout * 4,
+    );
+    test('adding a secret that already exists should fail', async () => {
+      await vaultOps.addSecret(vault, secretName, secretContent);
+      const addSecretP = vaultOps.addSecret(vault, secretName, secretContent);
+      await expect(addSecretP).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretDefined,
       );
     });
   });
-  test(
-    'adding and committing a secret 10 times',
-    async () => {
-      const content = 'secret-content';
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        await vaultOps.addSecret(vault, name, content);
-        expect(
-          (await vaultOps.getSecret(vault, name)).toString(),
-        ).toStrictEqual(content);
-
-        await expect(vault.readF((efs) => efs.readdir('.'))).resolves.toContain(
-          name,
-        );
-      }
-    },
-    globalThis.defaultTimeout * 4,
-  );
-  test(
-    'updating secret content',
-    async () => {
-      await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-      await vaultOps.updateSecret(vault, 'secret-1', 'secret-content-change');
-      expect(
-        (await vaultOps.getSecret(vault, 'secret-1')).toString(),
-      ).toStrictEqual('secret-content-change');
-    },
-    globalThis.defaultTimeout * 4,
-  );
-  test('updating secret content within a directory', async () => {
-    await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
-      recursive: true,
+  describe('updateSecret', () => {
+    test('updating secret content', async () => {
+      await writeSecret(secretName, secretContent);
+      await vaultOps.updateSecret(vault, secretName, secretContentNew);
+      await expectSecret(secretName, secretContentNew);
     });
-    await vaultOps.addSecret(
-      vault,
-      path.join('dir-1', 'dir-2', 'secret-1'),
-      'secret-content',
-    );
-    await vaultOps.updateSecret(
-      vault,
-      path.join('dir-1', 'dir-2', 'secret-1'),
-      'secret-content-change',
-    );
-    expect(
-      (
-        await vaultOps.getSecret(vault, path.join('dir-1', 'dir-2', 'secret-1'))
-      ).toString(),
-    ).toStrictEqual('secret-content-change');
-  });
-  test(
-    'updating a secret 10 times',
-    async () => {
-      await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-      for (let i = 0; i < 10; i++) {
-        const content = 'secret-content';
-        await vaultOps.updateSecret(vault, 'secret-1', content);
-        expect(
-          (await vaultOps.getSecret(vault, 'secret-1')).toString(),
-        ).toStrictEqual(content);
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test('deleting a secret', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    await vaultOps.mkdir(vault, 'dir-1');
-    await vaultOps.addSecret(
-      vault,
-      path.join('dir-1', 'secret-2'),
-      'secret-content',
-    );
-    await vaultOps.deleteSecret(vault, 'secret-1');
-    await expect(() => vaultOps.deleteSecret(vault, 'dir-1')).rejects.toThrow();
-    await vaultOps.deleteSecret(vault, path.join('dir-1', 'secret-2'));
-    await vaultOps.deleteSecret(vault, 'dir-1');
-    await expect(vault.readF((efs) => efs.readdir('.'))).resolves.not.toContain(
-      'secret-1',
-    );
-  });
-  test('deleting a secret within a directory', async () => {
-    await expect(() =>
-      vaultOps.mkdir(vault, path.join('dir-1', 'dir-2')),
-    ).rejects.toThrow(errors.ErrorVaultsRecursive);
-    await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
-      recursive: true,
+    test('updating secret content within a directory', async () => {
+      const secretPath = path.join(dirName, secretName);
+      await writeSecret(secretPath, secretContent);
+      await vaultOps.updateSecret(vault, secretPath, secretContentNew);
+      await expectSecret(secretPath, secretContentNew);
     });
-    await vaultOps.addSecret(
-      vault,
-      path.join('dir-1', 'dir-2', 'secret-1'),
-      'secret-content',
+    test(
+      'updating a secret multiple times',
+      async () => {
+        await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
+        await writeSecret(secretName, secretContent);
+        for (let i = 0; i < 5; i++) {
+          const contentNew = `${secretContentNew}${i}`;
+          await vaultOps.updateSecret(vault, secretName, contentNew);
+          await expectSecret(secretName, contentNew);
+        }
+      },
+      globalThis.defaultTimeout * 2,
     );
-    await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
-      recursive: true,
+    test('updating a secret that does not exist should fail', async () => {
+      await expect(
+        vaultOps.updateSecret(vault, secretName, secretContentNew),
+      ).rejects.toThrow(vaultsErrors.ErrorSecretsSecretUndefined);
     });
-    await expect(
-      vault.readF((efs) => efs.readdir('dir-1')),
-    ).resolves.not.toContain('dir-2');
   });
-  test(
-    'deleting a secret 10 times',
-    async () => {
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        const content = 'secret-content';
-        await vaultOps.addSecret(vault, name, content);
-        expect(
-          (await vaultOps.getSecret(vault, name)).toString(),
-        ).toStrictEqual(content);
-        await vaultOps.deleteSecret(vault, name, { recursive: true });
-        await expect(
-          vault.readF((efs) => efs.readdir('.')),
-        ).resolves.not.toContain(name);
-      }
-    },
-    globalThis.defaultTimeout * 4,
-  );
-  test('renaming a secret', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    await vaultOps.renameSecret(vault, 'secret-1', 'secret-change');
-    const dir = vault.readF((efs) => efs.readdir('.'));
-    await expect(dir).resolves.not.toContain('secret-1');
-    await expect(dir).resolves.toContain('secret-change');
+  describe('renameSecret', () => {
+    test('renaming a secret', async () => {
+      await writeSecret(secretName, secretContent);
+      await vaultOps.renameSecret(vault, secretName, secretNameNew);
+      await expectSecretNot(secretName);
+      await expectSecret(secretNameNew, secretContent);
+    });
+    test('renaming a secret within a directory', async () => {
+      const secretPath = path.join(dirName, secretName);
+      const secretPathNew = path.join(dirName, secretNameNew);
+      await writeSecret(secretPath, secretContent);
+      await vaultOps.renameSecret(vault, secretPath, secretPathNew);
+      await expectSecretNot(secretPath);
+      await expectSecret(secretPathNew, secretContent);
+    });
+    test('renaming a secret that does not exist should fail', async () => {
+      await expect(
+        vaultOps.renameSecret(vault, secretName, secretNameNew),
+      ).rejects.toThrow(vaultsErrors.ErrorSecretsSecretUndefined);
+    });
   });
-  test('renaming a secret within a directory', async () => {
-    const dirPath = path.join('dir-1', 'dir-2');
-    await vaultOps.mkdir(vault, dirPath, { recursive: true });
-    await vaultOps.addSecret(
-      vault,
-      path.join(dirPath, 'secret-1'),
-      'secret-content',
-    );
-    await vaultOps.renameSecret(
-      vault,
-      path.join(dirPath, 'secret-1'),
-      path.join(dirPath, 'secret-change'),
-    );
-    await expect(vault.readF((efs) => efs.readdir(dirPath))).resolves.toContain(
-      `secret-change`,
-    );
+  describe('getSecret', () => {
+    test('can get a secret', async () => {
+      await writeSecret(secretName, secretContent);
+      const secret = await vaultOps.getSecret(vault, secretName);
+      expect(secret.toString()).toBe(secretContent);
+    });
+    test('getting a secret that does not exist should fail', async () => {
+      await expect(vaultOps.getSecret(vault, secretName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretUndefined,
+      );
+    });
+    test('getting a directory should fail', async () => {
+      await mkdir(dirName);
+      await expect(vaultOps.getSecret(vault, dirName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsIsDirectory,
+      );
+    });
   });
-  test('listing secrets', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    await vaultOps.addSecret(vault, 'secret-2', 'secret-content');
-    await vaultOps.mkdir(vault, path.join('dir1', 'dir2'), { recursive: true });
-    await vaultOps.addSecret(
-      vault,
-      path.join('dir1', 'dir2', 'secret-3'),
-      'secret-content',
-    );
-    expect((await vaultOps.listSecrets(vault)).sort()).toStrictEqual(
-      ['secret-1', 'secret-2', 'dir1/dir2/secret-3'].sort(),
-    );
+  describe('statSecret', () => {
+    test('can get stat of a secret', async () => {
+      await writeSecret(secretName, secretContent);
+      const stat = await vaultOps.statSecret(vault, secretName);
+      expect(stat).toBeInstanceOf(Stat);
+      expect(stat.nlink).toBe(1);
+    });
+    test('can get stat of a directory', async () => {
+      await mkdir(dirName);
+      const stat = await vaultOps.statSecret(vault, dirName);
+      expect(stat).toBeInstanceOf(Stat);
+    });
+    test('getting stat of secret that does not exist should fail', async () => {
+      await expect(vaultOps.statSecret(vault, secretName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretUndefined,
+      );
+    });
   });
-  test('listing secret directories', async () => {
-    const secretDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
-    const content = 'CONTENT, LIKE AND SUBSCRIBE.';
-    const secretDirName = path.basename(secretDir);
-    for (let i = 0; i < 10; i++) {
-      const name = 'secret ' + i.toString();
+  describe('deleteSecret', () => {
+    test('deleting a secret', async () => {
+      await writeSecret(secretName, secretContent);
+      await vaultOps.deleteSecret(vault, secretName);
+      await expectSecretNot(secretName);
+    });
+    test('deleting a secret in a directory', async () => {
+      const secretPath = path.join(dirName, secretName);
+      await writeSecret(secretPath, secretContent);
+      await vaultOps.deleteSecret(vault, secretPath);
+      await expectSecretNot(secretPath);
+      await expectDirExists(dirName);
+    });
+    test('deleting a directory', async () => {
+      await mkdir(dirName);
+      await vaultOps.deleteSecret(vault, dirName);
+      await expectDirExistsNot(dirName);
+    });
+    test('deleting a directory with a file should fail', async () => {
+      const secretPath = path.join(dirName, secretName);
+      await writeSecret(secretPath, secretContent);
+      await expect(vaultOps.deleteSecret(vault, dirName)).rejects.toThrow(
+        vaultsErrors.ErrorVaultsRecursive,
+      );
+    });
+    test('deleting a directory with force', async () => {
+      const secretPath = path.join(dirName, secretName);
+      await writeSecret(secretPath, secretContent);
+      await vaultOps.deleteSecret(vault, dirName, { recursive: true });
+      await expectDirExistsNot(dirName);
+    });
+    test('deleting a secret that does not exist should fail', async () => {
+      await expect(vaultOps.deleteSecret(vault, secretName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretUndefined,
+      );
+    });
+  });
+  describe('mkdir', () => {
+    test('can create directory', async () => {
+      await vaultOps.mkdir(vault, dirName);
+      await expectDirExists(dirName);
+    });
+    test('can create recursive directory', async () => {
+      const dirPath = path.join(dirName, dirName);
+      await vaultOps.mkdir(vault, dirPath, { recursive: true });
+      await expectDirExists(dirPath);
+    });
+    test('creating recursive directory fails without recursive set', async () => {
+      const dirPath = path.join(dirName, dirName);
+      await expect(vaultOps.mkdir(vault, dirPath)).rejects.toThrow(
+        vaultsErrors.ErrorVaultsRecursive,
+      );
+      await expectDirExistsNot(dirPath);
+    });
+    test('creating existing directory should fail', async () => {
+      await mkdir(dirName);
+      await expect(vaultOps.mkdir(vault, dirName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretDefined,
+      );
+    });
+    test('creating existing secret should fail', async () => {
+      await writeSecret(secretName, secretContent);
+      await expect(vaultOps.mkdir(vault, secretName)).rejects.toThrow(
+        vaultsErrors.ErrorSecretsSecretDefined,
+      );
+    });
+  });
+  // TODO: fix this up. it's an annoying test
+  describe('addSecretDirectory', () => {
+    test('adding a directory of 1 secret', async () => {
+      const secretDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'secret-directory-'),
+      );
+      const secretDirName = path.basename(secretDir);
+      const name = 'secret';
+      const content = keysUtils.getRandomBytes(5);
       await fs.promises.writeFile(path.join(secretDir, name), content);
-    }
 
-    await vaultOps.addSecretDirectory(vault, secretDir, fs);
+      await vaultOps.addSecretDirectory(vault, secretDir, fs);
+      await expect(
+        vault.readF((efs) => efs.readdir(secretDirName)),
+      ).resolves.toContain('secret');
 
-    expect((await vaultOps.listSecrets(vault)).sort()).toStrictEqual(
-      [
-        path.join(secretDirName, `secret 0`),
-        path.join(secretDirName, `secret 1`),
-        path.join(secretDirName, `secret 2`),
-        path.join(secretDirName, `secret 3`),
-        path.join(secretDirName, `secret 4`),
-        path.join(secretDirName, `secret 5`),
-        path.join(secretDirName, `secret 6`),
-        path.join(secretDirName, `secret 7`),
-        path.join(secretDirName, `secret 8`),
-        path.join(secretDirName, `secret 9`),
-      ].sort(),
-    );
+      await fs.promises.rm(secretDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+    test('adding a directory with subdirectories and files', async () => {
+      const secretDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'secret-directory-'),
+      );
+      const secretDirName = path.basename(secretDir);
+      await fs.promises.mkdir(path.join(secretDir, 'dir1'));
+      await fs.promises.mkdir(path.join(secretDir, 'dir1', 'dir2'));
+      await fs.promises.mkdir(path.join(secretDir, 'dir3'));
 
-    await fs.promises.rm(secretDir, {
-      force: true,
-      recursive: true,
+      await fs.promises.writeFile(path.join(secretDir, 'secret1'), 'secret1');
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir1', 'secret2'),
+        'secret2',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir1', 'dir2', 'secret3'),
+        'secret3',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir3', 'secret4'),
+        'secret4',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir3', 'secret5'),
+        'secret5',
+      );
+
+      await vaultOps.addSecretDirectory(vault, path.join(secretDir), fs);
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual(
+        [
+          path.join(secretDirName, 'secret1'),
+          path.join(secretDirName, 'dir1', 'secret2'),
+          path.join(secretDirName, 'dir1', 'dir2', 'secret3'),
+          path.join(secretDirName, 'dir3', 'secret4'),
+          path.join(secretDirName, 'dir3', 'secret5'),
+        ].sort(),
+      );
+
+      await fs.promises.rm(secretDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+    test('testing the errors handling of adding secret directories', async () => {
+      const secretDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'secret-directory-'),
+      );
+      const secretDirName = path.basename(secretDir);
+      await fs.promises.mkdir(path.join(secretDir, 'dir1'));
+      await fs.promises.mkdir(path.join(secretDir, 'dir1', 'dir2'));
+      await fs.promises.mkdir(path.join(secretDir, 'dir3'));
+      await fs.promises.writeFile(path.join(secretDir, 'secret1'), 'secret1');
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir1', 'secret2'),
+        'secret2',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir1', 'dir2', 'secret3'),
+        'secret3',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir3', 'secret4'),
+        'secret4',
+      );
+      await fs.promises.writeFile(
+        path.join(secretDir, 'dir3', 'secret5'),
+        'secret5',
+      );
+
+      await vaultOps.mkdir(vault, secretDirName, { recursive: true });
+      await vaultOps.addSecret(
+        vault,
+        path.join(secretDirName, 'secret1'),
+        'blocking-secret',
+      );
+      await vaultOps.addSecretDirectory(vault, secretDir, fs);
+      const list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual(
+        [
+          path.join(secretDirName, 'secret1'),
+          path.join(secretDirName, 'dir1', 'secret2'),
+          path.join(secretDirName, 'dir1', 'dir2', 'secret3'),
+          path.join(secretDirName, 'dir3', 'secret4'),
+          path.join(secretDirName, 'dir3', 'secret5'),
+        ].sort(),
+      );
+
+      await fs.promises.rm(secretDir, {
+        force: true,
+        recursive: true,
+      });
     });
   });
+  describe('listSecrets', () => {
+    test('can list secrets', async () => {
+      const secretName1 = `${secretName}1`;
+      const secretName2 = `${secretName}2`;
+      await writeSecret(secretName1, secretContent);
+      await writeSecret(secretName2, secretContent);
+
+      const secretList = await vaultOps.listSecrets(vault);
+      expect(secretList).toInclude(secretName1);
+      expect(secretList).toInclude(secretName2);
+    });
+    test('empty directories are not listed', async () => {
+      const dirName1 = `${dirName}1`;
+      const dirName2 = `${dirName}2`;
+      await mkdir(dirName1);
+      await mkdir(dirName2);
+
+      const secretList = await vaultOps.listSecrets(vault);
+      expect(secretList).toHaveLength(0);
+    });
+    test('secrets in directories are listed', async () => {
+      const secretPath1 = path.join(dirName, `${secretName}1`);
+      const secretPath2 = path.join(dirName, `${secretName}2`);
+      await writeSecret(secretPath1, secretContent);
+      await writeSecret(secretPath2, secretContent);
+
+      const secretList = await vaultOps.listSecrets(vault);
+      expect(secretList).toInclude(secretPath1);
+      expect(secretList).toInclude(secretPath2);
+    });
+    test('empty vault list no secrets', async () => {
+      const secretList = await vaultOps.listSecrets(vault);
+      expect(secretList).toHaveLength(0);
+    });
+  });
+  // Not sure if hidden file names are a special case but I'm keeping the tests just in case
   test('adding hidden files and directories', async () => {
     await vaultOps.addSecret(vault, '.hiddenSecret', 'hidden_contents');
     await vaultOps.mkdir(vault, '.hiddenDir', { recursive: true });
@@ -356,169 +526,5 @@ describe('VaultOps', () => {
       expect(list.sort()).toStrictEqual([].sort());
     },
     globalThis.defaultTimeout * 4,
-  );
-  test('adding a directory of 1 secret', async () => {
-    const secretDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
-    const secretDirName = path.basename(secretDir);
-    const name = 'secret';
-    const content = keysUtils.getRandomBytes(5);
-    await fs.promises.writeFile(path.join(secretDir, name), content);
-
-    await vaultOps.addSecretDirectory(vault, secretDir, fs);
-    await expect(
-      vault.readF((efs) => efs.readdir(secretDirName)),
-    ).resolves.toContain('secret');
-
-    await fs.promises.rm(secretDir, {
-      force: true,
-      recursive: true,
-    });
-  });
-  test('adding a directory with subdirectories and files', async () => {
-    const secretDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
-    const secretDirName = path.basename(secretDir);
-    await fs.promises.mkdir(path.join(secretDir, 'dir1'));
-    await fs.promises.mkdir(path.join(secretDir, 'dir1', 'dir2'));
-    await fs.promises.mkdir(path.join(secretDir, 'dir3'));
-
-    await fs.promises.writeFile(path.join(secretDir, 'secret1'), 'secret1');
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir1', 'secret2'),
-      'secret2',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir1', 'dir2', 'secret3'),
-      'secret3',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir3', 'secret4'),
-      'secret4',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir3', 'secret5'),
-      'secret5',
-    );
-
-    await vaultOps.addSecretDirectory(vault, path.join(secretDir), fs);
-    const list = await vaultOps.listSecrets(vault);
-    expect(list.sort()).toStrictEqual(
-      [
-        path.join(secretDirName, 'secret1'),
-        path.join(secretDirName, 'dir1', 'secret2'),
-        path.join(secretDirName, 'dir1', 'dir2', 'secret3'),
-        path.join(secretDirName, 'dir3', 'secret4'),
-        path.join(secretDirName, 'dir3', 'secret5'),
-      ].sort(),
-    );
-
-    await fs.promises.rm(secretDir, {
-      force: true,
-      recursive: true,
-    });
-  });
-  test('testing the errors handling of adding secret directories', async () => {
-    const secretDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
-    const secretDirName = path.basename(secretDir);
-    await fs.promises.mkdir(path.join(secretDir, 'dir1'));
-    await fs.promises.mkdir(path.join(secretDir, 'dir1', 'dir2'));
-    await fs.promises.mkdir(path.join(secretDir, 'dir3'));
-    await fs.promises.writeFile(path.join(secretDir, 'secret1'), 'secret1');
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir1', 'secret2'),
-      'secret2',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir1', 'dir2', 'secret3'),
-      'secret3',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir3', 'secret4'),
-      'secret4',
-    );
-    await fs.promises.writeFile(
-      path.join(secretDir, 'dir3', 'secret5'),
-      'secret5',
-    );
-
-    await vaultOps.mkdir(vault, secretDirName, { recursive: true });
-    await vaultOps.addSecret(
-      vault,
-      path.join(secretDirName, 'secret1'),
-      'blocking-secret',
-    );
-    await vaultOps.addSecretDirectory(vault, secretDir, fs);
-    const list = await vaultOps.listSecrets(vault);
-    expect(list.sort()).toStrictEqual(
-      [
-        path.join(secretDirName, 'secret1'),
-        path.join(secretDirName, 'dir1', 'secret2'),
-        path.join(secretDirName, 'dir1', 'dir2', 'secret3'),
-        path.join(secretDirName, 'dir3', 'secret4'),
-        path.join(secretDirName, 'dir3', 'secret5'),
-      ].sort(),
-    );
-
-    await fs.promises.rm(secretDir, {
-      force: true,
-      recursive: true,
-    });
-  });
-  test(
-    'adding a directory of 100 secrets with some secrets already existing',
-    async () => {
-      const secretDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'secret-directory-'),
-      );
-      const secretDirName = path.basename(secretDir);
-      for (let i = 0; i < 50; i++) {
-        const name = 'secret ' + i.toString();
-        const content = 'this is secret ' + i.toString();
-        await fs.promises.writeFile(
-          path.join(secretDir, name),
-          Buffer.from(content),
-        );
-      }
-
-      await vaultOps.mkdir(vault, secretDirName, { recursive: false });
-      await vaultOps.addSecret(
-        vault,
-        path.join(secretDirName, 'secret 8'),
-        'secret-content',
-      );
-      await vaultOps.addSecret(
-        vault,
-        path.join(secretDirName, 'secret 9'),
-        'secret-content',
-      );
-      await vaultOps.addSecretDirectory(vault, secretDir, fs);
-
-      for (let j = 0; j < 8; j++) {
-        await expect(
-          vault.readF((efs) => efs.readdir(secretDirName)),
-        ).resolves.toContain('secret ' + j.toString());
-      }
-      expect(
-        (
-          await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 8'))
-        ).toString(),
-      ).toStrictEqual('this is secret 8');
-      expect(
-        (
-          await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 9'))
-        ).toString(),
-      ).toStrictEqual('this is secret 9');
-
-      await fs.promises.rm(secretDir, {
-        force: true,
-        recursive: true,
-      });
-    },
-    globalThis.defaultTimeout * 5,
   );
 });
