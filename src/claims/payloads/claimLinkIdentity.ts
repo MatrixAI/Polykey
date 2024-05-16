@@ -1,5 +1,9 @@
 import type { Claim, SignedClaim } from '../types';
-import type { NodeIdEncoded, ProviderIdentityIdEncoded } from '../../ids/types';
+import type {
+  NodeIdEncoded,
+  ProviderIdentityClaimId,
+  ProviderIdentityIdEncoded,
+} from '../../ids/types';
 import * as ids from '../../ids';
 import * as claimsUtils from '../utils';
 import * as tokensUtils from '../../tokens/utils';
@@ -13,6 +17,7 @@ interface ClaimLinkIdentity extends Claim {
   typ: 'ClaimLinkIdentity';
   iss: NodeIdEncoded;
   sub: ProviderIdentityIdEncoded;
+  providerIdentityClaimId?: ProviderIdentityClaimId;
 }
 
 function assertClaimLinkIdentity(

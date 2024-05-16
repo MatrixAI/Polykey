@@ -1,11 +1,10 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host } from '@/network/types';
 import type { Key } from '@/keys/types';
-import type { SignedClaim } from '../../src/claims/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
 import type { NodeId } from '../../src/ids';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type { DiscoveryQueueInfo } from '@/discovery/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/claimLinkIdentity';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -14,6 +13,7 @@ import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { EventAll } from '@matrixai/events';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
+import { Token } from '@/tokens';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -33,8 +33,8 @@ import * as keysUtils from '@/keys/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { encodeProviderIdentityId } from '../../src/ids';
 import 'ix/add/asynciterable-operators/toarray';
+import { encodeProviderIdentityId } from '../../src/ids';
 import { createTLSConfig } from '../utils/tls';
 
 describe('Discovery', () => {
@@ -399,10 +399,25 @@ describe('Discovery', () => {
       iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
       sub: encodeProviderIdentityId([testProvider.id, identityId2]),
     };
-    const [, signedClaim] = await nodeA.sigchain.addClaim(identityClaim);
-    await testProvider.publishClaim(
-      identityId2,
-      signedClaim as SignedClaim<ClaimLinkIdentity>,
+    await nodeA.sigchain.addClaim(
+      identityClaim,
+      undefined,
+      async (token: Token<ClaimLinkIdentity>) => {
+        // Publishing in the callback to avoid adding bad claims
+        const claim = token.toSigned();
+        const identitySignedClaim = await testProvider.publishClaim(
+          identityId2,
+          claim,
+        );
+        // Append the ProviderIdentityClaimId to the token
+        const payload: ClaimLinkIdentity = {
+          ...claim.payload,
+          providerIdentityClaimId: identitySignedClaim.id,
+        };
+        const newToken = Token.fromPayload(payload);
+        newToken.signWithPrivateKey(nodeA.keyRing.keyPair);
+        return newToken;
+      },
     );
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.

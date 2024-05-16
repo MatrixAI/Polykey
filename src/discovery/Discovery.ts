@@ -452,14 +452,14 @@ class Discovery {
       switch (signedClaim.payload.typ) {
         case 'ClaimLinkNode':
           await this.processClaimLinkNode(
-            signedClaim,
+            signedClaim as SignedClaim<ClaimLinkNode>,
             nodeId,
             lastProcessedCutoffTime,
           );
           break;
         case 'ClaimLinkIdentity':
           await this.processClaimLinkIdentity(
-            signedClaim,
+            signedClaim as SignedClaim<ClaimLinkIdentity>,
             nodeId,
             ctx,
             lastProcessedCutoffTime,
@@ -476,7 +476,7 @@ class Discovery {
   }
 
   protected async processClaimLinkNode(
-    signedClaim: SignedClaim,
+    signedClaim: SignedClaim<ClaimLinkNode>,
     nodeId: NodeId,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
   ): Promise<void> {
@@ -510,7 +510,7 @@ class Discovery {
       },
       linkedVertexNodeInfo,
       {
-        claim: signedClaim as SignedClaim<ClaimLinkNode>,
+        claim: signedClaim,
         meta: {},
       },
     );
@@ -535,7 +535,7 @@ class Discovery {
   }
 
   protected async processClaimLinkIdentity(
-    signedClaim: SignedClaim,
+    signedClaim: SignedClaim<ClaimLinkIdentity>,
     nodeId: NodeId,
     ctx: ContextTimed,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
@@ -567,20 +567,8 @@ class Discovery {
       return;
     }
     // Need to get the corresponding claim for this
-    let providerIdentityClaimId: ProviderIdentityClaimId | null = null;
-    const identityClaims = await this.verifyIdentityClaims(
-      providerId,
-      identityId,
-      ctx,
-    );
-    for (const [id, claim] of Object.entries(identityClaims)) {
-      const issuerNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
-      if (issuerNodeId == null) continue;
-      if (nodeId.equals(issuerNodeId)) {
-        providerIdentityClaimId = id as ProviderIdentityClaimId;
-        break;
-      }
-    }
+    const providerIdentityClaimId = signedClaim.payload
+      .providerIdentityClaimId as ProviderIdentityClaimId | null;
     if (providerIdentityClaimId == null) {
       this.logger.warn(
         `Failed to get corresponding identity claim for ${providerId}:${identityId}`,
@@ -594,7 +582,7 @@ class Discovery {
       },
       identityInfo,
       {
-        claim: signedClaim as SignedClaim<ClaimLinkIdentity>,
+        claim: signedClaim,
         meta: {
           providerIdentityClaimId: providerIdentityClaimId,
           url: identityInfo.url,
