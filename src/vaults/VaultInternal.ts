@@ -190,6 +190,7 @@ class VaultInternal {
             gitdir: vault.vaultGitDir,
             url: 'http://',
             singleBranch: true,
+            ref: vaultsUtils.canonicalBranchRef,
           });
           return [vaultName, remoteVaultId];
         },
@@ -628,8 +629,10 @@ class VaultInternal {
               dir: this.vaultDataDir,
               gitdir: this.vaultGitDir,
               url: `http://`,
-              ref: 'HEAD',
+              ref: vaultsUtils.canonicalBranchRef,
               singleBranch: true,
+              fastForward: true,
+              fastForwardOnly: true,
               author: {
                 name: nodesUtils.encodeNodeId(pullNodeId!),
               },

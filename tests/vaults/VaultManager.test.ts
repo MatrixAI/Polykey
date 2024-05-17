@@ -929,7 +929,7 @@ describe('VaultManager', () => {
       );
     });
     // FIXME: Test has been disabled due to non-deterministic failures in CI/CD
-    test.skip(
+    test(
       'can pull a cloned vault',
       async () => {
         // Creating some state at the remote
@@ -965,6 +965,8 @@ describe('VaultManager', () => {
         const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');
         await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 2 commits long
+          expect(await vaultClone.log()).toHaveLength(2);
           return await vaultClone.readF(async (efs) => {
             const file = await efs.readFile('secret-1', { encoding: 'utf8' });
             const secretsList = await efs.readdir('.');
@@ -974,7 +976,7 @@ describe('VaultManager', () => {
           });
         });
 
-        // Creating new history
+        // Adding history
         await remoteKeynode1.vaultManager.withVaults(
           [remoteVaultId],
           async (vault) => {
@@ -991,6 +993,8 @@ describe('VaultManager', () => {
 
         // Should have new data
         await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 3 commits long
+          expect(await vaultClone.log()).toHaveLength(3);
           return await vaultClone.readF(async (efs) => {
             const file = await efs.readFile('secret-1', { encoding: 'utf8' });
             const secretsList = await efs.readdir('.');
@@ -999,6 +1003,131 @@ describe('VaultManager', () => {
             expect(secretsList).toContain('secret-2');
           });
         });
+
+        // Adding history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-3', 'secret3');
+            });
+          },
+        );
+
+        // Pulling vault
+        await vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+
+        // Should have new data
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 4 commits long
+          expect(await vaultClone.log()).toHaveLength(4);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).toContain('secret-2');
+            expect(secretsList).toContain('secret-3');
+          });
+        });
+      },
+      globalThis.defaultTimeout * 2,
+    );
+    test(
+      'can pull a cloned vault with branched history',
+      async () => {
+        // Creating some state at the remote
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-1', 'secret1');
+            });
+          },
+        );
+
+        // Setting permissions
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: localNodeId,
+        });
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'clone',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'pull',
+        );
+
+        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+        const vaultId = await vaultManager.getVaultId(vaultName);
+        if (vaultId === undefined) fail('VaultId is not found.');
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 2 commits long
+          expect(await vaultClone.log()).toHaveLength(2);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).not.toContain('secret-2');
+          });
+        });
+
+        // Adding history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-2', 'secret2');
+            });
+          },
+        );
+
+        // Pulling vault
+        await vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+
+        // Should have new data
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 3 commits long
+          expect(await vaultClone.log()).toHaveLength(3);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).toContain('secret-2');
+          });
+        });
+
+        // Branching history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            const branchCommit = (await vault.log())[1].commitId;
+            await vault.version(branchCommit);
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-3', 'secret3');
+            });
+          },
+        );
+
+        // Pulling vault should throw
+        await expect(
+          vaultManager.pullVault({
+            vaultId: vaultId,
+          }),
+        ).rejects.toThrow(vaultsErrors.ErrorVaultsMergeConflict);
       },
       globalThis.defaultTimeout * 2,
     );

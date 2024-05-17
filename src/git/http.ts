@@ -5,6 +5,7 @@ import type {
   ObjectIdList,
 } from './types';
 import type { EncryptedFS } from 'encryptedfs';
+import type { PackObjectsResult } from 'isomorphic-git';
 import { Buffer } from 'buffer';
 import git from 'isomorphic-git';
 import * as gitUtils from './utils';
@@ -398,12 +399,18 @@ async function* generatePackData({
   objectIds: Array<ObjectId>;
   chunkSize?: number;
 }): AsyncGenerator<Buffer, void, void> {
-  const packFile = await git.packObjects({
-    fs: efs,
-    dir,
-    gitdir: gitDir,
-    oids: objectIds,
-  });
+  let packFile: PackObjectsResult;
+  try {
+    packFile = await git.packObjects({
+      fs: efs,
+      dir,
+      gitdir: gitDir,
+      oids: objectIds,
+    });
+  } catch (e) {
+    // Return without sending any data
+    return;
+  }
   if (packFile.packfile == null) utils.never('failed to create packFile data');
   let packFileBuffer = Buffer.from(packFile.packfile.buffer);
 
