@@ -326,7 +326,6 @@ describe('VaultOps', () => {
       );
     });
   });
-  // TODO: fix this up. it's an annoying test
   describe('addSecretDirectory', () => {
     test('adding a directory of 1 secret', async () => {
       const secretDir = await fs.promises.mkdtemp(
@@ -476,7 +475,6 @@ describe('VaultOps', () => {
       expect(secretList).toHaveLength(0);
     });
   });
-  // Not sure if hidden file names are a special case but I'm keeping the tests just in case
   test('adding hidden files and directories', async () => {
     await vaultOps.addSecret(vault, '.hiddenSecret', 'hidden_contents');
     await vaultOps.mkdir(vault, '.hiddenDir', { recursive: true });

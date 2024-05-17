@@ -164,49 +164,33 @@ class VaultInternal {
       efs,
       logger,
     });
-    // This error flag will contain the error returned by the cloning rpc stream
-    let error;
     // Make the directory where the .git files will be auto generated and
     // where the contents will be cloned to ('contents' file)
     await efs.mkdir(vault.vaultDataDir, { recursive: true });
-    let vaultName: VaultName;
-    let remoteVaultId: VaultId;
-    let remote: RemoteInfo;
-    try {
-      [vaultName, remoteVaultId] = await nodeManager.withConnF(
-        targetNodeId,
-        async (connection) => {
-          const client = connection.getClient();
+    const [vaultName, remoteVaultId]: [VaultName, VaultId] =
+      await nodeManager.withConnF(targetNodeId, async (connection) => {
+        const client = connection.getClient();
 
-          const [request, vaultName, remoteVaultId] = await vault.request(
-            client,
-            targetVaultNameOrId,
-            'clone',
-          );
-          await git.clone({
-            fs: efs,
-            http: { request },
-            dir: vault.vaultDataDir,
-            gitdir: vault.vaultGitDir,
-            url: 'http://',
-            singleBranch: true,
-            ref: vaultsUtils.canonicalBranchRef,
-          });
-          return [vaultName, remoteVaultId];
-        },
-      );
-      remote = {
-        remoteNode: nodesUtils.encodeNodeId(targetNodeId),
-        remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
-      };
-    } catch (e) {
-      // If the error flag set, and we have the generalised SmartHttpError from
-      // isomorphic git then we need to throw the polykey error
-      if (e instanceof git.Errors.SmartHttpError && error) {
-        throw error;
-      }
-      throw e;
-    }
+        const [request, vaultName, remoteVaultId] = await vault.request(
+          client,
+          targetVaultNameOrId,
+          'clone',
+        );
+        await git.clone({
+          fs: efs,
+          http: { request },
+          dir: vault.vaultDataDir,
+          gitdir: vault.vaultGitDir,
+          url: 'http://',
+          singleBranch: true,
+          ref: vaultsUtils.canonicalBranchRef,
+        });
+        return [vaultName, remoteVaultId];
+      });
+    const remote: RemoteInfo = {
+      remoteNode: nodesUtils.encodeNodeId(targetNodeId),
+      remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
+    };
 
     await vault.start({ vaultName, tran });
     // Setting the remote in the metadata
@@ -579,8 +563,6 @@ class VaultInternal {
       );
     }
 
-    // This error flag will contain the error returned by the cloning rpc stream
-    let error;
     // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
     // 0 = no change, 1 = change with vault ID, 2 = change with vault name
     let metaChange = 0;
@@ -641,17 +623,15 @@ class VaultInternal {
           return remoteVaultId;
         },
       );
-    } catch (err) {
+    } catch (e) {
       // If the error flag set, and we have the generalised SmartHttpError from
       // isomorphic git then we need to throw the polykey error
-      if (err instanceof git.Errors.SmartHttpError && error) {
-        throw error;
-      } else if (err instanceof git.Errors.MergeNotSupportedError) {
-        throw new vaultsErrors.ErrorVaultsMergeConflict(err.message, {
-          cause: err,
+      if (e instanceof git.Errors.MergeNotSupportedError) {
+        throw new vaultsErrors.ErrorVaultsMergeConflict(e.message, {
+          cause: e,
         });
       }
-      throw err;
+      throw e;
     }
     if (metaChange !== 0) {
       if (metaChange === 2) {

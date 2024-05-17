@@ -55,9 +55,9 @@ async function* readDirRecursively(
   fs,
   dir = '.',
 ): AsyncGenerator<string, void, void> {
-  const dirents = await fs.promises.readdir(dir);
-  for (const dirent of dirents) {
-    const res = path.join(dir, dirent.toString());
+  const dirEntries = await fs.promises.readdir(dir);
+  for (const dirEntry of dirEntries) {
+    const res = path.join(dir, dirEntry.toString());
     const stat = await fs.promises.stat(res);
     if (stat.isDirectory()) {
       yield* readDirRecursively(fs, res);

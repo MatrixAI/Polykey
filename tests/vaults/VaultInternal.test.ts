@@ -173,25 +173,25 @@ describe('VaultInternal', () => {
     });
     expect(files).toEqual([]);
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test', 'testdata');
+      await efs.writeFile('test', 'testData');
     });
     commit = (await vault.log(undefined, 1))[0];
     await vault.version(commit.commitId);
     const file = await vault.readF(async (efs) => {
       return await efs.readFile('test', { encoding: 'utf8' });
     });
-    expect(file).toBe('testdata');
+    expect(file).toBe('testData');
   });
   test('can change commits and preserve the log with no intermediate vault mutation', async () => {
     const initCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test1', 'testdata1');
+      await efs.writeFile('test1', 'testData1');
     });
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test2', 'testdata2');
+      await efs.writeFile('test2', 'testData2');
     });
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test3', 'testdata3');
+      await efs.writeFile('test3', 'testData3');
     });
     const endCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.version(initCommit);
@@ -206,24 +206,24 @@ describe('VaultInternal', () => {
     expect(files).toEqual(['test1', 'test2', 'test3']);
   });
   test('does not allow changing to an unrecognised commit', async () => {
-    await expect(() => vault.version('unrecognisedcommit')).rejects.toThrow(
+    await expect(() => vault.version('unrecognisedCommit')).rejects.toThrow(
       vaultsErrors.ErrorVaultReferenceInvalid,
     );
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test1', 'testdata1');
+      await efs.writeFile('test1', 'testData1');
     });
     const secondCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test2', 'testdata2');
+      await efs.writeFile('test2', 'testData2');
     });
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test3', 'testdata3');
+      await efs.writeFile('test3', 'testData3');
     });
     const fourthCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.version(secondCommit);
     await vault.writeF(async (efs) => {
       const fd = await efs.open('test3', 'w');
-      await efs.write(fd, 'testdata6', 3, 6);
+      await efs.write(fd, 'testData6', 3, 6);
       await efs.close(fd);
     });
     await expect(vault.version(fourthCommit)).rejects.toThrow(
@@ -233,13 +233,13 @@ describe('VaultInternal', () => {
   test('can change to the latest commit', async () => {
     const initCommit = (await vault.log(undefined, 1))[0].commitId;
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test1', 'testdata1');
+      await efs.writeFile('test1', 'testData1');
     });
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test2', 'testdata2');
+      await efs.writeFile('test2', 'testData2');
     });
     await vault.writeF(async (efs) => {
-      await efs.writeFile('test3', 'testdata3');
+      await efs.writeFile('test3', 'testData3');
     });
     await vault.version(initCommit);
     await vault.version(tagLast);
@@ -259,18 +259,18 @@ describe('VaultInternal', () => {
     async () => {
       const initCommit = (await vault.log(undefined, 1))[0].commitId;
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test1', 'testdata1');
+        await efs.writeFile('test1', 'testData1');
       });
       const secondCommit = (await vault.log(undefined, 1))[0].commitId;
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test2', 'testdata2');
+        await efs.writeFile('test2', 'testData2');
       });
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test3', 'testdata3');
+        await efs.writeFile('test3', 'testData3');
       });
       await vault.version(secondCommit);
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test4', 'testdata4');
+        await efs.writeFile('test4', 'testData4');
       });
       let files = await vault.readF(async (efs) => {
         return await efs.readdir('.');
@@ -474,7 +474,7 @@ describe('VaultInternal', () => {
     // Converting a vault to the interface
     const vaultInterface = vault as Vault;
 
-    // Using the avaliable functions
+    // Using the available functions
     await vaultInterface.writeF(async (efs) => {
       await efs.writeFile('test', 'testContent');
     });
@@ -516,7 +516,7 @@ describe('VaultInternal', () => {
     expect(files).toEqual([]);
     await expect(
       vault.writeF(async (efs) => {
-        await efs.writeFile('test', 'testdata');
+        await efs.writeFile('test', 'testData');
       }),
     ).rejects.toThrow(vaultsErrors.ErrorVaultRemoteDefined);
   });
@@ -524,20 +524,20 @@ describe('VaultInternal', () => {
     'cannot checkout old commits after branching commit',
     async () => {
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test1', 'testdata1');
+        await efs.writeFile('test1', 'testData1');
       });
       const secondCommit = (await vault.log(undefined, 1))[0].commitId;
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test2', 'testdata2');
+        await efs.writeFile('test2', 'testData2');
       });
       const thirdCommit = (await vault.log(undefined, 1))[0].commitId;
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test3', 'testdata3');
+        await efs.writeFile('test3', 'testData3');
       });
       const fourthCommit = (await vault.log(undefined, 1))[0].commitId;
       await vault.version(secondCommit);
       await vault.writeF(async (efs) => {
-        await efs.writeFile('test4', 'testdata4');
+        await efs.writeFile('test4', 'testData4');
       });
       await expect(() => {
         return vault.version(thirdCommit);
@@ -595,7 +595,7 @@ describe('VaultInternal', () => {
     const vaultEFS = vault.efs;
     const log = await vault.log();
     const ref = log[1].commitId;
-    await efs.writeFile(path.join(vault.vaultDataDir, 'newfile1'), 'hello');
+    await efs.writeFile(path.join(vault.vaultDataDir, 'newFile1'), 'hello');
     const newRef1 = await git.commit({
       fs: vaultEFS,
       dir: vault.vaultDataDir,
@@ -607,7 +607,7 @@ describe('VaultInternal', () => {
       message: 'test',
       ref: ref,
     });
-    await efs.writeFile(path.join(vault.vaultDataDir, 'newfile2'), 'world');
+    await efs.writeFile(path.join(vault.vaultDataDir, 'newFile2'), 'world');
     const newRef2 = await git.commit({
       fs: vaultEFS,
       dir: vault.vaultDataDir,
