@@ -9,6 +9,7 @@ import type {
 } from '../ids/types';
 import type { SignedClaim, SignedClaimJSON } from '../claims/types';
 import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
+import type { ProviderPaginationToken } from '../identities/types';
 
 const gestaltActions = ['notify', 'scan', 'claim'] as const;
 
@@ -41,6 +42,11 @@ type GestaltIdentityInfo = {
   name?: string;
   email?: string;
   url?: string;
+  /**
+   * Used to determine the last pagination token to resume
+   * from when discovering the identity vertex
+   */
+  lastProviderPaginationToken?: ProviderPaginationToken;
   // The `undefined` is a hack to include the optional reserved properties
   [key: string]: JSONValue | undefined;
 };

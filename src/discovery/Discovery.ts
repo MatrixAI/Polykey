@@ -624,16 +624,28 @@ class Discovery {
       identityId,
       ctx,
     );
+    let lastProviderPaginationToken = await this.gestaltGraph
+      .getIdentity(providerIdentityId)
+      .then((identity) => identity?.lastProviderPaginationToken);
     // If we don't have identity info, simply skip this vertex
     if (vertexIdentityInfo == null) {
       return;
     }
     // Getting and verifying claims
-    const claims = await this.verifyIdentityClaims(providerId, identityId, ctx);
+    const {
+      identityClaims,
+      lastProviderPaginationToken: lastProviderPaginationToken_,
+    } = await this.verifyIdentityClaims(
+      providerId,
+      identityId,
+      lastProviderPaginationToken,
+      ctx,
+    );
+    lastProviderPaginationToken = lastProviderPaginationToken_;
+    const isAborted = ctx.signal.aborted;
     // Link the identity with each node from its claims on the provider
-    // Iterate over each of the claims
-    for (const [claimId, claim] of Object.entries(claims)) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
+    // Iterate over each of the claims, even if ctx has aborted
+    for (const [claimId, claim] of Object.entries(identityClaims)) {
       // Claims on an identity provider will always be node -> identity
       // So just cast payload data as such
       const linkedVertexNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
@@ -644,7 +656,10 @@ class Discovery {
       };
       await this.gestaltGraph.linkNodeAndIdentity(
         linkedVertexNodeInfo,
-        vertexIdentityInfo,
+        {
+          ...vertexIdentityInfo,
+          lastProviderPaginationToken,
+        },
         {
           claim: claim,
           meta: {
@@ -669,6 +684,11 @@ class Discovery {
         );
       }
     }
+    // Throw after we have processed the node claims if the signal aborted whilst running verifyIdentityClaims
+    if (isAborted) {
+      throw ctx.signal.reason;
+    }
+    // Only setVertexProcessedTime if we have succeeded in processing all identities
     await this.gestaltGraph.setVertexProcessedTime(
       ['identity', providerIdentityId],
       Date.now(),
@@ -836,22 +856,33 @@ class Discovery {
    * Helper function to retrieve and verify the claims of an identity on a given
    * provider. Connects with each node the identity claims to be linked with,
    * and verifies the claim with the public key of the node.
+   *
+   * This method never throws if ctx has aborted, opting instead to return early
+   * with a lastProviderPaginationToken so that the caller can process the partially
+   * requested Claims as well as resume progress when calling again.
    */
   protected async verifyIdentityClaims(
     providerId: ProviderId,
     identityId: IdentityId,
+    providerPaginationToken: ProviderPaginationToken | undefined,
     ctx: ContextTimed,
-  ): Promise<Record<ProviderIdentityClaimId, SignedClaim<ClaimLinkIdentity>>> {
+  ): Promise<{
+    identityClaims: Record<
+      ProviderIdentityClaimId,
+      SignedClaim<ClaimLinkIdentity>
+    >;
+    lastProviderPaginationToken?: ProviderPaginationToken;
+  }> {
     const provider = this.identitiesManager.getProvider(providerId);
     // If we don't have this provider, no identity info to find
     if (provider == null) {
-      return {};
+      return { identityClaims: {} };
     }
     // Get our own auth identity id
     const authIdentityIds = await provider.getAuthIdentityIds();
     // If we don't have one then we can't request data so just skip
     if (authIdentityIds.length === 0 || authIdentityIds[0] == null) {
-      return {};
+      return { identityClaims: {} };
     }
     const authIdentityId = authIdentityIds[0];
     const identityClaims: Record<
@@ -859,7 +890,6 @@ class Discovery {
       SignedClaim<ClaimLinkIdentity>
     > = {};
 
-    let nextPaginationToken: ProviderPaginationToken | undefined;
     const identitySignedClaimDb = (
       identitySignedClaim: IdentitySignedClaim,
     ) => {
@@ -875,6 +905,8 @@ class Discovery {
         identityClaims[identitySignedClaim.id] = claim;
       }
     };
+    let nextPaginationToken: ProviderPaginationToken | undefined =
+      providerPaginationToken;
     while (true) {
       // Refresh before each request made with identitySignedClaimGenerator
       ctx.timer.refresh();
@@ -890,7 +922,10 @@ class Discovery {
           // 1. throw if the getClaimIdsPage takes too much time
           // 2. the rest of this loop iteration takes too much time
           if (ctx.signal.aborted) {
-            throw ctx.signal.reason;
+            return {
+              identityClaims: identityClaims,
+              lastProviderPaginationToken: nextPaginationToken,
+            };
           }
           const claimId = wrapper.claimId;
           nextPaginationToken = wrapper.nextPaginationToken;
@@ -918,7 +953,10 @@ class Discovery {
           // 1. throw if the getClaimIdsPage takes too much time
           // 2. the rest of this loop iteration takes too much time
           if (ctx.signal.aborted) {
-            throw ctx.signal.reason;
+            return {
+              identityClaims: identityClaims,
+              lastProviderPaginationToken: nextPaginationToken,
+            };
           }
           nextPaginationToken = wrapper.nextPaginationToken;
           // Claims on an identity provider will always be node -> identity
@@ -929,7 +967,9 @@ class Discovery {
         break;
       }
     }
-    return identityClaims;
+    return {
+      identityClaims,
+    };
   }
 
   /**
