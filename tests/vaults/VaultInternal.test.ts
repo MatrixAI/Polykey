@@ -950,4 +950,16 @@ describe('VaultInternal', () => {
     await vault.destroy();
     await vault.destroy();
   });
+  test('regression check for statusMatrix not recognising changes', async () => {
+    // If we make a very quick writes then in some cases the change won't be recognized.
+    // This manifests as a missing commit in this test.
+    for (let i = 0; i < 10; i++) {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('secret-1', `${i}`);
+      });
+    }
+
+    const log = await vault.log();
+    expect(log).toHaveLength(11);
+  });
 });

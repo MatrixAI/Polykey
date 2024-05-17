@@ -925,78 +925,71 @@ class VaultInternal {
     const message: string[] = [];
     // Get the status of each file in the working directory
     // https://isomorphic-git.org/docs/en/statusMatrix
+    await git.add({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      filepath: '.',
+    });
     const statusMatrix = await git.statusMatrix({
       fs: this.efs,
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
     });
-    for (let [
+    for (const [
       filePath,
       HEADStatus,
       workingDirStatus,
       stageStatus,
     ] of statusMatrix) {
-      // Reset the index of files that are marked as 'unmodified'
-      // The working directory, HEAD and staging area are all the same
-      // https://github.com/MatrixAI/js-polykey/issues/260
-      if (HEADStatus === workingDirStatus && workingDirStatus === stageStatus) {
-        await git.resetIndex({
-          fs: this.efs,
-          dir: this.vaultDataDir,
-          gitdir: this.vaultGitDir,
-          filepath: filePath,
-        });
-        // Check if the file is still 'unmodified' and leave
-        // it out of the commit if it is
-        [filePath, HEADStatus, workingDirStatus, stageStatus] = (
-          await git.statusMatrix({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            filepaths: [filePath],
-          })
-        ).pop()!;
-        if (
-          HEADStatus === workingDirStatus &&
-          workingDirStatus === stageStatus
-        ) {
-          continue;
-        }
-      }
-      // We want files in the working directory that are both different
-      // from the head commit and the staged changes
-      // If working directory and stage status are not equal then filepath has un-staged
-      // changes in the working directory relative to both the HEAD and staging
-      // area that need to be added
-      // https://isomorphic-git.org/docs/en/statusMatrix
-      if (workingDirStatus !== stageStatus) {
-        let status: 'added' | 'modified' | 'deleted';
-        // If the working directory status is 0 then the file has
-        // been deleted
-        if (workingDirStatus === 0) {
-          status = 'deleted';
+      /*
+        Type StatusRow     = [Filename, HeadStatus, WorkdirStatus, StageStatus]
+        The HeadStatus status is either absent (0) or present (1).
+        The WorkdirStatus status is either absent (0), identical to HEAD (1), or different from HEAD (2).
+        The StageStatus status is either absent (0), identical to HEAD (1), identical to WORKDIR (2), or different from WORKDIR (3).
+
+        ```js
+        // example StatusMatrix
+        [
+          ["a.txt", 0, 2, 0], // new, untracked
+          ["b.txt", 0, 2, 2], // added, staged
+          ["c.txt", 0, 2, 3], // added, staged, with unstaged changes
+          ["d.txt", 1, 1, 1], // unmodified
+          ["e.txt", 1, 2, 1], // modified, unstaged
+          ["f.txt", 1, 2, 2], // modified, staged
+          ["g.txt", 1, 2, 3], // modified, staged, with unstaged changes
+          ["h.txt", 1, 0, 1], // deleted, unstaged
+          ["i.txt", 1, 0, 0], // deleted, staged
+        ]
+        ```
+       */
+      const status = `${HEADStatus}${workingDirStatus}${stageStatus}`;
+      switch (status) {
+        case '022': // Added, staged
+          message.push(`${filePath} added`);
+          break;
+        case '111': // Unmodified
+          break;
+        case '122': // Modified, staged
+          message.push(`${filePath} modified`);
+          break;
+        case '101': // Deleted, unStaged
+          // need to stage the deletion with remove
           await git.remove({
             fs: this.efs,
             dir: this.vaultDataDir,
             gitdir: this.vaultGitDir,
             filepath: filePath,
           });
-        } else {
-          await git.add({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            filepath: filePath,
-          });
-          // Check whether the file already exists inside the HEAD
-          // commit and if it does then it is unmodified
-          if (HEADStatus === 1) {
-            status = 'modified';
-          } else {
-            status = 'added';
-          }
-        }
-        message.push(`${filePath} ${status}`);
+        // Fall through
+        case '100': // Deleted, staged
+          message.push(`${filePath} deleted`);
+          break;
+        default:
+          // We don't handle untracked and partially staged files since we add all files to staging before processing
+          utils.never(
+            `Status ${status} is unhandled because it was unexpected state`,
+          );
       }
     }
     // Skip commit if no changes were made
