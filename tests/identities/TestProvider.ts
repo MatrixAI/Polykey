@@ -20,14 +20,13 @@ import * as tokenUtils from '@/tokens/utils';
 
 class TestProvider extends Provider {
   public readonly id: ProviderId;
+  public readonly pageSize = 10;
 
   public linkIdCounter: number = 0;
   public users: Record<IdentityId, POJO>;
   public links: Record<ProviderIdentityClaimId, string>;
   protected userLinks: Record<IdentityId, Array<ProviderIdentityClaimId>>;
   protected userTokens: Record<string, IdentityId>;
-
-  protected readonly pageSize = 10;
 
   public constructor(providerId: ProviderId = 'test-provider' as ProviderId) {
     super();

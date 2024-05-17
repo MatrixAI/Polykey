@@ -167,10 +167,8 @@ class Discovery {
         }),
       );
     } catch (e) {
-      if (
-        e instanceof tasksErrors.ErrorTaskStop ||
-        e === discoveryStoppingTaskReason
-      ) {
+      // We need to reschedule if the task was cancelled due to discovery domain stopping
+      if (e === discoveryStoppingTaskReason) {
         // We need to recreate the task for the vertex
         const vertexId = gestaltsUtils.decodeGestaltId(vertex);
         if (vertexId == null) never();
@@ -278,6 +276,10 @@ class Discovery {
       this.discoverVertexHandlerId,
       this.discoverVertexHandler,
     );
+    this.taskManager.registerHandler(
+      this.checkRediscoveryHandlerId,
+      this.checkRediscoveryHandler,
+    );
     // Start up rediscovery task
     await this.taskManager.scheduleTask({
       handlerId: this.discoverVertexHandlerId,
@@ -305,6 +307,7 @@ class Discovery {
     }
     await Promise.all(taskPromises);
     this.taskManager.deregisterHandler(this.discoverVertexHandlerId);
+    this.taskManager.deregisterHandler(this.checkRediscoveryHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -641,8 +644,9 @@ class Discovery {
       lastProviderPaginationToken,
       ctx,
     );
-    lastProviderPaginationToken = lastProviderPaginationToken_;
     const isAborted = ctx.signal.aborted;
+    lastProviderPaginationToken = lastProviderPaginationToken_;
+    const gestaltNodeIds: Array<GestaltId> = [];
     // Link the identity with each node from its claims on the provider
     // Iterate over each of the claims, even if ctx has aborted
     for (const [claimId, claim] of Object.entries(identityClaims)) {
@@ -668,8 +672,8 @@ class Discovery {
           },
         },
       );
-      // Add this vertex to the queue if it is not present
-      const gestaltNodeId: GestaltId = ['node', linkedVertexNodeId];
+    }
+    for (const gestaltNodeId of gestaltNodeIds) {
       if (
         !(await this.processedTimeGreaterThan(
           gestaltNodeId,
@@ -773,6 +777,8 @@ class Discovery {
       [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded],
       tran,
     )) {
+      // Ignore active tasks
+      if (task.status === 'active') continue;
       if (taskExisting == null) {
         taskExisting = task;
         continue;
@@ -907,17 +913,19 @@ class Discovery {
     };
     let nextPaginationToken: ProviderPaginationToken | undefined =
       providerPaginationToken;
-    while (true) {
+    let processed: boolean;
+    do {
       // Refresh before each request made with identitySignedClaimGenerator
       ctx.timer.refresh();
+      processed = false;
       if (provider.preferGetClaimsPage) {
         const iterator = provider.getClaimIdsPage(
           authIdentityId,
           identityId,
           nextPaginationToken,
         );
-        nextPaginationToken = undefined;
         for await (const wrapper of iterator) {
+          processed = true;
           // This will:
           // 1. throw if the getClaimIdsPage takes too much time
           // 2. the rest of this loop iteration takes too much time
@@ -928,7 +936,9 @@ class Discovery {
             };
           }
           const claimId = wrapper.claimId;
-          nextPaginationToken = wrapper.nextPaginationToken;
+          if (wrapper.nextPaginationToken != null) {
+            nextPaginationToken = wrapper.nextPaginationToken;
+          }
           // Refresh timer in preparation for request
           ctx.timer.refresh();
           const identitySignedClaim = await provider.getClaim(
@@ -947,8 +957,8 @@ class Discovery {
           identityId,
           nextPaginationToken,
         );
-        nextPaginationToken = undefined;
         for await (const wrapper of iterator) {
+          processed = true;
           // This will:
           // 1. throw if the getClaimIdsPage takes too much time
           // 2. the rest of this loop iteration takes too much time
@@ -958,15 +968,14 @@ class Discovery {
               lastProviderPaginationToken: nextPaginationToken,
             };
           }
-          nextPaginationToken = wrapper.nextPaginationToken;
+          if (wrapper.nextPaginationToken != null) {
+            nextPaginationToken = wrapper.nextPaginationToken;
+          }
           // Claims on an identity provider will always be node -> identity
           identitySignedClaimDb(wrapper.claim);
         }
       }
-      if (nextPaginationToken == null) {
-        break;
-      }
-    }
+    } while (processed);
     return {
       identityClaims,
     };

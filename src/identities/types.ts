@@ -1,4 +1,4 @@
-import type { POJO } from '../types';
+import type { POJO, Opaque } from '../types';
 import type {
   ProviderId,
   IdentityId,
@@ -6,7 +6,6 @@ import type {
 } from '../ids/types';
 import type { SignedClaim } from '../claims/types';
 import type { ClaimLinkIdentity } from '../claims/payloads';
-import type { Opaque } from 'encryptedfs';
 
 /**
  * Identity data contains key details about the
