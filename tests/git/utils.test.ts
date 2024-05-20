@@ -183,7 +183,7 @@ describe('Git utils', () => {
       wants: commitIds,
       haves: [],
     });
-    const expectedObjectIds = await gitTestUtils.listGitObjects(gitDirs);
+    const expectedObjectIds = await gitUtils.listObjectsAll(gitDirs);
     // Found objects should include all the commits
     expect(objectList).toIncludeAllMembers(commitIds);
     // Since it was an exhaustive walk of all commits, all objectIds should be included

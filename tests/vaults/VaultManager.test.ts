@@ -80,7 +80,6 @@ describe('VaultManager', () => {
       logger: logger.getChild(DB.name),
     });
   });
-
   afterEach(async () => {
     await db.stop();
     await db.destroy();
@@ -90,18 +89,42 @@ describe('VaultManager', () => {
     });
   });
 
-  test('VaultManager readiness', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
+  describe('with a vault', () => {
+    let acl: ACL;
+    let gestaltGraph: GestaltGraph;
+    let vaultManager: VaultManager;
+
+    beforeEach(async () => {
+      acl = await ACL.createACL({
+        db,
+        logger,
+      });
+      gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger,
+      });
+      vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing: dummyKeyRing,
+        gestaltGraph,
+        nodeManager: dummyNodeManager,
+        acl,
+        notificationsManager: dummyNotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
+      });
     });
-    try {
+    afterEach(async () => {
+      await vaultManager.stop();
+      await vaultManager.destroy();
+      await gestaltGraph.stop();
+      await gestaltGraph.destroy();
+      await acl.stop();
+      await acl.destroy();
+    });
+
+    test('VaultManager readiness', async () => {
       await expect(vaultManager.destroy()).rejects.toThrow(
         vaultsErrors.ErrorVaultManagerRunning,
       );
@@ -115,43 +138,13 @@ describe('VaultManager', () => {
       await expect(async () => {
         await vaultManager.listVaults();
       }).rejects.toThrow(vaultsErrors.ErrorVaultManagerNotRunning);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('is type correct', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('is type correct', async () => {
       expect(vaultManager).toBeInstanceOf(VaultManager);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test(
-    'can create many vaults and open a vault',
-    async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager: dummyNodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
+    });
+    test(
+      'can create many vaults and open a vault',
+      async () => {
         const vaultNames = [
           'Vault1',
           'Vault2',
@@ -175,25 +168,10 @@ describe('VaultManager', () => {
         expect((await vaultManager.listVaults()).size).toEqual(
           vaultNames.length,
         );
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    },
-    globalThis.defaultTimeout * 4,
-  );
-  test('can rename a vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
+      },
+      globalThis.defaultTimeout * 4,
+    );
+    test('can rename a vault', async () => {
       const vaultId = await vaultManager.createVault(vaultName);
       // We can rename the vault here
       await vaultManager.renameVault(vaultId, secondVaultName);
@@ -210,23 +188,8 @@ describe('VaultManager', () => {
       await expect(
         vaultManager.renameVault(vaultId, thirdVaultName),
       ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultDefined);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('can delete a vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('can delete a vault', async () => {
       expect((await vaultManager.listVaults()).size).toBe(0);
       const secondVaultId = await vaultManager.createVault(secondVaultName);
       // @ts-ignore: protected method
@@ -238,23 +201,8 @@ describe('VaultManager', () => {
       expect(vault[destroyed]).toBe(true);
       // Metadata should be gone
       expect(await vaultManager.getVaultMeta(secondVaultId)).toBeUndefined();
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('can list vaults', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('can list vaults', async () => {
       const firstVaultId = await vaultManager.createVault(vaultName);
       const secondVaultId = await vaultManager.createVault(secondVaultName);
       const vaultNames: Array<string> = [];
@@ -268,25 +216,10 @@ describe('VaultManager', () => {
       expect(vaultIds.sort()).toEqual(
         [firstVaultId.toString(), secondVaultId.toString()].sort(),
       );
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test(
-    'able to read and load existing metadata',
-    async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager: dummyNodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
+    });
+    test(
+      'able to read and load existing metadata',
+      async () => {
         const vaultNames = [
           'Vault1',
           'Vault2',
@@ -313,25 +246,10 @@ describe('VaultManager', () => {
           restartedVaultNames.push(vaultName);
         });
         expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    },
-    globalThis.defaultTimeout * 2,
-  );
-  test('concurrently creating vault with same name only creates 1 vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
+      },
+      globalThis.defaultTimeout * 2,
+    );
+    test('concurrently creating vault with same name only creates 1 vault', async () => {
       await expect(
         Promise.all([
           vaultManager.createVault(vaultName),
@@ -341,23 +259,8 @@ describe('VaultManager', () => {
       // @ts-ignore: kidnapping the map
       const vaultMap = vaultManager.vaultMap;
       expect(vaultMap.size).toBe(1);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('can concurrently rename the same vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('can concurrently rename the same vault', async () => {
       const vaultId = await vaultManager.createVault(vaultName);
       await Promise.all([
         vaultManager.renameVault(vaultId, secondVaultName),
@@ -366,23 +269,8 @@ describe('VaultManager', () => {
       const vaultNameTest = (await vaultManager.getVaultMeta(vaultId))
         ?.vaultName;
       expect(vaultNameTest).toBe(thirdVaultName);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('can concurrently open and rename the same vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('can concurrently open and rename the same vault', async () => {
       const vaultId = await vaultManager.createVault(vaultName);
       await Promise.all([
         vaultManager.renameVault(vaultId, secondVaultName),
@@ -391,23 +279,8 @@ describe('VaultManager', () => {
       const vaultNameTest = (await vaultManager.getVaultMeta(vaultId))
         ?.vaultName;
       expect(vaultNameTest).toBe(secondVaultName);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('can save the commit state of a vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('can save the commit state of a vault', async () => {
       const vaultId = await vaultManager.createVault(vaultName);
       await vaultManager.withVaults([vaultId], async (vault) => {
         await vault.writeF(async (efs) => {
@@ -427,23 +300,8 @@ describe('VaultManager', () => {
         },
       );
       expect(read).toBe('test');
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('do actions on a vault using `withVault`', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
     });
-    try {
+    test('do actions on a vault using `withVault`', async () => {
       const vault1 = await vaultManager.createVault('testVault1' as VaultName);
       const vault2 = await vaultManager.createVault('testVault2' as VaultName);
       const vaults = [vault1, vault2];
@@ -470,12 +328,252 @@ describe('VaultManager', () => {
         expect(a.toString()).toEqual('test1');
         expect(b.toString()).toEqual('test2');
       });
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
+    });
+    test('handleScanVaults should list all vaults with permissions', async () => {
+      // Setting up state
+      const nodeId1 = nodeTestUtils.generateRandomNodeId();
+      const nodeId2 = nodeTestUtils.generateRandomNodeId();
+      await gestaltGraph.setNode({
+        nodeId: nodeId1,
+      });
+      await gestaltGraph.setNode({
+        nodeId: nodeId2,
+      });
+      await gestaltGraph.setGestaltAction(['node', nodeId1], 'scan');
+
+      const vault1 = await vaultManager.createVault('testVault1' as VaultName);
+      const vault2 = await vaultManager.createVault('testVault2' as VaultName);
+      const vault3 = await vaultManager.createVault('testVault3' as VaultName);
+
+      // Setting permissions
+      await acl.setVaultAction(vault1, nodeId1, 'clone');
+      await acl.setVaultAction(vault1, nodeId1, 'pull');
+      await acl.setVaultAction(vault2, nodeId1, 'clone');
+      // No permissions for vault3
+
+      // scanning vaults
+      const gen = vaultManager.handleScanVaults(nodeId1);
+      const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
+      for await (const vault of gen) {
+        vaults[vault.vaultId] = [vault.vaultName, vault.vaultPermissions];
+      }
+      expect(vaults[vault1]).toEqual(['testVault1', ['clone', 'pull']]);
+      expect(vaults[vault2]).toEqual(['testVault2', ['clone']]);
+      expect(vaults[vault3]).toBeUndefined();
+
+      // Should throw due to no permission
+      await expect(async () => {
+        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
+          // Should throw
+        }
+      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+      // Should throw due to lack of scan permission
+      await gestaltGraph.setGestaltAction(['node', nodeId2], 'notify');
+      await expect(async () => {
+        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
+          // Should throw
+        }
+      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
+    });
+    test('stopping respects locks', async () => {
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      // @ts-ignore: kidnap vaultManager lockBox
+      const vaultLocks = vaultManager.vaultLocks;
+
+      // Create the vault
+      const vaultId = await vaultManager.createVault('vaultName');
+      const vaultIdString = vaultId.toString() as VaultIdString;
+      // Getting and holding the lock
+      const vault = vaultMap.get(vaultIdString)!;
+      const [releaseWrite] = await vaultLocks.lock([
+        vaultId.toString(),
+        RWLockWriter,
+        'write',
+      ])();
+      // Try to destroy
+      const closeP = vaultManager.closeVault(vaultId);
+      await sleep(1000);
+      // Shouldn't be closed
+      expect(vault[running]).toBe(true);
+      expect(vaultMap.get(vaultIdString)).toBeDefined();
+      // Release the lock
+      await releaseWrite();
+      await closeP;
+      expect(vault[running]).toBe(false);
+      expect(vaultMap.get(vaultIdString)).toBeUndefined();
+    });
+    test('destroying respects locks', async () => {
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      // @ts-ignore: kidnap vaultManager lockBox
+      const vaultLocks = vaultManager.vaultLocks;
+      // Create the vault
+      const vaultId = await vaultManager.createVault('vaultName');
+      const vaultIdString = vaultId.toString() as VaultIdString;
+      // Getting and holding the lock
+      const vault = vaultMap.get(vaultIdString)!;
+      const [releaseWrite] = await vaultLocks.lock([
+        vaultId.toString(),
+        RWLockWriter,
+        'write',
+      ])();
+      // Try to destroy
+      const destroyP = vaultManager.destroyVault(vaultId);
+      await sleep(1000);
+      // Shouldn't be destroyed
+      expect(vault[destroyed]).toBe(false);
+      expect(vaultMap.get(vaultIdString)).toBeDefined();
+      // Release the lock
+      await releaseWrite();
+      await destroyP;
+      expect(vault[destroyed]).toBe(true);
+      expect(vaultMap.get(vaultIdString)).toBeUndefined();
+    });
+    test('withVault respects locks', async () => {
+      // @ts-ignore: kidnap vaultManager lockBox
+      const vaultLocks = vaultManager.vaultLocks;
+      // Create the vault
+      const vaultId = await vaultManager.createVault('vaultName');
+      // Getting and holding the lock
+      const [releaseWrite] = await vaultLocks.lock([
+        vaultId.toString(),
+        RWLockWriter,
+        'write',
+      ])();
+      // Try to use vault
+      let finished = false;
+      const withP = vaultManager.withVaults([vaultId], async () => {
+        finished = true;
+      });
+      await sleep(1000);
+      // Shouldn't be destroyed
+      expect(finished).toBe(false);
+      // Release the lock
+      await releaseWrite();
+      await withP;
+      expect(finished).toBe(true);
+    });
+    test('creation adds a vault', async () => {
+      await vaultManager.createVault(vaultName);
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      expect(vaultMap.size).toBe(1);
+    });
+    test('vaults persist', async () => {
+      const vaultId = await vaultManager.createVault(vaultName);
+      await vaultManager.closeVault(vaultId);
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      expect(vaultMap.size).toBe(0);
+
+      // @ts-ignore: protected method
+      const vault1 = await vaultManager.getVault(vaultId);
+      expect(vaultMap.size).toBe(1);
+
+      // @ts-ignore: protected method
+      const vault2 = await vaultManager.getVault(vaultId);
+      expect(vaultMap.size).toBe(1);
+      expect(vault1).toEqual(vault2);
+    });
+    test('vaults can be removed from map', async () => {
+      const vaultId = await vaultManager.createVault(vaultName);
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      expect(vaultMap.size).toBe(1);
+      // @ts-ignore: protected method
+      const vault1 = await vaultManager.getVault(vaultId);
+      await vaultManager.closeVault(vaultId);
+      expect(vaultMap.size).toBe(0);
+      // @ts-ignore: protected method
+      const vault2 = await vaultManager.getVault(vaultId);
+      expect(vault1).not.toEqual(vault2);
+    });
+    test('stopping vaultManager empties map and stops all vaults', async () => {
+      const vaultId1 = await vaultManager.createVault('vault1');
+      const vaultId2 = await vaultManager.createVault('vault2');
+      // @ts-ignore: kidnapping the map
+      const vaultMap = vaultManager.vaultMap;
+      expect(vaultMap.size).toBe(2);
+      // @ts-ignore: protected method
+      const vault1 = await vaultManager.getVault(vaultId1);
+      // @ts-ignore: protected method
+      const vault2 = await vaultManager.getVault(vaultId2);
+      await vaultManager.stop();
+      expect(vaultMap.size).toBe(0);
+      expect(vault1[running]).toBe(false);
+      expect(vault2[running]).toBe(false);
+    });
+    test('destroying vaultManager destroys all data', async () => {
+      let vaultManager2: VaultManager | undefined;
+      try {
+        const vaultId = await vaultManager.createVault('vault1');
+        await vaultManager.stop();
+        await vaultManager.destroy();
+        // Vaults DB should be empty
+        expect(await db.count([VaultManager.constructor.name])).toBe(0);
+        vaultManager2 = await VaultManager.createVaultManager({
+          vaultsPath,
+          keyRing: dummyKeyRing,
+          gestaltGraph: dummyGestaltGraph,
+          nodeManager: dummyNodeManager,
+          acl: dummyACL,
+          notificationsManager: dummyNotificationsManager,
+          db,
+          logger: logger.getChild(VaultManager.name),
+        });
+
+        // @ts-ignore: protected method
+        await expect(vaultManager2.getVault(vaultId)).rejects.toThrow(
+          vaultsErrors.ErrorVaultsVaultUndefined,
+        );
+      } finally {
+        await vaultManager2?.stop();
+        await vaultManager2?.destroy();
+      }
+    });
+    test("withVaults should throw if vaultId doesn't exist", async () => {
+      const vaultId = vaultIdGenerator();
+      await expect(
+        vaultManager.withVaults([vaultId], async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultUndefined);
+    });
+    test('generateVaultId handles vault conflicts', async () => {
+      const generateVaultIdMock = jest.spyOn(
+        vaultManager as any,
+        'vaultIdGenerator',
+      );
+      // Generate 100 ids
+      const vaultIds: VaultId[] = [];
+      for (let i = 0; i < 100; i++) {
+        vaultIds.push(
+          // @ts-ignore: protected method
+          vaultsUtils.encodeVaultId(await vaultManager.generateVaultId()),
+        );
+      }
+      const duplicates = vaultIds.filter(
+        (item, index) => vaultIds.indexOf(item) !== index,
+      );
+      expect(duplicates.length).toBe(0);
+
+      const vaultId = await vaultManager.createVault('testVault');
+      // Now only returns duplicates
+      // @ts-ignore - mocking protected method
+      generateVaultIdMock.mockReturnValue(vaultId);
+      const asd = async () => {
+        for (let i = 0; i < 100; i++) {
+          // @ts-ignore: protected method
+          await vaultManager.generateVaultId();
+        }
+      };
+      await expect(async () => {
+        return await asd();
+      }).rejects.toThrow(vaultsErrors.ErrorVaultsCreateVaultId);
+    });
   });
-  describe('with remote agents', () => {
+  describe('with a vault and remote agents', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
@@ -484,6 +582,8 @@ describe('VaultManager', () => {
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let taskManager: TaskManager;
+
+    let vaultManager: VaultManager;
 
     beforeAll(async () => {
       // Creating agents
@@ -625,6 +725,17 @@ describe('VaultManager', () => {
           scopes: ['global'],
         },
       );
+
+      vaultManager = await VaultManager.createVaultManager({
+        vaultsPath,
+        keyRing: dummyKeyRing,
+        gestaltGraph: dummyGestaltGraph,
+        nodeManager,
+        acl: dummyACL,
+        notificationsManager: dummyNotificationsManager,
+        db,
+        logger: logger.getChild(VaultManager.name),
+      });
     });
     afterEach(async () => {
       await taskManager.stopProcessing();
@@ -640,593 +751,193 @@ describe('VaultManager', () => {
     });
 
     test('clone vaults from a remote keynode using a vault name', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        // Creating some state at the remote
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-1', 'secret1');
-              await efs.writeFile('secret-2', 'secret2');
-            });
-          },
-        );
+      // Creating some state at the remote
+      await remoteKeynode1.vaultManager.withVaults(
+        [remoteVaultId],
+        async (vault) => {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile('secret-1', 'secret1');
+            await efs.writeFile('secret-2', 'secret2');
+          });
+        },
+      );
 
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: localNodeId,
-        });
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', localNodeId],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
-        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-        const vaultId = await vaultManager.getVaultId(vaultName);
-        if (vaultId === undefined) fail('VaultId is not found.');
-        const [file, secretsList] = await vaultManager.withVaults(
-          [vaultId],
-          async (vaultClone) => {
-            return await vaultClone.readF(async (efs) => {
-              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-              const secretsList = await efs.readdir('.');
-              return [file, secretsList];
-            });
-          },
-        );
-        expect(file).toBe('secret1');
-        expect(secretsList).toContain('secret-1');
-        expect(secretsList).toContain('secret-2');
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
+      });
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
+      await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+      const vaultId = await vaultManager.getVaultId(vaultName);
+      if (vaultId === undefined) fail('VaultId is not found.');
+      const [file, secretsList] = await vaultManager.withVaults(
+        [vaultId],
+        async (vaultClone) => {
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            return [file, secretsList];
+          });
+        },
+      );
+      expect(file).toBe('secret1');
+      expect(secretsList).toContain('secret-1');
+      expect(secretsList).toContain('secret-2');
     });
     test('clone vaults from a remote keynode using a vault name with no history', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
       });
-      try {
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: localNodeId,
-        });
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', localNodeId],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
 
-        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-        const vaultId = await vaultManager.getVaultId(vaultName);
-        if (vaultId === undefined) fail('VaultId is not found.');
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+      const vaultId = await vaultManager.getVaultId(vaultName);
+      if (vaultId === undefined) fail('VaultId is not found.');
     });
     test('fails to clone non existing vault', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
       });
-      try {
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: localNodeId,
-        });
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', localNodeId],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
 
-        await testUtils.expectRemoteError(
-          vaultManager.cloneVault(
-            remoteKeynode1Id,
-            'not-existing' as VaultName,
-          ),
-          vaultsErrors.ErrorVaultsVaultUndefined,
-        );
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      await testUtils.expectRemoteError(
+        vaultManager.cloneVault(remoteKeynode1Id, 'not-existing' as VaultName),
+        vaultsErrors.ErrorVaultsVaultUndefined,
+      );
     });
     test('clone and pull vaults using a vault id', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
+      // Creating some state at the remote
+      await remoteKeynode1.vaultManager.withVaults(
+        [remoteVaultId],
+        async (vault) => {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile('secret-1', 'secret1');
+            await efs.writeFile('secret-2', 'secret2');
+          });
+        },
+      );
+
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
       });
-      try {
-        // Creating some state at the remote
-        await remoteKeynode1.vaultManager.withVaults(
-          [remoteVaultId],
-          async (vault) => {
-            await vault.writeF(async (efs) => {
-              await efs.writeFile('secret-1', 'secret1');
-              await efs.writeFile('secret-2', 'secret2');
-            });
-          },
-        );
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
 
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: localNodeId,
-        });
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', localNodeId],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'pull',
-        );
-
-        await vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId);
-        const vaultId = await vaultManager.getVaultId(vaultName);
-        if (vaultId === undefined) fail('VaultId is not found.');
-        const [file, secretsList] = await vaultManager.withVaults(
-          [vaultId],
-          async (vaultClone) => {
-            return await vaultClone.readF(async (efs) => {
-              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-              const secretsList = await efs.readdir('.');
-              return [file, secretsList];
-            });
-          },
-        );
-        expect(file).toBe('secret1');
-        expect(secretsList).toContain('secret-1');
-        expect(secretsList).toContain('secret-2');
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      await vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId);
+      const vaultId = await vaultManager.getVaultId(vaultName);
+      if (vaultId === undefined) fail('VaultId is not found.');
+      const [file, secretsList] = await vaultManager.withVaults(
+        [vaultId],
+        async (vaultClone) => {
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            return [file, secretsList];
+          });
+        },
+      );
+      expect(file).toBe('secret1');
+      expect(secretsList).toContain('secret-1');
+      expect(secretsList).toContain('secret-2');
     });
     test('should reject cloning when permissions are not set', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        // Should reject with no permissions set
-        await testUtils.expectRemoteError(
-          vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
-          vaultsErrors.ErrorVaultsPermissionDenied,
-        );
-        // No new vault created
-        expect((await vaultManager.listVaults()).size).toBe(0);
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      // Should reject with no permissions set
+      await testUtils.expectRemoteError(
+        vaultManager.cloneVault(remoteKeynode1Id, remoteVaultId),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
+      // No new vault created
+      expect((await vaultManager.listVaults()).size).toBe(0);
     });
     test('should reject Pulling when permissions are not set', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
       });
-      try {
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: localNodeId,
-        });
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', localNodeId],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(
-          remoteVaultId,
-          localNodeId,
-          'clone',
-        );
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
 
-        const clonedVaultId = await vaultManager.cloneVault(
-          remoteKeynode1Id,
-          remoteVaultId,
-        );
+      const clonedVaultId = await vaultManager.cloneVault(
+        remoteKeynode1Id,
+        remoteVaultId,
+      );
 
-        await testUtils.expectRemoteError(
-          vaultManager.pullVault({ vaultId: clonedVaultId }),
-          vaultsErrors.ErrorVaultsPermissionDenied,
-        );
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      await testUtils.expectRemoteError(
+        vaultManager.pullVault({ vaultId: clonedVaultId }),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
     });
-    // Test has been disabled due to non-deterministic failures in CI/CD
-    // test(
-    //   'can pull a cloned vault',
-    //   async () => {
-    //     const vaultManager = await VaultManager.createVaultManager({
-    //       vaultsPath,
-    //       keyRing: dummyKeyRing,
-    //       gestaltGraph: dummyGestaltGraph,
-    //       nodeManager,
-    //       acl: dummyACL,
-    //       notificationsManager: dummyNotificationsManager,
-    //       db,
-    //       logger: logger.getChild(VaultManager.name),
-    //     });
-    //     try {
-    //       // Creating some state at the remote
-    //       await remoteKeynode1.vaultManager.withVaults(
-    //         [remoteVaultId],
-    //         async (vault) => {
-    //           await vault.writeF(async (efs) => {
-    //             await efs.writeFile('secret-1', 'secret1');
-    //           });
-    //         },
-    //       );
-    //
-    //       // Setting permissions
-    //       await remoteKeynode1.gestaltGraph.setNode({
-    //         nodeId: localNodeId,
-    //       });
-    //       await remoteKeynode1.gestaltGraph.setGestaltAction(
-    //         ['node', localNodeId],
-    //         'scan',
-    //       );
-    //       await remoteKeynode1.acl.setVaultAction(
-    //         remoteVaultId,
-    //         localNodeId,
-    //         'clone',
-    //       );
-    //       await remoteKeynode1.acl.setVaultAction(
-    //         remoteVaultId,
-    //         localNodeId,
-    //         'pull',
-    //       );
-    //
-    //       await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-    //       const vaultId = await vaultManager.getVaultId(vaultName);
-    //       if (vaultId === undefined) fail('VaultId is not found.');
-    //       await vaultManager.withVaults([vaultId], async (vaultClone) => {
-    //         return await vaultClone.readF(async (efs) => {
-    //           const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-    //           const secretsList = await efs.readdir('.');
-    //           expect(file).toBe('secret1');
-    //           expect(secretsList).toContain('secret-1');
-    //           expect(secretsList).not.toContain('secret-2');
-    //         });
-    //       });
-    //
-    //       // Creating new history
-    //       await remoteKeynode1.vaultManager.withVaults(
-    //         [remoteVaultId],
-    //         async (vault) => {
-    //           await vault.writeF(async (efs) => {
-    //             await efs.writeFile('secret-2', 'secret2');
-    //           });
-    //         },
-    //       );
-    //
-    //       // Pulling vault
-    //       await vaultManager.pullVault({
-    //         vaultId: vaultId,
-    //       });
-    //
-    //       // Should have new data
-    //       await vaultManager.withVaults([vaultId], async (vaultClone) => {
-    //         return await vaultClone.readF(async (efs) => {
-    //           const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-    //           const secretsList = await efs.readdir('.');
-    //           expect(file).toBe('secret1');
-    //           expect(secretsList).toContain('secret-1');
-    //           expect(secretsList).toContain('secret-2');
-    //         });
-    //       });
-    //     } finally {
-    //       await vaultManager?.stop();
-    //       await vaultManager?.destroy();
-    //     }
-    //   },
-    //   globalThis.defaultTimeout * 2,
-    // );
+    // FIXME: Test has been disabled due to non-deterministic failures in CI/CD
     test(
-      'manage pulling from different remotes',
+      'can pull a cloned vault',
       async () => {
-        const vaultManager = await VaultManager.createVaultManager({
-          vaultsPath,
-          keyRing: dummyKeyRing,
-          gestaltGraph: dummyGestaltGraph,
-          nodeManager,
-          acl: dummyACL,
-          notificationsManager: dummyNotificationsManager,
-          db,
-          logger: logger.getChild(VaultManager.name),
-        });
-        try {
-          // Initial history
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (remoteVault) => {
-              await remoteVault.writeF(async (efs) => {
-                await efs.writeFile(secretNames[0], 'success?');
-                await efs.writeFile(secretNames[1], 'success?');
-              });
-            },
-          );
-
-          // Setting permissions
-          await remoteKeynode1.gestaltGraph.setNode({
-            nodeId: localNodeId,
-          });
-          await remoteKeynode1.gestaltGraph.setGestaltAction(
-            ['node', localNodeId],
-            'scan',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            localNodeId,
-            'clone',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            localNodeId,
-            'pull',
-          );
-
-          await remoteKeynode1.gestaltGraph.setNode({
-            nodeId: remoteKeynode2Id,
-          });
-          await remoteKeynode1.gestaltGraph.setGestaltAction(
-            ['node', remoteKeynode2Id],
-            'scan',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            remoteKeynode2Id,
-            'clone',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            remoteKeynode2Id,
-            'pull',
-          );
-
-          const clonedVaultRemote2Id =
-            await remoteKeynode2.vaultManager.cloneVault(
-              remoteKeynode1Id,
-              remoteVaultId,
-            );
-
-          await remoteKeynode2.gestaltGraph.setNode({
-            nodeId: localNodeId,
-          });
-          await remoteKeynode2.gestaltGraph.setGestaltAction(
-            ['node', localNodeId],
-            'scan',
-          );
-          await remoteKeynode2.acl.setVaultAction(
-            clonedVaultRemote2Id,
-            localNodeId,
-            'clone',
-          );
-          await remoteKeynode2.acl.setVaultAction(
-            clonedVaultRemote2Id,
-            localNodeId,
-            'pull',
-          );
-          const vaultCloneId = await vaultManager.cloneVault(
-            remoteKeynode2Id,
-            clonedVaultRemote2Id,
-          );
-
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (remoteVault) => {
-              await remoteVault.writeF(async (efs) => {
-                await efs.writeFile(secretNames[2], 'success?');
-              });
-            },
-          );
-          await vaultManager.pullVault({
-            vaultId: vaultCloneId,
-            pullNodeId: remoteKeynode1Id,
-            pullVaultNameOrId: vaultName,
-          });
-          await vaultManager.withVaults([vaultCloneId], async (vaultClone) => {
-            await vaultClone.readF(async (efs) => {
-              expect((await efs.readdir('.')).sort()).toStrictEqual(
-                secretNames.slice(0, 3).sort(),
-              );
-            });
-          });
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (remoteVault) => {
-              await remoteVault.writeF(async (efs) => {
-                await efs.writeFile(secretNames[3], 'second success?');
-              });
-            },
-          );
-          await vaultManager.pullVault({ vaultId: vaultCloneId });
-          await vaultManager.withVaults([vaultCloneId], async (vaultClone) => {
-            await vaultClone.readF(async (efs) => {
-              expect((await efs.readdir('.')).sort()).toStrictEqual(
-                secretNames.sort(),
-              );
-            });
-          });
-        } finally {
-          await vaultManager?.stop();
-          await vaultManager?.destroy();
-        }
-      },
-      globalThis.failedConnectionTimeout,
-    );
-    test(
-      'able to recover metadata after complex operations',
-      async () => {
-        const vaultManager = await VaultManager.createVaultManager({
-          vaultsPath,
-          keyRing: dummyKeyRing,
-          gestaltGraph: dummyGestaltGraph,
-          nodeManager,
-          acl: dummyACL,
-          notificationsManager: dummyNotificationsManager,
-          db,
-          logger: logger.getChild(VaultManager.name),
-        });
-        try {
-          const vaultNames = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
-          const alteredVaultNames = [
-            'Vault1',
-            'Vault2',
-            'Vault3',
-            'Vault6',
-            'Vault10',
-          ];
-          for (const vaultName of vaultNames) {
-            await vaultManager.createVault(vaultName as VaultName);
-          }
-          const v5 = await vaultManager.getVaultId('Vault5' as VaultName);
-          expect(v5).not.toBeUndefined();
-          await vaultManager.destroyVault(v5!);
-          const v4 = await vaultManager.getVaultId('Vault4' as VaultName);
-          expect(v4).toBeTruthy();
-          await vaultManager.renameVault(v4!, 'Vault10' as VaultName);
-          const v6 = await vaultManager.createVault('Vault6' as VaultName);
-
-          await vaultManager.withVaults([v6], async (vault6) => {
-            await vault6.writeF(async (efs) => {
-              await efs.writeFile('reloaded', 'reload');
-            });
-          });
-
-          const vn: Array<string> = [];
-          (await vaultManager.listVaults()).forEach((_, vaultName) =>
-            vn.push(vaultName),
-          );
-          expect(vn.sort()).toEqual(alteredVaultNames.sort());
-          await vaultManager.stop();
-          await vaultManager.start();
-          await vaultManager.createVault('Vault7' as VaultName);
-
-          const v10 = await vaultManager.getVaultId('Vault10' as VaultName);
-          expect(v10).not.toBeUndefined();
-          alteredVaultNames.push('Vault7');
-          expect((await vaultManager.listVaults()).size).toEqual(
-            alteredVaultNames.length,
-          );
-          const vnAltered: Array<string> = [];
-          (await vaultManager.listVaults()).forEach((_, vaultName) =>
-            vnAltered.push(vaultName),
-          );
-          expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
-          const file = await vaultManager.withVaults(
-            [v6],
-            async (reloadedVault) => {
-              return await reloadedVault.readF(async (efs) => {
-                return await efs.readFile('reloaded', { encoding: 'utf8' });
-              });
-            },
-          );
-
-          expect(file).toBe('reload');
-        } finally {
-          await vaultManager?.stop();
-          await vaultManager?.destroy();
-        }
-      },
-      globalThis.defaultTimeout * 2,
-    );
-    test('throw when trying to commit to a cloned vault', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
         // Creating some state at the remote
         await remoteKeynode1.vaultManager.withVaults(
           [remoteVaultId],
           async (vault) => {
             await vault.writeF(async (efs) => {
               await efs.writeFile('secret-1', 'secret1');
-              await efs.writeFile('secret-2', 'secret2');
             });
           },
         );
@@ -1254,266 +965,407 @@ describe('VaultManager', () => {
         const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');
         await vaultManager.withVaults([vaultId], async (vaultClone) => {
-          await expect(
-            vaultClone.writeF(async (efs) => {
-              await efs.writeFile('secret-3', 'secret3');
-            }),
-          ).rejects.toThrow(vaultsErrors.ErrorVaultRemoteDefined);
+          // History should only be 2 commits long
+          expect(await vaultClone.log()).toHaveLength(2);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).not.toContain('secret-2');
+          });
         });
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+
+        // Adding history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-2', 'secret2');
+            });
+          },
+        );
+
+        // Pulling vault
+        await vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+
+        // Should have new data
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 3 commits long
+          expect(await vaultClone.log()).toHaveLength(3);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).toContain('secret-2');
+          });
+        });
+
+        // Adding history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-3', 'secret3');
+            });
+          },
+        );
+
+        // Pulling vault
+        await vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+
+        // Should have new data
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 4 commits long
+          expect(await vaultClone.log()).toHaveLength(4);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).toContain('secret-2');
+            expect(secretsList).toContain('secret-3');
+          });
+        });
+      },
+      globalThis.defaultTimeout * 2,
+    );
+    test(
+      'can pull a cloned vault with branched history',
+      async () => {
+        // Creating some state at the remote
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-1', 'secret1');
+            });
+          },
+        );
+
+        // Setting permissions
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: localNodeId,
+        });
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'clone',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'pull',
+        );
+
+        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+        const vaultId = await vaultManager.getVaultId(vaultName);
+        if (vaultId === undefined) fail('VaultId is not found.');
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 2 commits long
+          expect(await vaultClone.log()).toHaveLength(2);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).not.toContain('secret-2');
+          });
+        });
+
+        // Adding history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-2', 'secret2');
+            });
+          },
+        );
+
+        // Pulling vault
+        await vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+
+        // Should have new data
+        await vaultManager.withVaults([vaultId], async (vaultClone) => {
+          // History should only be 3 commits long
+          expect(await vaultClone.log()).toHaveLength(3);
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            expect(file).toBe('secret1');
+            expect(secretsList).toContain('secret-1');
+            expect(secretsList).toContain('secret-2');
+          });
+        });
+
+        // Branching history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            const branchCommit = (await vault.log())[1].commitId;
+            await vault.version(branchCommit);
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-3', 'secret3');
+            });
+          },
+        );
+
+        // Pulling vault should throw
+        await expect(
+          vaultManager.pullVault({
+            vaultId: vaultId,
+          }),
+        ).rejects.toThrow(vaultsErrors.ErrorVaultsMergeConflict);
+      },
+      globalThis.defaultTimeout * 2,
+    );
+    test(
+      'manage pulling from different remotes',
+      async () => {
+        // Initial history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (remoteVault) => {
+            await remoteVault.writeF(async (efs) => {
+              await efs.writeFile(secretNames[0], 'success?');
+              await efs.writeFile(secretNames[1], 'success?');
+            });
+          },
+        );
+
+        // Setting permissions
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: localNodeId,
+        });
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'clone',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          localNodeId,
+          'pull',
+        );
+
+        await remoteKeynode1.gestaltGraph.setNode({
+          nodeId: remoteKeynode2Id,
+        });
+        await remoteKeynode1.gestaltGraph.setGestaltAction(
+          ['node', remoteKeynode2Id],
+          'scan',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          remoteKeynode2Id,
+          'clone',
+        );
+        await remoteKeynode1.acl.setVaultAction(
+          remoteVaultId,
+          remoteKeynode2Id,
+          'pull',
+        );
+
+        const clonedVaultRemote2Id =
+          await remoteKeynode2.vaultManager.cloneVault(
+            remoteKeynode1Id,
+            remoteVaultId,
+          );
+
+        await remoteKeynode2.gestaltGraph.setNode({
+          nodeId: localNodeId,
+        });
+        await remoteKeynode2.gestaltGraph.setGestaltAction(
+          ['node', localNodeId],
+          'scan',
+        );
+        await remoteKeynode2.acl.setVaultAction(
+          clonedVaultRemote2Id,
+          localNodeId,
+          'clone',
+        );
+        await remoteKeynode2.acl.setVaultAction(
+          clonedVaultRemote2Id,
+          localNodeId,
+          'pull',
+        );
+        const vaultCloneId = await vaultManager.cloneVault(
+          remoteKeynode2Id,
+          clonedVaultRemote2Id,
+        );
+
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (remoteVault) => {
+            await remoteVault.writeF(async (efs) => {
+              await efs.writeFile(secretNames[2], 'success?');
+            });
+          },
+        );
+        await vaultManager.pullVault({
+          vaultId: vaultCloneId,
+          pullNodeId: remoteKeynode1Id,
+          pullVaultNameOrId: vaultName,
+        });
+        await vaultManager.withVaults([vaultCloneId], async (vaultClone) => {
+          await vaultClone.readF(async (efs) => {
+            expect((await efs.readdir('.')).sort()).toStrictEqual(
+              secretNames.slice(0, 3).sort(),
+            );
+          });
+        });
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (remoteVault) => {
+            await remoteVault.writeF(async (efs) => {
+              await efs.writeFile(secretNames[3], 'second success?');
+            });
+          },
+        );
+        await vaultManager.pullVault({ vaultId: vaultCloneId });
+        await vaultManager.withVaults([vaultCloneId], async (vaultClone) => {
+          await vaultClone.readF(async (efs) => {
+            expect((await efs.readdir('.')).sort()).toStrictEqual(
+              secretNames.sort(),
+            );
+          });
+        });
+      },
+      globalThis.failedConnectionTimeout,
+    );
+    test(
+      'able to recover metadata after complex operations',
+      async () => {
+        const vaultNames = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
+        const alteredVaultNames = [
+          'Vault1',
+          'Vault2',
+          'Vault3',
+          'Vault6',
+          'Vault10',
+        ];
+        for (const vaultName of vaultNames) {
+          await vaultManager.createVault(vaultName as VaultName);
+        }
+        const v5 = await vaultManager.getVaultId('Vault5' as VaultName);
+        expect(v5).not.toBeUndefined();
+        await vaultManager.destroyVault(v5!);
+        const v4 = await vaultManager.getVaultId('Vault4' as VaultName);
+        expect(v4).toBeTruthy();
+        await vaultManager.renameVault(v4!, 'Vault10' as VaultName);
+        const v6 = await vaultManager.createVault('Vault6' as VaultName);
+
+        await vaultManager.withVaults([v6], async (vault6) => {
+          await vault6.writeF(async (efs) => {
+            await efs.writeFile('reloaded', 'reload');
+          });
+        });
+
+        const vn: Array<string> = [];
+        (await vaultManager.listVaults()).forEach((_, vaultName) =>
+          vn.push(vaultName),
+        );
+        expect(vn.sort()).toEqual(alteredVaultNames.sort());
+        await vaultManager.stop();
+        await vaultManager.start();
+        await vaultManager.createVault('Vault7' as VaultName);
+
+        const v10 = await vaultManager.getVaultId('Vault10' as VaultName);
+        expect(v10).not.toBeUndefined();
+        alteredVaultNames.push('Vault7');
+        expect((await vaultManager.listVaults()).size).toEqual(
+          alteredVaultNames.length,
+        );
+        const vnAltered: Array<string> = [];
+        (await vaultManager.listVaults()).forEach((_, vaultName) =>
+          vnAltered.push(vaultName),
+        );
+        expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
+        const file = await vaultManager.withVaults(
+          [v6],
+          async (reloadedVault) => {
+            return await reloadedVault.readF(async (efs) => {
+              return await efs.readFile('reloaded', { encoding: 'utf8' });
+            });
+          },
+        );
+
+        expect(file).toBe('reload');
+      },
+      globalThis.defaultTimeout * 2,
+    );
+    test('throw when trying to commit to a cloned vault', async () => {
+      // Creating some state at the remote
+      await remoteKeynode1.vaultManager.withVaults(
+        [remoteVaultId],
+        async (vault) => {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile('secret-1', 'secret1');
+            await efs.writeFile('secret-2', 'secret2');
+          });
+        },
+      );
+
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
+      });
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
+
+      await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+      const vaultId = await vaultManager.getVaultId(vaultName);
+      if (vaultId === undefined) fail('VaultId is not found.');
+      await vaultManager.withVaults([vaultId], async (vaultClone) => {
+        await expect(
+          vaultClone.writeF(async (efs) => {
+            await efs.writeFile('secret-3', 'secret3');
+          }),
+        ).rejects.toThrow(vaultsErrors.ErrorVaultRemoteDefined);
+      });
     });
     test("test pulling a vault that isn't remote", async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        // Creating some state at the remote
-        const vaultId = await vaultManager.createVault('testVault1');
-        await expect(vaultManager.pullVault({ vaultId })).rejects.toThrow(
-          vaultsErrors.ErrorVaultRemoteUndefined,
-        );
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
+      // Creating some state at the remote
+      const vaultId = await vaultManager.createVault('testVault1');
+      await expect(vaultManager.pullVault({ vaultId })).rejects.toThrow(
+        vaultsErrors.ErrorVaultRemoteUndefined,
+      );
     });
     test(
       'pullVault respects locking',
       async () => {
         // This should respect the VaultManager read lock
         // and the VaultInternal write lock
-        const vaultManager = await VaultManager.createVaultManager({
-          vaultsPath,
-          keyRing: dummyKeyRing,
-          gestaltGraph: dummyGestaltGraph,
-          nodeManager,
-          acl: dummyACL,
-          notificationsManager: dummyNotificationsManager,
-          db,
-          logger: logger.getChild(VaultManager.name),
-        });
         const pullVaultMock = jest.spyOn(VaultInternal.prototype, 'pullVault');
         const gitPullMock = jest.spyOn(git, 'pull');
-        try {
-          // Creating some state at the remote
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (vault) => {
-              await vault.writeF(async (efs) => {
-                await efs.writeFile('secret-1', 'secret1');
-                await efs.writeFile('secret-2', 'secret2');
-              });
-            },
-          );
-
-          // Setting permissions
-          await remoteKeynode1.gestaltGraph.setNode({
-            nodeId: localNodeId,
-          });
-          await remoteKeynode1.gestaltGraph.setGestaltAction(
-            ['node', localNodeId],
-            'scan',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            localNodeId,
-            'clone',
-          );
-          await remoteKeynode1.acl.setVaultAction(
-            remoteVaultId,
-            localNodeId,
-            'pull',
-          );
-
-          await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
-          const vaultId = await vaultManager.getVaultId(vaultName);
-          if (vaultId === undefined) fail('VaultId is not found.');
-
-          // Creating new history
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (vault) => {
-              await vault.writeF(async (efs) => {
-                await efs.writeFile('secret-2', 'secret2');
-              });
-            },
-          );
-
-          // @ts-ignore: kidnap vaultManager map and grabbing lock
-          const vaultsMap = vaultManager.vaultMap;
-          const vault = vaultsMap.get(vaultId.toString() as VaultIdString);
-          // @ts-ignore: kidnap vaultManager lockBox
-          const vaultLocks = vaultManager.vaultLocks;
-          const [releaseWrite] = await vaultLocks.lock([
-            vaultId.toString(),
-            RWLockWriter,
-            'write',
-          ])();
-
-          // Pulling vault respects VaultManager write lock
-          const pullP = vaultManager.pullVault({
-            vaultId: vaultId,
-          });
-          await sleep(200);
-          expect(pullVaultMock).not.toHaveBeenCalled();
-          await releaseWrite();
-          await pullP;
-          expect(pullVaultMock).toHaveBeenCalled();
-          pullVaultMock.mockClear();
-
-          // Creating new history
-          await remoteKeynode1.vaultManager.withVaults(
-            [remoteVaultId],
-            async (vault) => {
-              await vault.writeF(async (efs) => {
-                await efs.writeFile('secret-3', 'secret3');
-              });
-            },
-          );
-
-          // Respects VaultInternal write lock
-          // @ts-ignore: kidnap vault lock
-          const vaultLock = vault!.lock;
-          const [releaseVaultWrite] = await vaultLock.write()();
-          // Pulling vault respects VaultManager write lock
-          gitPullMock.mockClear();
-          const pullP2 = vaultManager.pullVault({
-            vaultId: vaultId,
-          });
-          await sleep(200);
-          expect(gitPullMock).not.toHaveBeenCalled();
-          await releaseVaultWrite();
-          await pullP2;
-          expect(gitPullMock).toHaveBeenCalled();
-        } finally {
-          pullVaultMock.mockRestore();
-          gitPullMock.mockRestore();
-          await vaultManager?.stop();
-          await vaultManager?.destroy();
-        }
-      },
-      globalThis.failedConnectionTimeout,
-    );
-    // Disabled for now, failing in CI and the core network logic is subject to
-    //  change with the QUIC update
-    test('scanVaults should get all vaults with permissions from remote node', async () => {
-      // 1. we need to set up state
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing,
-        nodeManager,
-        acl: {} as any,
-        gestaltGraph: {} as any,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
-        // Setting up state
-        const targetNodeId = remoteKeynode1.keyRing.getNodeId();
-        const nodeId1 = keyRing.getNodeId();
-
-        // Letting nodeGraph know where the remote agent is
-        await nodeGraph.setNodeContactAddressData(
-          targetNodeId,
-          [remoteKeynode1.agentServiceHost, remoteKeynode1.agentServicePort],
-          {
-            mode: 'direct',
-            connectedTime: Date.now(),
-            scopes: ['global'],
-          },
-        );
-
-        await remoteKeynode1.gestaltGraph.setNode({
-          nodeId: nodeId1,
-        });
-
-        const vault1 = await remoteKeynode1.vaultManager.createVault(
-          'testVault1' as VaultName,
-        );
-        const vault2 = await remoteKeynode1.vaultManager.createVault(
-          'testVault2' as VaultName,
-        );
-        const vault3 = await remoteKeynode1.vaultManager.createVault(
-          'testVault3' as VaultName,
-        );
-
-        // Scanning vaults
-
-        // Should throw due to no permission
-        const testFun = async () => {
-          for await (const _ of vaultManager.scanVaults(targetNodeId)) {
-            // Should throw
-          }
-        };
-        await testUtils.expectRemoteError(
-          testFun(),
-          vaultsErrors.ErrorVaultsPermissionDenied,
-        );
-        // Should throw due to lack of scan permission
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', nodeId1],
-          'notify',
-        );
-        await testUtils.expectRemoteError(
-          testFun(),
-          vaultsErrors.ErrorVaultsPermissionDenied,
-        );
-
-        // Setting permissions
-        await remoteKeynode1.gestaltGraph.setGestaltAction(
-          ['node', nodeId1],
-          'scan',
-        );
-        await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'clone');
-        await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'pull');
-        await remoteKeynode1.acl.setVaultAction(vault2, nodeId1, 'clone');
-        // No permissions for vault3
-
-        const gen = vaultManager.scanVaults(targetNodeId);
-        const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
-        for await (const vault of gen) {
-          vaults[vault.vaultIdEncoded] = [
-            vault.vaultName,
-            vault.vaultPermissions,
-          ];
-        }
-
-        expect(vaults[vaultsUtils.encodeVaultId(vault1)]).toEqual([
-          'testVault1',
-          ['clone', 'pull'],
-        ]);
-        expect(vaults[vaultsUtils.encodeVaultId(vault2)]).toEqual([
-          'testVault2',
-          ['clone'],
-        ]);
-        expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
-      } finally {
-        await vaultManager.stop();
-      }
-    });
-    test('can handle name conflict when cloning', async () => {
-      const vaultManager = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-      try {
         // Creating some state at the remote
         await remoteKeynode1.vaultManager.withVaults(
           [remoteVaultId],
@@ -1544,455 +1396,207 @@ describe('VaultManager', () => {
           'pull',
         );
 
-        // Before cloning we create a local vault
-        await vaultManager.createVault(vaultName);
-        await vaultManager.createVault(`${vaultName}-1`);
-        await vaultManager.createVault(`${vaultName}-2`);
-        await vaultManager.createVault(`${vaultName}-3`);
-        await vaultManager.createVault(`${vaultName}-4`);
-        await vaultManager.createVault(`${vaultName}-5`);
-
-        const vaultId = await vaultManager.cloneVault(
-          remoteKeynode1Id,
-          vaultName,
-        );
+        await vaultManager.cloneVault(remoteKeynode1Id, vaultName);
+        const vaultId = await vaultManager.getVaultId(vaultName);
         if (vaultId === undefined) fail('VaultId is not found.');
-        const [file, secretsList] = await vaultManager.withVaults(
-          [vaultId],
-          async (vaultClone) => {
-            return await vaultClone.readF(async (efs) => {
-              const file = await efs.readFile('secret-1', { encoding: 'utf8' });
-              const secretsList = await efs.readdir('.');
-              return [file, secretsList];
+
+        // Creating new history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-2', 'secret2');
             });
           },
         );
-        expect(file).toBe('secret1');
-        expect(secretsList).toContain('secret-1');
-        expect(secretsList).toContain('secret-2');
-      } finally {
-        await vaultManager?.stop();
-        await vaultManager?.destroy();
-      }
-    });
-  });
-  test('handleScanVaults should list all vaults with permissions', async () => {
-    // 1. we need to set up state
-    const acl = await ACL.createACL({
-      db,
-      logger,
-    });
-    const gestaltGraph = await GestaltGraph.createGestaltGraph({
-      db,
-      acl,
-      logger,
-    });
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      nodeManager: dummyNodeManager,
-      acl,
-      gestaltGraph,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
+
+        // @ts-ignore: kidnap vaultManager map and grabbing lock
+        const vaultsMap = vaultManager.vaultMap;
+        const vault = vaultsMap.get(vaultId.toString() as VaultIdString);
+        // @ts-ignore: kidnap vaultManager lockBox
+        const vaultLocks = vaultManager.vaultLocks;
+        const [releaseWrite] = await vaultLocks.lock([
+          vaultId.toString(),
+          RWLockWriter,
+          'write',
+        ])();
+
+        // Pulling vault respects VaultManager write lock
+        const pullP = vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+        await sleep(200);
+        expect(pullVaultMock).not.toHaveBeenCalled();
+        await releaseWrite();
+        await pullP;
+        expect(pullVaultMock).toHaveBeenCalled();
+        pullVaultMock.mockClear();
+
+        // Creating new history
+        await remoteKeynode1.vaultManager.withVaults(
+          [remoteVaultId],
+          async (vault) => {
+            await vault.writeF(async (efs) => {
+              await efs.writeFile('secret-3', 'secret3');
+            });
+          },
+        );
+
+        // Respects VaultInternal write lock
+        // @ts-ignore: kidnap vault lock
+        const vaultLock = vault!.lock;
+        const [releaseVaultWrite] = await vaultLock.write()();
+        // Pulling vault respects VaultManager write lock
+        gitPullMock.mockClear();
+        const pullP2 = vaultManager.pullVault({
+          vaultId: vaultId,
+        });
+        await sleep(200);
+        expect(gitPullMock).not.toHaveBeenCalled();
+        await releaseVaultWrite();
+        await pullP2;
+        expect(gitPullMock).toHaveBeenCalled();
+      },
+      globalThis.failedConnectionTimeout,
+    );
+    test('scanVaults should get all vaults with permissions from remote node', async () => {
       // Setting up state
-      const nodeId1 = nodeTestUtils.generateRandomNodeId();
-      const nodeId2 = nodeTestUtils.generateRandomNodeId();
-      await gestaltGraph.setNode({
+      const targetNodeId = remoteKeynode1.keyRing.getNodeId();
+      const nodeId1 = keyRing.getNodeId();
+
+      // Letting nodeGraph know where the remote agent is
+      await nodeGraph.setNodeContactAddressData(
+        targetNodeId,
+        [remoteKeynode1.agentServiceHost, remoteKeynode1.agentServicePort],
+        {
+          mode: 'direct',
+          connectedTime: Date.now(),
+          scopes: ['global'],
+        },
+      );
+
+      await remoteKeynode1.gestaltGraph.setNode({
         nodeId: nodeId1,
       });
-      await gestaltGraph.setNode({
-        nodeId: nodeId2,
-      });
-      await gestaltGraph.setGestaltAction(['node', nodeId1], 'scan');
 
-      const vault1 = await vaultManager.createVault('testVault1' as VaultName);
-      const vault2 = await vaultManager.createVault('testVault2' as VaultName);
-      const vault3 = await vaultManager.createVault('testVault3' as VaultName);
+      const vault1 = await remoteKeynode1.vaultManager.createVault(
+        'testVault1' as VaultName,
+      );
+      const vault2 = await remoteKeynode1.vaultManager.createVault(
+        'testVault2' as VaultName,
+      );
+      const vault3 = await remoteKeynode1.vaultManager.createVault(
+        'testVault3' as VaultName,
+      );
 
-      // Setting permissions
-      await acl.setVaultAction(vault1, nodeId1, 'clone');
-      await acl.setVaultAction(vault1, nodeId1, 'pull');
-      await acl.setVaultAction(vault2, nodeId1, 'clone');
-      // No permissions for vault3
-
-      // scanning vaults
-      const gen = vaultManager.handleScanVaults(nodeId1);
-      const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
-      for await (const vault of gen) {
-        vaults[vault.vaultId] = [vault.vaultName, vault.vaultPermissions];
-      }
-      expect(vaults[vault1]).toEqual(['testVault1', ['clone', 'pull']]);
-      expect(vaults[vault2]).toEqual(['testVault2', ['clone']]);
-      expect(vaults[vault3]).toBeUndefined();
+      // Scanning vaults
 
       // Should throw due to no permission
-      await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
+      const testFun = async () => {
+        for await (const _ of vaultManager.scanVaults(targetNodeId)) {
           // Should throw
-        }
-      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
-      // Should throw due to lack of scan permission
-      await gestaltGraph.setGestaltAction(['node', nodeId2], 'notify');
-      await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
-          // Should throw
-        }
-      }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
-    } finally {
-      await vaultManager.stop();
-      await vaultManager.destroy();
-      await gestaltGraph.stop();
-      await gestaltGraph.destroy();
-      await acl.stop();
-      await acl.destroy();
-    }
-  });
-  test('stopping respects locks', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      // @ts-ignore: kidnap vaultManager lockBox
-      const vaultLocks = vaultManager.vaultLocks;
-
-      // Create the vault
-      const vaultId = await vaultManager.createVault('vaultName');
-      const vaultIdString = vaultId.toString() as VaultIdString;
-      // Getting and holding the lock
-      const vault = vaultMap.get(vaultIdString)!;
-      const [releaseWrite] = await vaultLocks.lock([
-        vaultId.toString(),
-        RWLockWriter,
-        'write',
-      ])();
-      // Try to destroy
-      const closeP = vaultManager.closeVault(vaultId);
-      await sleep(1000);
-      // Shouldn't be closed
-      expect(vault[running]).toBe(true);
-      expect(vaultMap.get(vaultIdString)).toBeDefined();
-      // Release the lock
-      await releaseWrite();
-      await closeP;
-      expect(vault[running]).toBe(false);
-      expect(vaultMap.get(vaultIdString)).toBeUndefined();
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('destroying respects locks', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      // @ts-ignore: kidnap vaultManager lockBox
-      const vaultLocks = vaultManager.vaultLocks;
-      // Create the vault
-      const vaultId = await vaultManager.createVault('vaultName');
-      const vaultIdString = vaultId.toString() as VaultIdString;
-      // Getting and holding the lock
-      const vault = vaultMap.get(vaultIdString)!;
-      const [releaseWrite] = await vaultLocks.lock([
-        vaultId.toString(),
-        RWLockWriter,
-        'write',
-      ])();
-      // Try to destroy
-      const destroyP = vaultManager.destroyVault(vaultId);
-      await sleep(1000);
-      // Shouldn't be destroyed
-      expect(vault[destroyed]).toBe(false);
-      expect(vaultMap.get(vaultIdString)).toBeDefined();
-      // Release the lock
-      await releaseWrite();
-      await destroyP;
-      expect(vault[destroyed]).toBe(true);
-      expect(vaultMap.get(vaultIdString)).toBeUndefined();
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('withVault respects locks', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      // @ts-ignore: kidnap vaultManager lockBox
-      const vaultLocks = vaultManager.vaultLocks;
-      // Create the vault
-      const vaultId = await vaultManager.createVault('vaultName');
-      // Getting and holding the lock
-      const [releaseWrite] = await vaultLocks.lock([
-        vaultId.toString(),
-        RWLockWriter,
-        'write',
-      ])();
-      // Try to use vault
-      let finished = false;
-      const withP = vaultManager.withVaults([vaultId], async () => {
-        finished = true;
-      });
-      await sleep(1000);
-      // Shouldn't be destroyed
-      expect(finished).toBe(false);
-      // Release the lock
-      await releaseWrite();
-      await withP;
-      expect(finished).toBe(true);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('creation adds a vault', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      await vaultManager.createVault(vaultName);
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      expect(vaultMap.size).toBe(1);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('vaults persist', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultId = await vaultManager.createVault(vaultName);
-      await vaultManager.closeVault(vaultId);
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      expect(vaultMap.size).toBe(0);
-
-      // @ts-ignore: protected method
-      const vault1 = await vaultManager.getVault(vaultId);
-      expect(vaultMap.size).toBe(1);
-
-      // @ts-ignore: protected method
-      const vault2 = await vaultManager.getVault(vaultId);
-      expect(vaultMap.size).toBe(1);
-      expect(vault1).toEqual(vault2);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('vaults can be removed from map', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultId = await vaultManager.createVault(vaultName);
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      expect(vaultMap.size).toBe(1);
-      // @ts-ignore: protected method
-      const vault1 = await vaultManager.getVault(vaultId);
-      await vaultManager.closeVault(vaultId);
-      expect(vaultMap.size).toBe(0);
-      // @ts-ignore: protected method
-      const vault2 = await vaultManager.getVault(vaultId);
-      expect(vault1).not.toEqual(vault2);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('stopping vaultManager empties map and stops all vaults', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultId1 = await vaultManager.createVault('vault1');
-      const vaultId2 = await vaultManager.createVault('vault2');
-      // @ts-ignore: kidnapping the map
-      const vaultMap = vaultManager.vaultMap;
-      expect(vaultMap.size).toBe(2);
-      // @ts-ignore: protected method
-      const vault1 = await vaultManager.getVault(vaultId1);
-      // @ts-ignore: protected method
-      const vault2 = await vaultManager.getVault(vaultId2);
-      await vaultManager.stop();
-      expect(vaultMap.size).toBe(0);
-      expect(vault1[running]).toBe(false);
-      expect(vault2[running]).toBe(false);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('destroying vaultManager destroys all data', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    let vaultManager2: VaultManager | undefined;
-    try {
-      const vaultId = await vaultManager.createVault('vault1');
-      await vaultManager.stop();
-      await vaultManager.destroy();
-      // Vaults DB should be empty
-      expect(await db.count([VaultManager.constructor.name])).toBe(0);
-      vaultManager2 = await VaultManager.createVaultManager({
-        vaultsPath,
-        keyRing: dummyKeyRing,
-        gestaltGraph: dummyGestaltGraph,
-        nodeManager: dummyNodeManager,
-        acl: dummyACL,
-        notificationsManager: dummyNotificationsManager,
-        db,
-        logger: logger.getChild(VaultManager.name),
-      });
-
-      // @ts-ignore: protected method
-      await expect(vaultManager2.getVault(vaultId)).rejects.toThrow(
-        vaultsErrors.ErrorVaultsVaultUndefined,
-      );
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-      await vaultManager2?.stop();
-      await vaultManager2?.destroy();
-    }
-  });
-  test("withVaults should throw if vaultId doesn't exist", async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    try {
-      const vaultId = vaultIdGenerator();
-      await expect(
-        vaultManager.withVaults([vaultId], async () => {
-          // Do nothing
-        }),
-      ).rejects.toThrow(vaultsErrors.ErrorVaultsVaultUndefined);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
-  });
-  test('generateVaultId handles vault conflicts', async () => {
-    const vaultManager = await VaultManager.createVaultManager({
-      vaultsPath,
-      keyRing: dummyKeyRing,
-      gestaltGraph: dummyGestaltGraph,
-      nodeManager: dummyNodeManager,
-      acl: dummyACL,
-      notificationsManager: dummyNotificationsManager,
-      db,
-      logger: logger.getChild(VaultManager.name),
-    });
-    const generateVaultIdMock = jest.spyOn(
-      vaultManager as any,
-      'vaultIdGenerator',
-    );
-    try {
-      // Generate 100 ids
-      const vaultIds: VaultId[] = [];
-      for (let i = 0; i < 100; i++) {
-        vaultIds.push(
-          // @ts-ignore: protected method
-          vaultsUtils.encodeVaultId(await vaultManager.generateVaultId()),
-        );
-      }
-      const duplicates = vaultIds.filter(
-        (item, index) => vaultIds.indexOf(item) !== index,
-      );
-      expect(duplicates.length).toBe(0);
-
-      const vaultId = await vaultManager.createVault('testVault');
-      // Now only returns duplicates
-      // @ts-ignore - mocking protected method
-      generateVaultIdMock.mockReturnValue(vaultId);
-      const asd = async () => {
-        for (let i = 0; i < 100; i++) {
-          // @ts-ignore: protected method
-          await vaultManager.generateVaultId();
         }
       };
-      await expect(async () => {
-        return await asd();
-      }).rejects.toThrow(vaultsErrors.ErrorVaultsCreateVaultId);
-    } finally {
-      await vaultManager?.stop();
-      await vaultManager?.destroy();
-    }
+      await testUtils.expectRemoteError(
+        testFun(),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
+      // Should throw due to lack of scan permission
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', nodeId1],
+        'notify',
+      );
+      await testUtils.expectRemoteError(
+        testFun(),
+        vaultsErrors.ErrorVaultsPermissionDenied,
+      );
+
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', nodeId1],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'clone');
+      await remoteKeynode1.acl.setVaultAction(vault1, nodeId1, 'pull');
+      await remoteKeynode1.acl.setVaultAction(vault2, nodeId1, 'clone');
+      // No permissions for vault3
+
+      const gen = vaultManager.scanVaults(targetNodeId);
+      const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
+      for await (const vault of gen) {
+        vaults[vault.vaultIdEncoded] = [
+          vault.vaultName,
+          vault.vaultPermissions,
+        ];
+      }
+
+      expect(vaults[vaultsUtils.encodeVaultId(vault1)]).toEqual([
+        'testVault1',
+        ['clone', 'pull'],
+      ]);
+      expect(vaults[vaultsUtils.encodeVaultId(vault2)]).toEqual([
+        'testVault2',
+        ['clone'],
+      ]);
+      expect(vaults[vaultsUtils.encodeVaultId(vault3)]).toBeUndefined();
+    });
+    test('can handle name conflict when cloning', async () => {
+      // Creating some state at the remote
+      await remoteKeynode1.vaultManager.withVaults(
+        [remoteVaultId],
+        async (vault) => {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile('secret-1', 'secret1');
+            await efs.writeFile('secret-2', 'secret2');
+          });
+        },
+      );
+
+      // Setting permissions
+      await remoteKeynode1.gestaltGraph.setNode({
+        nodeId: localNodeId,
+      });
+      await remoteKeynode1.gestaltGraph.setGestaltAction(
+        ['node', localNodeId],
+        'scan',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'clone',
+      );
+      await remoteKeynode1.acl.setVaultAction(
+        remoteVaultId,
+        localNodeId,
+        'pull',
+      );
+
+      // Before cloning we create a local vault
+      await vaultManager.createVault(vaultName);
+      await vaultManager.createVault(`${vaultName}-1`);
+      await vaultManager.createVault(`${vaultName}-2`);
+      await vaultManager.createVault(`${vaultName}-3`);
+      await vaultManager.createVault(`${vaultName}-4`);
+      await vaultManager.createVault(`${vaultName}-5`);
+
+      const vaultId = await vaultManager.cloneVault(
+        remoteKeynode1Id,
+        vaultName,
+      );
+      if (vaultId === undefined) fail('VaultId is not found.');
+      const [file, secretsList] = await vaultManager.withVaults(
+        [vaultId],
+        async (vaultClone) => {
+          return await vaultClone.readF(async (efs) => {
+            const file = await efs.readFile('secret-1', { encoding: 'utf8' });
+            const secretsList = await efs.readdir('.');
+            return [file, secretsList];
+          });
+        },
+      );
+      expect(file).toBe('secret1');
+      expect(secretsList).toContain('secret-1');
+      expect(secretsList).toContain('secret-2');
+    });
   });
 });

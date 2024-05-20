@@ -4,11 +4,13 @@ import type {
   VaultAction,
   CommitId,
   FileSystemReadable,
+  FileSystemWritable,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { Path } from 'encryptedfs/dist/types';
 import path from 'path';
 import { pathJoin } from 'encryptedfs/dist/utils';
+import * as vaultsErrors from './errors';
 import { tagLast, refs, vaultActions } from './types';
 import * as nodesUtils from '../nodes/utils';
 import * as validationErrors from '../validation/errors';
@@ -29,6 +31,12 @@ function validateRef(ref: any): ref is VaultRef {
   return refs.includes(ref) || validateCommitId(ref);
 }
 
+function assertRef(ref: any): asserts ref is VaultRef {
+  if (!validateRef(ref)) {
+    throw new vaultsErrors.ErrorVaultReferenceInvalid();
+  }
+}
+
 /**
  * Commit ids are SHA1 hashes encoded as 40-character long lowercase hexadecimal strings
  */
@@ -44,12 +52,12 @@ function commitAuthor(nodeId: NodeId): { name: string; email: string } {
 }
 
 async function* readDirRecursively(
-  fs: FileSystemReadable,
+  fs,
   dir = '.',
 ): AsyncGenerator<string, void, void> {
-  const dirents = await fs.promises.readdir(dir);
-  for (const dirent of dirents) {
-    const res = path.join(dir, dirent.toString());
+  const dirEntries = await fs.promises.readdir(dir);
+  for (const dirEntry of dirEntries) {
+    const res = path.join(dir, dirEntry.toString());
     const stat = await fs.promises.stat(res);
     if (stat.isDirectory()) {
       yield* readDirRecursively(fs, res);
@@ -96,12 +104,22 @@ function parseVaultAction(data: any): VaultAction {
 
 async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   const bucket = ref.slice(0, 2);
-  const shortref = ref.slice(2);
-  const objectPath = path.join(gitdir, 'objects', bucket, shortref);
+  const shortRef = ref.slice(2);
+  const objectPath = path.join(gitdir, 'objects', bucket, shortRef);
   try {
     await fs.unlink(objectPath);
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
+  }
+}
+
+async function mkdirExists(efs: FileSystemWritable, directory: string) {
+  try {
+    await efs.mkdir(directory, { recursive: true });
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      throw e;
+    }
   }
 }
 
@@ -111,6 +129,7 @@ export {
   canonicalBranch,
   canonicalBranchRef,
   validateRef,
+  assertRef,
   validateCommitId,
   commitAuthor,
   isVaultAction,
@@ -118,6 +137,7 @@ export {
   readDirRecursively,
   walkFs,
   deleteObject,
+  mkdirExists,
 };
 
 export { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';

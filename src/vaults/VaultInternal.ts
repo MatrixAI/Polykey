@@ -33,6 +33,7 @@ import * as vaultsEvents from './events';
 import { tagLast } from './types';
 import * as ids from '../ids';
 import * as nodesUtils from '../nodes/utils';
+import * as gitUtils from '../git/utils';
 import * as utils from '../utils';
 
 type RemoteInfo = {
@@ -54,6 +55,11 @@ interface VaultInternal extends CreateDestroyStartStop {}
   },
 )
 class VaultInternal {
+  /**
+   *  Creates a VaultInternal.
+   *  If no state already exists then state for the vault is initialized.
+   *  If state already exists then this just creates the `VaultInternal` instance for managing that state.
+   */
   public static async createVaultInternal({
     vaultId,
     vaultName,
@@ -106,6 +112,9 @@ class VaultInternal {
     return vault;
   }
 
+  /**
+   * Will create a new vault by cloning the vault from a remote node.
+   */
   public static async cloneVaultInternal({
     targetNodeId,
     targetVaultNameOrId,
@@ -155,48 +164,33 @@ class VaultInternal {
       efs,
       logger,
     });
-    // This error flag will contain the error returned by the cloning rpc stream
-    let error;
     // Make the directory where the .git files will be auto generated and
     // where the contents will be cloned to ('contents' file)
     await efs.mkdir(vault.vaultDataDir, { recursive: true });
-    let vaultName: VaultName;
-    let remoteVaultId: VaultId;
-    let remote: RemoteInfo;
-    try {
-      [vaultName, remoteVaultId] = await nodeManager.withConnF(
-        targetNodeId,
-        async (connection) => {
-          const client = connection.getClient();
+    const [vaultName, remoteVaultId]: [VaultName, VaultId] =
+      await nodeManager.withConnF(targetNodeId, async (connection) => {
+        const client = connection.getClient();
 
-          const [request, vaultName, remoteVaultId] = await vault.request(
-            client,
-            targetVaultNameOrId,
-            'clone',
-          );
-          await git.clone({
-            fs: efs,
-            http: { request },
-            dir: vault.vaultDataDir,
-            gitdir: vault.vaultGitDir,
-            url: 'http://',
-            singleBranch: true,
-          });
-          return [vaultName, remoteVaultId];
-        },
-      );
-      remote = {
-        remoteNode: nodesUtils.encodeNodeId(targetNodeId),
-        remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
-      };
-    } catch (e) {
-      // If the error flag set and we have the generalised SmartHttpError from
-      // isomorphic git then we need to throw the polykey error
-      if (e instanceof git.Errors.SmartHttpError && error) {
-        throw error;
-      }
-      throw e;
-    }
+        const [request, vaultName, remoteVaultId] = await vault.request(
+          client,
+          targetVaultNameOrId,
+          'clone',
+        );
+        await git.clone({
+          fs: efs,
+          http: { request },
+          dir: vault.vaultDataDir,
+          gitdir: vault.vaultGitDir,
+          url: 'http://',
+          singleBranch: true,
+          ref: vaultsUtils.canonicalBranchRef,
+        });
+        return [vaultName, remoteVaultId];
+      });
+    const remote: RemoteInfo = {
+      remoteNode: nodesUtils.encodeNodeId(targetNodeId),
+      remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
+    };
 
     await vault.start({ vaultName, tran });
     // Setting the remote in the metadata
@@ -281,6 +275,10 @@ class VaultInternal {
     return await this.start_(fresh, tran, vaultName);
   }
 
+  /**
+   * We use a protected start method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
+   * create a DBTransaction.
+   */
   protected async start_(
     fresh: boolean,
     tran: DBTransaction,
@@ -291,7 +289,6 @@ class VaultInternal {
     );
     this.vaultMetadataDbPath = [...this.vaultsDbPath, this.vaultIdEncoded];
     this.vaultsNamesPath = [...this.vaultsDbPath, 'names'];
-    // Let's backup any metadata
     if (fresh) {
       await tran.clear(this.vaultMetadataDbPath);
       try {
@@ -304,25 +301,15 @@ class VaultInternal {
         }
       }
     }
-    await this.mkdirExists(this.vaultIdEncoded);
-    await this.mkdirExists(this.vaultDataDir);
-    await this.mkdirExists(this.vaultGitDir);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultIdEncoded);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultDataDir);
+    await vaultsUtils.mkdirExists(this.efs, this.vaultGitDir);
     await this.setupMeta({ vaultName, tran });
     await this.setupGit(tran);
     this.efsVault = await this.efs.chroot(this.vaultDataDir);
     this.logger.info(
       `Started ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
-  }
-
-  protected async mkdirExists(directory: string) {
-    try {
-      await this.efs.mkdir(directory, { recursive: true });
-    } catch (e) {
-      if (e.code !== 'EEXIST') {
-        throw e;
-      }
-    }
   }
 
   public async stop(): Promise<void> {
@@ -341,6 +328,10 @@ class VaultInternal {
     return await this.destroy_(tran);
   }
 
+  /**
+   * We use a protected destroy method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
+   * create a DBTransaction.
+   */
   protected async destroy_(tran: DBTransaction) {
     this.logger.info(
       `Destroying ${this.constructor.name} - ${this.vaultIdEncoded}`,
@@ -364,9 +355,7 @@ class VaultInternal {
     ref: string | VaultRef = 'HEAD',
     limit?: number,
   ): Promise<Array<CommitLog>> {
-    if (!vaultsUtils.validateRef(ref)) {
-      throw new vaultsErrors.ErrorVaultReferenceInvalid();
-    }
+    vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
       ref = vaultsUtils.canonicalBranch;
     }
@@ -400,9 +389,7 @@ class VaultInternal {
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async version(ref: string | VaultRef = tagLast): Promise<void> {
-    if (!vaultsUtils.validateRef(ref)) {
-      throw new vaultsErrors.ErrorVaultReferenceInvalid();
-    }
+    vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
       ref = vaultsUtils.canonicalBranch;
     }
@@ -427,6 +414,9 @@ class VaultInternal {
     }
   }
 
+  /**
+   * With context handler for using a vault in a read-only context.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async readF<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     return withF([this.lock.read()], async () => {
@@ -434,6 +424,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a read-only context for a generator.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public readG<T, TReturn, TNext>(
     g: (fs: FileSystemReadable) => AsyncGenerator<T, TReturn, TNext>,
@@ -444,6 +437,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a writable context.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
@@ -491,6 +487,9 @@ class VaultInternal {
     });
   }
 
+  /**
+   * With context handler for using a vault in a writable context for a generator.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
@@ -517,7 +516,7 @@ class VaultInternal {
       );
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
-      let result;
+      let result: TReturn;
       // Do what you need to do here, create the commit
       try {
         result = yield* g(efsVault);
@@ -537,6 +536,10 @@ class VaultInternal {
     });
   }
 
+  /**
+   * Pulls changes to a vault from the vault's default remote.
+   * If `pullNodeId` and `pullVaultNameOrId` it uses that for the remote instead.
+   */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async pullVault({
     nodeManager,
@@ -560,10 +563,8 @@ class VaultInternal {
       );
     }
 
-    // This error flag will contain the error returned by the cloning rpc stream
-    let error;
     // Keeps track of whether the metadata needs changing to avoid unnecessary db ops
-    // 0 = no change, 1 = change with vault Id, 2 = change with vault name
+    // 0 = no change, 1 = change with vault ID, 2 = change with vault name
     let metaChange = 0;
     const remoteInfo = await tran.get<RemoteInfo>([
       ...this.vaultMetadataDbPath,
@@ -610,8 +611,10 @@ class VaultInternal {
               dir: this.vaultDataDir,
               gitdir: this.vaultGitDir,
               url: `http://`,
-              ref: 'HEAD',
+              ref: vaultsUtils.canonicalBranchRef,
               singleBranch: true,
+              fastForward: true,
+              fastForwardOnly: true,
               author: {
                 name: nodesUtils.encodeNodeId(pullNodeId!),
               },
@@ -620,17 +623,15 @@ class VaultInternal {
           return remoteVaultId;
         },
       );
-    } catch (err) {
-      // If the error flag set and we have the generalised SmartHttpError from
+    } catch (e) {
+      // If the error flag set, and we have the generalised SmartHttpError from
       // isomorphic git then we need to throw the polykey error
-      if (err instanceof git.Errors.SmartHttpError && error) {
-        throw error;
-      } else if (err instanceof git.Errors.MergeNotSupportedError) {
-        throw new vaultsErrors.ErrorVaultsMergeConflict(err.message, {
-          cause: err,
+      if (e instanceof git.Errors.MergeNotSupportedError) {
+        throw new vaultsErrors.ErrorVaultsMergeConflict(e.message, {
+          cause: e,
         });
       }
-      throw err;
+      throw e;
     }
     if (metaChange !== 0) {
       if (metaChange === 2) {
@@ -649,7 +650,9 @@ class VaultInternal {
   }
 
   /**
-   * Setup the vault metadata
+   * Sets up the vault metadata.
+   * Creates a `dirty` boolean in the database to track dirty state of the vault.
+   * Also adds the vault's name to the database.
    */
   protected async setupMeta({
     vaultName,
@@ -658,14 +661,7 @@ class VaultInternal {
     vaultName?: VaultName;
     tran: DBTransaction;
   }): Promise<void> {
-    // Setup the vault metadata
-    // and you need to make certain preparations
-    // the meta gets created first
-    // if the SoT is the database
-    // are we supposed to check this?
-
-    // If this is not existing
-    // setup default vaults db
+    // Set up dirty key defaulting to false
     if (
       (await tran.get<boolean>([
         ...this.vaultMetadataDbPath,
@@ -692,11 +688,15 @@ class VaultInternal {
       );
     }
 
-    // Remote: [NodeId, VaultId] | undefined
-    // dirty: boolean
+    // Dirty: boolean
     // name: string | undefined
   }
 
+  /**
+   * Does an idempotent initialization of the git repository for the vault.
+   * If the vault is in a dirty state then we clean up the working directory
+   * or any history not part of the canonicalBranch.
+   */
   protected async setupGit(tran: DBTransaction): Promise<string> {
     // Initialization is idempotent
     // It works even with an existing git repository
@@ -754,7 +754,7 @@ class VaultInternal {
         // This ensures that any uncommitted state is dropped
         await this.cleanWorkingDirectory();
         // Do global GC operation
-        await this.garbageCollectGitObjects();
+        await this.garbageCollectGitObjectsGlobal();
 
         // Setting dirty back to false
         await tran.put(
@@ -817,15 +817,17 @@ class VaultInternal {
       action: vaultAction,
     });
     const result = vaultsGitInfoGetStream.meta?.result;
-    if (result == null || !utils.isObject(result)) utils.never();
-    if (!('vaultName' in result) || typeof result.vaultName != 'string') {
-      utils.never();
+    if (result == null || !utils.isObject(result)) {
+      utils.never('`result` must be a defined object');
+    }
+    if (!('vaultName' in result) || typeof result.vaultName !== 'string') {
+      utils.never('`vaultName` must be defined and a string');
     }
     if (
       !('vaultIdEncoded' in result) ||
-      typeof result.vaultIdEncoded != 'string'
+      typeof result.vaultIdEncoded !== 'string'
     ) {
-      utils.never();
+      utils.never('`vaultIdEncoded` must be defined and a string');
     }
     const vaultName = result.vaultName;
     const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
@@ -879,7 +881,10 @@ class VaultInternal {
   }
 
   /**
-   * Creates a commit while moving the canonicalBranch reference
+   * Creates a commit while moving the canonicalBranch reference to that new commit.
+   * If the commit creates a branch from the canonical history. Then the new commit becomes the new canonical history
+   * and the old history is removed from the old canonical head to the branch point. This is to maintain the strict
+   * non-branching linear history.
    */
   protected async createCommit() {
     // Checking if commit is appending or branching
@@ -900,78 +905,71 @@ class VaultInternal {
     const message: string[] = [];
     // Get the status of each file in the working directory
     // https://isomorphic-git.org/docs/en/statusMatrix
+    await git.add({
+      fs: this.efs,
+      dir: this.vaultDataDir,
+      gitdir: this.vaultGitDir,
+      filepath: '.',
+    });
     const statusMatrix = await git.statusMatrix({
       fs: this.efs,
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
     });
-    for (let [
+    for (const [
       filePath,
       HEADStatus,
       workingDirStatus,
       stageStatus,
     ] of statusMatrix) {
-      // Reset the index of files that are marked as 'unmodified'
-      // The working directory, HEAD and staging area are all the same
-      // https://github.com/MatrixAI/js-polykey/issues/260
-      if (HEADStatus === workingDirStatus && workingDirStatus === stageStatus) {
-        await git.resetIndex({
-          fs: this.efs,
-          dir: this.vaultDataDir,
-          gitdir: this.vaultGitDir,
-          filepath: filePath,
-        });
-        // Check if the file is still 'unmodified' and leave
-        // it out of the commit if it is
-        [filePath, HEADStatus, workingDirStatus, stageStatus] = (
-          await git.statusMatrix({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            filepaths: [filePath],
-          })
-        ).pop()!;
-        if (
-          HEADStatus === workingDirStatus &&
-          workingDirStatus === stageStatus
-        ) {
-          continue;
-        }
-      }
-      // We want files in the working directory that are both different
-      // from the head commit and the staged changes
-      // If working directory and stage status are not equal then filepath has un-staged
-      // changes in the working directory relative to both the HEAD and staging
-      // area that need to be added
-      // https://isomorphic-git.org/docs/en/statusMatrix
-      if (workingDirStatus !== stageStatus) {
-        let status: 'added' | 'modified' | 'deleted';
-        // If the working directory status is 0 then the file has
-        // been deleted
-        if (workingDirStatus === 0) {
-          status = 'deleted';
+      /*
+        Type StatusRow     = [Filename, HeadStatus, WorkdirStatus, StageStatus]
+        The HeadStatus status is either absent (0) or present (1).
+        The WorkdirStatus status is either absent (0), identical to HEAD (1), or different from HEAD (2).
+        The StageStatus status is either absent (0), identical to HEAD (1), identical to WORKDIR (2), or different from WORKDIR (3).
+
+        ```js
+        // example StatusMatrix
+        [
+          ["a.txt", 0, 2, 0], // new, untracked
+          ["b.txt", 0, 2, 2], // added, staged
+          ["c.txt", 0, 2, 3], // added, staged, with unstaged changes
+          ["d.txt", 1, 1, 1], // unmodified
+          ["e.txt", 1, 2, 1], // modified, unstaged
+          ["f.txt", 1, 2, 2], // modified, staged
+          ["g.txt", 1, 2, 3], // modified, staged, with unstaged changes
+          ["h.txt", 1, 0, 1], // deleted, unstaged
+          ["i.txt", 1, 0, 0], // deleted, staged
+        ]
+        ```
+       */
+      const status = `${HEADStatus}${workingDirStatus}${stageStatus}`;
+      switch (status) {
+        case '022': // Added, staged
+          message.push(`${filePath} added`);
+          break;
+        case '111': // Unmodified
+          break;
+        case '122': // Modified, staged
+          message.push(`${filePath} modified`);
+          break;
+        case '101': // Deleted, unStaged
+          // need to stage the deletion with remove
           await git.remove({
             fs: this.efs,
             dir: this.vaultDataDir,
             gitdir: this.vaultGitDir,
             filepath: filePath,
           });
-        } else {
-          await git.add({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            filepath: filePath,
-          });
-          // Check whether the file already exists inside the HEAD
-          // commit and if it does then it is unmodified
-          if (HEADStatus === 1) {
-            status = 'modified';
-          } else {
-            status = 'added';
-          }
-        }
-        message.push(`${filePath} ${status}`);
+        // Fall through
+        case '100': // Deleted, staged
+          message.push(`${filePath} deleted`);
+          break;
+        default:
+          // We don't handle untracked and partially staged files since we add all files to staging before processing
+          utils.never(
+            `Status ${status} is unhandled because it was unexpected state`,
+          );
       }
     }
     // Skip commit if no changes were made
@@ -998,33 +996,15 @@ class VaultInternal {
       });
       // We clean old history if a commit was made on previous version
       if (headRef !== masterRef) {
-        // Delete old commits following chain from masterRef -> headRef
-        let currentRef = masterRef;
-        while (currentRef !== headRef) {
-          // Read commit info
-          const commit = await git.readCommit({
-            fs: this.efs,
-            dir: this.vaultDataDir,
-            gitdir: this.vaultGitDir,
-            oid: currentRef,
-          });
-          // Delete commit
-          await vaultsUtils.deleteObject(
-            this.efs,
-            this.vaultGitDir,
-            commit.oid,
-          );
-          // Getting new ref
-          const nextRef = commit.commit.parent.pop();
-          if (nextRef == null) break;
-          currentRef = nextRef;
-        }
+        await this.garbageCollectGitObjectsLocal(masterRef, headRef);
       }
     }
   }
 
   /**
-   * Cleans the git working directory by checking out the canonicalBranch
+   * Cleans the git working directory by checking out the canonicalBranch.
+   * This will remove any un-committed changes since any untracked or modified files outside a commit is dirty state.
+   * Dirty state should only happen if the usual commit procedure was interrupted ungracefully.
    */
   protected async cleanWorkingDirectory() {
     // Check the status matrix for any un-staged file changes
@@ -1064,69 +1044,65 @@ class VaultInternal {
   }
 
   /**
-   * Deletes any git objects that can't be reached from the canonicalBranch
+   * This will walk the current canonicalBranch history and delete any objects that are not a part of it.
+   * This is costly since it will compare the walked tree with all existing objects.
    */
-  protected async garbageCollectGitObjects() {
-    // To garbage collect the git objects,
-    // we need to walk all objects connected to the master branch
-    // and delete the object files that are not touched by this walk
-    const touchedOids = {};
+  protected async garbageCollectGitObjectsGlobal() {
+    const objectIdsAll = await gitUtils.listObjectsAll({
+      fs: this.efs,
+      gitDir: this.vaultGitDir,
+    });
+    const objects = new Set(objectIdsAll);
     const masterRef = await git.resolveRef({
       fs: this.efs,
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
       ref: vaultsUtils.canonicalBranch,
     });
-    const queuedOids: string[] = [masterRef];
-    while (queuedOids.length > 0) {
-      const currentOid = queuedOids.shift()!;
-      if (touchedOids[currentOid] === null) continue;
-      const result = await git.readObject({
-        fs: this.efs,
-        dir: this.vaultDataDir,
-        gitdir: this.vaultGitDir,
-        oid: currentOid,
-      });
-      touchedOids[result.oid] = result.type;
-      if (result.format !== 'parsed') continue;
-      switch (result.type) {
-        case 'commit':
-          {
-            const object = result.object;
-            queuedOids.push(...object.parent);
-            queuedOids.push(object.tree);
-          }
-          break;
-        case 'tree':
-          {
-            const object = result.object;
-            for (const item of object) {
-              touchedOids[item.oid] = item.type;
-            }
-          }
-          break;
-        default: {
-          utils.never();
-        }
-      }
-    }
-    // Walking all objects
-    const objectPath = path.join(this.vaultGitDir, 'objects');
-    const buckets = (await this.efs.readdir(objectPath)).filter((item) => {
-      return item !== 'info' && item !== 'pack';
+    const reachableObjects = await gitUtils.listObjects({
+      efs: this.efs,
+      dir: this.vaultDataDir,
+      gitDir: this.vaultGitDir,
+      wants: [masterRef],
+      haves: [],
     });
-    for (const bucket of buckets) {
-      const bucketPath = path.join(objectPath, bucket.toString());
-      const oids = await this.efs.readdir(bucketPath);
-      for (const shortOid of oids) {
-        const oidPath = path.join(bucketPath, shortOid.toString());
-        const oid = bucket.toString() + shortOid.toString();
-        if (touchedOids[oid] === undefined) {
-          // Removing unused objects
-          await this.efs.unlink(oidPath);
-        }
-      }
+    // Walk from head to all reachable objects
+    for (const objectReachable of reachableObjects) {
+      objects.delete(objectReachable);
     }
+    // Any objects left in `objects` was unreachable, thus they are a part of orphaned branches
+    // So we want to delete them.
+    const deletePs: Array<Promise<void>> = [];
+    for (const objectId of objects) {
+      deletePs.push(
+        vaultsUtils.deleteObject(this.efs, this.vaultGitDir, objectId),
+      );
+    }
+    await Promise.all(deletePs);
+  }
+
+  /**
+   * This will walk from the `startId` to the `StopId` deleting objects as it goes.
+   * This is smarter since it only walks over the old history and not everything.
+   */
+  protected async garbageCollectGitObjectsLocal(
+    startId: string,
+    stopId: string,
+  ) {
+    const objects = await gitUtils.listObjects({
+      efs: this.efs,
+      dir: this.vaultDataDir,
+      gitDir: this.vaultGitDir,
+      wants: [startId],
+      haves: [stopId],
+    });
+    const deletePs: Array<Promise<void>> = [];
+    for (const objectId of objects) {
+      deletePs.push(
+        vaultsUtils.deleteObject(this.efs, this.vaultGitDir, objectId),
+      );
+    }
+    await Promise.all(deletePs);
   }
 }
 

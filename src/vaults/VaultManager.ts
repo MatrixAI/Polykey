@@ -806,7 +806,8 @@ class VaultManager {
     tran?: DBTransaction,
   ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
-      const handleInfoRequest = (tran) => this.handleInfoRequest(vaultId, tran);
+      const handleInfoRequest = (tran: DBTransaction) =>
+        this.handleInfoRequest(vaultId, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* handleInfoRequest(tran);
       });
@@ -907,7 +908,8 @@ class VaultManager {
   }> {
     if (tran == null) {
       // Lambda to maintain `this` context
-      const handleScanVaults = (tran) => this.handleScanVaults(nodeId, tran);
+      const handleScanVaults = (tran: DBTransaction) =>
+        this.handleScanVaults(nodeId, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* handleScanVaults(tran);
       });

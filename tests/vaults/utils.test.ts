@@ -19,7 +19,6 @@ describe('Vaults utils', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
   });
-
   afterEach(async () => {
     await fs.promises.rm(dataDir, {
       force: true,
