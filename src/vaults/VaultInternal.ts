@@ -887,6 +887,8 @@ class VaultInternal {
    * non-branching linear history.
    */
   protected async createCommit() {
+    // Forced wait for 1 ms to allow difference in mTime between file changes
+    await utils.sleep(1);
     // Checking if commit is appending or branching
     const headRef = await git.resolveRef({
       fs: this.efs,
