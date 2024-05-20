@@ -400,6 +400,8 @@ async function* generatePackData({
   chunkSize?: number;
 }): AsyncGenerator<Buffer, void, void> {
   let packFile: PackObjectsResult;
+  // In case of errors we don't want to throw them. This will result in the error being thrown into `isometric-git`
+  // when it consumes the response. It handles this by logging out the error which we don't want to happen.
   try {
     packFile = await git.packObjects({
       fs: efs,
@@ -407,12 +409,18 @@ async function* generatePackData({
       gitdir: gitDir,
       oids: objectIds,
     });
-  } catch (e) {
+  } catch {
     // Return without sending any data
     return;
   }
-  if (packFile.packfile == null) utils.never('failed to create packFile data');
-  let packFileBuffer = Buffer.from(packFile.packfile.buffer);
+  // Pack file will only be undefined if it was written to disk instead
+  if (packFile.packfile == null) return;
+  // Convert to a buffer without copy, so we can process it
+  let packFileBuffer = Buffer.from(
+    packFile.packfile.buffer,
+    0,
+    packFile.packfile.byteLength,
+  );
 
   // Streaming the packFile as chunks of the length specified by the `chunkSize`.
   // Each line is formatted as a `PKT-LINE`
