@@ -19,7 +19,11 @@ import {
   utils as quicUtils,
 } from '@matrixai/quic';
 import { withF } from '@matrixai/resources';
-import { middleware as rpcMiddleware, RPCServer } from '@matrixai/rpc';
+import {
+  errors as rpcErrors,
+  middleware as rpcMiddleware,
+  RPCServer,
+} from '@matrixai/rpc';
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { IdInternal } from '@matrixai/id';
@@ -850,14 +854,23 @@ class NodeConnectionManager {
           this.keyRing.keyPair,
           data,
         );
-        const addressMessage =
-          await client.methods.nodesConnectionSignalInitial(
+        const addressMessage = await client.methods
+          .nodesConnectionSignalInitial(
             {
               targetNodeIdEncoded: nodesUtils.encodeNodeId(nodeIdTarget),
               signature: signature.toString('base64url'),
             },
             ctx,
-          );
+          )
+          .catch((e) => {
+            if (e instanceof rpcErrors.ErrorRPCHandlerFailed) {
+              throw new nodesErrors.ErrorNodeConnectionManagerSignalFailed(
+                'Failed initial signal step triggering `nodesConnectionSignalInitial`',
+                { cause: e },
+              );
+            }
+            throw e;
+          });
         return {
           host: addressMessage.host as Host,
           port: addressMessage.port as Port,
@@ -940,7 +953,7 @@ class NodeConnectionManager {
   /**
    * Gets the existing active connection for the target node
    */
-  public getConnection(nodeId): ConnectionAndTimer | undefined {
+  public getConnection(nodeId: NodeId): ConnectionAndTimer | undefined {
     const nodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(nodeIdString);
     if (connectionsEntry == null) return;
@@ -1292,7 +1305,17 @@ class NodeConnectionManager {
       .then(
         () => {},
         (e) => {
-          if (!nodesUtils.isConnectionError(e)) throw e;
+          // If it's a connection error or missing handler then it's a signalling failure
+          if (
+            nodesUtils.isConnectionError(e) ||
+            e instanceof rpcErrors.ErrorRPCHandlerFailed
+          ) {
+            new nodesErrors.ErrorNodeConnectionManagerSignalFailed(
+              'Failed final signal step triggering `nodesConnectionSignalFinal`',
+              { cause: e },
+            );
+          }
+          throw e;
         },
       )
       .finally(() => {

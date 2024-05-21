@@ -803,6 +803,8 @@ class VaultInternal {
    *
    * ```
    */
+  // FIXME: if we have connection errors then we don't want to throw them into the `git.clone` or `git.pull`
+  //  To fix that the stream createation must happen BEFORE returning from `request` so that `request` itself will throw the error..
   protected async request(
     client: RPCClient<typeof agentClientManifest>,
     vaultNameOrId: VaultId | VaultName,

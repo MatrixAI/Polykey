@@ -188,6 +188,13 @@ class ErrorNodeConnectionManagerRequestRateExceeded<
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorNodeConnectionManagerSignalFailed<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description = 'Failed to signal hole punching';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
     'Failed to ping the node when attempting to authenticate';
@@ -240,6 +247,7 @@ export {
   ErrorNodeConnectionManagerMultiConnectionFailed,
   ErrorNodeConnectionManagerConnectionNotFound,
   ErrorNodeConnectionManagerRequestRateExceeded,
+  ErrorNodeConnectionManagerSignalFailed,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
   ErrorNodeLookupNotFound,
