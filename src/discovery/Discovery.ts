@@ -177,6 +177,7 @@ class Discovery {
           undefined,
           undefined,
           gestaltsUtils.decodeGestaltId(parent ?? undefined),
+          true,
         );
         return;
       }
@@ -503,9 +504,9 @@ class Discovery {
       );
       return;
     }
-    const linkedVertexNodeId = node1Id.equals(nodeId) ? node2Id : node1Id;
+    const linkedNodeId = node1Id.equals(nodeId) ? node2Id : node1Id;
     const linkedVertexNodeInfo: GestaltNodeInfo = {
-      nodeId: linkedVertexNodeId,
+      nodeId: linkedNodeId,
     };
     await this.gestaltGraph.linkNodeAndNode(
       {
@@ -521,7 +522,7 @@ class Discovery {
     if (claimId == null) never();
     await this.gestaltGraph.setClaimIdNewest(nodeId, claimId);
     // Add this vertex to the queue if it hasn't already been visited
-    const linkedGestaltId: GestaltId = ['node', linkedVertexNodeId];
+    const linkedGestaltId: GestaltId = ['node', linkedNodeId];
     if (
       !(await this.processedTimeGreaterThan(
         linkedGestaltId,
@@ -745,6 +746,7 @@ class Discovery {
     delay?: number,
     lastProcessedCutoffTime?: number,
     parent?: GestaltId,
+    ignoreActive: boolean = false,
     tran?: DBTransaction,
   ) {
     if (tran == null) {
@@ -754,6 +756,7 @@ class Discovery {
           delay,
           lastProcessedCutoffTime,
           parent,
+          ignoreActive,
           tran,
         ),
       );
@@ -776,7 +779,7 @@ class Discovery {
       tran,
     )) {
       // Ignore active tasks
-      if (task.status === 'active') continue;
+      if (ignoreActive && task.status === 'active') continue;
       if (taskExisting == null) {
         taskExisting = task;
         continue;
