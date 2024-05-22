@@ -646,17 +646,15 @@ class Discovery {
     );
     const isAborted = ctx.signal.aborted;
     lastProviderPaginationToken = lastProviderPaginationToken_;
-    const gestaltNodeIds: Array<GestaltId> = [];
-    // Link the identity with each node from its claims on the provider
     // Iterate over each of the claims, even if ctx has aborted
     for (const [claimId, claim] of Object.entries(identityClaims)) {
       // Claims on an identity provider will always be node -> identity
       // So just cast payload data as such
-      const linkedVertexNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
-      if (linkedVertexNodeId == null) never();
+      const linkedNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
+      if (linkedNodeId == null) never();
       // With this verified chain, we can link
       const linkedVertexNodeInfo = {
-        nodeId: linkedVertexNodeId,
+        nodeId: linkedNodeId,
       };
       await this.gestaltGraph.linkNodeAndIdentity(
         linkedVertexNodeInfo,
@@ -672,8 +670,8 @@ class Discovery {
           },
         },
       );
-    }
-    for (const gestaltNodeId of gestaltNodeIds) {
+      // Check and schedule node for processing
+      const gestaltNodeId: GestaltId = ['node', linkedNodeId];
       if (
         !(await this.processedTimeGreaterThan(
           gestaltNodeId,
