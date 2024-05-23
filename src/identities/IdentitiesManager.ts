@@ -7,7 +7,6 @@ import type {
 } from './types';
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type Provider from './Provider';
-import type { SignedClaim } from '../claims/types';
 import type { ClaimLinkIdentity } from '../claims/payloads';
 import type KeyRing from '../keys/KeyRing';
 import type Sigchain from '../sigchain/Sigchain';
@@ -19,6 +18,7 @@ import {
 import Logger from '@matrixai/logger';
 import * as identitiesErrors from './errors';
 import * as identitiesEvents from './events';
+import Token from '../tokens/Token';
 import * as nodesUtils from '../nodes/utils';
 import { promise } from '../utils';
 import { encodeProviderIdentityId } from '../ids';
@@ -274,15 +274,22 @@ class IdentitiesManager {
           sub: encodeProviderIdentityId([providerId, identityId]),
         },
         undefined,
-        async (token) => {
+        async (token: Token<ClaimLinkIdentity>) => {
           // Publishing in the callback to avoid adding bad claims
           const claim = token.toSigned();
           const identitySignedClaim = await provider.publishClaim(
             identityId,
-            claim as SignedClaim<ClaimLinkIdentity>,
+            claim,
           );
           publishedClaimProm.resolveP(identitySignedClaim);
-          return token;
+          // Append the ProviderIdentityClaimId to the token
+          const payload: ClaimLinkIdentity = {
+            ...claim.payload,
+            providerIdentityClaimId: identitySignedClaim.id,
+          };
+          const newToken = Token.fromPayload(payload);
+          newToken.signWithPrivateKey(this.keyRing.keyPair);
+          return newToken;
         },
         tran,
       ),

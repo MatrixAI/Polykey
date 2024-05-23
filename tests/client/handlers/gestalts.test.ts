@@ -1472,13 +1472,28 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),
       sub: encodeProviderIdentityId([testProvider.id, connectedIdentity]),
     };
-    const [claimId_, claim] = await sigchain.addClaim(identityClaim);
+    const [claimId_, claim] = await sigchain.addClaim(
+      identityClaim,
+      undefined,
+      async (token: Token<ClaimLinkIdentity>) => {
+        // Publishing in the callback to avoid adding bad claims
+        const claim = token.toSigned();
+        const identitySignedClaim = await testProvider.publishClaim(
+          connectedIdentity,
+          claim,
+        );
+        // Append the ProviderIdentityClaimId to the token
+        const payload: ClaimLinkIdentity = {
+          ...claim.payload,
+          providerIdentityClaimId: identitySignedClaim.id,
+        };
+        const newToken = Token.fromPayload(payload);
+        newToken.signWithPrivateKey(keyRing.keyPair);
+        return newToken;
+      },
+    );
     claimId = claimId_;
     nodeChainData[claimId_] = claim;
-    await testProvider.publishClaim(
-      connectedIdentity,
-      claim as SignedClaim<ClaimLinkIdentity>,
-    );
     clientService = new ClientService({
       tlsConfig,
       logger: logger.getChild(ClientService.name),
@@ -1747,12 +1762,27 @@ describe('gestaltsGestaltTrustByNode', () => {
       iss: nodeIdEncodedRemote,
       sub: encodeProviderIdentityId([testProvider.id, connectedIdentity]),
     };
-    const [claimId, claim] = await node.sigchain.addClaim(identityClaim);
-    nodeChainData[claimId] = claim;
-    await testProvider.publishClaim(
-      connectedIdentity,
-      claim as SignedClaim<ClaimLinkIdentity>,
+    const [claimId, claim] = await node.sigchain.addClaim(
+      identityClaim,
+      undefined,
+      async (token: Token<ClaimLinkIdentity>) => {
+        // Publishing in the callback to avoid adding bad claims
+        const claim = token.toSigned();
+        const identitySignedClaim = await testProvider.publishClaim(
+          connectedIdentity,
+          claim,
+        );
+        // Append the ProviderIdentityClaimId to the token
+        const payload: ClaimLinkIdentity = {
+          ...claim.payload,
+          providerIdentityClaimId: identitySignedClaim.id,
+        };
+        const newToken = Token.fromPayload(payload);
+        newToken.signWithPrivateKey(node.keyRing.keyPair);
+        return newToken;
+      },
     );
+    nodeChainData[claimId] = claim;
 
     const keysPath = path.join(dataDir, 'keys');
     const dbPath = path.join(dataDir, 'db');

@@ -1,11 +1,10 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { Host } from '@/network/types';
 import type { Key } from '@/keys/types';
-import type { SignedClaim } from '../../src/claims/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
-import type { NodeId } from '../../src/ids';
+import type { NodeId } from '@/ids';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type { DiscoveryQueueInfo } from '@/discovery/types';
+import type { ClaimLinkIdentity } from '@/claims/payloads/claimLinkIdentity';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -14,6 +13,7 @@ import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { EventAll } from '@matrixai/events';
 import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
+import { Token } from '@/tokens';
 import TaskManager from '@/tasks/TaskManager';
 import PolykeyAgent from '@/PolykeyAgent';
 import Discovery from '@/discovery/Discovery';
@@ -31,9 +31,9 @@ import * as nodesUtils from '@/nodes/utils';
 import * as discoveryErrors from '@/discovery/errors';
 import * as keysUtils from '@/keys/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
+import { encodeProviderIdentityId } from '@/ids';
 import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
-import { encodeProviderIdentityId } from '../../src/ids';
 import 'ix/add/asynciterable-operators/toarray';
 import { createTLSConfig } from '../utils/tls';
 
@@ -76,6 +76,12 @@ describe('Discovery', () => {
     NodeManager.prototype,
     'refreshBucket',
   );
+
+  async function waitForAllDiscoveryTasks(discovery: Discovery) {
+    do {
+      /* Do nothing */
+    } while ((await discovery.waitForDiscoveryTasks()) > 0);
+  }
 
   beforeEach(async () => {
     testProvider = new TestProvider();
@@ -290,10 +296,7 @@ describe('Discovery', () => {
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     const gestalts = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
@@ -328,10 +331,7 @@ describe('Discovery', () => {
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId);
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     const gestalts = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
@@ -366,10 +366,7 @@ describe('Discovery', () => {
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     const gestalts1 = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
@@ -399,17 +396,30 @@ describe('Discovery', () => {
       iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
       sub: encodeProviderIdentityId([testProvider.id, identityId2]),
     };
-    const [, signedClaim] = await nodeA.sigchain.addClaim(identityClaim);
-    await testProvider.publishClaim(
-      identityId2,
-      signedClaim as SignedClaim<ClaimLinkIdentity>,
+    await nodeA.sigchain.addClaim(
+      identityClaim,
+      undefined,
+      async (token: Token<ClaimLinkIdentity>) => {
+        // Publishing in the callback to avoid adding bad claims
+        const claim = token.toSigned();
+        const identitySignedClaim = await testProvider.publishClaim(
+          identityId2,
+          claim,
+        );
+        // Append the ProviderIdentityClaimId to the token
+        const payload: ClaimLinkIdentity = {
+          ...claim.payload,
+          providerIdentityClaimId: identitySignedClaim.id,
+        };
+        const newToken = Token.fromPayload(payload);
+        newToken.signWithPrivateKey(nodeA.keyRing.keyPair);
+        return newToken;
+      },
     );
     // Note that eventually we would like to add in a system of revisiting
     // already discovered vertices, however for now we must do this manually.
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     const gestalts2 = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
@@ -436,7 +446,7 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
-  test('discovery persistence across restarts', async () => {
+  test('node discovery persistence across restarts', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
       keyRing,
@@ -450,10 +460,7 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.start();
     await taskManager.startProcessing();
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     const gestalts = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
@@ -476,6 +483,93 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
+  test('identity discovery persistence across restarts', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+    await taskManager.startProcessing();
+    const identityId2 = 'other-gestalt2' as IdentityId;
+    await nodeA.identitiesManager.putToken(testToken.providerId, identityId2, {
+      accessToken: 'ghi789',
+    });
+    testProvider.users[identityId2] = {};
+    for (let i = 0; i < testProvider.pageSize * 2; i++) {
+      const identityClaim = {
+        typ: 'ClaimLinkIdentity',
+        iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
+        sub: encodeProviderIdentityId([testProvider.id, identityId2]),
+      };
+      await nodeA.sigchain.addClaim(
+        identityClaim,
+        undefined,
+        async (token: Token<ClaimLinkIdentity>) => {
+          // Publishing in the callback to avoid adding bad claims
+          const claim = token.toSigned();
+          const identitySignedClaim = await testProvider.publishClaim(
+            identityId2,
+            claim,
+          );
+          // Append the ProviderIdentityClaimId to the token
+          const payload: ClaimLinkIdentity = {
+            ...claim.payload,
+            providerIdentityClaimId: identitySignedClaim.id,
+          };
+          const newToken = Token.fromPayload(payload);
+          newToken.signWithPrivateKey(nodeA.keyRing.keyPair);
+          return newToken;
+        },
+      );
+    }
+
+    // Spy on getClaimsPage
+    let getClaimsPageMockCalls = 0;
+    const firstPageCompletedP = utils.promise();
+    const getClaimsPageMock = jest.spyOn(testProvider, 'getClaimsPage');
+    getClaimsPageMock.mockImplementation(async function* (
+      ...args: Parameters<typeof testProvider.getClaimsPage>
+    ) {
+      const result: ReturnType<typeof testProvider.getClaimsPage> =
+        TestProvider.prototype.getClaimsPage.call(testProvider, ...args);
+      for await (const claim of result) {
+        if (args[1] === identityId2) {
+          if (getClaimsPageMockCalls === testProvider.pageSize) {
+            // Trigger manual task stopping
+            firstPageCompletedP.resolveP();
+          }
+          getClaimsPageMockCalls++;
+        }
+        yield claim;
+      }
+    });
+    await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId2);
+
+    await firstPageCompletedP.p;
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.start();
+    await taskManager.startProcessing();
+
+    await waitForAllDiscoveryTasks(discovery);
+    // This total claims gotten should be above 2 pages worth of claims, because there will be some overlap
+    expect(getClaimsPageMockCalls).toBeGreaterThanOrEqual(
+      2 * testProvider.pageSize,
+    );
+    // This total claims gotten should be below 3 pages worth of claims,
+    // because the overlap of claims should never exceed the no. of pages - 1
+    expect(getClaimsPageMockCalls).toBeLessThan(3 * testProvider.pageSize);
+
+    delete testProvider.users[identityId2];
+    getClaimsPageMock.mockReset();
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
   test('processed vertices are queued for rediscovery', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
@@ -489,10 +583,8 @@ describe('Discovery', () => {
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+
+    await waitForAllDiscoveryTasks(discovery);
     await discovery.waitForDiscoveryTasks(true);
 
     await taskManager.stopProcessing();
@@ -516,18 +608,14 @@ describe('Discovery', () => {
 
     // Attempt initial discovery
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+
+    await waitForAllDiscoveryTasks(discovery);
     // All the vertices should be processed
     expect(processVertexMock).toHaveBeenCalledTimes(3);
     // 2nd attempt at discovery
     processVertexMock.mockReset();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     // Only the queued vertex should be processed
     expect(processVertexMock).toHaveBeenCalledTimes(1);
 
@@ -552,18 +640,14 @@ describe('Discovery', () => {
 
     // Attempt initial discovery
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+
+    await waitForAllDiscoveryTasks(discovery);
     // All the vertices should be processed
     expect(processVertexMock).toHaveBeenCalledTimes(3);
     // 2nd attempt at discovery
     processVertexMock.mockClear();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId(), Date.now());
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
     // All vertices should be reprocessed
     expect(processVertexMock).toHaveBeenCalledTimes(3);
 
@@ -590,10 +674,7 @@ describe('Discovery', () => {
     });
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
-    let existingTasks: number = 0;
-    do {
-      existingTasks = await discovery.waitForDiscoveryTasks();
-    } while (existingTasks > 0);
+    await waitForAllDiscoveryTasks(discovery);
 
     // Just checking basic functionality of queued and processed
     expect(eventMap.get(discoveryEvents.EventDiscoveryVertexQueued.name)).toBe(
