@@ -816,6 +816,7 @@ class VaultInternal {
       vaultNameOrId: vaultNameOrId_,
       action: vaultAction,
     });
+
     const result = vaultsGitInfoGetStream.meta?.result;
     if (result == null || !utils.isObject(result)) {
       utils.never('`result` must be a defined object');
@@ -831,6 +832,11 @@ class VaultInternal {
     }
     const vaultName = result.vaultName;
     const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
+
+    const vaultsGitPackGetStream = await client.methods.vaultsGitPackGet({
+      nameOrId: result.vaultIdEncoded as string,
+      vaultAction,
+    });
 
     return [
       async function ({
@@ -855,14 +861,9 @@ class VaultInternal {
             statusMessage: 'OK',
           };
         } else if (method === 'POST') {
-          const vaultsGitPackGetStream = await client.methods.vaultsGitPackGet({
-            nameOrId: result.vaultIdEncoded as string,
-            vaultAction,
-          });
           const writer = vaultsGitPackGetStream.writable.getWriter();
           await writer.write(body[0]);
           await writer.close();
-
           return {
             url: url,
             method: method,

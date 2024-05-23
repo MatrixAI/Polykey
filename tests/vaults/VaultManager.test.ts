@@ -928,7 +928,6 @@ describe('VaultManager', () => {
         vaultsErrors.ErrorVaultsPermissionDenied,
       );
     });
-    // FIXME: Test has been disabled due to non-deterministic failures in CI/CD
     test(
       'can pull a cloned vault',
       async () => {
