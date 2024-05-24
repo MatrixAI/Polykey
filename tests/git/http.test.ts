@@ -150,12 +150,14 @@ describe('Git Http', () => {
       'agent=git/isomorphic-git@1.24.5',
     ]);
   });
-  test.prop([fc.uint8Array({ minLength: 100 })])(
+  test.prop([fc.uint8Array({ minLength: 100 }).noShrink()])(
     'parsePackRequest handles random data',
     async (data) => {
-      await expect(
-        gitHttp.parsePackRequest([Buffer.from(data)]),
-      ).rejects.toThrow(validationErrors.ErrorParse);
+      const bufferData = Buffer.from(data);
+      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()))
+      await expect(gitHttp.parsePackRequest([bufferData])).rejects.toThrow(
+        validationErrors.ErrorParse,
+      );
     },
   );
   test('generatePackData', async () => {

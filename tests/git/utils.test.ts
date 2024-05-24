@@ -240,7 +240,9 @@ describe('Git utils', () => {
   test.prop([fc.uint8Array({ size: 'medium', minLength: 1 }).noShrink()])(
     'parseRequestLine handles bad data',
     async (randomData) => {
-      expect(() => gitUtils.parseRequestLine(Buffer.from(randomData))).toThrow(
+      const bufferData = Buffer.from(randomData);
+      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()))
+      expect(() => gitUtils.parseRequestLine(bufferData)).toThrow(
         validationErrors.ErrorParse,
       );
     },
