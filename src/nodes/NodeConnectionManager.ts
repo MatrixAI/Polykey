@@ -1305,15 +1305,13 @@ class NodeConnectionManager {
       .then(
         () => {},
         (e) => {
-          // If it's a connection error or missing handler then it's a signalling failure
+          // If it's a connection error or missing handler then it's a signalling failure, we ignore these since this
+          // is a fire and forget. Any unexpected errors should still be thrown
           if (
             nodesUtils.isConnectionError(e) ||
             e instanceof rpcErrors.ErrorRPCHandlerFailed
           ) {
-            new nodesErrors.ErrorNodeConnectionManagerSignalFailed(
-              'Failed final signal step triggering `nodesConnectionSignalFinal`',
-              { cause: e },
-            );
+            return;
           }
           throw e;
         },
