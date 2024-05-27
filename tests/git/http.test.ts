@@ -154,7 +154,7 @@ describe('Git Http', () => {
     'parsePackRequest handles random data',
     async (data) => {
       const bufferData = Buffer.from(data);
-      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()))
+      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()));
       await expect(gitHttp.parsePackRequest([bufferData])).rejects.toThrow(
         validationErrors.ErrorParse,
       );

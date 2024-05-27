@@ -49,6 +49,12 @@ describe('auditEventGet', () => {
   let nodeConnectionManager: NodeConnectionManager; // Event target pretending to be discovery
   let discovery: Discovery; // Event target pretending to be discovery
 
+  const handleEvent = async (evt) => {
+    // @ts-ignore: kidnap protected handlerMap so we can send events in the foreground
+    const handlerMap = audit.eventHandlerMap;
+    await handlerMap.get(evt.constructor)?.handler(evt);
+  };
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -119,15 +125,16 @@ describe('auditEventGet', () => {
       recursive: true,
     });
   });
+
   test('cancels', async () => {
     let callerInterface = await rpcClient.methods.auditEventsGet({
-      path: [],
+      paths: [],
     });
     let reader = callerInterface.getReader();
     await reader.cancel();
     await expect(reader.closed).toResolve();
     callerInterface = await rpcClient.methods.auditEventsGet({
-      path: [],
+      paths: [],
       awaitFutureEvents: true,
     });
     reader = callerInterface.getReader();
@@ -145,17 +152,13 @@ describe('auditEventGet', () => {
       ...eventDetail,
       remoteNodeId: nodesUtils.encodeNodeId(eventDetail.remoteNodeId),
     };
-    // @ts-ignore: kidnap protected
-    const handlerMap = audit.eventHandlerMap;
-    await handlerMap
-      .get(nodesEvents.EventNodeConnectionManagerConnectionReverse)
-      ?.handler(
-        new nodesEvents.EventNodeConnectionManagerConnectionReverse({
-          detail: eventDetail,
-        }),
-      );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: eventDetail,
+      }),
+    );
     let callerInterface: any = await rpcClient.methods.auditEventsGet({
-      path: ['node', 'connection', 'reverse'],
+      paths: [['node', 'connection', 'reverse']],
     });
     let reader = callerInterface.getReader();
     await expect(reader.read().then((e) => e.value!.data)).resolves.toEqual({
@@ -163,7 +166,7 @@ describe('auditEventGet', () => {
       type: 'reverse',
     });
     callerInterface = await rpcClient.methods.auditEventsGet({
-      path: ['node', 'connection'],
+      paths: [['node', 'connection']],
       awaitFutureEvents: true,
     });
     reader = callerInterface.getReader();
@@ -171,13 +174,11 @@ describe('auditEventGet', () => {
       ...auditEventData,
       type: 'reverse',
     });
-    await handlerMap
-      .get(nodesEvents.EventNodeConnectionManagerConnectionForward)
-      ?.handler(
-        new nodesEvents.EventNodeConnectionManagerConnectionForward({
-          detail: eventDetail,
-        }),
-      );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: eventDetail,
+      }),
+    );
     await expect(reader.read().then((e) => e.value!.data)).resolves.toEqual({
       ...auditEventData,
       type: 'forward',
@@ -185,11 +186,6 @@ describe('auditEventGet', () => {
   });
   test('gets discovery events', async () => {
     // Set up some events
-    // @ts-ignore: kidnap protected handlerMap so we can send events in the foreground
-    const handlerMap = audit.eventHandlerMap;
-    const handleEvent = async (evt) => {
-      await handlerMap.get(evt.constructor)?.handler(evt);
-    };
     await handleEvent(
       new discoveryEvents.EventDiscoveryVertexQueued({
         detail: {
@@ -240,13 +236,131 @@ describe('auditEventGet', () => {
     );
 
     const readableStream = await rpcClient.methods.auditEventsGet({
-      path: ['discovery', 'vertex'],
+      paths: [['discovery', 'vertex']],
     });
     const results: Array<POJO> = [];
     for await (const result of readableStream) {
       results.push(result);
     }
     expect(results).toHaveLength(6);
+  });
+  test('can get multiple paths in ascending order', async () => {
+    const nodeId = testNodesUtils.generateRandomNodeId();
+    const eventDetail: ConnectionData = {
+      remoteHost: '::' as Host,
+      remoteNodeId: nodeId,
+      remotePort: 0 as Port,
+    };
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 1 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 2 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 3 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 4 as Port,
+        },
+      }),
+    );
+    const callerInterface: any = await rpcClient.methods.auditEventsGet({
+      paths: [
+        ['node', 'connection'],
+        ['node', 'connection', 'forward'],
+      ],
+      order: 'asc',
+    });
+    const order: Array<number> = [];
+    const pathSet: Set<string> = new Set();
+    for await (const result of callerInterface) {
+      order.push(result.data.remotePort);
+      pathSet.add(result.path.join('.'));
+    }
+    expect(order).toMatchObject([1, 2, 3, 4]);
+    expect([...pathSet]).toIncludeAllMembers([
+      'node.connection.reverse',
+      'node.connection.forward',
+    ]);
+    expect(pathSet.size).toBe(2);
+  });
+  test('can get multiple paths in descending order', async () => {
+    const nodeId = testNodesUtils.generateRandomNodeId();
+    const eventDetail: ConnectionData = {
+      remoteHost: '::' as Host,
+      remoteNodeId: nodeId,
+      remotePort: 0 as Port,
+    };
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 1 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 2 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 3 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 4 as Port,
+        },
+      }),
+    );
+    const callerInterface: any = await rpcClient.methods.auditEventsGet({
+      paths: [
+        ['node', 'connection'],
+        ['node', 'connection', 'forward'],
+      ],
+      order: 'desc',
+    });
+    const order: Array<number> = [];
+    const pathSet: Set<string> = new Set();
+    for await (const result of callerInterface) {
+      order.push(result.data.remotePort);
+      pathSet.add(result.path.join('.'));
+    }
+    expect(order).toMatchObject([4, 3, 2, 1]);
+    expect([...pathSet]).toIncludeAllMembers([
+      'node.connection.reverse',
+      'node.connection.forward',
+    ]);
+    expect(pathSet.size).toBe(2);
   });
 });
 

@@ -19,6 +19,8 @@ import AgentLockAll from './AgentLockAll';
 import AgentStatus from './AgentStatus';
 import AgentStop from './AgentStop';
 import AgentUnlock from './AgentUnlock';
+import AuditEventsGet from './AuditEventsGet';
+import AuditMetricGet from './AuditMetricGet';
 import GestaltsActionsGetByIdentity from './GestaltsActionsGetByIdentity';
 import GestaltsActionsGetByNode from './GestaltsActionsGetByNode';
 import GestaltsActionsSetByIdentity from './GestaltsActionsSetByIdentity';
@@ -89,8 +91,6 @@ import VaultsSecretsNewDir from './VaultsSecretsNewDir';
 import VaultsSecretsRename from './VaultsSecretsRename';
 import VaultsSecretsStat from './VaultsSecretsStat';
 import VaultsVersion from './VaultsVersion';
-import AuditEventsGet from './AuditEventsGet';
-import AuditMetricGet from './AuditMetricGet';
 
 /**
  * Server manifest factory.
@@ -205,6 +205,8 @@ export {
   AgentStatus,
   AgentStop,
   AgentUnlock,
+  AuditEventsGet,
+  AuditMetricGet,
   GestaltsActionsGetByIdentity,
   GestaltsActionsGetByNode,
   GestaltsActionsSetByIdentity,
