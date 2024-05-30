@@ -362,6 +362,62 @@ describe('auditEventGet', () => {
     ]);
     expect(pathSet.size).toBe(2);
   });
+  test('providing empty path gets all events', async () => {
+    const nodeId = testNodesUtils.generateRandomNodeId();
+    const eventDetail: ConnectionData = {
+      remoteHost: '::' as Host,
+      remoteNodeId: nodeId,
+      remotePort: 0 as Port,
+    };
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 1 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 2 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionReverse({
+        detail: {
+          ...eventDetail,
+          remotePort: 3 as Port,
+        },
+      }),
+    );
+    await handleEvent(
+      new nodesEvents.EventNodeConnectionManagerConnectionForward({
+        detail: {
+          ...eventDetail,
+          remotePort: 4 as Port,
+        },
+      }),
+    );
+    const callerInterface: any = await rpcClient.methods.auditEventsGet({
+      paths: [[]],
+      order: 'asc',
+    });
+    const order: Array<number> = [];
+    const pathSet: Set<string> = new Set();
+    for await (const result of callerInterface) {
+      order.push(result.data.remotePort);
+      pathSet.add(result.path.join('.'));
+    }
+    expect(order).toMatchObject([1, 2, 3, 4]);
+    expect([...pathSet]).toIncludeAllMembers([
+      'node.connection.reverse',
+      'node.connection.forward',
+    ]);
+    expect(pathSet.size).toBe(2);
+  });
 });
 
 describe('auditMetricGet', () => {

@@ -268,7 +268,11 @@ function filterSubPaths(paths: Array<Array<string>>): Array<Array<string>> {
       }
       return false;
     }, {})
-    .map((v) => v.split('.'));
+    .map((v) => {
+      // Empty array becomes '' from join, so we need to convert it back
+      if (v === '') return [];
+      return v.split('.');
+    });
 }
 
 /**
