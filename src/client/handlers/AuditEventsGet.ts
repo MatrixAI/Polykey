@@ -3,7 +3,6 @@ import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type {
   AuditEvent,
   AuditEventSerialized,
-  AuditEventToAuditEventSerialized,
   TopicPath,
 } from '../../audit/types';
 import type { Audit } from '../../audit';
@@ -45,9 +44,7 @@ class AuditEventsGet extends ServerHandler<
     _cancel,
     _meta,
     ctx: ContextTimed,
-  ): AsyncGenerator<
-    ClientRPCResponseResult<AuditEventToAuditEventSerialized<AuditEvent>>
-  > {
+  ): AsyncGenerator<ClientRPCResponseResult<AuditEventSerialized>> {
     const { audit } = this.container;
     const iterators: Array<AsyncGenerator<AuditEvent>> = [];
     let seek_: AuditEventId | number | undefined;
