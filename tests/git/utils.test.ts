@@ -241,7 +241,7 @@ describe('Git utils', () => {
     'parseRequestLine handles bad data',
     async (randomData) => {
       const bufferData = Buffer.from(randomData);
-      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()))
+      fc.pre(!/^[0-9a-f]{4}$/.test(bufferData.subarray(0, 4).toString()));
       expect(() => gitUtils.parseRequestLine(bufferData)).toThrow(
         validationErrors.ErrorParse,
       );

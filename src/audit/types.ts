@@ -68,6 +68,9 @@ type AuditEventToAuditEventSerialized<T extends AuditEvent> = Omit<T, 'id'> & {
   id: AuditEventIdEncoded;
 };
 
+/**
+ * Equivalent to `Array<string>` but restricted to the available paths in `topicPaths`.
+ */
 type TopicPath = (typeof topicPaths)[number];
 
 type TopicSubPath<T = TopicPath> =
@@ -158,6 +161,9 @@ type AuditEventDiscoveryCheckRediscovery = AuditEventBase<
   typeof discoveryCheckRediscoveryTopicPath
 >;
 
+// @ts-ignore: recursive definition for defining a tree
+type TopicPathTreeNode = Record<string, TopicPathTreeNode>;
+
 // Metrics
 
 type MetricPath = (typeof metricPaths)[number];
@@ -213,6 +219,7 @@ export type {
   AuditEventDiscoveryVertexCulled,
   AuditEventDiscoveryVertexCancelled,
   AuditEventDiscoveryCheckRediscovery,
+  TopicPathTreeNode,
   // Metric
   MetricPath,
   MetricPathToAuditMetric,

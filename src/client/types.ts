@@ -17,7 +17,6 @@ import type { CommitId, VaultAction, VaultName } from '../vaults/types';
 import type { CertificatePEM, JWKEncrypted, PublicKeyJWK } from '../keys/types';
 import type { Notification } from '../notifications/types';
 import type { ProviderToken } from '../identities/types';
-import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
 import type { AuditMetricGetTypeOverride } from './callers/auditMetricGet';
 import type {
   NodeContact,
@@ -354,9 +353,8 @@ type OverrideRPClientType<T extends RPCClient<ClientManifest>> = Omit<
   'methods'
 > & {
   methods: {
-    auditEventsGet: AuditEventsGetTypeOverride;
     auditMetricGet: AuditMetricGetTypeOverride;
-  } & Omit<T['methods'], 'auditEventsGet' | 'auditMetricGet'>;
+  } & Omit<T['methods'], 'auditMetricGet'>;
 };
 
 export type {
@@ -420,6 +418,5 @@ export type {
   SecretStatMessage,
   SignatureMessage,
   OverrideRPClientType,
-  AuditEventsGetTypeOverride,
   AuditMetricGetTypeOverride,
 };

@@ -1,10 +1,10 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type {
+  AuditEvent,
   AuditEventSerialized,
   AuditEventToAuditEventSerialized,
-  TopicSubPath,
-  TopicSubPathToAuditEvent,
+  TopicPath,
 } from '../../audit/types';
 import type { Audit } from '../../audit';
 import type { AuditEventId, AuditEventIdEncoded } from '../../ids';
@@ -16,7 +16,7 @@ class AuditEventsGet extends ServerHandler<
     audit: Audit;
   },
   ClientRPCRequestParams<{
-    path: TopicSubPath & Array<string>;
+    paths: Array<Array<string>>;
     seek?: AuditEventIdEncoded | number;
     seekEnd?: AuditEventIdEncoded | number;
     order?: 'asc' | 'desc';
@@ -25,9 +25,9 @@ class AuditEventsGet extends ServerHandler<
   }>,
   ClientRPCResponseResult<AuditEventSerialized>
 > {
-  public async *handle<T extends TopicSubPath>(
+  public async *handle(
     {
-      path,
+      paths,
       seek,
       seekEnd,
       order = 'asc',
@@ -40,18 +40,16 @@ class AuditEventsGet extends ServerHandler<
       limit?: number;
       awaitFutureEvents?: boolean;
     }> & {
-      path: T;
+      paths: Array<Array<string>>;
     },
     _cancel,
     _meta,
     ctx: ContextTimed,
   ): AsyncGenerator<
-    ClientRPCResponseResult<
-      AuditEventToAuditEventSerialized<TopicSubPathToAuditEvent<T>>
-    >
+    ClientRPCResponseResult<AuditEventToAuditEventSerialized<AuditEvent>>
   > {
     const { audit } = this.container;
-    let iterator: AsyncGenerator<TopicSubPathToAuditEvent<T>>;
+    const iterators: Array<AsyncGenerator<AuditEvent>> = [];
     let seek_: AuditEventId | number | undefined;
     if (seek != null) {
       seek_ =
@@ -64,28 +62,54 @@ class AuditEventsGet extends ServerHandler<
           ? auditUtils.decodeAuditEventId(seekEnd)
           : seekEnd;
     }
-    // If the call is descending chronologically, or does not want to await future events,
-    // it should not await future events.
-    if (!awaitFutureEvents || order === 'desc') {
-      iterator = audit.getAuditEvents(path, {
-        seek: seek_,
-        seekEnd: seekEnd_,
-        order: order,
-        limit: limit,
-      });
-    } else {
-      iterator = audit.getAuditEventsLongRunning(path, {
-        seek: seek_,
-        seekEnd: seekEnd_,
-        limit: limit,
-      });
+
+    // Convert the paths
+    const topicPaths: Array<TopicPath> = [];
+    for (const topicPath of auditUtils.filterSubPaths(paths)) {
+      if (auditUtils.isTopicPath(topicPath)) topicPaths.push(topicPath);
     }
+
+    // Creating iterators for each `topicPath`
+    for (const topicPath of topicPaths) {
+      if (awaitFutureEvents) {
+        // If we're awaiting future events then we call `getAuditEventsLongRunning`, order is forced to `asc` in this case
+        const iterator = audit.getAuditEventsLongRunning(topicPath, {
+          seek: seek_,
+          seekEnd: seekEnd_,
+          limit: limit,
+        });
+        iterators.push(iterator);
+      } else {
+        // Otherwise we use the normal `getAuditEvents`
+        const iterator = audit.getAuditEvents(topicPath, {
+          seek: seek_,
+          seekEnd: seekEnd_,
+          order: order,
+          limit: limit,
+        });
+        iterators.push(iterator);
+      }
+    }
+
+    // We need to reverse the compare if we are descending in time
+    const orderSwitchMultiplier = awaitFutureEvents || order === 'asc' ? 1 : -1;
+    function sortFn(a: AuditEvent, b: AuditEvent) {
+      return Buffer.compare(a.id, b.id) * orderSwitchMultiplier;
+    }
+
+    const combinedIterator = auditUtils.genSort<AuditEvent>(
+      sortFn,
+      ...iterators,
+    );
     ctx.signal.addEventListener('abort', async () => {
-      await iterator.return(ctx.signal.reason);
+      await combinedIterator.return(ctx.signal.reason);
     });
-    for await (const auditEvent of iterator) {
-      (auditEvent.id as any) = auditUtils.encodeAuditEventId(auditEvent.id);
-      yield auditEvent as any;
+    for await (const auditEvent of combinedIterator) {
+      yield {
+        id: auditUtils.encodeAuditEventId(auditEvent.id),
+        path: auditEvent.path,
+        data: auditEvent.data,
+      };
     }
   }
 }
