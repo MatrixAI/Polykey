@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import * as fc from 'fast-check';
+import { test } from '@fast-check/jest';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Lock } from '@matrixai/async-locks';
@@ -25,7 +26,8 @@ describe(TaskManager.name, () => {
   const handlerId = 'testId' as TaskHandlerId;
   let dataDir: string;
   let db: DB;
-  let taskManager: TaskManager | undefined;
+  // Should be set inside the tests, but possibly undefined
+  let taskManager: TaskManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -203,82 +205,74 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
-  test('activeLimit is enforced', async () => {
-    const activeLimit = 5;
-
-    const taskArb = fc
-      .record({
-        handlerId: fc.constant(handlerId),
-        delay: fc.integer({ min: 10, max: 1000 }),
-        parameters: fc.constant([]),
-        priority: fc.integer({ min: -200, max: 200 }),
-      })
-      .noShrink();
-
-    const scheduleCommandArb = taskArb.map(
-      (taskSpec) => async (context: { taskManager: TaskManager }) => {
-        return await context.taskManager.scheduleTask({
-          ...taskSpec,
-          lazy: false,
-        });
-      },
-    );
-
-    const sleepCommandArb = fc
-      .integer({ min: 10, max: 100 })
-      .noShrink()
-      .map((value) => async (_context) => {
-        await utils.sleep(value);
+  const scheduleCommandArb = fc
+    .record({
+      handlerId: fc.constant(handlerId),
+      delay: fc.integer({ min: 10, max: 1000 }),
+      parameters: fc.constant([]),
+      priority: fc.integer({ min: -200, max: 200 }),
+    })
+    .map((taskSpec) => async (context: { taskManager: TaskManager }) => {
+      return await context.taskManager.scheduleTask({
+        ...taskSpec,
+        lazy: false,
       });
+    })
+    .noShrink();
+  const sleepCommandArb = fc
+    .integer({ min: 10, max: 100 })
+    .noShrink()
+    .map((value) => async (_context) => {
+      await utils.sleep(value);
+    });
 
-    const commandsArb = fc.array(
-      fc.oneof(
-        { arbitrary: scheduleCommandArb, weight: 2 },
-        { arbitrary: sleepCommandArb, weight: 1 },
-      ),
-      { maxLength: 50, minLength: 50 },
-    );
+  const commandsArb = fc.array(
+    fc.oneof(
+      { arbitrary: scheduleCommandArb, weight: 2 },
+      { arbitrary: sleepCommandArb, weight: 1 },
+    ),
+    { maxLength: 50, minLength: 50 },
+  );
+  test.prop([commandsArb], {
+    interruptAfterTimeLimit: globalThis.defaultTimeout - 2000,
+    numRuns: 3,
+  })('activeLimit is enforced', async (commands) => {
+    const activeLimit = 5;
+    taskManager = await TaskManager.createTaskManager({
+      activeLimit,
+      db,
+      fresh: true,
+      logger,
+    });
+    const handler = jest.fn();
+    handler.mockImplementation(async () => {
+      await utils.sleep(200);
+    });
+    taskManager.registerHandler(handlerId, handler);
+    await taskManager.startProcessing();
+    const context = { taskManager };
 
-    await fc.assert(
-      fc.asyncProperty(commandsArb, async (commands) => {
-        taskManager = await TaskManager.createTaskManager({
-          activeLimit,
-          db,
-          fresh: true,
-          logger,
-        });
-        const handler = jest.fn();
-        handler.mockImplementation(async () => {
-          await utils.sleep(200);
-        });
-        taskManager.registerHandler(handlerId, handler);
-        await taskManager.startProcessing();
-        const context = { taskManager };
+    // Scheduling taskManager to be scheduled
+    const pendingTasks: Array<PromiseCancellable<any>> = [];
+    for (const command of commands) {
+      expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
+      const task = await command(context);
+      if (task != null) pendingTasks.push(task.promise());
+    }
 
-        // Scheduling taskManager to be scheduled
-        const pendingTasks: Array<PromiseCancellable<any>> = [];
-        for (const command of commands) {
-          expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
-          const task = await command(context);
-          if (task != null) pendingTasks.push(task.promise());
-        }
+    let completed = false;
+    const waitForcompletionProm = (async () => {
+      await Promise.all(pendingTasks);
+      completed = true;
+    })();
 
-        let completed = false;
-        const waitForcompletionProm = (async () => {
-          await Promise.all(pendingTasks);
-          completed = true;
-        })();
+    // Check for active tasks while tasks are still running
+    while (!completed) {
+      expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
+      await Promise.race([utils.sleep(100), waitForcompletionProm]);
+    }
 
-        // Check for active tasks while tasks are still running
-        while (!completed) {
-          expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
-          await Promise.race([utils.sleep(100), waitForcompletionProm]);
-        }
-
-        await taskManager.stop();
-      }),
-      { interruptAfterTimeLimit: globalThis.defaultTimeout - 2000, numRuns: 3 },
-    );
+    await taskManager.stop();
   });
   test('tasks are handled exactly once per task', async () => {
     const handler = jest.fn();
@@ -295,7 +289,6 @@ describe(TaskManager.name, () => {
       handlers: { [handlerId]: handler },
       logger,
     });
-
     await db.withTransactionF(async (tran) => {
       for (let i = 0; i < totalTasks; i++) {
         await taskManager.scheduleTask(
