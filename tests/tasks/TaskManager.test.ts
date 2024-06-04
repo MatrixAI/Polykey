@@ -70,43 +70,43 @@ describe(TaskManager.name, () => {
       handlerId,
       parameters: [1],
       delay: 1000,
-      lazy: true,
+      lazy: false,
     });
     const taskB = await taskManager.scheduleTask({
       handlerId,
       parameters: [2],
       delay: 100,
-      lazy: true,
+      lazy: false,
     });
     const taskC = await taskManager.scheduleTask({
       handlerId,
       parameters: [3],
       delay: 2000,
-      lazy: true,
+      lazy: false,
     });
     const taskD = await taskManager.scheduleTask({
       handlerId,
       parameters: [4],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskE = await taskManager.scheduleTask({
       handlerId,
       parameters: [5],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskF = await taskManager.scheduleTask({
       handlerId,
       parameters: [6],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskG = await taskManager.scheduleTask({
       handlerId,
       parameters: [7],
       delay: 3000,
-      lazy: true,
+      lazy: false,
     });
     await Promise.all([
       taskB.promise(),
@@ -151,43 +151,43 @@ describe(TaskManager.name, () => {
       handlerId,
       parameters: [1],
       delay: 1000,
-      lazy: true,
+      lazy: false,
     });
     const taskB = await taskManager.scheduleTask({
       handlerId,
       parameters: [2],
       delay: 100,
-      lazy: true,
+      lazy: false,
     });
     const taskC = await taskManager.scheduleTask({
       handlerId,
       parameters: [3],
       delay: 2000,
-      lazy: true,
+      lazy: false,
     });
     const taskD = await taskManager.scheduleTask({
       handlerId,
       parameters: [4],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskE = await taskManager.scheduleTask({
       handlerId,
       parameters: [5],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskF = await taskManager.scheduleTask({
       handlerId,
       parameters: [6],
       delay: 10,
-      lazy: true,
+      lazy: false,
     });
     const taskG = await taskManager.scheduleTask({
       handlerId,
       parameters: [7],
       delay: 3000,
-      lazy: true,
+      lazy: false,
     });
     await Promise.all([
       taskB.promise(),
@@ -295,7 +295,7 @@ describe(TaskManager.name, () => {
           {
             handlerId,
             parameters: [i],
-            lazy: true,
+            lazy: false,
           },
           tran,
         );
@@ -677,12 +677,12 @@ describe(TaskManager.name, () => {
     const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
-      lazy: true,
+      lazy: false,
     });
     const task2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.startProcessing();
     await utils.poll(
@@ -738,12 +738,12 @@ describe(TaskManager.name, () => {
     const task1 = await taskManager.scheduleTask({
       handlerId: handlerId1,
       parameters: [],
-      lazy: true,
+      lazy: false,
     });
     const task2 = await taskManager.scheduleTask({
       handlerId: handlerId2,
       parameters: [],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.startProcessing();
     // Poll until status is active
@@ -792,49 +792,49 @@ describe(TaskManager.name, () => {
       handlerId,
       parameters: [1],
       path: ['one'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [2],
       path: ['two'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [3],
       path: ['two'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [4],
       path: ['group1', 'three'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [5],
       path: ['group1', 'four'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [6],
       path: ['group1', 'four'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [7],
       path: ['group2', 'five'],
-      lazy: true,
+      lazy: false,
     });
     await taskManager.scheduleTask({
       handlerId,
       parameters: [8],
       path: ['group2', 'six'],
-      lazy: true,
+      lazy: false,
     });
 
     const listTasks = async (taskGroup: TaskPath) => {
@@ -866,12 +866,12 @@ describe(TaskManager.name, () => {
     const task1 = await taskManager.scheduleTask({
       handlerId,
       parameters: [1],
-      lazy: true,
+      lazy: false,
     });
     const task2 = await taskManager.scheduleTask({
       handlerId,
       parameters: [2],
-      lazy: true,
+      lazy: false,
     });
 
     const gotTask1 = await taskManager.getTask(task1.id, true);
@@ -886,10 +886,10 @@ describe(TaskManager.name, () => {
       logger,
     });
 
-    await taskManager.scheduleTask({ handlerId, parameters: [1], lazy: true });
-    await taskManager.scheduleTask({ handlerId, parameters: [2], lazy: true });
-    await taskManager.scheduleTask({ handlerId, parameters: [3], lazy: true });
-    await taskManager.scheduleTask({ handlerId, parameters: [4], lazy: true });
+    await taskManager.scheduleTask({ handlerId, parameters: [1], lazy: false });
+    await taskManager.scheduleTask({ handlerId, parameters: [2], lazy: false });
+    await taskManager.scheduleTask({ handlerId, parameters: [3], lazy: false });
+    await taskManager.scheduleTask({ handlerId, parameters: [4], lazy: false });
 
     const taskList: Array<Task> = [];
     for await (const task of taskManager.getTasks()) {
@@ -1050,29 +1050,29 @@ describe(TaskManager.name, () => {
     const task0 = await taskManager.scheduleTask({
       handlerId,
       delay: NaN,
-      lazy: true,
+      lazy: false,
     });
     // Same as max delay - never gets executed
     const taskInfinite = await taskManager.scheduleTask({
       handlerId,
       delay: Infinity,
-      lazy: true,
+      lazy: false,
     });
     // Normal delays
     const task500 = await taskManager.scheduleTask({
       handlerId,
       delay: 500,
-      lazy: true,
+      lazy: false,
     });
     const task1000 = await taskManager.scheduleTask({
       handlerId,
       delay: 1000,
-      lazy: true,
+      lazy: false,
     });
     const task1500 = await taskManager.scheduleTask({
       handlerId,
       delay: 1500,
-      lazy: true,
+      lazy: false,
     });
     expect(handler).toHaveBeenCalledTimes(0);
     await taskManager.startProcessing();
@@ -1112,7 +1112,7 @@ describe(TaskManager.name, () => {
         handlerId,
         parameters: [priority],
         priority,
-        lazy: true,
+        lazy: false,
       });
       taskIds.push(task.id);
     }
@@ -1171,5 +1171,4 @@ describe(TaskManager.name, () => {
     resolvePauseP();
     await taskManager.stop();
   });
-  test.todo('taskIds are monotonic');
 });
