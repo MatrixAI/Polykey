@@ -1933,6 +1933,34 @@ describe(`${NodeManager.name}`, () => {
       );
       expect(mockedRefreshBucket).toHaveBeenCalled();
     });
+    test('network entry with syncNodeGraph handles failure to resolve hostnames', async () => {
+      const syncP = nodeManager.syncNodeGraph(
+        [
+          [ncmPeers[0].nodeId, ['some.random.host' as Host, 55555 as Port]],
+          [ncmPeers[0].nodeId, [localHost, 55555 as Port]],
+        ],
+        1000,
+        true,
+      );
+      await expect(syncP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerSyncNodeGraphFailed,
+      );
+      const error = await syncP.catch((e) => e);
+      // Expecting `Failed to establish any connections with the following errors '[ErrorNodeManagerResolveNodeFailed: Failed to resolve 'some.random.host',ErrorNodeConnectionTimeout]'`
+      expect(error.message).toIncludeMultiple([
+        'Failed to establish any connections with the following errors',
+        'ErrorNodeManagerResolveNodeFailed',
+        'some.random.host',
+        'ErrorNodeConnectionTimeout',
+      ]);
+      expect(error.cause).toBeInstanceOf(AggregateError);
+      expect(error.cause.errors[0]).toBeInstanceOf(
+        nodesErrors.ErrorNodeManagerResolveNodeFailed,
+      );
+      expect(error.cause.errors[1]).toBeInstanceOf(
+        nodesErrors.ErrorNodeConnectionTimeout,
+      );
+    });
     test('refresh buckets', async () => {
       // Structure is an acyclic graph
       // connections

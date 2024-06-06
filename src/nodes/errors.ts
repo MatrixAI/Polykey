@@ -25,6 +25,11 @@ class ErrorNodeManagerFindNodeFailed<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorNodeManagerResolveNodeFailed<T> extends ErrorNodeManager<T> {
+  static description = 'Failed to resolve node address using DNS';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 class ErrorNodeManagerSyncNodeGraphFailed<T> extends ErrorNodeManager<T> {
   static description = 'Failed to enter the network with syncNodeGraph';
   exitCode = sysexits.TEMPFAIL;
@@ -218,6 +223,7 @@ export {
   ErrorNodeManagerNodeIdOwn,
   ErrorNodeManagerConnectionFailed,
   ErrorNodeManagerFindNodeFailed,
+  ErrorNodeManagerResolveNodeFailed,
   ErrorNodeManagerSyncNodeGraphFailed,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
