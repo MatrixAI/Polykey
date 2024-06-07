@@ -42,8 +42,6 @@ import { never } from '../utils';
 import Token from '../tokens/Token';
 import { decodeClaimId } from '../ids';
 
-// TODO: add social and permission level discovery
-
 /**
  * This is the reason used to cancel duplicate tasks for vertices
  */

@@ -468,9 +468,9 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
       acl,
       logger,
     });
-    await gestaltGraph.setNode({
-      nodeId: nodeId,
-    });
+    // Await gestaltGraph.setNode({
+    //   nodeId: nodeId,
+    // });
     taskManager = await TaskManager.createTaskManager({
       db,
       logger,

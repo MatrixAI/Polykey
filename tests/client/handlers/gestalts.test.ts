@@ -1948,6 +1948,17 @@ describe('gestaltsGestaltTrustByNode', () => {
       notify: null,
     });
   });
+  test('trusts a node (not in gestalt graph)', async () => {
+    const request = {
+      nodeIdEncoded: nodeIdEncodedRemote,
+    };
+    await rpcClient.methods.gestaltsGestaltTrustByNode(request);
+    expect(
+      await gestaltGraph.getGestaltActions(['node', nodeIdRemote!]),
+    ).toEqual({
+      notify: null,
+    });
+  });
   test('trusts a node (new node)', async () => {
     const request = {
       nodeIdEncoded: nodeIdEncodedRemote,

@@ -1104,7 +1104,12 @@ class GestaltGraph {
     switch (type) {
       case 'node': {
         if ((await tran.get([...this.dbNodesPath, gestaltKey], true)) == null) {
-          throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+          await this.setNode(
+            {
+              nodeId: id,
+            },
+            tran,
+          );
         }
         await this.acl.setNodeAction(id, action, tran);
         return;
@@ -1498,6 +1503,7 @@ class GestaltGraph {
     return gestalt;
   }
 
+  // FIXME: this returns only 1 node that is linked to an identity, It should really return all of them. Maybe convert to a generator?
   protected async getIdentityLinkedNodeId(
     providerIdentityId: ProviderIdentityId,
     tran: DBTransaction,
