@@ -227,6 +227,11 @@ class NodeManager {
         const resolvedHosts = await networkUtils.resolveHostnames([
           nodeAddress,
         ]);
+        if (resolvedHosts.length === 0) {
+          throw new nodesErrors.ErrorNodeManagerResolveNodeFailed(
+            `Failed to resolve '${nodeAddress[0]}'`,
+          );
+        }
         const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
         if (nodeId == null) utils.never();
         return this.nodeConnectionManager.createConnectionMultiple(
@@ -240,7 +245,17 @@ class NodeManager {
       (r) => r.status === 'fulfilled',
     ).length;
     if (successfulConnections === 0) {
-      throw new nodesErrors.ErrorNodeManagerSyncNodeGraphFailed();
+      const failedConnectionErrors = connectionResults
+        .filter((r) => r.status === 'rejected')
+        .map((v) => {
+          if (v.status === 'rejected') return v.reason;
+        });
+      throw new nodesErrors.ErrorNodeManagerSyncNodeGraphFailed(
+        `Failed to establish any connections with the following errors '[${failedConnectionErrors}]'`,
+        {
+          cause: new AggregateError(failedConnectionErrors),
+        },
+      );
     }
     if (ctx.signal.aborted) return;
 
