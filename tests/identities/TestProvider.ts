@@ -197,15 +197,23 @@ class TestProvider extends Provider {
         startIndex,
         this.pageSize + startIndex,
       ) ?? [];
+    // Check if the next page contains any claims and set the nextPaginationToken accordingly
+    // This is done to reveal pagination logic bugs in case a null pagination token is not considered as the exhaustion of all pages
+    let nextPageStartIndex: number | undefined = startIndex + this.pageSize;
+    const nextPageClaimIds =
+      this.userLinks[identityId].slice(
+        nextPageStartIndex,
+        this.pageSize + nextPageStartIndex,
+      ) ?? [];
+    if (nextPageClaimIds.length === 0) {
+      nextPageStartIndex = undefined;
+    }
     for (const [i, claimId] of claimIds.entries()) {
       yield {
         claimId,
-        nextPaginationToken:
-          i === claimIds.length - 1
-            ? ((
-                startIndex + this.pageSize
-              ).toString() as ProviderPaginationToken)
-            : undefined,
+        nextPaginationToken: (i === claimIds.length - 1
+          ? nextPageStartIndex?.toString()
+          : undefined) as ProviderPaginationToken | undefined,
       };
     }
   }
