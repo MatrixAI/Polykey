@@ -912,21 +912,40 @@ class Discovery {
         identityClaims[identitySignedClaim.id] = claim;
       }
     };
+
     let nextPaginationToken: ProviderPaginationToken | undefined =
       providerPaginationToken;
-    let processed: boolean;
-    do {
-      // Refresh before each request made with identitySignedClaimGenerator
+    while (true) {
       ctx.timer.refresh();
-      processed = false;
+      let i = 0;
       if (provider.preferGetClaimsPage) {
+        const iterator = provider.getClaimsPage(
+          authIdentityId,
+          identityId,
+          nextPaginationToken,
+        );
+        for await (const wrapper of iterator) {
+          // This will:
+          // 1. throw if the getClaimIdsPage takes too much time
+          // 2. the rest of this loop iteration takes too much time
+          if (ctx.signal.aborted) {
+            return {
+              identityClaims: identityClaims,
+              lastProviderPaginationToken: nextPaginationToken,
+            };
+          }
+          nextPaginationToken = wrapper.nextPaginationToken;
+          // Claims on an identity provider will always be node -> identity
+          identitySignedClaimDb(wrapper.claim);
+          i++;
+        }
+      } else {
         const iterator = provider.getClaimIdsPage(
           authIdentityId,
           identityId,
           nextPaginationToken,
         );
         for await (const wrapper of iterator) {
-          processed = true;
           // This will:
           // 1. throw if the getClaimIdsPage takes too much time
           // 2. the rest of this loop iteration takes too much time
@@ -937,9 +956,7 @@ class Discovery {
             };
           }
           const claimId = wrapper.claimId;
-          if (wrapper.nextPaginationToken != null) {
-            nextPaginationToken = wrapper.nextPaginationToken;
-          }
+          nextPaginationToken = wrapper.nextPaginationToken;
           // Refresh timer in preparation for request
           ctx.timer.refresh();
           const identitySignedClaim = await provider.getClaim(
@@ -951,32 +968,14 @@ class Discovery {
           }
           // Claims on an identity provider will always be node -> identity
           identitySignedClaimDb(identitySignedClaim);
-        }
-      } else {
-        const iterator = provider.getClaimsPage(
-          authIdentityId,
-          identityId,
-          nextPaginationToken,
-        );
-        for await (const wrapper of iterator) {
-          processed = true;
-          // This will:
-          // 1. throw if the getClaimIdsPage takes too much time
-          // 2. the rest of this loop iteration takes too much time
-          if (ctx.signal.aborted) {
-            return {
-              identityClaims: identityClaims,
-              lastProviderPaginationToken: nextPaginationToken,
-            };
-          }
-          if (wrapper.nextPaginationToken != null) {
-            nextPaginationToken = wrapper.nextPaginationToken;
-          }
-          // Claims on an identity provider will always be node -> identity
-          identitySignedClaimDb(wrapper.claim);
+          i++;
         }
       }
-    } while (processed);
+      // If there are no claims on the current page, or the next pagination token is null, we have finished.
+      if (i === 0 || nextPaginationToken == null) {
+        break;
+      }
+    }
     return {
       identityClaims,
     };
