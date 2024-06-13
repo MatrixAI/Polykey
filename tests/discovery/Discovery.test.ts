@@ -570,6 +570,59 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
+  test('identity discovery is backwards compatible', async () => {
+    const discovery = await Discovery.createDiscovery({
+      db,
+      keyRing,
+      gestaltGraph,
+      identitiesManager,
+      nodeManager,
+      taskManager,
+      logger,
+    });
+    await taskManager.startProcessing();
+    const identityId2 = 'other-gestalt2' as IdentityId;
+    await nodeA.identitiesManager.putToken(testToken.providerId, identityId2, {
+      accessToken: 'ghi789',
+    });
+    testProvider.users[identityId2] = {};
+
+    const identityClaim = {
+      typ: 'ClaimLinkIdentity',
+      iss: nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId()),
+      sub: encodeProviderIdentityId([testProvider.id, identityId2]),
+    };
+    await nodeA.sigchain.addClaim(
+      identityClaim,
+      undefined,
+      async (token: Token<ClaimLinkIdentity>) => {
+        // Publishing in the callback to avoid adding bad claims
+        const claim = token.toSigned();
+        await testProvider.publishClaim(identityId2, claim);
+        return token;
+      },
+    );
+    await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId2);
+
+    await waitForAllDiscoveryTasks(discovery);
+    const gestalts = await AsyncIterable.as(
+      gestaltGraph.getGestalts(),
+    ).toArray();
+    expect(gestalts.length).toBe(1);
+    const gestalt = gestalts[0];
+    const nodeMatrix =
+      gestalt.matrix[
+        `node-${nodesUtils.encodeNodeId(nodeA.keyRing.getNodeId())}`
+      ];
+    expect(Object.keys(nodeMatrix)).toContain(
+      `identity-${JSON.stringify([testProvider.id, identityId2])}`,
+    );
+
+    delete testProvider.users[identityId2];
+    await taskManager.stopProcessing();
+    await discovery.stop();
+    await discovery.destroy();
+  });
   test('processed vertices are queued for rediscovery', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
