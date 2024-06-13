@@ -570,9 +570,32 @@ class Discovery {
       );
       return;
     }
-    // Need to get the corresponding claim for this
-    const providerIdentityClaimId = signedClaim.payload
+    // Need to get the corresponding claim on provider for this
+    let providerIdentityClaimId = signedClaim.payload
       .providerIdentityClaimId as ProviderIdentityClaimId | null;
+    // If we cannot get the corresponding claim directly, we will attempt to get it via iterating over the provider
+    if (providerIdentityClaimId == null) {
+      this.logger.warn(
+        `Reverting to legacy identity claim discovery logic for ${providerId}:${identityId}`,
+      );
+      const verificationResult = await this.verifyIdentityClaims(
+        providerId,
+        identityId,
+        undefined,
+        ctx,
+      );
+      for (const [id, claim] of Object.entries(
+        verificationResult.identityClaims,
+      )) {
+        const issuerNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
+        if (issuerNodeId == null) continue;
+        if (nodeId.equals(issuerNodeId)) {
+          providerIdentityClaimId = id as ProviderIdentityClaimId;
+          break;
+        }
+      }
+    }
+    // If we cannot find the corresponding claim, skip it instead
     if (providerIdentityClaimId == null) {
       this.logger.warn(
         `Failed to get corresponding identity claim for ${providerId}:${identityId}`,
