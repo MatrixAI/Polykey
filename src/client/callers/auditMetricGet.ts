@@ -15,7 +15,7 @@ type AuditMetricGetTypeOverride = <T extends MetricPath>(
   }> & {
     path: T;
   },
-  ctx?: ContextTimedInput,
+  ctx?: Partial<ContextTimedInput>,
 ) => Promise<ClientRPCResponseResult<MetricPathToAuditMetric<T>>>;
 
 const auditMetricGet = new UnaryCaller<

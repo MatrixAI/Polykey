@@ -8,6 +8,7 @@ import type {
   AuditEventDiscoveryVertexCancelled,
   AuditEventDiscoveryCheckRediscovery,
   TopicPathTreeNode,
+  TopicSubPath,
 } from './types';
 import type * as nodesEvents from '../nodes/events';
 import type * as discoveryEvents from '../discovery/events';
@@ -255,7 +256,7 @@ const metricPaths = [
  * So sub-paths will be filtered out if we already contain a parent path E.G. `a.b` will be removed if we also include `a`.
  * Duplicate paths will be removed, so `a` will be removed if two `a`'s exist.
  */
-function filterSubPaths(paths: Array<Array<string>>): Array<Array<string>> {
+function filterSubPaths(paths: Array<TopicSubPath>): Array<TopicSubPath> {
   let previous: string = '';
   return paths
     .map((v) => v.join('.'))
@@ -271,7 +272,7 @@ function filterSubPaths(paths: Array<Array<string>>): Array<Array<string>> {
     .map((v) => {
       // Empty array becomes '' from join, so we need to convert it back
       if (v === '') return [];
-      return v.split('.');
+      return v.split('.') as TopicSubPath;
     });
 }
 

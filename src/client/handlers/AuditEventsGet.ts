@@ -4,6 +4,7 @@ import type {
   AuditEvent,
   AuditEventSerialized,
   TopicPath,
+  TopicSubPath,
 } from '../../audit/types';
 import type { Audit } from '../../audit';
 import type { AuditEventId, AuditEventIdEncoded } from '../../ids';
@@ -15,7 +16,7 @@ class AuditEventsGet extends ServerHandler<
     audit: Audit;
   },
   ClientRPCRequestParams<{
-    paths: Array<Array<string>>;
+    paths: Array<TopicSubPath>;
     seek?: AuditEventIdEncoded | number;
     seekEnd?: AuditEventIdEncoded | number;
     order?: 'asc' | 'desc';
@@ -39,7 +40,7 @@ class AuditEventsGet extends ServerHandler<
       limit?: number;
       awaitFutureEvents?: boolean;
     }> & {
-      paths: Array<Array<string>>;
+      paths: Array<TopicSubPath>;
     },
     _cancel,
     _meta,

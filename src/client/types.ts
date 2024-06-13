@@ -23,6 +23,7 @@ import type {
   NodeAddress,
   NodeContactAddressData,
 } from '../nodes/types';
+import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
 
 type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<
@@ -353,8 +354,9 @@ type OverrideRPClientType<T extends RPCClient<ClientManifest>> = Omit<
   'methods'
 > & {
   methods: {
+    auditEventsGet: AuditEventsGetTypeOverride;
     auditMetricGet: AuditMetricGetTypeOverride;
-  } & Omit<T['methods'], 'auditMetricGet'>;
+  } & Omit<T['methods'], 'auditEventsGet' | 'auditMetricGet'>;
 };
 
 export type {
