@@ -555,6 +555,7 @@ describe('Discovery', () => {
     await discovery.start();
     await taskManager.startProcessing();
 
+
     await waitForAllDiscoveryTasks(discovery);
     // This total claims gotten should be above 2 pages worth of claims, because there will be some overlap
     expect(getClaimsPageMockCalls).toBeGreaterThanOrEqual(

@@ -939,8 +939,8 @@ class Discovery {
     let nextPaginationToken: ProviderPaginationToken | undefined =
       providerPaginationToken;
     while (true) {
+      let discoveredPaginationToken: ProviderPaginationToken | undefined;
       ctx.timer.refresh();
-      let i = 0;
       if (provider.preferGetClaimsPage) {
         const iterator = provider.getClaimsPage(
           authIdentityId,
@@ -957,10 +957,11 @@ class Discovery {
               lastProviderPaginationToken: nextPaginationToken,
             };
           }
-          nextPaginationToken = wrapper.nextPaginationToken;
+          if (wrapper.nextPaginationToken != null) {
+            discoveredPaginationToken = wrapper.nextPaginationToken;
+          }
           // Claims on an identity provider will always be node -> identity
           identitySignedClaimDb(wrapper.claim);
-          i++;
         }
       } else {
         const iterator = provider.getClaimIdsPage(
@@ -979,7 +980,9 @@ class Discovery {
             };
           }
           const claimId = wrapper.claimId;
-          nextPaginationToken = wrapper.nextPaginationToken;
+          if (wrapper.nextPaginationToken != null) {
+            discoveredPaginationToken = wrapper.nextPaginationToken;
+          }
           // Refresh timer in preparation for request
           ctx.timer.refresh();
           const identitySignedClaim = await provider.getClaim(
@@ -991,13 +994,13 @@ class Discovery {
           }
           // Claims on an identity provider will always be node -> identity
           identitySignedClaimDb(identitySignedClaim);
-          i++;
         }
       }
       // If there are no claims on the current page, or the next pagination token is null, we have finished.
-      if (i === 0 || nextPaginationToken == null) {
+      if (discoveredPaginationToken == null) {
         break;
       }
+      nextPaginationToken = discoveredPaginationToken;
     }
     return {
       identityClaims,

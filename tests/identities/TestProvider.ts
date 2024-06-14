@@ -21,6 +21,7 @@ import * as tokenUtils from '@/tokens/utils';
 class TestProvider extends Provider {
   public readonly id: ProviderId;
   public readonly pageSize = 10;
+  public readonly preferGetClaimsPage: boolean = true;
 
   public linkIdCounter: number = 0;
   public users: Record<IdentityId, POJO>;
