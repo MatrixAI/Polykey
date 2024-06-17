@@ -177,6 +177,7 @@ class GestaltGraph {
     }
     const gestaltNodeId = ['node', nodeInfo.nodeId] as ['node', NodeId];
     const gestaltNodeKey = gestaltsUtils.toGestaltNodeKey(gestaltNodeId);
+    await tran.lock([...this.dbNodesPath, gestaltNodeKey].join(''));
     const nodeInfoJSON = await tran.get<GestaltNodeInfoJSON>([
       ...this.dbNodesPath,
       gestaltNodeKey,
@@ -215,6 +216,7 @@ class GestaltGraph {
     ] as ['identity', ProviderIdentityId];
     const gestaltIdentityKey =
       gestaltsUtils.toGestaltIdentityKey(gestaltIdentityId);
+    await tran.lock([...this.dbIdentitiesPath, gestaltIdentityKey].join(''));
     const identityInfo_ = await tran.get<GestaltIdentityInfo>([
       ...this.dbIdentitiesPath,
       gestaltIdentityKey,
@@ -237,6 +239,7 @@ class GestaltGraph {
       return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
     }
     const gestaltKey1 = gestaltsUtils.toGestaltNodeKey(['node', nodeId]);
+    await tran.lock([...this.dbNodesPath, gestaltKey1].join(''));
     // Remove the singleton gestalt if it exists
     await tran.del([...this.dbMatrixPath, gestaltKey1]);
     // Unlink all neighbours, this will iterate over singletons because it is already removed
@@ -279,6 +282,7 @@ class GestaltGraph {
       'identity',
       providerIdentityId,
     ]);
+    await tran.lock([...this.dbIdentitiesPath, gestaltIdentityKey].join(''));
     // 1. Iterate over all links and delete them
     for await (const [keyPath, gestaltLinkIdBuffer] of tran.iterator(
       [...this.dbMatrixPath, gestaltIdentityKey],
@@ -892,6 +896,10 @@ class GestaltGraph {
     //  permissions between them.
     const nodeKey1 = gestaltsUtils.toGestaltNodeKey(['node', nodeId1]);
     const nodeKey2 = gestaltsUtils.toGestaltNodeKey(['node', nodeId2]);
+    await tran.lock(
+      [...this.dbNodesPath, nodeKey1].join(''),
+      [...this.dbNodesPath, nodeKey2].join(''),
+    );
     // Checking if the vertices exist
     if ((await tran.get([...this.dbNodesPath, nodeKey1], true)) == null) return;
     if ((await tran.get([...this.dbNodesPath, nodeKey2], true)) == null) return;
@@ -961,6 +969,10 @@ class GestaltGraph {
       'identity',
       providerIdentityId,
     ]);
+    await tran.lock(
+      [...this.dbNodesPath, nodeKey].join(''),
+      [...this.dbIdentitiesPath, identityKey].join(''),
+    );
     // Checking if the vertices exist
     if ((await tran.get([...this.dbNodesPath, nodeKey], true)) == null) return;
     if (
