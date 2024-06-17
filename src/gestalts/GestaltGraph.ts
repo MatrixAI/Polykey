@@ -553,6 +553,10 @@ class GestaltGraph {
     }
     const nodeKey1 = gestaltsUtils.toGestaltNodeKey(['node', nodeInfo1.nodeId]);
     const nodeKey2 = gestaltsUtils.toGestaltNodeKey(['node', nodeInfo2.nodeId]);
+    await tran.lock(
+      [...this.dbNodesPath, nodeKey1].join(''),
+      [...this.dbIdentitiesPath, nodeKey2].join(''),
+    );
     // If they are already connected, only update the link node
     const gestaltLinkIdBuffer = await tran.get(
       [...this.dbMatrixPath, nodeKey1, nodeKey2],
@@ -698,6 +702,10 @@ class GestaltGraph {
       'identity',
       [identityInfo.providerId, identityInfo.identityId],
     ]);
+    await tran.lock(
+      [...this.dbNodesPath, nodeKey].join(''),
+      [...this.dbIdentitiesPath, identityKey].join(''),
+    );
     // If they are already connected, only update the link identity
     const gestaltLinkIdBuffer = await tran.get(
       [...this.dbMatrixPath, nodeKey, identityKey],
