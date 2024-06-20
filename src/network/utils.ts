@@ -400,7 +400,7 @@ function resolvesZeroIP(ip: Host): Host {
 
 /**
  * Takes an array of host or hostnames and resolves them to the host addresses.
- * It will also filter out any duplicates or IPV6 addresses.
+ * It will also filter out any duplicates.
  * @param addresses
  * @param existingAddresses
  */
@@ -419,7 +419,12 @@ async function resolveHostnames(
     const resolvedAddresses = await resolveHostname(host);
     for (const resolvedHost of resolvedAddresses) {
       const newAddress: [Host, Port] = [resolvedHost, port];
-      if (!Validator.isValidIPv4String(resolvedHost)[0]) continue;
+      if (
+        !Validator.isValidIPv4String(resolvedHost)[0] &&
+        !Validator.isValidIPv6String(resolvedHost)[0]
+      ) {
+        continue;
+      }
       if (existingAddresses.has(`${resolvedHost}|${port}`)) continue;
       final.push(newAddress);
       existingAddresses.add(`${resolvedHost}|${port}`);

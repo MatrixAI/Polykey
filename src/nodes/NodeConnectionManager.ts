@@ -1125,7 +1125,11 @@ class NodeConnectionManager {
     try {
       while (true) {
         const message = keysUtils.getRandomBytes(32);
-        await this.quicSocket.send(Buffer.from(message), port, host);
+        // Since the intention is to abstract away the success/failure of the holepunch operation,
+        // We should catch any errors thrown out of this, as the caller does not expect the method to throw
+        await this.quicSocket
+          .send(Buffer.from(message), port, host)
+          .catch(() => {});
         await Promise.race([utils.sleep(delay), endedProm.p]);
         if (ended) break;
         delay *= 2;
