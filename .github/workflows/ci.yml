@@ -122,6 +122,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          git config --global --add safe.directory /__w/Polykey/Polykey
           gh pr create \
             --head staging \
             --base master \
@@ -182,7 +183,7 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ secrets.GIT_COMMITTER_EMAIL }}
           GIT_COMMITTER_NAME: ${{ secrets.GIT_COMMITTER_NAME }}
         run: |
-          git config --global --add safe.directory /__w/Polykey-CLI/Polykey-CLI
+          git config --global --add safe.directory /__w/Polykey/Polykey
           printf "Pipeline Succeeded on $GITHUB_RUN_ID for $GITHUB_SHA\n\n$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
           | gh pr comment staging \
             --body-file - \
