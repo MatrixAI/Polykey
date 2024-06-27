@@ -603,8 +603,7 @@ describe('Discovery', () => {
       },
     );
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId2);
-
-    await waitForAllDiscoveryTasks(discovery);
+    await discovery.waitForDiscoveryTasks(true);
     const gestalts = await AsyncIterable.as(
       gestaltGraph.getGestalts(),
     ).toArray();
