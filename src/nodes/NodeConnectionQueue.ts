@@ -188,29 +188,35 @@ export class NodeConnectionQueue {
     queue: Array<unknown>,
     ctx: ContextCancellable,
   ): Promise<void> {
-    const abortP = utils.signalPromise(ctx.signal).catch(() => {});
-    while (
-      !this.connectionMade &&
-      queue.length === 0 &&
-      (this.nodesRunningSignal.size > 0 ||
-        this.nodesRunningDirect.size > 0 ||
-        this.queueSignal.length > 0 ||
-        this.queueDirect.length > 0)
-    ) {
-      if (ctx.signal.aborted) return;
-      if (this.nodesRunningSignal.size + this.nodesRunningDirect.size === 0) {
-        // Yield to the event loop to allow queued attempts to start
-        await utils.sleep(0);
-        continue;
+    const abortP = utils.signalPromise(ctx.signal);
+    try {
+      while (
+        !this.connectionMade &&
+        queue.length === 0 &&
+        (this.nodesRunningSignal.size > 0 ||
+          this.nodesRunningDirect.size > 0 ||
+          this.queueSignal.length > 0 ||
+          this.queueDirect.length > 0)
+      ) {
+        if (ctx.signal.aborted) return;
+        if (this.nodesRunningSignal.size + this.nodesRunningDirect.size === 0) {
+          // Yield to the event loop to allow queued attempts to start
+          await utils.sleep(0);
+          continue;
+        }
+        const runningPs: Array<Promise<void>> = [];
+        for (const P of this.nodesRunningSignal) {
+          runningPs.push(P);
+        }
+        for (const P of this.nodesRunningDirect) {
+          runningPs.push(P);
+        }
+        await Promise.any([...runningPs, abortP]);
       }
-      const runningPs: Array<Promise<void>> = [];
-      for (const P of this.nodesRunningSignal) {
-        runningPs.push(P);
-      }
-      for (const P of this.nodesRunningDirect) {
-        runningPs.push(P);
-      }
-      await Promise.any([...runningPs, abortP]);
+    } finally {
+      // Clean up abort promise when done
+      abortP.cancel();
+      await abortP;
     }
   }
 }

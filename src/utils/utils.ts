@@ -8,7 +8,9 @@ import type {
 import os from 'os';
 import process from 'process';
 import path from 'path';
+import nodesEvents from 'events';
 import lexi from 'lexicographic-integer';
+import { PromiseCancellable } from '@matrixai/async-cancellable';
 import * as utilsErrors from './errors';
 
 const AsyncFunction = (async () => {}).constructor;
@@ -237,19 +239,20 @@ function promise<T = void>(): PromiseDeconstructed<T> {
  * Promise constructed from signal
  * This rejects when the signal is aborted
  */
-function signalPromise(signal: AbortSignal): Promise<void> {
-  return new Promise<void>((_, reject) => {
-    if (signal.aborted) {
-      reject(signal.reason);
-      return;
-    }
-    signal.addEventListener(
-      'abort',
-      () => {
-        reject(signal.reason);
-      },
-      { once: true },
-    );
+//  fixme: There is also a one signal to many `signalPromise` relationship in the NM connection queue that needs to be fixed.
+function signalPromise(signal: AbortSignal): PromiseCancellable<void> {
+  return new PromiseCancellable((resolve, _, signalCancel) => {
+    // Short circuit if signal already aborted
+    if (signal.aborted) return resolve();
+    // Short circuit if promise is already cancelled
+    if (signalCancel.aborted) return resolve();
+    const handler = () => {
+      signalCancel.removeEventListener('abort', handler);
+      signal.removeEventListener('abort', handler);
+      resolve();
+    };
+    signal.addEventListener('abort', handler, { once: true });
+    signalCancel.addEventListener('abort', handler, { once: true });
   });
 }
 
@@ -465,6 +468,20 @@ async function yieldMicro() {
   return await new Promise<void>((r) => queueMicrotask(r));
 }
 
+/**
+ * Increases the total number of registered event handlers before a node warning is emitted.
+ * In most cases this is not needed but in the case where you have one event emitter for multiple handlers you'll need
+ * to increase the limit.
+ * @param target - The specific `EventTarget` or `EventEmitter` to increase the warning for.
+ * @param limit - The limit before the warning is emitted, defaults to 100000.
+ */
+function setMaxListeners(
+  target: EventTarget | NodeJS.EventEmitter,
+  limit: number = 100000,
+) {
+  nodesEvents.setMaxListeners(limit, target);
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -503,4 +520,5 @@ export {
   bufferWrap,
   isBufferSource,
   yieldMicro,
+  setMaxListeners,
 };

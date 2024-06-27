@@ -281,8 +281,14 @@ class NodeManager {
       const task = await this.updateRefreshBucketDelay(i, 0, false);
       refreshBuckets.push(task.promise());
     }
-    const signalProm = utils.signalPromise(ctx.signal).catch(() => {});
-    await Promise.race([Promise.all(refreshBuckets), signalProm]);
+    const signalProm = utils.signalPromise(ctx.signal);
+    await Promise.race([Promise.all(refreshBuckets), signalProm]).finally(
+      async () => {
+        // Clean up signal promise when done
+        signalProm.cancel();
+        await signalProm;
+      },
+    );
   };
 
   public readonly syncNodeGraphHandlerId: TaskHandlerId =
@@ -652,6 +658,7 @@ class NodeManager {
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
+    utils.setMaxListeners(abortController.signal);
     const newCtx = {
       timer: ctx.timer,
       signal: abortController.signal,
@@ -787,6 +794,7 @@ class NodeManager {
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
+    utils.setMaxListeners(abortController.signal);
     const newCtx = {
       timer: ctx.timer,
       signal: abortController.signal,
