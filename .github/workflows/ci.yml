@@ -7,16 +7,6 @@ on:
       - feature*
 
 env:
-  # Caching
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  CACHIX_SIGNING_KEY: ${{ secrets.CACHIX_SIGNING_KEY }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  NIX_CACHE_PRIV_KEY: ${{ secrets.NIX_CACHE_PRIV_KEY }}
-  NIX_CACHE_PUB_KEY: ${{ secrets.NIX_CACHE_PUB_KEY }}
-
-  # Other
   GIT_SUBMODULE_STRATEGY: recursive
   npm_config_cache: "${{ github.workspace }}/tmp/npm"
   npm_config_prefer_offline: "true"
@@ -27,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
       - name: Run linting
         run: |
           npm install
@@ -39,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
       - name: Run build
         run: |
           npm install
@@ -71,9 +59,8 @@ jobs:
     needs: check-matrix
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
       - name: Set artifact name
-        run: echo "SLUG=$(echo ${{ matrix.shard }} | sed 's/[/.]/_/g')" >> $GITHUB_ENV
+        run: echo "SLUG=$(echo ${{ matrix.shard }} | sed 's/[/.]/-/g')" >> $GITHUB_ENV
       - name: Run tests
         run: |
           npm install
@@ -99,7 +86,7 @@ jobs:
           path: tmp/coverage/
           merge-multiple: true
       - run: rm .npmrc
-      - name: Merge Code Coverage
+      - name: Merge coverage results
         run: npx nyc merge tmp/coverage/ tmp/coverage/cobertura-coverage.json
       - uses: actions/upload-artifact@v4
         with:
@@ -109,8 +96,6 @@ jobs:
   build-pull:
     name: "Build / Pull Request"
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/matrixai/github-runner
     needs:
       - check-lint
       - check-build
@@ -122,7 +107,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git config --global --add safe.directory /__w/Polykey/Polykey
           gh pr create \
             --head staging \
             --base master \
@@ -138,8 +122,6 @@ jobs:
   build-prerelease:
     name: "Build / Pre-release"
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/matrixai/github-runner
     needs:
       - check-lint
       - check-build
@@ -149,22 +131,18 @@ jobs:
       startsWith(github.ref, 'refs/tags/v') &&
       contains(github.ref, '-')
     steps:
-      - run: entrypoint
       - uses: actions/checkout@v4
       - name: Run deployment
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
           echo 'Publishing library prerelease'
-          nix develop .#ci --command bash -c $'
+          npm install
           npm publish --tag prerelease --access public
-          '
           rm -f ./.npmrc
 
   integration-merge:
     name: "Integration / Merge"
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/matrixai/github-runner
     concurrency:
       group: integration-merge
       cancel-in-progress: true
@@ -183,7 +161,6 @@ jobs:
           GIT_COMMITTER_EMAIL: ${{ secrets.GIT_COMMITTER_EMAIL }}
           GIT_COMMITTER_NAME: ${{ secrets.GIT_COMMITTER_NAME }}
         run: |
-          git config --global --add safe.directory /__w/Polykey/Polykey
           printf "Pipeline Succeeded on $GITHUB_RUN_ID for $GITHUB_SHA\n\n$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
           | gh pr comment staging \
             --body-file - \
@@ -195,8 +172,6 @@ jobs:
   release-distribution:
     name: "Release / Distribution"
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/matrixai/github-runner
     concurrency:
       group: release-distribution
       cancel-in-progress: false
@@ -206,14 +181,12 @@ jobs:
       startsWith(github.ref, 'refs/tags/v') &&
       !contains(github.ref, '-')
     steps:
-      - run: entrypoint
       - uses: actions/checkout@v4
       - name: Publish release
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
           echo 'Publishing library'
-          nix develop .#ci --command bash -c $'
+          npm install
           npm publish --access public
-          '
           rm -f ./.npmrc
 
