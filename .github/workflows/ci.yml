@@ -55,6 +55,7 @@ jobs:
       - id: set-matrix
         run: |
           files=$(find tests/* -maxdepth 0 -type d | sed 's/.*/"&"/' | paste -sd, -)
+          files=$files,$(find tests/* -maxdepth 0 -type f | grep -e "/*.test.ts" | sed 's/.*/"&"/' | paste -sd, -)
           if [ -z "$files" ]; then
             echo "matrix={\"shard\":[]}" >> $GITHUB_OUTPUT
           else
