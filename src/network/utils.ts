@@ -1,5 +1,5 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { Address, Host, Hostname, Port } from './types';
 import type { NodeAddress } from '../nodes/types';
 import type { JSONValue } from '../types';
@@ -296,7 +296,7 @@ function isDNSError(e: { code: string }): boolean {
 function resolveHostname(
   hostname: Hostname,
   servers?: Array<string>,
-  ctx?: Partial<ContextTimed>,
+  ctx?: Partial<ContextTimedInput>,
 ): PromiseCancellable<Array<Host>> {
   const f = async (ctx: ContextTimed) => {
     const hosts: Array<Host> = [];
@@ -403,10 +403,14 @@ function resolvesZeroIP(ip: Host): Host {
  * It will also filter out any duplicates.
  * @param addresses
  * @param existingAddresses
+ * @param servers
+ * @param ctx
  */
 async function resolveHostnames(
   addresses: Array<NodeAddress>,
   existingAddresses: Set<string> = new Set(),
+  servers?: Array<string>,
+  ctx?: Partial<ContextTimedInput>,
 ): Promise<Array<[Host, Port]>> {
   const final: Array<[Host, Port]> = [];
   for (const [host, port] of addresses) {
@@ -416,7 +420,7 @@ async function resolveHostnames(
       existingAddresses.add(`${host}|${port}`);
       continue;
     }
-    const resolvedAddresses = await resolveHostname(host);
+    const resolvedAddresses = await resolveHostname(host, servers, ctx);
     for (const resolvedHost of resolvedAddresses) {
       const newAddress: [Host, Port] = [resolvedHost, port];
       if (

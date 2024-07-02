@@ -117,6 +117,7 @@ class NodeManager {
     Map<string, [NodeAddress, NodeContactAddressData]>
   > = new Map();
   protected concurrencyLimit = 3;
+  protected dnsServers: Array<string> | undefined = undefined;
 
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -224,9 +225,12 @@ class NodeManager {
     // Establishing connections to the initial nodes
     const connectionResults = await Promise.allSettled(
       initialNodes.map(async ([nodeIdEncoded, nodeAddress]) => {
-        const resolvedHosts = await networkUtils.resolveHostnames([
-          nodeAddress,
-        ]);
+        const resolvedHosts = await networkUtils.resolveHostnames(
+          [nodeAddress],
+          undefined,
+          this.dnsServers,
+          ctx,
+        );
         if (resolvedHosts.length === 0) {
           throw new nodesErrors.ErrorNodeManagerResolveNodeFailed(
             `Failed to resolve '${nodeAddress[0]}'`,
@@ -329,6 +333,7 @@ class NodeManager {
     retryConnectionsDelayTime = 45_000, // 45 seconds
     nodesConnectionFindLocalTimeoutTime = config.defaultsSystem
       .nodesConnectionFindLocalTimeoutTime,
+    dnsServers,
     logger,
   }: {
     db: DB;
@@ -347,6 +352,7 @@ class NodeManager {
     refreshBucketDelayJitter?: number;
     retryConnectionsDelayTime?: number;
     nodesConnectionFindLocalTimeoutTime?: number;
+    dnsServers?: Array<string>;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -366,6 +372,12 @@ class NodeManager {
     this.refreshBucketDelayJitter = Math.max(0, refreshBucketDelayJitter);
     this.retryConnectionsDelayTime = retryConnectionsDelayTime;
     this.connectionFindMDNSTimeoutTime = nodesConnectionFindLocalTimeoutTime;
+    if (dnsServers != null) {
+      this.logger.info(
+        `Overriding DNS resolution servers with ${JSON.stringify(dnsServers)}`,
+      );
+    }
+    this.dnsServers = dnsServers;
   }
 
   public async start() {
@@ -843,8 +855,12 @@ class NodeManager {
                 addresses.push([host, port]);
               }
             }
-            const resolvedHosts =
-              await networkUtils.resolveHostnames(addresses);
+            const resolvedHosts = await networkUtils.resolveHostnames(
+              addresses,
+              undefined,
+              this.dnsServers,
+              ctx,
+            );
 
             try {
               await this.nodeConnectionManager.createConnectionMultiple(
