@@ -5,6 +5,8 @@ on:
     branches:
       - staging
       - feature*
+    tags:
+      - v**
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
