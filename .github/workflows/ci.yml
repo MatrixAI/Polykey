@@ -127,7 +127,6 @@ jobs:
       - check-build
       - check-test
     if: >
-      github.ref == 'refs/heads/staging' &&
       startsWith(github.ref, 'refs/tags/v') &&
       contains(github.ref, '-')
     steps:
@@ -177,7 +176,6 @@ jobs:
       cancel-in-progress: false
     needs: integration-merge
     if: >
-      github.ref == 'refs/heads/staging' &&
       startsWith(github.ref, 'refs/tags/v') &&
       !contains(github.ref, '-')
     steps:
