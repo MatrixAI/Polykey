@@ -99,6 +99,7 @@ type PolykeyAgentOptions = {
     connectionHolePunchIntervalTime: number;
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
+    dnsServers: Array<string> | undefined;
   };
   mdns: {
     groups: Array<string>;
@@ -386,6 +387,7 @@ class PolykeyAgent {
           groups: optionsDefaulted.mdns.groups,
           port: optionsDefaulted.mdns.port,
         },
+        dnsServers: optionsDefaulted.nodes.dnsServers,
         logger: logger.getChild(NodeManager.name),
       });
       discovery = await Discovery.createDiscovery({
