@@ -103,6 +103,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run deployment
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
           echo 'Publishing library prerelease'
@@ -126,6 +128,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Publish release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ./.npmrc
           echo 'Publishing library'
