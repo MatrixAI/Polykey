@@ -28,65 +28,21 @@ jobs:
           npm install
           npm run build --verbose
 
-  check-matrix:
-    name: "Check / Matrix"
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
-        run: |
-          files=$(find tests/* -maxdepth 0 -type d | sed 's/.*/"&"/' | paste -sd, -)
-          files=$files,$(find tests/* -maxdepth 0 -type f | grep -e "/*.test.ts" | sed 's/.*/"&"/' | paste -sd, -)
-          if [ -z "$files" ]; then
-            echo "matrix={\"shard\":[]}" >> $GITHUB_OUTPUT
-          else
-            echo "matrix={\"shard\":[$files]}" >> $GITHUB_OUTPUT
-          fi
-
   check-test:
     name: "Check / Test"
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: ${{fromJson(needs.check-matrix.outputs.matrix)}}
-    needs: check-matrix
     steps:
       - uses: actions/checkout@v4
-      - name: Set artifact name
-        run: echo "SLUG=$(echo ${{ matrix.shard }} | sed 's/[/.]/-/g')" >> $GITHUB_ENV
       - name: Run tests
         run: |
           npm install
           npm run test -- \
             --coverageReporters json \
-            --coverage \
-            "${{ matrix.shard }}"
-          mv tmp/coverage/coverage-final.json "tmp/coverage/${{ env.SLUG }}.json"
+            --coverage
       - uses: actions/upload-artifact@v4
         with:
-          name: coverage-artifacts-${{ env.SLUG }}
-          path: tmp/coverage/
-
-  check-coverage:
-    name: "Check / Coverage"
-    runs-on: ubuntu-latest
-    needs: check-test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-artifacts-*
-          path: tmp/coverage/
-          merge-multiple: true
-      - run: rm .npmrc
-      - name: Merge coverage results
-        run: npx nyc merge tmp/coverage/ tmp/coverage/cobertura-coverage.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cobertura-coverage
-          path: tmp/coverage/cobertura-coverage.json
+          name: coverage-artifact
+          path: tmp/coverage/coverage-final.json
 
   build-pull:
     name: "Build / Pull Request"
