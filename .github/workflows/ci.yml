@@ -91,7 +91,7 @@ jobs:
   build-pull:
     name: "Build / Pull Request"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/head/staging'
+    if: github.ref == 'refs/heads/staging'
     steps:
       - uses: actions/checkout@v4
       - name: Create pull request
