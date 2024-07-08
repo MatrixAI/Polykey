@@ -5,12 +5,14 @@ import type {
   PromiseDeconstructed,
   Callback,
 } from '../types';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import os from 'os';
 import process from 'process';
 import path from 'path';
 import nodesEvents from 'events';
 import lexi from 'lexicographic-integer';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import * as utilsErrors from './errors';
 
 const AsyncFunction = (async () => {}).constructor;
@@ -93,6 +95,22 @@ async function sleep(ms: number): Promise<void> {
   return await new Promise<void>((r) => setTimeout(r, ms));
 }
 
+function sleepCancellable(ms: number): PromiseCancellable<void> {
+  return new PromiseCancellable<void>((resolve, reject, signal) => {
+    if (signal.aborted) return reject(signal.reason);
+    const handleTimeout = () => {
+      signal.removeEventListener('abort', handleAbort);
+      resolve();
+    };
+    const handleAbort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener('abort', handleAbort, { once: true });
+    const timer = setTimeout(handleTimeout, ms);
+  });
+}
+
 /**
  * Checks if value is an object.
  * Arrays are also considered objects.
@@ -149,23 +167,31 @@ function getUnixtime(date: Date = new Date()) {
   return Math.round(date.getTime() / 1000);
 }
 
+const sleepCancelReasonSymbol = Symbol('sleepCancelReasonSymbol');
+
 /**
  * Poll execution and use condition to accept or reject the results
  */
-async function poll<T, E = any>(
+async function poll_<T, E = any>(
+  ctx: ContextTimed,
   f: () => T | PromiseLike<T>,
   condition: {
     (e: E, result?: undefined): boolean;
     (e: null, result: T): boolean;
   },
-  interval = 1000,
-  timeout?: number,
+  interval: number,
 ): Promise<T> {
-  const timer = timeout != null ? timerStart(timeout) : undefined;
+  let result: T;
+  const { p: abortP, resolveP: resolveAbortP } = promise();
+  const handleAbortP = () => resolveAbortP();
+  if (ctx.signal.aborted) {
+    resolveAbortP();
+  } else {
+    ctx.signal.addEventListener('abort', handleAbortP, { once: true });
+  }
   try {
-    let result: T;
     while (true) {
-      if (timer?.timedOut) {
+      if (ctx.signal.aborted) {
         throw new utilsErrors.ErrorUtilsPollTimeout();
       }
       try {
@@ -178,11 +204,44 @@ async function poll<T, E = any>(
           throw e;
         }
       }
-      await sleep(interval);
+      const sleepP = sleepCancellable(interval);
+      await Promise.race([sleepP, abortP])
+        .finally(async () => {
+          // Clean up
+          sleepP.cancel(sleepCancelReasonSymbol);
+          await sleepP;
+        })
+        .catch((e) => {
+          if (e !== sleepCancelReasonSymbol) throw e;
+        });
     }
   } finally {
-    if (timer != null) timerStop(timer);
+    resolveAbortP();
+    await abortP;
+    ctx.signal.removeEventListener('abort', handleAbortP);
   }
+}
+
+const pollCancellable = timedCancellable(
+  poll_,
+  true,
+  undefined,
+  utilsErrors.ErrorUtilsPollTimeout,
+);
+
+/**
+ * Poll execution and use condition to accept or reject the results
+ */
+function poll<T, E = any>(
+  f: () => T | PromiseLike<T>,
+  condition: {
+    (e: E, result?: undefined): boolean;
+    (e: null, result: T): boolean;
+  },
+  interval = 1000,
+  ctx?: Partial<ContextTimedInput>,
+): PromiseCancellable<T> {
+  return pollCancellable(ctx, f, condition, interval);
 }
 
 /**
@@ -492,6 +551,7 @@ export {
   dirEmpty,
   pathIncludes,
   sleep,
+  sleepCancellable,
   isObject,
   isEmptyObject,
   filterEmptyObject,

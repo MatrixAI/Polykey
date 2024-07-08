@@ -261,7 +261,7 @@ describe(TaskManager.name, () => {
     }
 
     let completed = false;
-    const waitForcompletionProm = (async () => {
+    const waitForCompletionProm = (async () => {
       await Promise.all(pendingTasks);
       completed = true;
     })();
@@ -269,7 +269,7 @@ describe(TaskManager.name, () => {
     // Check for active tasks while tasks are still running
     while (!completed) {
       expect(taskManager.activeCount).toBeLessThanOrEqual(activeLimit);
-      await Promise.race([utils.sleep(100), waitForcompletionProm]);
+      await Promise.race([utils.sleep(100), waitForCompletionProm]);
     }
 
     await taskManager.stop();
@@ -555,7 +555,7 @@ describe(TaskManager.name, () => {
     const handler = jest.fn();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
-      const abortP = new Promise((resolve, reject) =>
+      const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
       );
       await Promise.race([pauseP, abortP]);
@@ -589,7 +589,7 @@ describe(TaskManager.name, () => {
         return status![0] === 'active' && status![1] === 'active';
       },
       10,
-      1000,
+      { timer: 1000 },
     );
     // Cancellation should reject promise
     const taskPromise = task1.promise();
@@ -657,7 +657,7 @@ describe(TaskManager.name, () => {
     const handler = jest.fn();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
-      const abortP = new Promise((resolve, reject) =>
+      const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () =>
           reject(
             new tasksErrors.ErrorTaskRetry(undefined, {
@@ -696,7 +696,7 @@ describe(TaskManager.name, () => {
         return status![0] === 'active' && status![1] === 'active';
       },
       10,
-      1000,
+      { timer: 1000 },
     );
     await taskManager.stop();
     await taskManager.start({ lazy: true });
@@ -710,7 +710,7 @@ describe(TaskManager.name, () => {
     const handlerId1 = 'handler1' as TaskHandlerId;
     const handler1 = jest.fn();
     handler1.mockImplementation(async (ctx: ContextTimed) => {
-      const abortP = new Promise((resolve, reject) =>
+      const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () =>
           reject(
             new tasksErrors.ErrorTaskRetry(undefined, {
@@ -724,7 +724,7 @@ describe(TaskManager.name, () => {
     const handlerId2 = 'handler2' as TaskHandlerId;
     const handler2 = jest.fn();
     handler2.mockImplementation(async (ctx: ContextTimed) => {
-      const abortP = new Promise((resolve, reject) =>
+      const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
       );
       await Promise.race([pauseP, abortP]);
@@ -758,7 +758,7 @@ describe(TaskManager.name, () => {
         return status![0] === 'active' && status![1] === 'active';
       },
       10,
-      1000,
+      { timer: 1000 },
     );
     await taskManager.stop();
     // Tasks were run
@@ -973,7 +973,7 @@ describe(TaskManager.name, () => {
         return status === 'queued';
       },
       10,
-      1000,
+      { timer: 1000 },
     );
     await expect(
       taskManager.updateTask(task1.id, {
@@ -1124,14 +1124,13 @@ describe(TaskManager.name, () => {
         const tasks = await Promise.all(
           taskIds.map((id) => taskManager.getTask(id)),
         );
-        const statuses = tasks.map((task) => task!.status);
-        return statuses;
+        return tasks.map((task) => task!.status);
       },
       (_: any, statuses?: Array<TaskStatus>) => {
         return statuses!.every((status) => status === 'queued');
       },
       10,
-      1000,
+      { timer: 1000 },
     );
     // @ts-ignore: Then queueing, which makes the tasks active
     await taskManager.startQueueing();
@@ -1144,7 +1143,7 @@ describe(TaskManager.name, () => {
     const handler = jest.fn();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
-      const abortP = new Promise((resolve, reject) =>
+      const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
       );
       await Promise.race([pauseP, abortP]);

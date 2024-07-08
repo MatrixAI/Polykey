@@ -294,7 +294,7 @@ describe('Status', () => {
     // In this case, it is possible that upon reacting to `LIVE` status
     // When it reads the status, it has already changed to `STOPPING`
     // Which means the `statusWaitFor` never resolves
-    const statusWaitFor = status.waitFor('LIVE', 1000);
+    const statusWaitFor = status.waitFor('LIVE', { timer: 1000 });
     const p1 = status.finishStart({
       clientHost: '',
       clientPort: 0,
@@ -319,5 +319,20 @@ describe('Status', () => {
       statusInfo!.status === 'LIVE' || statusInfo!.status === 'STOPPING',
     ).toBe(true);
     await status.stop({});
+  });
+  test('wait for is cancellable', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, config.paths.statusBase),
+      statusLockPath: path.join(dataDir, config.paths.statusLockBase),
+      fs: fs,
+      logger: logger,
+    });
+    await status.start({ pid: 0 });
+    // Is in `STARTED` state, so `DEAD` state will never be reached
+    const statusWaitForP = status.waitFor('DEAD');
+    statusWaitForP.cancel('reason');
+    await expect(statusWaitForP).rejects.toThrow(
+      statusErrors.ErrorStatusTimeout,
+    );
   });
 });

@@ -6,9 +6,12 @@ import type {
   StatusDead,
 } from './types';
 import type { FileSystem, FileHandle } from '../types';
+import type { PromiseCancellable } from '@matrixai/async-cancellable';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
 import * as statusUtils from './utils';
 import * as statusErrors from './errors';
 import * as statusEvents from './events';
@@ -299,9 +302,14 @@ class Status {
     }
   }
 
+  public waitFor(
+    status: StatusInfo['status'],
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<StatusInfo>;
+  @timedCancellable(true)
   public async waitFor(
     status: StatusInfo['status'],
-    timeout?: number,
+    @context ctx: ContextTimed,
   ): Promise<StatusInfo> {
     let statusInfo;
     try {
@@ -323,7 +331,7 @@ class Status {
           return false;
         },
         50,
-        timeout,
+        ctx,
       );
     } catch (e) {
       if (e instanceof errors.ErrorUtilsPollTimeout) {
