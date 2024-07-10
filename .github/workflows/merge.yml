@@ -1,4 +1,4 @@
-name: CI
+name: CI / Merge
 
 on:
   push:
@@ -117,10 +117,10 @@ jobs:
       group: integration-merge
       cancel-in-progress: true
     needs:
-      - build-pull
       - check-lint
       - check-build
       - check-test
+      - build-pull
     if: github.ref == 'refs/heads/staging'
     steps:
       - uses: actions/checkout@v4
