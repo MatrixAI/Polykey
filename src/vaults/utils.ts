@@ -1,14 +1,20 @@
-import type { EncryptedFS } from 'encryptedfs';
+import type { EncryptedFS, Stat } from 'encryptedfs';
+import type { FileSystem } from '../types';
 import type {
   VaultRef,
   VaultAction,
   CommitId,
   FileSystemReadable,
   FileSystemWritable,
+  TreeNode,
+  DirectoryNode,
+  INode,
+  StatEncoded,
 } from './types';
 import type { NodeId } from '../ids/types';
 import type { Path } from 'encryptedfs/dist/types';
 import path from 'path';
+import { minimatch } from 'minimatch';
 import { pathJoin } from 'encryptedfs/dist/utils';
 import * as vaultsErrors from './errors';
 import { tagLast, refs, vaultActions } from './types';
@@ -123,6 +129,177 @@ async function mkdirExists(efs: FileSystemWritable, directory: string) {
   }
 }
 
+function genStat(stat: Stat): StatEncoded {
+  return {
+    isSymbolicLink: stat.isSymbolicLink(),
+    type: stat.isFile() ? 'FILE' : stat.isDirectory() ? 'DIRECTORY' : 'OTHER',
+    dev: stat.dev,
+    ino: stat.ino,
+    mode: stat.mode,
+    nlink: stat.nlink,
+    uid: stat.uid,
+    gid: stat.gid,
+    rdev: stat.rdev,
+    size: stat.size,
+    blksize: stat.blksize,
+    blocks: stat.blocks,
+    atime: stat.atime.getTime(),
+    mtime: stat.mtime.getTime(),
+    ctime: stat.ctime.getTime(),
+    birthtime: stat.birthtime.getTime(),
+  };
+}
+
+/**
+ * This is a utility for walking a file tree while matching a file path globstar pattern.
+ * @param fs - file system to work against, supports nodes `fs` and our `FileSystemReadable` provided by vaults.
+ * @param basePath - The path to start walking from.
+ * @param pattern - The pattern to match against, defaults to everything
+ * @param yieldRoot - toggles yielding details of the basePath. Defaults to true.
+ * @param yieldParents - Toggles yielding details about parents of pattern matched paths. Defaults to false.
+ * @param yieldDirectories - Toggles yielding directories that match the pattern. Defaults to true.
+ * @param yieldFiles - Toggles yielding files that match the pattern. Defaults to true.
+ * @param yieldContents - Toggles yielding file contents after all other details are yielded. Defaults to false.
+ * @param yieldStats - Toggles including stats in file and directory details. Defaults to false.
+ */
+async function* globWalk({
+  fs,
+  basePath = '.',
+  pattern = '**/*',
+  yieldRoot = true,
+  yieldParents = false,
+  yieldDirectories = true,
+  yieldFiles = true,
+  yieldContents = false,
+  yieldStats = false,
+}: {
+  fs: FileSystem | FileSystemReadable;
+  basePath?: string;
+  pattern?: string;
+  yieldRoot?: boolean;
+  yieldParents?: boolean;
+  yieldDirectories?: boolean;
+  yieldFiles?: boolean;
+  yieldContents?: boolean;
+  yieldStats?: boolean;
+}): AsyncGenerator<TreeNode, void, void> {
+  const files: Array<string> = [];
+  const directoryMap: Map<number, DirectoryNode> = new Map();
+  // Path, node, parent
+  const queue: Array<[string, INode, INode]> = [];
+  let iNode = 1;
+  const basePathNormalised = path.normalize(basePath);
+  let current: [string, INode, INode] | undefined = [basePathNormalised, 1, 0];
+
+  const getParents = (parentINode: INode) => {
+    const parents: Array<DirectoryNode> = [];
+    let currentParent = parentINode;
+    while (true) {
+      const directory = directoryMap.get(currentParent);
+      directoryMap.delete(currentParent);
+      if (directory == null) break;
+      parents.unshift(directory);
+      currentParent = directory.parent;
+    }
+    return parents;
+  };
+
+  // Iterate over tree
+  const patternPath = path.join(basePathNormalised, pattern);
+  while (current != null) {
+    const [currentPath, node, parentINode] = current;
+
+    const stat = await fs.promises.stat(currentPath);
+    if (stat.isDirectory()) {
+      // `.` and `./` will not partially match the pattern, so we exclude the initial path
+      if (
+        !minimatch(currentPath, patternPath, { partial: true }) &&
+        currentPath !== basePathNormalised
+      ) {
+        current = queue.shift();
+        continue;
+      }
+      // @ts-ignore: While the types don't fully match, it matches enough for our usage.
+      const childrenPaths = await fs.promises.readdir(currentPath);
+      const children = childrenPaths.map(
+        (v) =>
+          [path.join(currentPath!, v.toString()), ++iNode, node] as [
+            string,
+            INode,
+            INode,
+          ],
+      );
+      queue.push(...children);
+      // Only yield root if we specify it
+      if (yieldRoot || node !== 1) {
+        directoryMap.set(node, {
+          type: 'directory',
+          path: currentPath,
+          iNode: node,
+          parent: parentINode,
+          children: children.map((v) => v[1]),
+          stat: yieldStats ? genStat(stat) : undefined,
+        });
+      }
+      // Wildcards can find directories so we need yield them too
+      if (minimatch(currentPath, patternPath)) {
+        // Remove current from parent list
+        directoryMap.delete(node);
+        // Yield parents
+        if (yieldParents) {
+          for (const parent of getParents(parentINode)) yield parent;
+        }
+        // Yield directory
+        if (yieldDirectories) {
+          yield {
+            type: 'directory',
+            path: currentPath,
+            iNode: node,
+            parent: parentINode,
+            children: children.map((v) => v[1]),
+            stat: yieldStats ? genStat(stat) : undefined,
+          };
+        }
+      }
+    } else if (stat.isFile()) {
+      if (!minimatch(currentPath, patternPath)) {
+        current = queue.shift();
+        continue;
+      }
+      // Get the directories in order
+      if (yieldParents) {
+        for (const parent of getParents(parentINode)) yield parent;
+      }
+      // Yield file.
+      if (yieldFiles) {
+        yield {
+          type: 'file',
+          path: currentPath,
+          iNode: node,
+          parent: parentINode,
+          cNode: files.length,
+          stat: yieldStats ? genStat(stat) : undefined,
+        };
+      }
+      files.push(currentPath);
+    }
+    current = queue.shift();
+  }
+  if (!yieldContents) return;
+  // Iterate over file contents
+  for (let i = 0; i < files.length; i++) {
+    const filePath = files[i];
+    yield {
+      type: 'content',
+      path: undefined,
+      fileName: path.basename(filePath),
+      cNode: i,
+      // @ts-ignore: While the types don't fully match, it matches enough for our usage.
+      contents: (await fs.promises.readFile(filePath)).toString(),
+    };
+  }
+}
+
 export {
   tagLast,
   refs,
@@ -138,6 +315,7 @@ export {
   walkFs,
   deleteObject,
   mkdirExists,
+  globWalk,
 };
 
 export { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';

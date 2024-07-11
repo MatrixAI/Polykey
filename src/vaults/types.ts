@@ -134,6 +134,58 @@ type VaultName = string;
 
 type VaultActions = Partial<Record<VaultAction, null>>;
 
+type FileTree = Array<TreeNode>;
+type TreeNode = DirectoryNode | FileNode | ContentNode;
+type FilePath = string;
+type INode = number;
+type CNode = number;
+
+type StatEncoded = {
+  isSymbolicLink: boolean;
+  type: 'FILE' | 'DIRECTORY' | 'OTHER';
+  dev: number;
+  ino: number;
+  mode: number;
+  nlink: number;
+  uid: number;
+  gid: number;
+  rdev: number;
+  size: number;
+  blksize: number;
+  blocks: number;
+  atime: number;
+  mtime: number;
+  ctime: number;
+  birthtime: number;
+};
+
+type DirectoryNode = {
+  type: 'directory';
+  path: FilePath;
+  iNode: INode;
+  parent: INode;
+  children: Array<INode>;
+  stat?: StatEncoded;
+};
+
+type FileNode = {
+  type: 'file';
+  path: FilePath;
+  iNode: INode;
+  parent: INode;
+  cNode: CNode;
+  stat?: StatEncoded;
+};
+
+// Keeping this separate from `FileNode` so we can optionally not include it.
+type ContentNode = {
+  type: 'content';
+  path: undefined;
+  fileName: string;
+  cNode: CNode;
+  contents: string;
+};
+
 export { vaultActions };
 
 export type {
@@ -148,6 +200,15 @@ export type {
   FileSystemWritable,
   VaultName,
   VaultActions,
+  FileTree,
+  TreeNode,
+  FilePath,
+  INode,
+  CNode,
+  StatEncoded,
+  DirectoryNode,
+  FileNode,
+  ContentNode,
 };
 
 export { tagLast, refs };

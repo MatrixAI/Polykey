@@ -2,6 +2,7 @@ import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
 import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
+import type { FileTree } from '@/vaults/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -525,4 +526,55 @@ describe('VaultOps', () => {
     },
     globalThis.defaultTimeout * 4,
   );
+
+  describe('globWalk', () => {
+    const relativeBase = '.';
+    const dir1: string = 'dir1';
+    const dir11: string = path.join(dir1, 'dir11');
+    const file0b: string = 'file0.b';
+    const file1a: string = path.join(dir1, 'file1.a');
+    const file2b: string = path.join(dir1, 'file2.b');
+    const file3a: string = path.join(dir11, 'file3.a');
+    const file4b: string = path.join(dir11, 'file4.b');
+
+    beforeEach(async () => {
+      await vault.writeF(async (fs) => {
+        await fs.promises.mkdir(dir1);
+        await fs.promises.mkdir(dir11);
+        await fs.promises.writeFile(file0b, 'content-file0');
+        await fs.promises.writeFile(file1a, 'content-file1');
+        await fs.promises.writeFile(file2b, 'content-file2');
+        await fs.promises.writeFile(file3a, 'content-file3');
+        await fs.promises.writeFile(file4b, 'content-file4');
+      });
+    });
+
+    test('Works with efs', async () => {
+      const files = await vault.readF(async (fs) => {
+        const tree: FileTree = [];
+        for await (const treeNode of vaultsUtils.globWalk({
+          fs: fs,
+          basePath: '.',
+          yieldDirectories: true,
+          yieldFiles: true,
+          yieldParents: true,
+          yieldRoot: true,
+          yieldContents: false,
+        })) {
+          tree.push(treeNode);
+        }
+        return tree.map((v) => v.path ?? '');
+      });
+      expect(files).toContainAllValues([
+        relativeBase,
+        dir1,
+        dir11,
+        file0b,
+        file1a,
+        file2b,
+        file3a,
+        file4b,
+      ]);
+    });
+  });
 });
