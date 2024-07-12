@@ -80,6 +80,7 @@ class PolykeyClient {
       port: number;
       options?: DeepPartial<PolykeyClientOptions>;
       fresh?: boolean;
+      lazy?: boolean;
       fs?: FileSystem;
       logger?: Logger;
     },
@@ -99,6 +100,7 @@ class PolykeyClient {
       // Options
       options = {},
       fresh = false,
+      lazy = false,
       // Optional dependencies
       fs = require('fs'),
       logger = new Logger(this.name),
@@ -108,6 +110,7 @@ class PolykeyClient {
       port: number;
       options?: DeepPartial<PolykeyClientOptions>;
       fresh?: boolean;
+      lazy?: boolean;
       fs?: FileSystem;
       logger?: Logger;
     },
@@ -153,6 +156,7 @@ class PolykeyClient {
           rpcParserBufferSize: optionsDefaulted.rpcParserBufferSize,
         },
         fresh,
+        lazy,
       },
       ctx,
     );
@@ -166,7 +170,7 @@ class PolykeyClient {
   protected fs: FileSystem;
   protected logger: Logger;
   protected _nodeId: NodeId;
-  protected _webSocketClient: WebSocketClient;
+  protected _webSocketClient?: WebSocketClient;
   protected _rpcClient: OverrideRPClientType<
     RPCClient<typeof clientClientManifest>
   >;
@@ -209,22 +213,22 @@ class PolykeyClient {
 
   @ready(new errors.ErrorPolykeyClientNotRunning())
   public get host() {
-    return this._webSocketClient.connection.remoteHost;
+    return this._webSocketClient?.connection.remoteHost;
   }
 
   @ready(new errors.ErrorPolykeyClientNotRunning())
   public get port() {
-    return this._webSocketClient.connection.remotePort;
+    return this._webSocketClient?.connection.remotePort;
   }
 
   @ready(new errors.ErrorPolykeyClientNotRunning())
   public get localHost() {
-    return this._webSocketClient.connection.localHost;
+    return this._webSocketClient?.connection.localHost;
   }
 
   @ready(new errors.ErrorPolykeyClientNotRunning())
   public get localPort() {
-    return this._webSocketClient.connection.localPort;
+    return this._webSocketClient?.connection.localPort;
   }
 
   public start(
@@ -239,6 +243,7 @@ class PolykeyClient {
         rpcParserBufferSize: number;
       }>;
       fresh?: boolean;
+      lazy?: boolean;
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
@@ -254,6 +259,7 @@ class PolykeyClient {
       port,
       options = {},
       fresh = false,
+      lazy = false,
     }: {
       nodeId: string | NodeId;
       host: string;
@@ -265,6 +271,7 @@ class PolykeyClient {
         rpcParserBufferSize: number;
       }>;
       fresh?: boolean;
+      lazy?: boolean;
     },
     @context ctx: ContextTimed,
   ): Promise<void> {
@@ -295,42 +302,86 @@ class PolykeyClient {
       nodeId_ = nodeId;
     }
     await this.session.start({ fresh });
-    const webSocketClient = await WebSocketClient.createWebSocketClient(
-      {
-        host,
-        port,
-        config: {
-          verifyPeer: true,
-          verifyCallback: async (certs) => {
-            await clientUtils.verifyServerCertificateChain([nodeId_], certs);
+
+    let rpcClient: RPCClient<typeof clientClientManifest>;
+    if (!lazy) {
+      const webSocketClient = await WebSocketClient.createWebSocketClient(
+        {
+          host,
+          port,
+          config: {
+            verifyPeer: true,
+            verifyCallback: async (certs) => {
+              await clientUtils.verifyServerCertificateChain([nodeId_], certs);
+            },
+            keepAliveTimeoutTime: optionsDefaulted.keepAliveTimeoutTime,
+            keepAliveIntervalTime: optionsDefaulted.keepAliveIntervalTime,
           },
-          keepAliveTimeoutTime: optionsDefaulted.keepAliveTimeoutTime,
-          keepAliveIntervalTime: optionsDefaulted.keepAliveIntervalTime,
+          logger: this.logger.getChild(WebSocketClient.name),
         },
-        logger: this.logger.getChild(WebSocketClient.name),
-      },
-      ctx,
-    );
-    webSocketClient.addEventListener(
-      webSocketEvents.EventWebSocketClientDestroyed.name,
-      this.handleEventWebSocketClientDestroyed,
-    );
-    const rpcClient = new RPCClient({
-      manifest: clientClientManifest,
-      streamFactory: () => webSocketClient.connection.newStream(),
-      middlewareFactory: rpcMiddleware.defaultClientMiddlewareWrapper(
-        clientMiddleware.middlewareClient(
-          this.session,
-          optionsDefaulted.rpcMiddlewareFactory,
+        ctx,
+      );
+      webSocketClient.addEventListener(
+        webSocketEvents.EventWebSocketClientDestroyed.name,
+        this.handleEventWebSocketClientDestroyed,
+      );
+      rpcClient = new RPCClient({
+        manifest: clientClientManifest,
+        streamFactory: () => webSocketClient.connection.newStream(),
+        middlewareFactory: rpcMiddleware.defaultClientMiddlewareWrapper(
+          clientMiddleware.middlewareClient(
+            this.session,
+            optionsDefaulted.rpcMiddlewareFactory,
+          ),
+          optionsDefaulted.rpcParserBufferSize,
         ),
-        optionsDefaulted.rpcParserBufferSize,
-      ),
-      toError: networkUtils.toError,
-      timeoutTime: optionsDefaulted.rpcCallTimeoutTime,
-      logger: this.logger.getChild(RPCClient.name),
-    });
+        toError: networkUtils.toError,
+        timeoutTime: optionsDefaulted.rpcCallTimeoutTime,
+        logger: this.logger.getChild(RPCClient.name),
+      });
+      this._webSocketClient = webSocketClient;
+    } else {
+      rpcClient = new RPCClient({
+        manifest: clientClientManifest,
+        streamFactory: async () => {
+          if (
+            this._webSocketClient == null ||
+            this._webSocketClient.connection.closed
+          ) {
+            this._webSocketClient = await WebSocketClient.createWebSocketClient(
+              {
+                host,
+                port,
+                config: {
+                  verifyPeer: true,
+                  verifyCallback: async (certs) => {
+                    await clientUtils.verifyServerCertificateChain(
+                      [nodeId_],
+                      certs,
+                    );
+                  },
+                  keepAliveTimeoutTime: optionsDefaulted.keepAliveTimeoutTime,
+                  keepAliveIntervalTime: optionsDefaulted.keepAliveIntervalTime,
+                },
+                logger: this.logger.getChild(WebSocketClient.name),
+              },
+            );
+          }
+          return await this._webSocketClient.connection.newStream();
+        },
+        middlewareFactory: rpcMiddleware.defaultClientMiddlewareWrapper(
+          clientMiddleware.middlewareClient(
+            this.session,
+            optionsDefaulted.rpcMiddlewareFactory,
+          ),
+          optionsDefaulted.rpcParserBufferSize,
+        ),
+        toError: networkUtils.toError,
+        timeoutTime: optionsDefaulted.rpcCallTimeoutTime,
+        logger: this.logger.getChild(RPCClient.name),
+      });
+    }
     this._nodeId = nodeId_;
-    this._webSocketClient = webSocketClient;
     this._rpcClient = rpcClient as typeof this._rpcClient;
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -344,11 +395,11 @@ class PolykeyClient {
    */
   public async stop({ force = false }: { force?: boolean } = {}) {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    this._webSocketClient.removeEventListener(
+    this._webSocketClient?.removeEventListener(
       webSocketEvents.EventWebSocketClientDestroyed.name,
       this.handleEventWebSocketClientDestroyed,
     );
-    await this._webSocketClient.destroy({ force });
+    await this._webSocketClient?.destroy({ force });
     await this.session.stop();
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
