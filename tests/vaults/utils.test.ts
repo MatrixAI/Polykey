@@ -138,7 +138,6 @@ describe('Vaults utils', () => {
         yieldFiles: true,
         yieldParents: true,
         yieldRoot: true,
-        yieldContents: false,
       })) {
         tree.push(treeNode);
       }
@@ -172,7 +171,6 @@ describe('Vaults utils', () => {
         yieldFiles: true,
         yieldParents: true,
         yieldRoot: true,
-        yieldContents: false,
       })) {
         tree.push(treeNode);
       }
@@ -206,7 +204,6 @@ describe('Vaults utils', () => {
         yieldFiles: true,
         yieldParents: true,
         yieldRoot: true,
-        yieldContents: false,
       })) {
         tree.push(treeNode);
       }
@@ -230,7 +227,6 @@ describe('Vaults utils', () => {
         yieldFiles: true,
         yieldParents: true,
         yieldRoot: true,
-        yieldContents: false,
       })) {
         tree.push(treeNode);
       }
@@ -319,31 +315,6 @@ describe('Vaults utils', () => {
         ),
       );
     });
-    test('Yields file contents directories with `yieldContents`', async () => {
-      const tree: FileTree = [];
-      for await (const treeNode of vaultsUtils.globWalk({
-        fs: fs,
-        basePath: relativeBase,
-        yieldFiles: false,
-        yieldDirectories: false,
-        yieldContents: true,
-      })) {
-        tree.push(treeNode);
-      }
-      const files = tree.map((v) => (v.type === 'content' ? v.contents : ''));
-      expect(files).toContainAllValues([
-        'content-file0',
-        'content-file9',
-        'content-file1',
-        'content-file2',
-        'content-file3',
-        'content-file4',
-        'content-file5',
-        'content-file6',
-        'content-file7',
-        'content-file8',
-      ]);
-    });
     test('Yields stats with `yieldStats`', async () => {
       const tree: FileTree = [];
       for await (const treeNode of vaultsUtils.globWalk({
@@ -352,7 +323,6 @@ describe('Vaults utils', () => {
         yieldStats: true,
         yieldFiles: true,
         yieldDirectories: true,
-        yieldContents: false,
       })) {
         tree.push(treeNode);
       }

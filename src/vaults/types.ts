@@ -135,7 +135,7 @@ type VaultName = string;
 type VaultActions = Partial<Record<VaultAction, null>>;
 
 type FileTree = Array<TreeNode>;
-type TreeNode = DirectoryNode | FileNode | ContentNode;
+type TreeNode = DirectoryNode | FileNode;
 type FilePath = string;
 type INode = number;
 type CNode = number;
@@ -177,15 +177,6 @@ type FileNode = {
   stat?: StatEncoded;
 };
 
-// Keeping this separate from `FileNode` so we can optionally not include it.
-type ContentNode = {
-  type: 'content';
-  path: undefined;
-  fileName: string;
-  cNode: CNode;
-  contents: string;
-};
-
 export { vaultActions };
 
 export type {
@@ -208,7 +199,6 @@ export type {
   StatEncoded,
   DirectoryNode,
   FileNode,
-  ContentNode,
 };
 
 export { tagLast, refs };

@@ -159,7 +159,6 @@ function genStat(stat: Stat): StatEncoded {
  * @param yieldParents - Toggles yielding details about parents of pattern matched paths. Defaults to false.
  * @param yieldDirectories - Toggles yielding directories that match the pattern. Defaults to true.
  * @param yieldFiles - Toggles yielding files that match the pattern. Defaults to true.
- * @param yieldContents - Toggles yielding file contents after all other details are yielded. Defaults to false.
  * @param yieldStats - Toggles including stats in file and directory details. Defaults to false.
  */
 async function* globWalk({
@@ -170,7 +169,6 @@ async function* globWalk({
   yieldParents = false,
   yieldDirectories = true,
   yieldFiles = true,
-  yieldContents = false,
   yieldStats = false,
 }: {
   fs: FileSystem | FileSystemReadable;
@@ -180,7 +178,6 @@ async function* globWalk({
   yieldParents?: boolean;
   yieldDirectories?: boolean;
   yieldFiles?: boolean;
-  yieldContents?: boolean;
   yieldStats?: boolean;
 }): AsyncGenerator<TreeNode, void, void> {
   const files: Array<string> = [];
@@ -284,19 +281,6 @@ async function* globWalk({
       files.push(currentPath);
     }
     current = queue.shift();
-  }
-  if (!yieldContents) return;
-  // Iterate over file contents
-  for (let i = 0; i < files.length; i++) {
-    const filePath = files[i];
-    yield {
-      type: 'content',
-      path: undefined,
-      fileName: path.basename(filePath),
-      cNode: i,
-      // @ts-ignore: While the types don't fully match, it matches enough for our usage.
-      contents: (await fs.promises.readFile(filePath)).toString(),
-    };
   }
 }
 

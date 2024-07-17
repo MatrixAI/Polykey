@@ -559,7 +559,6 @@ describe('VaultOps', () => {
           yieldFiles: true,
           yieldParents: true,
           yieldRoot: true,
-          yieldContents: false,
         })) {
           tree.push(treeNode);
         }
