@@ -4,6 +4,8 @@ import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet';
 import nodesConnectionSignalFinal from './nodesConnectionSignalFinal';
 import nodesConnectionSignalInitial from './nodesConnectionSignalInitial';
 import nodesCrossSignClaim from './nodesCrossSignClaim';
+import nodesClaimNetworkSign from './nodesClaimNetworkSign';
+import nodesClaimNetworkVerify from './nodesClaimNetworkVerify';
 import notificationsSend from './notificationsSend';
 import vaultsGitInfoGet from './vaultsGitInfoGet';
 import vaultsGitPackGet from './vaultsGitPackGet';
@@ -19,6 +21,8 @@ const manifestClient = {
   nodesConnectionSignalFinal,
   nodesConnectionSignalInitial,
   nodesCrossSignClaim,
+  nodesClaimNetworkSign,
+  nodesClaimNetworkVerify,
   notificationsSend,
   vaultsGitInfoGet,
   vaultsGitPackGet,
@@ -36,6 +40,8 @@ export {
   nodesConnectionSignalFinal,
   nodesConnectionSignalInitial,
   nodesCrossSignClaim,
+  nodesClaimNetworkSign,
+  nodesClaimNetworkVerify,
   notificationsSend,
   vaultsGitInfoGet,
   vaultsGitPackGet,

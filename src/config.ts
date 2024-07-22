@@ -384,6 +384,12 @@ const config = {
     agentServiceHost: '::',
     agentServicePort: 0,
     /**
+     * Hostname of network to connect to.
+     *
+     * This is defaulted to 'mainnet.polykey.com'.
+     */
+    network: 'mainnet.polykey.com',
+    /**
      * Seed nodes.
      *
      * This is defaulted to `{}` at the object-level.
