@@ -135,14 +135,26 @@ type VaultName = string;
 type VaultActions = Partial<Record<VaultAction, null>>;
 
 type FileTree = Array<TreeNode>;
-type TreeNode = DirectoryNode | FileNode;
+type TreeNode = {
+  type: 'DIRECTORY' | 'FILE';
+  iNode: INode;
+  path: FilePath;
+  parent: INode;
+  stat?: StatEncoded;
+};
+
+type ContentNode = {
+  type: 'CONTENT';
+  iNode: number;
+  dataSize: bigint;
+};
+type DoneMessage = { type: 'DONE' };
+
 type FilePath = string;
 type INode = number;
-type CNode = number;
 
 type StatEncoded = {
   isSymbolicLink: boolean;
-  type: 'FILE' | 'DIRECTORY' | 'OTHER';
   dev: number;
   ino: number;
   mode: number;
@@ -159,25 +171,35 @@ type StatEncoded = {
   birthtime: number;
 };
 
-type DirectoryNode = {
-  type: 'directory';
-  path: FilePath;
-  iNode: INode;
-  parent: INode;
-  children: Array<INode>;
-  stat?: StatEncoded;
+interface Parsed<T> {
+  data?: T;
+  remainder: Uint8Array;
+}
+
+type HeaderGeneric = {
+  type: HeaderType;
+};
+type HeaderContent = {
+  dataSize: bigint;
+  iNode: number;
 };
 
-type FileNode = {
-  type: 'file';
-  path: FilePath;
-  iNode: INode;
-  parent: INode;
-  cNode: CNode;
-  stat?: StatEncoded;
-};
+enum HeaderSize {
+  GENERIC = 2,
+  CONTENT = 13,
+}
 
-export { vaultActions };
+enum HeaderType {
+  CONTENT = 0x43, // 'C' 67
+  TREE = 0x54, // 'T' 84
+}
+
+enum HeaderMagic {
+  START = 0x48, // 'H' 72
+  END = 0x44, // 'D' 68
+}
+
+export {};
 
 export type {
   VaultId,
@@ -193,12 +215,14 @@ export type {
   VaultActions,
   FileTree,
   TreeNode,
+  ContentNode,
+  DoneMessage,
   FilePath,
   INode,
-  CNode,
   StatEncoded,
-  DirectoryNode,
-  FileNode,
+  Parsed,
+  HeaderGeneric,
+  HeaderContent,
 };
 
-export { tagLast, refs };
+export { vaultActions, tagLast, refs, HeaderSize, HeaderType, HeaderMagic };

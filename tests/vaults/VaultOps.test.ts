@@ -3,6 +3,7 @@ import type { Vault } from '@/vaults/Vault';
 import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
 import type { FileTree } from '@/vaults/types';
+import type { ContentNode, TreeNode } from '@/vaults/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -10,6 +11,7 @@ import { EncryptedFS, Stat } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import VaultInternal from '@/vaults/VaultInternal';
+import * as fileTree from '@/vaults/fileTree';
 import * as vaultOps from '@/vaults/VaultOps';
 import * as vaultsErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
@@ -527,7 +529,7 @@ describe('VaultOps', () => {
     globalThis.defaultTimeout * 4,
   );
 
-  describe('globWalk', () => {
+  describe('fileTree', () => {
     const relativeBase = '.';
     const dir1: string = 'dir1';
     const dir11: string = path.join(dir1, 'dir11');
@@ -549,10 +551,10 @@ describe('VaultOps', () => {
       });
     });
 
-    test('Works with efs', async () => {
+    test('globWalk works with efs', async () => {
       const files = await vault.readF(async (fs) => {
         const tree: FileTree = [];
-        for await (const treeNode of vaultsUtils.globWalk({
+        for await (const treeNode of fileTree.globWalk({
           fs: fs,
           basePath: '.',
           yieldDirectories: true,
@@ -574,6 +576,46 @@ describe('VaultOps', () => {
         file3a,
         file4b,
       ]);
+    });
+    test('serializer with content works with efs', async () => {
+      const data = await vault.readF(async (fs) => {
+        const fileTreeGen = fileTree.globWalk({
+          fs,
+          yieldStats: false,
+          yieldRoot: false,
+          yieldFiles: true,
+          yieldParents: true,
+          yieldDirectories: true,
+        });
+        const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+        const parserTransform = fileTree.parserTransformStreamFactory();
+        const serializedStream = fileTree.serializerStreamFactory(
+          fs,
+          fileTreeGen,
+          true,
+        );
+        const outputStream = serializedStream.pipeThrough(parserTransform);
+        for await (const output of outputStream) {
+          data.push(output);
+        }
+        return data;
+      });
+      const contents = data
+        .filter((v) => v instanceof Uint8Array)
+        .map((v) => Buffer.from(v as Uint8Array).toString());
+      const contentHeaders = data.filter(
+        (v) => !(v instanceof Uint8Array) && v.type === 'CONTENT',
+      ) as Array<ContentNode>;
+      expect(contents).toIncludeAllMembers([
+        'content-file0',
+        'content-file1',
+        'content-file2',
+        'content-file3',
+        'content-file4',
+      ]);
+      for (const contentHeader of contentHeaders) {
+        expect(contentHeader.dataSize).toBe(13n);
+      }
     });
   });
 });

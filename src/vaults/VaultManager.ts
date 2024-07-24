@@ -1033,6 +1033,45 @@ class VaultManager {
     });
   }
 
+  /**
+   * Takes a generator and runs it with the listed vaults. locking is handled automatically
+   * @param vaultIds List of vault ID for vaults you wish to use
+   * @param g Generator you wish to run with the provided vaults
+   * @param tran
+   */
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  public async *withVaultsG<T, Treturn, Tnext>(
+    vaultIds: Array<VaultId>,
+    g: (...args: Array<Vault>) => AsyncGenerator<T, Treturn, Tnext>,
+    tran?: DBTransaction,
+  ): AsyncGenerator<T, Treturn, Tnext> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.withVaultsG(vaultIds, g, tran),
+      );
+    }
+
+    // Obtaining locks
+    const vaultLocks: Array<LockRequest<RWLockWriter>> = vaultIds.map(
+      (vaultId) => {
+        return [vaultId.toString(), RWLockWriter, 'read'];
+      },
+    );
+    // Running the function with locking
+    return yield* this.vaultLocks.withG(
+      ...vaultLocks,
+      async function* (): AsyncGenerator<T, Treturn, Tnext> {
+        // Getting the vaults while locked
+        const vaults = await Promise.all(
+          vaultIds.map(async (vaultId) => {
+            return await this.getVault(vaultId, tran);
+          }),
+        );
+        return yield* g(...vaults);
+      },
+    );
+  }
+
   protected async setupKey(tran: DBTransaction): Promise<Buffer> {
     let key: Buffer | undefined;
     key = await tran.get([...this.vaultsDbPath, 'key'], true);
