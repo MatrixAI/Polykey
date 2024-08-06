@@ -1587,16 +1587,32 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
       dirName: secretDir,
     });
     expect(addResponse.success).toBeTruthy();
-    // List secrets
-    const listResponse = await rpcClient.methods.vaultsSecretsList({
+
+    const noFiles = await rpcClient.methods.vaultsSecretsList({
       nameOrId: vaultsIdEncoded,
+      secretName: 'doesntExist',
     });
-    const secrets: Array<string> = [];
-    for await (const secret of listResponse) {
-      secrets.push(secret.secretName);
+
+    await expect(async () => {
+      try {
+        for await (const _ of noFiles);
+      } catch (e) {
+        throw e.cause;
+      }
+    }).rejects.toThrow(vaultsErrors.ErrorSecretsDirectoryUndefined);
+
+    const secrets = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: vaultsIdEncoded,
+      secretName: 'secretDir',
+    });
+
+    // Extract secret file paths
+    const parsedFiles: Array<string> = [];
+    for await (const file of secrets) {
+      parsedFiles.push(file.path);
     }
-    expect(secrets.sort()).toStrictEqual(
-      secretList.map((secret) => path.join('secretDir', secret)).sort(),
+    expect(parsedFiles).toIncludeAllMembers(
+      secretList.map((secret) => path.join('secretDir', secret)),
     );
   });
 });

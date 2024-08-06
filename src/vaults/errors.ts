@@ -118,6 +118,16 @@ class ErrorSecretsIsDirectory<T> extends ErrorSecrets<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorSecretsIsSecret<T> extends ErrorSecrets<T> {
+  static description = 'Is a secret and not a directory';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorSecretsDirectoryUndefined<T> extends ErrorSecrets<T> {
+  static description = 'Directory does not exist';
+  exitCode = sysexits.USAGE;
+}
+
 export {
   ErrorVaults,
   ErrorVaultManagerRunning,
@@ -144,4 +154,6 @@ export {
   ErrorSecretsSecretUndefined,
   ErrorSecretsSecretDefined,
   ErrorSecretsIsDirectory,
+  ErrorSecretsIsSecret,
+  ErrorSecretsDirectoryUndefined,
 };

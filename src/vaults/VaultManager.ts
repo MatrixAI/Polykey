@@ -1058,13 +1058,14 @@ class VaultManager {
       },
     );
     // Running the function with locking
+    const vaultThis = this;
     return yield* this.vaultLocks.withG(
       ...vaultLocks,
       async function* (): AsyncGenerator<T, Treturn, Tnext> {
         // Getting the vaults while locked
         const vaults = await Promise.all(
           vaultIds.map(async (vaultId) => {
-            return await this.getVault(vaultId, tran);
+            return await vaultThis.getVault(vaultId, tran);
           }),
         );
         return yield* g(...vaults);
