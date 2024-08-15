@@ -647,10 +647,11 @@ async function verifyClientCertificateChain(
     certChain.push(cert);
   }
   const now = new Date();
+  let leafCert = true;
   for (let certIndex = 0; certIndex < certChain.length; certIndex++) {
     const cert = certChain[certIndex];
     const certNext = certChain[certIndex + 1];
-    if (now < cert.notBefore || now > cert.notAfter) {
+    if (leafCert && (now < cert.notBefore || now > cert.notAfter)) {
       return CryptoError.CertificateExpired;
     }
     const certNodeId = keysUtils.certNodeId(cert);
@@ -675,6 +676,7 @@ async function verifyClientCertificateChain(
         return CryptoError.BadCertificate;
       }
     }
+    leafCert = false;
   }
   // Undefined means success
   return undefined;
