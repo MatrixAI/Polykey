@@ -21,9 +21,9 @@ describe('client/utils', () => {
 
   beforeAll(async () => {
     cert = await testTlsUtils.createTLSConfigWithChain([
-      keyPairRoot,
-      keyPairIntermediate,
-      keyPairLeaf,
+      [keyPairRoot, undefined],
+      [keyPairIntermediate, undefined],
+      [keyPairLeaf, undefined],
     ]);
   });
 

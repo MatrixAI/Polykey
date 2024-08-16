@@ -32,7 +32,7 @@ async function createTLSConfig(
 }
 
 async function createTLSConfigWithChain(
-  keyPairs: Array<KeyPair>,
+  keyPairs: Array<[KeyPair, number | undefined]>,
   generateCertId?: () => CertId,
 ): Promise<{
   keyPrivatePem: PrivateKeyPEM;
@@ -43,10 +43,10 @@ async function createTLSConfigWithChain(
   let previousCert: Certificate | null = null;
   let previousKeyPair: KeyPair | null = null;
   const certChain: Array<Certificate> = [];
-  for (const keyPair of keyPairs) {
+  for (const [keyPair, duration] of keyPairs) {
     const newCert = await keysUtils.generateCertificate({
       certId: generateCertId(),
-      duration: 31536000,
+      duration: duration ?? 31536000,
       issuerPrivateKey: previousKeyPair?.privateKey ?? keyPair.privateKey,
       subjectKeyPair: keyPair,
       issuerAttrsExtra: previousCert?.subjectName.toJSON(),

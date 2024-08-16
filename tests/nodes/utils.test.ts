@@ -9,6 +9,7 @@ import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { errors as rpcErrors } from '@matrixai/rpc';
 import { utils as wsUtils } from '@matrixai/ws';
+import { CryptoError } from '@matrixai/quic/dist/native';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as validationErrors from '@/validation/errors';
@@ -334,9 +335,9 @@ describe('nodes/utils', () => {
 
     beforeAll(async () => {
       cert = await testTlsUtils.createTLSConfigWithChain([
-        keyPairRoot,
-        keyPairIntermediate,
-        keyPairLeaf,
+        [keyPairRoot, undefined],
+        [keyPairIntermediate, undefined],
+        [keyPairLeaf, undefined],
       ]);
     });
 
@@ -384,6 +385,51 @@ describe('nodes/utils', () => {
         if (result2.result === 'fail') fail();
         expect(Buffer.compare(result2.nodeId, nodeIdLeaf)).toBe(0);
       });
+      test('verify on leaf cert with expired intermediate certs', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, 0],
+          [keyPairIntermediate, 0],
+          [keyPairIntermediate, 0],
+          [keyPairLeaf, undefined],
+        ]);
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdLeaf],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('success');
+        if (result.result === 'fail') fail();
+        expect(Buffer.compare(result.nodeId, nodeIdLeaf)).toBe(0);
+      });
+      test('verify on intermediate cert with expired intermediate certs', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, 0],
+          [keyPairIntermediate, 0],
+          [keyPairIntermediate, undefined],
+          [keyPairLeaf, undefined],
+        ]);
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdIntermediate],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('success');
+        if (result.result === 'fail') fail();
+        expect(Buffer.compare(result.nodeId, nodeIdIntermediate)).toBe(0);
+      });
+      test('fails with expired intermediate before valid target', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, 0],
+          [keyPairIntermediate, undefined],
+          [keyPairLeaf, 0],
+          [keyPairLeaf, undefined],
+        ]);
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdIntermediate],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('fail');
+        if (result.result !== 'fail') utils.never();
+        expect(result.value).toBe(CryptoError.CertificateExpired);
+      });
     });
     describe('server verifyClientCertificateChain', () => {
       test('verify with multiple certs', async () => {
@@ -391,6 +437,28 @@ describe('nodes/utils', () => {
           cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
         );
         expect(result).toBeUndefined();
+      });
+      test('verify with expired intermediate certs', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, 0],
+          [keyPairIntermediate, 0],
+          [keyPairLeaf, undefined],
+        ]);
+        const result = await nodesUtils.verifyClientCertificateChain(
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result).toBeUndefined();
+      });
+      test('fails with expired leaf cert', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, undefined],
+          [keyPairIntermediate, undefined],
+          [keyPairLeaf, 0],
+        ]);
+        const result = await nodesUtils.verifyClientCertificateChain(
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result).toBe(CryptoError.CertificateExpired);
       });
     });
   });
