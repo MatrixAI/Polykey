@@ -415,6 +415,21 @@ describe('nodes/utils', () => {
         if (result.result === 'fail') fail();
         expect(Buffer.compare(result.nodeId, nodeIdIntermediate)).toBe(0);
       });
+      test('fails with expired intermediate before valid target', async () => {
+        cert = await testTlsUtils.createTLSConfigWithChain([
+          [keyPairRoot, 0],
+          [keyPairIntermediate, undefined],
+          [keyPairLeaf, 0],
+          [keyPairLeaf, undefined],
+        ]);
+        const result = await nodesUtils.verifyServerCertificateChain(
+          [nodeIdIntermediate],
+          cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
+        );
+        expect(result.result).toBe('fail');
+        if (result.result !== 'fail') utils.never();
+        expect(result.value).toBe(CryptoError.CertificateExpired);
+      });
     });
     describe('server verifyClientCertificateChain', () => {
       test('verify with multiple certs', async () => {
