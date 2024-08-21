@@ -1,12 +1,11 @@
 <div align="center">
-  <img width="512" src="https://polykey.com/images/polykey-logotype-dark-dark.svg">
-  <br>
-  <br>
-  <br>
+  <img width="512" src="https://github.com/user-attachments/assets/48fa6b8c-6deb-4017-9260-551857d54462">
+  <br />
+  <br />
   <img src="https://img.shields.io/github/v/tag/MatrixAI/Polykey?style=for-the-badge">
   <img src="https://img.shields.io/github/actions/workflow/status/MatrixAI/Polykey/release.yml?style=for-the-badge">
   <img src="https://img.shields.io/npm/d18m/polykey?style=for-the-badge&label=npm%20downloads&color=d02b1d">
-  <br>
+  <br />
   <img src="https://img.shields.io/github/downloads/MatrixAI/Polykey/total?style=for-the-badge">
   <img src="https://img.shields.io/github/license/MatrixAI/Polykey?style=for-the-badge">
 </div>
