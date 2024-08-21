@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="512" src="https://polykey.com/images/polykey-logotype-light-light.svg">
+  <img width="512" src="https://polykey.com/images/polykey-logotype-dark-dark.svg">
   <br>
   <br>
   <br>
