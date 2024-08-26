@@ -542,8 +542,20 @@ function parserTransformStreamFactory(): TransformStream<
     };
     jsonParser.write(initialChunk);
   };
+  /* Check if any chunks have been processed. If the stream is being flushed
+   * without processing any chunks, then something went wrong with the stream.
+   */
+  let processedChunks: boolean = false;
   return new TransformStream<Uint8Array, TreeNode | ContentNode | Uint8Array>({
+    flush: (controller) => {
+      if (!processedChunks) {
+        controller.error(
+          new validationErrors.ErrorParse('Stream ended prematurely'),
+        );
+      }
+    },
     transform: (chunk, controller) => {
+      if (chunk.byteLength > 0) processedChunks = true;
       switch (phase) {
         case 'START': {
           workingBuffer = vaultsUtils.uint8ArrayConcat([workingBuffer, chunk]);

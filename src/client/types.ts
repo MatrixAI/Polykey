@@ -300,12 +300,11 @@ type VaultsLatestVersionMessage = {
 };
 
 // Secrets
-
-type SecretNameMessage = {
+type SecretPathMessage = {
   secretName: string;
 };
 
-type SecretIdentifierMessage = VaultIdentifierMessage & SecretNameMessage;
+type SecretIdentifierMessage = VaultIdentifierMessage & SecretPathMessage;
 
 // Contains binary content as a binary string 'toString('binary')'
 type ContentMessage = {
@@ -325,6 +324,11 @@ type SecretDirMessage = VaultIdentifierMessage & {
 
 type SecretRenameMessage = SecretIdentifierMessage & {
   newSecretName: string;
+};
+
+type SecretFilesMessage = {
+  path: string;
+  type: 'FILE' | 'DIRECTORY';
 };
 
 // Stat is the 'JSON.stringify version of the file stat
@@ -410,13 +414,14 @@ export type {
   VaultsScanMessage,
   VaultsVersionMessage,
   VaultsLatestVersionMessage,
-  SecretNameMessage,
+  SecretPathMessage,
   SecretIdentifierMessage,
   ContentMessage,
   SecretContentMessage,
   SecretMkdirMessage,
   SecretDirMessage,
   SecretRenameMessage,
+  SecretFilesMessage,
   SecretStatMessage,
   SignatureMessage,
   OverrideRPClientType,

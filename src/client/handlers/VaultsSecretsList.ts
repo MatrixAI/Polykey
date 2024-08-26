@@ -2,55 +2,69 @@ import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-  SecretNameMessage,
-  VaultIdentifierMessage,
+  SecretFilesMessage,
+  SecretIdentifierMessage,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import path from 'path';
 import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import * as vaultOps from '../../vaults/VaultOps';
 
 class VaultsSecretsList extends ServerHandler<
   {
     vaultManager: VaultManager;
     db: DB;
   },
-  ClientRPCRequestParams<VaultIdentifierMessage>,
-  ClientRPCResponseResult<SecretNameMessage>
+  ClientRPCRequestParams<SecretIdentifierMessage>,
+  ClientRPCResponseResult<SecretFilesMessage>
 > {
   public async *handle(
-    input: ClientRPCRequestParams<VaultIdentifierMessage>,
-    _cancel,
-    _meta,
-    ctx,
-  ): AsyncGenerator<ClientRPCResponseResult<SecretNameMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
+    input: ClientRPCRequestParams<SecretIdentifierMessage>,
+    _cancel: any,
+  ): AsyncGenerator<ClientRPCResponseResult<SecretFilesMessage>, void, void> {
     const { vaultManager, db } = this.container;
-    const secrets = await db.withTransactionF(async (tran) => {
+    const vaultId = await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
         tran,
       );
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
-      if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
-      }
-      return await vaultManager.withVaults(
-        [vaultId],
-        async (vault) => {
-          return await vaultOps.listSecrets(vault);
-        },
-        tran,
-      );
+      if (vaultId == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      return vaultId;
     });
-    for (const secret of secrets) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      yield {
-        secretName: secret,
-      };
-    }
+
+    yield* vaultManager.withVaultsG([vaultId], (vault) => {
+      return vault.readG(async function* (fs): AsyncGenerator<
+        SecretFilesMessage,
+        void,
+        void
+      > {
+        let files: Array<string | Buffer>;
+        try {
+          files = await fs.promises.readdir(input.secretName);
+        } catch (e) {
+          if (e.code === 'ENOENT') {
+            throw new vaultsErrors.ErrorSecretsDirectoryUndefined(e.message, {
+              cause: e,
+            });
+          }
+          if (e.code === 'ENOTDIR') {
+            throw new vaultsErrors.ErrorSecretsIsSecret(e.message, {
+              cause: e,
+            });
+          }
+          throw e;
+        }
+        for await (const file of files) {
+          const filePath = path.join(input.secretName, file.toString());
+          const stat = await fs.promises.stat(filePath);
+          const type = stat.isFile() ? 'FILE' : 'DIRECTORY';
+          yield { path: filePath, type: type };
+        }
+      });
+    });
   }
 }
 
