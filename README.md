@@ -1,5 +1,9 @@
 <div align="center">
-  <img width="512" src="https://github.com/user-attachments/assets/48fa6b8c-6deb-4017-9260-551857d54462">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://polykey.com/images/polykey-logotype-light-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://polykey.com/images/polykey-logotype-dark-dark.svg">
+    <img width="512" alt="Polykey Logo" src="https://polykey.com/images/polykey-logotype-light-light.svg">
+  </picture>
   <br />
   <br />
   <img src="https://img.shields.io/github/v/tag/MatrixAI/Polykey?style=for-the-badge">
