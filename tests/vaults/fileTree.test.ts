@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { ReadableStream } from 'stream/web';
 import { test } from '@fast-check/jest';
-import fc from 'fast-check';
+import fc, { uint8Array } from 'fast-check';
 import * as fileTree from '@/vaults/fileTree';
 import * as vaultsTestUtils from './utils';
 
@@ -718,5 +718,32 @@ describe('fileTree', () => {
     // TODO: tests for
     //  - empty files
     //  - files larger than content chunks
+
+    // TEST: DEBUGGGG
+    test('view serializer', async () => {
+      const fileTreeGen = fileTree.globWalk({
+        fs,
+        yieldStats: false,
+        yieldRoot: false,
+        yieldFiles: true,
+        yieldParents: false,
+        yieldDirectories: false,
+      });
+      let serializedStream = fileTree.serializerStreamFactory(fs, fileTreeGen);
+      // const data: Array<Uint8Array> = [];
+      // for await (const d of serializedStream) {
+      //   data.push(d);
+      // }
+      // console.log(data.map((v) => Buffer.from(v as Uint8Array).toString()));
+
+      // serializedStream = fileTree.serializerStreamFactory(fs, fileTreeGen);
+      const parserTransform = fileTree.parserTransformStreamFactory();
+      const outputStream = serializedStream.pipeThrough(parserTransform);
+      const output: Array<string> = [];
+      for await (const d of outputStream) {
+        output.push(d);
+      }
+      console.log(output);
+    });
   });
 });
