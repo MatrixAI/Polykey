@@ -14,11 +14,9 @@ import type {
 import path from 'path';
 import { ReadableStream, TransformStream } from 'stream/web';
 import { minimatch } from 'minimatch';
-import { JSONParser, TokenizerError } from '@streamparser/json';
 import * as vaultsUtils from './utils';
 import { HeaderSize, HeaderType, HeaderMagic } from './types';
 import * as utils from '../utils';
-import * as utilsErrors from '../utils/errors';
 import * as validationErrors from '../validation/errors';
 
 /**
@@ -337,7 +335,6 @@ async function* encodeContent(
  * Takes an AsyncGenerator<TreeNode> and serializes it into a `ReadableStream<UInt8Array>`
  * @param fs
  * @param treeGen - An AsyncGenerator<TreeNode> that yields the files and directories of a file tree.
- * @param yieldContents - Toggles sending the contents of files after the file tree.
  */
 function serializerStreamFactory(
   fs: FileSystem | FileSystemReadable,
@@ -345,20 +342,18 @@ function serializerStreamFactory(
 ): ReadableStream<Uint8Array> {
   let contentsGen: AsyncGenerator<Uint8Array, void, void> | undefined;
   let fileNode: TreeNode | undefined;
-
-  async function getNextFileNode(): Promise<TreeNode | undefined> {
-    while (true) {
-      const result = await treeGen.next();
-      if (result.done) return undefined;
-      if (result.value.type === 'FILE') return result.value;
-      // If it's not a file, keep iterating
-    }
-  }
   async function getNextContentChunk(): Promise<Uint8Array | undefined> {
     while (true) {
       if (contentsGen == null) {
-        fileNode = await getNextFileNode();
-        if (fileNode == null) return undefined;
+        // Keep consuming values if the result is not a file
+        while (true) {
+          const result = await treeGen.next();
+          if (result.done) return undefined;
+          if (result.value.type === 'FILE') {
+            fileNode = result.value;
+            break;
+          }
+        }
         contentsGen = encodeContent(fs, fileNode.path, fileNode.iNode);
       }
       const contentChunk = await contentsGen.next();
@@ -374,12 +369,8 @@ function serializerStreamFactory(
     pull: async (controller) => {
       try {
         const contentChunk = await getNextContentChunk();
-        if (contentChunk == null) {
-          return controller.close();
-        }
-        else {
-          controller.enqueue(contentChunk);
-        }
+        if (contentChunk == null) return controller.close();
+        else controller.enqueue(contentChunk);
       } catch (e) {
         await cleanup(e);
         return controller.error(e);
@@ -447,13 +438,13 @@ function parseTreeNode(data: unknown): asserts data is TreeNode {
  */
 function parserTransformStreamFactory(): TransformStream<
   Uint8Array,
-  string | ContentNode | Uint8Array
+  ContentNode | Uint8Array
 > {
   let workingBuffer: Uint8Array = new Uint8Array(0);
   let contentLength: bigint | undefined = undefined;
   let processedChunks: boolean = false;
 
-  return new TransformStream<Uint8Array, ContentNode | Uint8Array | string>({
+  return new TransformStream<Uint8Array, ContentNode | Uint8Array>({
     /**
      * Check if any chunks have been processed. If the stream is being flushed
      * without processing any chunks, then something went wrong with the stream.
@@ -467,10 +458,7 @@ function parserTransformStreamFactory(): TransformStream<
     },
     transform: (chunk, controller) => {
       if (chunk.byteLength > 0) processedChunks = true;
-      workingBuffer = vaultsUtils.uint8ArrayConcat([
-        workingBuffer,
-        chunk,
-      ]);
+      workingBuffer = vaultsUtils.uint8ArrayConcat([workingBuffer, chunk]);
       if (contentLength == null) {
         const genericHeader = parseGenericHeader(workingBuffer);
         if (genericHeader.data == null) return;
@@ -494,31 +482,14 @@ function parserTransformStreamFactory(): TransformStream<
       if (workingBuffer.byteLength === 0) return;
       if (workingBuffer.byteLength <= contentLength) {
         contentLength -= BigInt(workingBuffer.byteLength);
-        const fileContents = new TextDecoder().decode(workingBuffer);  // newcode
-        controller.enqueue(fileContents); // newcode
-        // controller.enqueue(workingBuffer);
+        controller.enqueue(workingBuffer);
         workingBuffer = new Uint8Array(0);
         if (contentLength === 0n) contentLength = undefined;
-        // return;
       } else {
-        // controller.enqueue(
-        //   workingBuffer.subarray(0, Number(contentLength)),
-        // );
-        const contentChunk = workingBuffer.subarray(0, Number(contentLength)); // new
-        const contentString = new TextDecoder().decode(contentChunk); // nwe
-        controller.enqueue(contentString); // nwe
+        controller.enqueue(workingBuffer.subarray(0, Number(contentLength)));
         workingBuffer = workingBuffer.subarray(Number(contentLength));
         contentLength = undefined;
       }
-      // return;
-      //   default:
-      //     controller.error(
-      //       new utilsErrors.ErrorUtilsUndefinedBehaviour(
-      //         `invalid state "${phase}"`,
-      //       ),
-      //     );
-      //     return;
-      // }
     },
   });
 }

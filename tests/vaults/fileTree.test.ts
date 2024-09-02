@@ -1,10 +1,10 @@
-import type { ContentNode, FileTree, TreeNode } from '@/vaults/types';
+import type { ContentNode, FileTree } from '@/vaults/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { ReadableStream } from 'stream/web';
 import { test } from '@fast-check/jest';
-import fc, { uint8Array } from 'fast-check';
+import fc from 'fast-check';
 import * as fileTree from '@/vaults/fileTree';
 import * as vaultsTestUtils from './utils';
 
@@ -494,12 +494,11 @@ describe('fileTree', () => {
         yieldParents: true,
         yieldDirectories: true,
       });
-      const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+      const data: Array<ContentNode | Uint8Array> = [];
       const parserTransform = fileTree.parserTransformStreamFactory();
       const serializedStream = fileTree.serializerStreamFactory(
         fs,
         fileTreeGen,
-        false,
       );
       const outputStream = serializedStream.pipeThrough(parserTransform);
       for await (const output of outputStream) {
@@ -537,7 +536,7 @@ describe('fileTree', () => {
         yieldParents: true,
         yieldDirectories: true,
       });
-      const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+      const data: Array<ContentNode | Uint8Array> = [];
       const snipperTransform = vaultsTestUtils.binaryStreamToSnippedStream([
         5, 7, 11, 13,
       ]);
@@ -545,7 +544,6 @@ describe('fileTree', () => {
       const serializedStream = fileTree.serializerStreamFactory(
         fs,
         fileTreeGen,
-        false,
       );
       const outputStream = serializedStream
         .pipeThrough(snipperTransform)
@@ -588,7 +586,6 @@ describe('fileTree', () => {
             yieldParents: true,
             yieldDirectories: true,
           }),
-          false,
         );
         const stream2 = fileTree.serializerStreamFactory(
           fs,
@@ -600,7 +597,6 @@ describe('fileTree', () => {
             yieldParents: true,
             yieldDirectories: true,
           }),
-          false,
         );
         return new ReadableStream({
           start: async (controller) => {
@@ -610,7 +606,7 @@ describe('fileTree', () => {
           },
         });
       }
-      const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+      const data: Array<ContentNode | Uint8Array> = [];
       const parserTransform = fileTree.parserTransformStreamFactory();
       // Const serializedStream = fileTree.serializerStreamFactory(fileTreeGen);
       const serializedStream = doubleWalkFactory();
@@ -657,12 +653,11 @@ describe('fileTree', () => {
         yieldParents: false,
         yieldDirectories: false,
       });
-      const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+      const data: Array<ContentNode | Uint8Array> = [];
       const parserTransform = fileTree.parserTransformStreamFactory();
       const serializedStream = fileTree.serializerStreamFactory(
         fs,
         fileTreeGen,
-        true,
       );
       const outputStream = serializedStream.pipeThrough(parserTransform);
       for await (const output of outputStream) {
@@ -707,9 +702,7 @@ describe('fileTree', () => {
       const parserTransform = fileTree.parserTransformStreamFactory();
       const outputStream = dataStream.pipeThrough(parserTransform);
       try {
-        for await (const _ of outputStream) {
-          // Only consume
-        }
+        for await (const _ of outputStream); // Consume values
       } catch {
         return;
       }
@@ -729,17 +722,13 @@ describe('fileTree', () => {
         yieldParents: false,
         yieldDirectories: false,
       });
-      let serializedStream = fileTree.serializerStreamFactory(fs, fileTreeGen);
-      // const data: Array<Uint8Array> = [];
-      // for await (const d of serializedStream) {
-      //   data.push(d);
-      // }
-      // console.log(data.map((v) => Buffer.from(v as Uint8Array).toString()));
-
-      // serializedStream = fileTree.serializerStreamFactory(fs, fileTreeGen);
+      const serializedStream = fileTree.serializerStreamFactory(
+        fs,
+        fileTreeGen,
+      );
       const parserTransform = fileTree.parserTransformStreamFactory();
       const outputStream = serializedStream.pipeThrough(parserTransform);
-      const output: Array<string> = [];
+      const output: Array<ContentNode | Uint8Array> = [];
       for await (const d of outputStream) {
         output.push(d);
       }
