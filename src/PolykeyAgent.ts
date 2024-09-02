@@ -52,6 +52,7 @@ import * as workersUtils from './workers/utils';
 import * as clientMiddleware from './client/middleware';
 import clientServerManifest from './client/handlers';
 import agentServerManifest from './nodes/agent/handlers';
+
 /**
  * Optional configuration for `PolykeyAgent`.
  */
@@ -61,6 +62,7 @@ type PolykeyAgentOptions = {
   clientServicePort: number;
   agentServiceHost: string;
   agentServicePort: number;
+  network: string;
   seedNodes: SeedNodes;
   workers: number;
   ipv6Only: boolean;
@@ -160,6 +162,7 @@ class PolykeyAgent {
       agentServiceHost: config.defaultsUser.agentServiceHost,
       agentServicePort: config.defaultsUser.agentServicePort,
       seedNodes: config.defaultsUser.seedNodes,
+      network: config.defaultsUser.network,
       workers: config.defaultsUser.workers,
       ipv6Only: config.defaultsUser.ipv6Only,
       keys: {
@@ -687,6 +690,7 @@ class PolykeyAgent {
         groups: Array<string>;
         port: number;
       };
+      network: string;
       seedNodes: SeedNodes;
     }>;
     workers?: number;
@@ -705,6 +709,7 @@ class PolykeyAgent {
           groups: config.defaultsSystem.mdnsGroups,
           port: config.defaultsSystem.mdnsPort,
         },
+        network: config.defaultsUser.network,
         seedNodes: config.defaultsUser.seedNodes,
       });
       // Register event handlers

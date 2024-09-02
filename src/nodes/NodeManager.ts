@@ -48,7 +48,10 @@ import { MDNS, events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
+import * as agentErrors from './agent/errors';
 import NodeConnectionQueue from './NodeConnectionQueue';
+import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority';
+import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess';
 import Token from '../tokens/Token';
 import * as keysUtils from '../keys/utils';
 import * as tasksErrors from '../tasks/errors';
@@ -247,8 +250,8 @@ class NodeManager {
     );
     const successfulConnections = connectionResults.filter(
       (r) => r.status === 'fulfilled',
-    ).length;
-    if (successfulConnections === 0) {
+    ) as Array<PromiseFulfilledResult<NodeConnection>>;
+    if (successfulConnections.length === 0) {
       const failedConnectionErrors = connectionResults
         .filter((r) => r.status === 'rejected')
         .map((v) => {
@@ -1478,6 +1481,132 @@ class NodeManager {
     });
   }
 
+  public async handleClaimNetwork(
+    requestingNodeId: NodeId,
+    input: AgentRPCRequestParams<AgentClaimMessage>,
+    tran?: DBTransaction,
+  ): Promise<AgentRPCResponseResult<AgentClaimMessage>> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.handleClaimNetwork(requestingNodeId, input, tran),
+      );
+    }
+    const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
+    const token = Token.fromSigned(signedClaim);
+    // Verify if the token is signed
+    if (
+      !token.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(requestingNodeId),
+      )
+    ) {
+      throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+    }
+    // If verified, add your own signature to the received claim
+    token.signWithPrivateKey(this.keyRing.keyPair);
+    // Return the signed claim
+    const doublySignedClaim = token.toSigned();
+    const halfSignedClaimEncoded =
+      claimsUtils.generateSignedClaim(doublySignedClaim);
+    return {
+      signedTokenEncoded: halfSignedClaimEncoded,
+    };
+  }
+
+  public async handleVerifyClaimNetwork(
+    requestingNodeId: NodeId,
+    input: AgentRPCRequestParams<AgentClaimMessage>,
+    tran?: DBTransaction,
+  ): Promise<AgentRPCResponseResult<{ success: true }>> {
+    if (tran == null) {
+      return this.db.withTransactionF((tran) =>
+        this.handleVerifyClaimNetwork(requestingNodeId, input, tran),
+      );
+    }
+    const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
+    const token = Token.fromSigned(signedClaim);
+    assertClaimNetworkAccess(token.payload);
+    // Verify if the token is signed
+    if (
+      !token.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(requestingNodeId),
+      ) ||
+      !token.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(
+          nodesUtils.decodeNodeId(token.payload.iss)!,
+        ),
+      )
+    ) {
+      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+    }
+    if (
+      token.payload.network === 'testnet.polykey.com' ||
+      token.payload.network === 'mainnet.polykey.com'
+    ) {
+      return { success: true };
+    }
+    if (token.payload.signedClaimNetworkAuthorityEncoded == null) {
+      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+    }
+    const authorityToken = Token.fromEncoded(
+      token.payload.signedClaimNetworkAuthorityEncoded,
+    );
+    // Verify if the token is signed
+    if (
+      token.payload.iss !== authorityToken.payload.sub ||
+      !authorityToken.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(
+          nodesUtils.decodeNodeId(authorityToken.payload.sub)!,
+        ),
+      ) ||
+      !authorityToken.verifyWithPublicKey(
+        keysUtils.publicKeyFromNodeId(
+          nodesUtils.decodeNodeId(authorityToken.payload.iss)!,
+        ),
+      )
+    ) {
+      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+    }
+
+    let success = false;
+    for await (const [_, claim] of this.sigchain.getSignedClaims({})) {
+      try {
+        assertClaimNetworkAccess(claim.payload);
+      } catch {
+        continue;
+      }
+      if (claim.payload.signedClaimNetworkAuthorityEncoded == null) {
+        throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+      }
+      const tokenNetworkAuthority = Token.fromEncoded(
+        claim.payload.signedClaimNetworkAuthorityEncoded,
+      );
+      try {
+        assertClaimNetworkAuthority(tokenNetworkAuthority.payload);
+      } catch {
+        continue;
+      }
+      // No need to check if local claims are correctly signed by an Network Authority.
+      if (
+        authorityToken.verifyWithPublicKey(
+          keysUtils.publicKeyFromNodeId(
+            nodesUtils.decodeNodeId(claim.payload.iss)!,
+          ),
+        )
+      ) {
+        success = true;
+        break;
+      }
+    }
+
+    if (!success) {
+      throw new agentErrors.ErrorNodesClaimNetworkVerificationFailed();
+    }
+
+    return {
+      success: true,
+    };
+  }
+
   /**
    * Adds a node to the node graph. This assumes that you have already authenticated the node
    * Updates the node if the node already exists
@@ -1534,6 +1663,8 @@ class NodeManager {
         ),
       );
     }
+
+    // Need to await node connection verification, if fail, need to reject connection.
 
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field

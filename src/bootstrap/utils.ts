@@ -30,7 +30,7 @@ import * as utils from '../utils';
 import * as errors from '../errors';
 
 /**
- * Bootstraps the Node Path
+ * Bootstraps the Node Path`
  */
 async function bootstrapState({
   // Required parameters
