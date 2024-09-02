@@ -1,12 +1,5 @@
-import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsSecretsGet from '../handlers/VaultsSecretsGet';
-import { UnaryCaller } from '@matrixai/rpc';
+import { RawCaller } from '@matrixai/rpc';
 
-type CallerTypes = HandlerTypes<VaultsSecretsGet>;
-
-const vaultsSecretsGet = new UnaryCaller<
-  CallerTypes['input'],
-  CallerTypes['output']
->();
+const vaultsSecretsGet = new RawCaller();
 
 export default vaultsSecretsGet;

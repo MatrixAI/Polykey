@@ -541,6 +541,37 @@ function setMaxListeners(
   nodesEvents.setMaxListeners(limit, target);
 }
 
+async function* streamToAsyncGenerator<T>(
+  stream: ReadableStream<T>,
+): AsyncGenerator<T, void, unknown> {
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value !== undefined) yield value!;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function asyncGeneratorToStream<T>(
+  generator: AsyncGenerator<T, void, unknown>,
+): ReadableStream<T> {
+  return new ReadableStream({
+    pull: async (controller) => {
+      try {
+        const { value, done } = await generator.next();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      } catch (e) {
+        controller.error(e);
+      }
+    },
+  });
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -581,4 +612,6 @@ export {
   isBufferSource,
   yieldMicro,
   setMaxListeners,
+  streamToAsyncGenerator,
+  asyncGeneratorToStream,
 };
