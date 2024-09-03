@@ -6,6 +6,7 @@ import { ReadableStream } from 'stream/web';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import * as fileTree from '@/vaults/fileTree';
+import * as vaultsErrors from '@/vaults/errors';
 import * as vaultsTestUtils from './utils';
 
 describe('fileTree', () => {
@@ -437,6 +438,40 @@ describe('fileTree', () => {
         expect(result.remainder.byteLength).toBe(0);
       },
     );
+    test.prop(
+      [
+        fc
+          .uint8Array({ size: 'large' })
+          .noShrink()
+          .map((v) => Buffer.from(v)),
+      ],
+      { numRuns: 20 },
+    )('handles invalid data', async (data) => {
+      let limit = 100;
+      const dataStream = new ReadableStream({
+        pull: (controller) =>
+          limit-- > 0 ? controller.enqueue(data) : controller.close(),
+      });
+      const parserTransform = fileTree.parserTransformStreamFactory();
+      const outputStream = dataStream.pipeThrough(parserTransform);
+      await expect(
+        (async () => {
+          for await (const _ of outputStream); // Consume values
+        })(),
+      ).toReject();
+    });
+    test('handles empty stream', async () => {
+      const emptyStream = new ReadableStream({
+        pull: (controller) => controller.close(),
+      });
+      const parserTransform = fileTree.parserTransformStreamFactory();
+      const outputStream = emptyStream.pipeThrough(parserTransform);
+      await expect(
+        (async () => {
+          for await (const _ of outputStream); // Consume values
+        })(),
+      ).toReject();
+    });
   });
   describe('serializer', () => {
     let cwd: string;
@@ -458,6 +493,32 @@ describe('fileTree', () => {
     const file8b: string = path.join(dir22, 'file8.b');
     const file9a: string = path.join(dir22, 'file9.a');
 
+    const files = [
+      file0b,
+      file1a,
+      file2b,
+      file3a,
+      file4b,
+      file5a,
+      file6b,
+      file7a,
+      file8b,
+      file9a,
+    ];
+
+    const contents = [
+      'content-file0',
+      'content-file1',
+      'content-file2',
+      'content-file3',
+      'content-file4',
+      'content-file5',
+      'content-file6',
+      'content-file7',
+      'content-file8',
+      '',
+    ];
+
     beforeEach(async () => {
       await fs.promises.mkdir(path.join(dataDir, dir1));
       await fs.promises.mkdir(path.join(dataDir, dir11));
@@ -465,16 +526,16 @@ describe('fileTree', () => {
       await fs.promises.mkdir(path.join(dataDir, dir2));
       await fs.promises.mkdir(path.join(dataDir, dir21));
       await fs.promises.mkdir(path.join(dataDir, dir22));
-      await fs.promises.writeFile(path.join(dataDir, file0b), 'content-file0');
-      await fs.promises.writeFile(path.join(dataDir, file1a), 'content-file1');
-      await fs.promises.writeFile(path.join(dataDir, file2b), 'content-file2');
-      await fs.promises.writeFile(path.join(dataDir, file3a), 'content-file3');
-      await fs.promises.writeFile(path.join(dataDir, file4b), 'content-file4');
-      await fs.promises.writeFile(path.join(dataDir, file5a), 'content-file5');
-      await fs.promises.writeFile(path.join(dataDir, file6b), 'content-file6');
-      await fs.promises.writeFile(path.join(dataDir, file7a), 'content-file7');
-      await fs.promises.writeFile(path.join(dataDir, file8b), 'content-file8');
-      await fs.promises.writeFile(path.join(dataDir, file9a), 'content-file9');
+      await fs.promises.writeFile(path.join(dataDir, file0b), contents[0]);
+      await fs.promises.writeFile(path.join(dataDir, file1a), contents[1]);
+      await fs.promises.writeFile(path.join(dataDir, file2b), contents[2]);
+      await fs.promises.writeFile(path.join(dataDir, file3a), contents[3]);
+      await fs.promises.writeFile(path.join(dataDir, file4b), contents[4]);
+      await fs.promises.writeFile(path.join(dataDir, file5a), contents[5]);
+      await fs.promises.writeFile(path.join(dataDir, file6b), contents[6]);
+      await fs.promises.writeFile(path.join(dataDir, file7a), contents[7]);
+      await fs.promises.writeFile(path.join(dataDir, file8b), contents[8]);
+      await fs.promises.writeFile(path.join(dataDir, file9a), contents[9]);
       cwd = process.cwd();
       process.chdir(dataDir);
     });
@@ -482,256 +543,63 @@ describe('fileTree', () => {
       process.chdir(cwd);
     });
 
-    // TODO:
-    //  - Add test for testing serializer on vaults fs.
+    test.todo('testing serializer on vaults fs');
+    test.todo('files larger than content chunks');
 
-    test('sends single tree', async () => {
-      const fileTreeGen = fileTree.globWalk({
-        fs,
-        yieldStats: false,
-        yieldRoot: false,
-        yieldFiles: true,
-        yieldParents: true,
-        yieldDirectories: true,
-      });
+    test('file contents are being sent properly', async () => {
       const data: Array<ContentNode | Uint8Array> = [];
       const parserTransform = fileTree.parserTransformStreamFactory();
-      const serializedStream = fileTree.serializerStreamFactory(
-        fs,
-        fileTreeGen,
-      );
+      const serializedStream = fileTree.serializerStreamFactory(fs, files);
       const outputStream = serializedStream.pipeThrough(parserTransform);
       for await (const output of outputStream) {
         data.push(output);
       }
-      const paths = data.map((v) => {
-        fileTree.parseTreeNode(v);
-        return v.path;
-      });
-      expect(paths).toIncludeAllMembers([
-        dir1,
-        dir2,
-        dir11,
-        dir12,
-        dir21,
-        dir22,
-        file0b,
-        file1a,
-        file2b,
-        file3a,
-        file4b,
-        file5a,
-        file6b,
-        file7a,
-        file8b,
-        file9a,
-      ]);
+      const fileContents = data
+        .filter((v) => v instanceof Uint8Array)
+        .map((v) => Buffer.from(v as Uint8Array).toString());
+      const contentHeaders = data.filter(
+        (v) => !(v instanceof Uint8Array) && v.type === 'CONTENT',
+      ) as Array<ContentNode>;
+      expect(fileContents).toIncludeAllMembers(contents);
+      for (let i = 0; i < contentHeaders.length; i++) {
+        const contentHeader = contentHeaders[i];
+        const contentSize = BigInt(contents[i].length);
+        expect(contentHeader.dataSize).toBe(contentSize);
+      }
     });
-    test('sends tree with randomly sized chunks', async () => {
-      const fileTreeGen = fileTree.globWalk({
-        fs,
-        yieldStats: false,
-        yieldRoot: false,
-        yieldFiles: true,
-        yieldParents: true,
-        yieldDirectories: true,
-      });
+    test('file contents with randomly sized chunks', async () => {
       const data: Array<ContentNode | Uint8Array> = [];
+      const parserTransform = fileTree.parserTransformStreamFactory();
+      const serializedStream = fileTree.serializerStreamFactory(fs, files);
       const snipperTransform = vaultsTestUtils.binaryStreamToSnippedStream([
         5, 7, 11, 13,
       ]);
-      const parserTransform = fileTree.parserTransformStreamFactory();
-      const serializedStream = fileTree.serializerStreamFactory(
-        fs,
-        fileTreeGen,
-      );
       const outputStream = serializedStream
         .pipeThrough(snipperTransform)
         .pipeThrough(parserTransform);
       for await (const output of outputStream) {
         data.push(output);
       }
-      const paths = data.map((v) => {
-        fileTree.parseTreeNode(v);
-        return v.path;
-      });
-      expect(paths).toIncludeAllMembers([
-        dir1,
-        dir2,
-        dir11,
-        dir12,
-        dir21,
-        dir22,
-        file0b,
-        file1a,
-        file2b,
-        file3a,
-        file4b,
-        file5a,
-        file6b,
-        file7a,
-        file8b,
-        file9a,
-      ]);
-    });
-    test('sends multiple trees', async () => {
-      function doubleWalkFactory() {
-        const stream1 = fileTree.serializerStreamFactory(
-          fs,
-          fileTree.globWalk({
-            fs,
-            yieldStats: false,
-            yieldRoot: false,
-            yieldFiles: true,
-            yieldParents: true,
-            yieldDirectories: true,
-          }),
-        );
-        const stream2 = fileTree.serializerStreamFactory(
-          fs,
-          fileTree.globWalk({
-            fs,
-            yieldStats: false,
-            yieldRoot: false,
-            yieldFiles: true,
-            yieldParents: true,
-            yieldDirectories: true,
-          }),
-        );
-        return new ReadableStream({
-          start: async (controller) => {
-            for await (const data of stream1) controller.enqueue(data);
-            for await (const data of stream2) controller.enqueue(data);
-            controller.close();
-          },
-        });
-      }
-      const data: Array<ContentNode | Uint8Array> = [];
-      const parserTransform = fileTree.parserTransformStreamFactory();
-      // Const serializedStream = fileTree.serializerStreamFactory(fileTreeGen);
-      const serializedStream = doubleWalkFactory();
-      const outputStream = serializedStream.pipeThrough(parserTransform);
-      for await (const output of outputStream) {
-        data.push(output);
-      }
-      const paths = data.map((v) => {
-        fileTree.parseTreeNode(v);
-        return v.path;
-      });
-      expect(paths).toIncludeAllMembers([
-        dir1,
-        dir2,
-        dir11,
-        dir12,
-        dir21,
-        dir22,
-        file0b,
-        file1a,
-        file2b,
-        file3a,
-        file4b,
-        file5a,
-        file6b,
-        file7a,
-        file8b,
-        file9a,
-      ]);
-      const dupes = paths.reduce((previous, value) => {
-        previous.set(value, (previous.get(value) ?? 0) + 1);
-        return previous;
-      }, new Map<string, number>());
-      for (const dupe of dupes.values()) {
-        expect(dupe).toBe(2);
-      }
-    });
-    test('file contents are sent and are correct', async () => {
-      const fileTreeGen = fileTree.globWalk({
-        fs,
-        yieldStats: false,
-        yieldRoot: false,
-        yieldFiles: true,
-        yieldParents: false,
-        yieldDirectories: false,
-      });
-      const data: Array<ContentNode | Uint8Array> = [];
-      const parserTransform = fileTree.parserTransformStreamFactory();
-      const serializedStream = fileTree.serializerStreamFactory(
-        fs,
-        fileTreeGen,
-      );
-      const outputStream = serializedStream.pipeThrough(parserTransform);
-      for await (const output of outputStream) {
-        data.push(output);
-      }
-      const contents = data
+      const fileContents = data
         .filter((v) => v instanceof Uint8Array)
         .map((v) => Buffer.from(v as Uint8Array).toString());
       const contentHeaders = data.filter(
         (v) => !(v instanceof Uint8Array) && v.type === 'CONTENT',
       ) as Array<ContentNode>;
-      expect(contents).toIncludeAllMembers([
-        'content-file0',
-        'content-file1',
-        'content-file2',
-        'content-file3',
-        'content-file4',
-        'content-file5',
-        'content-file6',
-        'content-file7',
-        'content-file8',
-        'content-file9',
+      expect(fileContents).toIncludeAllMembers(contents);
+      for (let i = 0; i < contentHeaders.length; i++) {
+        const contentHeader = contentHeaders[i];
+        const contentSize = BigInt(contents[i].length);
+        expect(contentHeader.dataSize).toBe(contentSize);
+      }
+    });
+    test('handles non-existent files', async () => {
+      const serializedStream = fileTree.serializerStreamFactory(fs, [
+        'wrong-file',
       ]);
-      for (const contentHeader of contentHeaders) {
-        expect(contentHeader.dataSize).toBe(13n);
-      }
-    });
-    test.prop(
-      [
-        fc
-          .uint8Array({ size: 'large' })
-          .noShrink()
-          .map((v) => Buffer.from(v)),
-      ],
-      { numRuns: 20 },
-    )('handles invalid data', async (data) => {
-      let limit = 100;
-      const dataStream = new ReadableStream({
-        pull: (controller) =>
-          limit-- > 0 ? controller.enqueue(data) : controller.close(),
-      });
-      const parserTransform = fileTree.parserTransformStreamFactory();
-      const outputStream = dataStream.pipeThrough(parserTransform);
-      try {
-        for await (const _ of outputStream); // Consume values
-      } catch {
-        return;
-      }
-      throw Error('Should have thrown an error when parsing');
-    });
-    // TODO: tests for
-    //  - empty files
-    //  - files larger than content chunks
-
-    // TEST: DEBUGGGG
-    test('view serializer', async () => {
-      const fileTreeGen = fileTree.globWalk({
-        fs,
-        yieldStats: false,
-        yieldRoot: false,
-        yieldFiles: true,
-        yieldParents: false,
-        yieldDirectories: false,
-      });
-      const data: Array<string> = [];
-      for await (const p of fileTreeGen) data.push(p.path);
-      const serializedStream = fileTree.serializerStreamFactory(fs, data);
-      const parserTransform = fileTree.parserTransformStreamFactory();
-      const outputStream = serializedStream.pipeThrough(parserTransform);
-      const output: Array<ContentNode | Uint8Array> = [];
-      for await (const d of outputStream) {
-        output.push(d);
-      }
-      console.log(output);
+      await expect(async () => {
+        for await (const _ of serializedStream); // Consume vaules
+      }).rejects.toThrow(vaultsErrors.ErrorSecretsSecretUndefined);
     });
   });
 });

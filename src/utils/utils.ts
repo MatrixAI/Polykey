@@ -10,8 +10,8 @@ import os from 'os';
 import process from 'process';
 import path from 'path';
 import nodesEvents from 'events';
+import { ReadableStream } from 'stream/web';
 import lexi from 'lexicographic-integer';
-import { ReadableStream } from 'stream/web'
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import * as utilsErrors from './errors';

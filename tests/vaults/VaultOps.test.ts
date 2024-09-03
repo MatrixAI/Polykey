@@ -579,21 +579,15 @@ describe('VaultOps', () => {
     });
     test('serializer with content works with efs', async () => {
       const data = await vault.readF(async (fs) => {
-        const fileTreeGen = fileTree.globWalk({
-          fs,
-          yieldStats: false,
-          yieldRoot: false,
-          yieldFiles: true,
-          yieldParents: true,
-          yieldDirectories: true,
-        });
         const data: Array<TreeNode | ContentNode | Uint8Array> = [];
         const parserTransform = fileTree.parserTransformStreamFactory();
-        const serializedStream = fileTree.serializerStreamFactory(
-          fs,
-          fileTreeGen,
-          true,
-        );
+        const serializedStream = fileTree.serializerStreamFactory(fs, [
+          file0b,
+          file1a,
+          file2b,
+          file3a,
+          file4b,
+        ]);
         const outputStream = serializedStream.pipeThrough(parserTransform);
         for await (const output of outputStream) {
           data.push(output);

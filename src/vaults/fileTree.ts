@@ -1,5 +1,5 @@
 import type { Stat } from 'encryptedfs';
-import type { FileSystem } from '../types';
+import type { FileHandle, FileSystem } from '../types';
 import type {
   ContentNode,
   DoneMessage,
@@ -11,6 +11,7 @@ import type {
   HeaderGeneric,
   HeaderContent,
 } from './types';
+import type { FdIndex } from 'encryptedfs/dist/fd';
 import path from 'path';
 import { ReadableStream, TransformStream } from 'stream/web';
 import { minimatch } from 'minimatch';
@@ -18,6 +19,7 @@ import * as vaultsUtils from './utils';
 import { HeaderSize, HeaderType, HeaderMagic } from './types';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
+import * as vaultsErrors from '../vaults/errors';
 
 /**
  * Generates a serializable format of file stats
@@ -275,7 +277,17 @@ async function* encodeContent(
   path: string,
   chunkSize: number = 1024 * 4,
 ): AsyncGenerator<Uint8Array, void, void> {
-  const fd = await fs.promises.open(path, 'r');
+  let fd: FileHandle | FdIndex;
+  try {
+    fd = await fs.promises.open(path, 'r');
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      throw new vaultsErrors.ErrorSecretsSecretUndefined(e.message, {
+        cause: e,
+      });
+    }
+    throw e;
+  }
   async function read(buffer: Uint8Array): Promise<{
     bytesRead: number;
     buffer: Uint8Array;
@@ -335,13 +347,14 @@ function serializerStreamFactory(
   fs: FileSystem | FileSystemReadable,
   filePaths: Array<string>,
 ): ReadableStream<Uint8Array> {
-  let contentsGen: AsyncGenerator<Uint8Array> | undefined;
+  const paths = filePaths.slice();
+  let contentsGen: AsyncGenerator<Uint8Array> | undefined = undefined;
   return new ReadableStream<Uint8Array>({
     pull: async (controller) => {
       try {
         while (true) {
           if (contentsGen == null) {
-            const path = filePaths.shift();
+            const path = paths.shift();
             if (path == null) return controller.close();
             contentsGen = encodeContent(fs, path);
           }
@@ -440,32 +453,31 @@ function parserTransformStreamFactory(): TransformStream<
     transform: (chunk, controller) => {
       if (chunk.byteLength > 0) processedChunks = true;
       workingBuffer = vaultsUtils.uint8ArrayConcat([workingBuffer, chunk]);
-      if (contentLength == null) {
-        const genericHeader = parseGenericHeader(workingBuffer);
-        if (genericHeader.data == null) return;
-        if (genericHeader.data.type !== HeaderType.CONTENT) {
-          controller.error(
-            new validationErrors.ErrorParse(
-              `expected CONTENT message, got "${genericHeader.data.type}"`,
-            ),
-          );
-          return;
-        }
-        const contentHeader = parseContentHeader(genericHeader.remainder);
-        if (contentHeader.data == null) return;
 
-        contentLength = contentHeader.data.dataSize;
-        controller.enqueue({ type: 'CONTENT', dataSize: contentLength });
-        workingBuffer = contentHeader.remainder;
-      }
-      // We yield the whole buffer, or split it for the next header
-      if (workingBuffer.byteLength === 0) return;
-      if (workingBuffer.byteLength <= contentLength) {
-        contentLength -= BigInt(workingBuffer.byteLength);
-        controller.enqueue(workingBuffer);
-        workingBuffer = new Uint8Array(0);
-        if (contentLength === 0n) contentLength = undefined;
-      } else {
+      while (true) {
+        // Header parsing until enough data is acquired
+        if (contentLength == null) {
+          const genericHeader = parseGenericHeader(workingBuffer);
+          if (genericHeader.data == null) return;
+          if (genericHeader.data.type !== HeaderType.CONTENT) {
+            controller.error(
+              new validationErrors.ErrorParse(
+                `expected CONTENT message, got "${genericHeader.data.type}"`,
+              ),
+            );
+            return;
+          }
+          const contentHeader = parseContentHeader(genericHeader.remainder);
+          if (contentHeader.data == null) return;
+
+          contentLength = contentHeader.data.dataSize;
+          controller.enqueue({ type: 'CONTENT', dataSize: contentLength });
+          workingBuffer = contentHeader.remainder;
+        }
+        // We yield the whole buffer, or split it for the next header
+        if (workingBuffer.byteLength < Number(contentLength)) break;
+
+        // Process the contents after enough data has been accumulated
         controller.enqueue(workingBuffer.subarray(0, Number(contentLength)));
         workingBuffer = workingBuffer.subarray(Number(contentLength));
         contentLength = undefined;

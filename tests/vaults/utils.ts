@@ -24,7 +24,6 @@ const headerGenericArb = fc.record<HeaderGeneric>({
 });
 const headerContentArb = fc.record<HeaderContent>({
   dataSize: fc.bigUint({ max: 2n ** 63n }),
-  iNode: fc.nat(),
 });
 
 /**

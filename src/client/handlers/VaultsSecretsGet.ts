@@ -1,7 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
 import type VaultManager from '../../vaults/VaultManager';
-import { ReadableStream } from 'stream/web';
+import type { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
@@ -21,10 +21,11 @@ class VaultsSecretsGet extends RawHandler<{
     const { vaultManager, db } = this.container;
     const [headerMessage, inputStream] = input;
     const params = headerMessage.params;
-    inputStream.cancel(); // Close input stream as it's useless for this call
+    await inputStream.cancel();
 
-    if (params == undefined)
+    if (params == null) {
       throw new validationErrors.ErrorParse('Input params cannot be undefined');
+    }
 
     const {
       nameOrId,
@@ -34,9 +35,29 @@ class VaultsSecretsGet extends RawHandler<{
         return matchSync(keyPath)(
           [
             ['nameOrId'],
-            () => value as string,
+            () => {
+              if (typeof value != 'string') {
+                throw new validationErrors.ErrorParse(
+                  'Parameter must be of type string',
+                );
+              }
+              return value as string;
+            },
+          ],
+          [
             ['secretNames'],
-            () => value as Array<string>,
+            () => {
+              if (
+                !Array.isArray(value) ||
+                value.length === 0 ||
+                !value.every((v) => typeof v === 'string')
+              ) {
+                throw new validationErrors.ErrorParse(
+                  'Parameter must be a non-empty array of strings',
+                );
+              }
+              return value as Array<string>;
+            },
           ],
           () => value,
         );
@@ -53,7 +74,6 @@ class VaultsSecretsGet extends RawHandler<{
         if (vaultId == null) {
           throw new vaultsErrors.ErrorVaultsVaultUndefined();
         }
-
         // Get secret contents
         yield* vaultManager.withVaultsG([vaultId], (vault) => {
           return vault.readG(async function* (fs): AsyncGenerator<
@@ -62,8 +82,15 @@ class VaultsSecretsGet extends RawHandler<{
             void
           > {
             const contents = fileTree.serializerStreamFactory(fs, secretNames);
-            for await (const chunk of contents) {
-              yield chunk;
+            try {
+              for await (const chunk of contents) yield chunk;
+            } catch (e) {
+              if (e.name === 'ErrorSecretsSecretUndefined') {
+                throw new vaultsErrors.ErrorSecretsSecretUndefined(e.message, {
+                  cause: e.cause,
+                });
+              }
+              throw e;
             }
           });
         });
