@@ -205,7 +205,7 @@ function generateGenericHeader(headerData: HeaderGeneric): Uint8Array {
  * Creates the content header which identifies the content with the length.
  * Data should follow this header.
  * Formatted as...
- * generic_header(10) | total_size(8)[data_size + header_size] | i_node(4) | 'D'(1)
+ * generic_header(10) | total_size(8)[data_size + header_size] | 'D'(1)
  */
 function generateContentHeader(headerData: HeaderContent): Uint8Array {
   const contentHeader = new Uint8Array(HeaderSize.CONTENT);
@@ -215,8 +215,7 @@ function generateContentHeader(headerData: HeaderContent): Uint8Array {
     contentHeader.byteLength,
   );
   dataView.setBigUint64(0, headerData.dataSize, false);
-  dataView.setUint32(8, headerData.iNode, false);
-  dataView.setUint8(12, HeaderMagic.END);
+  dataView.setUint8(8, HeaderMagic.END);
   return contentHeader;
 }
 
@@ -249,8 +248,7 @@ function parseContentHeader(data: Uint8Array): Parsed<HeaderContent> {
   const dataView = new DataView(data.buffer, data.byteOffset, data.byteLength);
   if (data.byteLength < HeaderSize.CONTENT) return { remainder: data };
   const dataSize = dataView.getBigUint64(0, false);
-  const iNode = dataView.getUint32(8, false);
-  const magicByte = dataView.getUint8(12);
+  const magicByte = dataView.getUint8(8);
   if (magicByte !== HeaderMagic.END) {
     throw new validationErrors.ErrorParse(
       `invalid magic byte, should be "${HeaderMagic.END}", found "${magicByte}"`,
@@ -259,7 +257,6 @@ function parseContentHeader(data: Uint8Array): Parsed<HeaderContent> {
   return {
     data: {
       dataSize,
-      iNode,
     },
     remainder: data.subarray(HeaderSize.CONTENT),
   };
@@ -276,7 +273,6 @@ function parseContentHeader(data: Uint8Array): Parsed<HeaderContent> {
 async function* encodeContent(
   fs: FileSystem | FileSystemReadable,
   path: string,
-  iNode: number,
   chunkSize: number = 1024 * 4,
 ): AsyncGenerator<Uint8Array, void, void> {
   const fd = await fs.promises.open(path, 'r');
@@ -317,7 +313,6 @@ async function* encodeContent(
       }),
       generateContentHeader({
         dataSize: BigInt(stats.size),
-        iNode,
       }),
     ]);
     while (true) {
@@ -332,52 +327,38 @@ async function* encodeContent(
 }
 
 /**
- * Takes an AsyncGenerator<TreeNode> and serializes it into a `ReadableStream<UInt8Array>`
+ * Takes an Array<string> of file paths and serializes their contents into a `ReadableStream<UInt8Array>`
  * @param fs
- * @param treeGen - An AsyncGenerator<TreeNode> that yields the files and directories of a file tree.
+ * @param filePaths - An array of file paths to be serialized.
  */
 function serializerStreamFactory(
   fs: FileSystem | FileSystemReadable,
-  treeGen: AsyncGenerator<TreeNode, void, void>,
+  filePaths: Array<string>,
 ): ReadableStream<Uint8Array> {
-  let contentsGen: AsyncGenerator<Uint8Array, void, void> | undefined;
-  let fileNode: TreeNode | undefined;
-  async function getNextContentChunk(): Promise<Uint8Array | undefined> {
-    while (true) {
-      if (contentsGen == null) {
-        // Keep consuming values if the result is not a file
-        while (true) {
-          const result = await treeGen.next();
-          if (result.done) return undefined;
-          if (result.value.type === 'FILE') {
-            fileNode = result.value;
-            break;
-          }
-        }
-        contentsGen = encodeContent(fs, fileNode.path, fileNode.iNode);
-      }
-      const contentChunk = await contentsGen.next();
-      if (!contentChunk.done) return contentChunk.value;
-      contentsGen = undefined;
-    }
-  }
-  async function cleanup(reason: unknown) {
-    await treeGen?.throw(reason).catch(() => {});
-    await contentsGen?.throw(reason).catch(() => {});
-  }
+  let contentsGen: AsyncGenerator<Uint8Array> | undefined;
   return new ReadableStream<Uint8Array>({
     pull: async (controller) => {
       try {
-        const contentChunk = await getNextContentChunk();
-        if (contentChunk == null) return controller.close();
-        else controller.enqueue(contentChunk);
+        while (true) {
+          if (contentsGen == null) {
+            const path = filePaths.shift();
+            if (path == null) return controller.close();
+            contentsGen = encodeContent(fs, path);
+          }
+          const { done, value } = await contentsGen.next();
+          if (!done) {
+            controller.enqueue(value);
+            return;
+          }
+          contentsGen = undefined;
+        }
       } catch (e) {
-        await cleanup(e);
+        await contentsGen?.throw(e).catch(() => {});
         return controller.error(e);
       }
     },
     cancel: async (reason) => {
-      await cleanup(reason);
+      await contentsGen?.throw(reason).catch(() => {});
     },
   });
 }
@@ -473,9 +454,8 @@ function parserTransformStreamFactory(): TransformStream<
         const contentHeader = parseContentHeader(genericHeader.remainder);
         if (contentHeader.data == null) return;
 
-        const { dataSize, iNode } = contentHeader.data;
-        controller.enqueue({ type: 'CONTENT', dataSize, iNode });
-        contentLength = dataSize;
+        contentLength = contentHeader.data.dataSize;
+        controller.enqueue({ type: 'CONTENT', dataSize: contentLength });
         workingBuffer = contentHeader.remainder;
       }
       // We yield the whole buffer, or split it for the next header

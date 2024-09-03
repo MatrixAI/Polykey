@@ -1470,6 +1470,40 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
       vaultsErrors.ErrorSecretsSecretUndefined,
     );
   });
+  // TODO: TEST
+  test('view output', async () => {
+    const secret = 'test-secret';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded,
+      secretName: secret,
+      secretContent: Buffer.from('test-secret-contents-1').toString('binary'),
+    });
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded,
+      secretName: 's2',
+      secretContent: Buffer.from('test-secret-contents-abc').toString('binary'),
+    });
+    const response = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded,
+      secretNames: ['test-secret','s2'],
+    });
+    // const secretContent = response.meta?.result;
+    const data: Array<Uint8Array> = [];
+    for await (const d of response.readable) data.push(d);
+    // console.log(new TextDecoder().decode(Buffer.concat(data)));
+    const output = Buffer.concat(data)
+      .toString('utf-8')
+      .split('')
+      .map(char => {
+        const code = char.charCodeAt(0);
+        return code >= 32 && code <= 126 ? char : `\\x${code.toString(16).padStart(2, '0')}`;
+      })
+      .join('');
+    console.log(output);
+
+  })
 });
 describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
   const logger = new Logger('vaultsSecretsNewDirList test', LogLevel.WARN, [

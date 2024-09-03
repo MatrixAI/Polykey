@@ -722,10 +722,9 @@ describe('fileTree', () => {
         yieldParents: false,
         yieldDirectories: false,
       });
-      const serializedStream = fileTree.serializerStreamFactory(
-        fs,
-        fileTreeGen,
-      );
+      const data: Array<string> = [];
+      for await (const p of fileTreeGen) data.push(p.path);
+      const serializedStream = fileTree.serializerStreamFactory(fs, data);
       const parserTransform = fileTree.parserTransformStreamFactory();
       const outputStream = serializedStream.pipeThrough(parserTransform);
       const output: Array<ContentNode | Uint8Array> = [];

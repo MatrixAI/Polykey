@@ -11,6 +11,7 @@ import process from 'process';
 import path from 'path';
 import nodesEvents from 'events';
 import lexi from 'lexicographic-integer';
+import { ReadableStream } from 'stream/web'
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { timedCancellable } from '@matrixai/contexts/dist/functions';
 import * as utilsErrors from './errors';
@@ -544,15 +545,8 @@ function setMaxListeners(
 async function* streamToAsyncGenerator<T>(
   stream: ReadableStream<T>,
 ): AsyncGenerator<T, void, unknown> {
-  const reader = stream.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value !== undefined) yield value!;
-    }
-  } finally {
-    reader.releaseLock();
+  for await (const chunk of stream) {
+    yield chunk;
   }
 }
 

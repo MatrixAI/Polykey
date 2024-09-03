@@ -145,7 +145,6 @@ type TreeNode = {
 
 type ContentNode = {
   type: 'CONTENT';
-  iNode: number;
   dataSize: bigint;
 };
 type DoneMessage = { type: 'DONE' };
@@ -181,12 +180,11 @@ type HeaderGeneric = {
 };
 type HeaderContent = {
   dataSize: bigint;
-  iNode: number;
 };
 
 enum HeaderSize {
   GENERIC = 2,
-  CONTENT = 13,
+  CONTENT = 9,
 }
 
 enum HeaderType {

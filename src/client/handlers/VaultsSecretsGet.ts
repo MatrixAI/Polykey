@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
 import type VaultManager from '../../vaults/VaultManager';
+import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
@@ -16,8 +17,6 @@ class VaultsSecretsGet extends RawHandler<{
 }> {
   public handle = async (
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-    _cancel: any,
-    _ctx: any,
   ): Promise<[JSONObject, ReadableStream<Uint8Array>]> => {
     const { vaultManager, db } = this.container;
     const [headerMessage, inputStream] = input;
@@ -27,24 +26,26 @@ class VaultsSecretsGet extends RawHandler<{
     if (params == undefined)
       throw new validationErrors.ErrorParse('Input params cannot be undefined');
 
-    const { nameOrId, secretName }: { nameOrId: string; secretName: string } =
-      validateSync(
-        (keyPath, value) => {
-          return matchSync(keyPath)(
-            [
-              ['nameOrId', 'secretName'],
-              () => {
-                return value as string;
-              },
-            ],
-            () => value,
-          );
-        },
-        {
-          nameOrId: params.vaultNameOrId,
-          secretName: params.secretName,
-        },
-      );
+    const {
+      nameOrId,
+      secretNames,
+    }: { nameOrId: string; secretNames: Array<string> } = validateSync(
+      (keyPath, value) => {
+        return matchSync(keyPath)(
+          [
+            ['nameOrId'],
+            () => value as string,
+            ['secretNames'],
+            () => value as Array<string>,
+          ],
+          () => value,
+        );
+      },
+      {
+        nameOrId: params.nameOrId,
+        secretNames: params.secretNames,
+      },
+    );
     const secretContentsGen = db.withTransactionG(
       async function* (tran): AsyncGenerator<Uint8Array, void, void> {
         const vaultIdFromName = await vaultManager.getVaultId(nameOrId, tran);
@@ -60,19 +61,7 @@ class VaultsSecretsGet extends RawHandler<{
             void,
             void
           > {
-            const contents = fileTree.serializerStreamFactory(
-              fs,
-              fileTree.globWalk({
-                fs: fs,
-                basePath: '.',
-                pattern: secretName,
-                yieldRoot: false,
-                yieldStats: false,
-                yieldFiles: true,
-                yieldParents: false,
-                yieldDirectories: false,
-              }),
-            );
+            const contents = fileTree.serializerStreamFactory(fs, secretNames);
             for await (const chunk of contents) {
               yield chunk;
             }
