@@ -72,6 +72,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as networkUtils from '@/network/utils';
 import * as testsUtils from '../../utils';
+import { ReadableStream } from 'stream/web';
 
 describe('vaultsClone', () => {
   const logger = new Logger('vaultsClone test', LogLevel.WARN, [
@@ -954,12 +955,21 @@ describe('vaultsSecretsEdit', () => {
         await efs.writeFile(secretName, secretName);
       });
     });
+    const updateStream = new ReadableStream({
+      pull: async (controller) => {
+        const header = fileTree.generateContentHeader({ dataSize: 14n })
+        const content = Buffer.from('content-change').toString('binary');
+        controller.enqueue(header);
+        controller.enqueue(content);
+        controller.close();
+      }
+    })
     const response = await rpcClient.methods.vaultsSecretsEdit({
       nameOrId: vaultsUtils.encodeVaultId(vaultId),
-      secretName: secretName,
-      secretContent: Buffer.from('content-change').toString('binary'),
+      secretNames: [secretName],
     });
-    expect(response.success).toBeTruthy();
+    const writer = response.writable.getWriter();
+    expect(response).toBeTruthy();
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         expect((await efs.readFile(secretName)).toString()).toStrictEqual(
@@ -1416,6 +1426,14 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
       host: localhost,
       logger: logger.getChild(WebSocketClient.name),
       port: clientService.port,
+      codeToReason: (type, code) => {
+        console.log(code);
+        return new Error(`webclient: ${type}: ${code}`);
+      },
+      reasonToCode: (_, reason) => {
+        console.error('webclient:', reason);
+        return 0;
+      }
     });
     rpcClient = new RPCClient({
       manifest: {
@@ -1452,7 +1470,7 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     expect(createResponse.success).toBeTruthy();
     // Get secret
     const doesntExistResponse = await rpcClient.methods.vaultsSecretsGet({
-      nameOrId: '',
+      nameOrId: vaultIdEncoded,
       secretNames: [secret],
     });
     await expect(async () => {

@@ -99,6 +99,14 @@ class ClientService {
         keepAliveTimeoutTime,
       },
       logger: this.logger.getChild(WebSocketServer.name),
+      codeToReason: (type, code) => {
+        console.log(code);
+        return new Error(`webserver: ${type}: ${code}`);
+      },
+      reasonToCode: (_, reason) => {
+        console.error('webserver:', reason);
+        return 0;
+      }
     });
   }
 
