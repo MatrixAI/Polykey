@@ -75,25 +75,23 @@ class VaultsSecretsGet extends RawHandler<{
           throw new vaultsErrors.ErrorVaultsVaultUndefined();
         }
         // Get secret contents
-        yield* vaultManager.withVaultsG([vaultId], (vault) => {
-          return vault.readG(async function* (fs): AsyncGenerator<
-            Uint8Array,
-            void,
-            void
-          > {
-            const contents = fileTree.serializerStreamFactory(fs, secretNames);
-            try {
+        yield* vaultManager.withVaultsG(
+          [vaultId],
+          (vault) => {
+            return vault.readG(async function* (fs): AsyncGenerator<
+              Uint8Array,
+              void,
+              void
+            > {
+              const contents = fileTree.serializerStreamFactory(
+                fs,
+                secretNames,
+              );
               for await (const chunk of contents) yield chunk;
-            } catch (e) {
-              if (e.name === 'ErrorSecretsSecretUndefined') {
-                throw new vaultsErrors.ErrorSecretsSecretUndefined(e.message, {
-                  cause: e.cause,
-                });
-              }
-              throw e;
-            }
-          });
-        });
+            });
+          },
+          tran,
+        );
       },
     );
 

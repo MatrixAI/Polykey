@@ -560,8 +560,12 @@ function asyncGeneratorToStream<T>(
         if (done) controller.close();
         else controller.enqueue(value);
       } catch (e) {
+        console.error('from generator: ', e)
         controller.error(e);
       }
+    },
+    cancel: async (reason) => {
+      await generator.throw(reason).catch(() => {});
     },
   });
 }

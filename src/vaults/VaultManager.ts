@@ -1046,9 +1046,13 @@ class VaultManager {
     tran?: DBTransaction,
   ): AsyncGenerator<T, Treturn, Tnext> {
     if (tran == null) {
-      return yield* this.db.withTransactionG((tran) =>
-        this.withVaultsG(vaultIds, g, tran),
-      );
+      try {
+        return yield* this.db.withTransactionG((tran) =>
+          this.withVaultsG(vaultIds, g, tran),
+        );
+      } catch (e) {
+        throw e;
+      }
     }
 
     // Obtaining locks

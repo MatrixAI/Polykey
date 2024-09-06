@@ -433,7 +433,11 @@ class VaultInternal {
   ): AsyncGenerator<T, TReturn, TNext> {
     const efsVault = this.efsVault;
     return withG([this.lock.read()], async function* () {
-      return yield* g(efsVault);
+      try {
+        return yield* g(efsVault);
+      } catch (e) {
+        throw e;
+      }
     });
   }
 

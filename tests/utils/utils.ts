@@ -17,6 +17,7 @@ const expectRemoteError = async <T>(
   try {
     return await promise;
   } catch (e) {
+    console.error(e.cause);
     expect(e.cause).toBeInstanceOf(error);
   }
 };
