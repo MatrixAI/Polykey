@@ -1451,13 +1451,13 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     });
     expect(createResponse.success).toBeTruthy();
     // Get secret
-    await testsUtils.expectRemoteError(
-      rpcClient.methods.vaultsSecretsGet({
-        nameOrId: vaultIdEncoded,
-        secretNames: ['doesnt-exist'],
-      }),
-      vaultsErrors.ErrorSecretsSecretUndefined,
-    );
+    const doesntExistResponse = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: '',
+      secretNames: [secret],
+    });
+    await expect(async () => {
+      for await (const _ of doesntExistResponse.readable); // Consume values
+    }).rejects.toThrow('lol');
     const getResponse = await rpcClient.methods.vaultsSecretsGet({
       nameOrId: vaultIdEncoded,
       secretNames: [secret],
@@ -1478,13 +1478,17 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     });
     expect(deleteResponse.success).toBeTruthy();
     // Check secret was deleted
-    await testsUtils.expectRemoteError(
-      rpcClient.methods.vaultsSecretsGet({
-        nameOrId: vaultIdEncoded,
-        secretNames: [secret],
-      }),
-      vaultsErrors.ErrorSecretsSecretUndefined,
-    );
+    const secretDeletedResponse = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded,
+      secretNames: [secret],
+    });
+    await expect(async () => {
+      try {
+        for await (const _ of secretDeletedResponse.readable); // Consume values
+      } catch (e) {
+        throw e.cause;
+      }
+    }).rejects.toThrow(vaultsErrors.ErrorSecretsSecretUndefined);
   });
 });
 describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
