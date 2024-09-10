@@ -1,5 +1,7 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
 import type { Host, Hostname, Port } from '../network/types';
+import type { NodesAuthenticateConnectionMessage } from '../nodes/agent/types';
 import type { Opaque } from '../types';
 
 /**
@@ -71,6 +73,19 @@ enum ConnectionErrorReason {
   ForceClose = 'NodeConnection is forcing destruction',
 }
 
+type NetworkId = string;
+type AuthenticateNetworkForwardCallback = (
+  ctx: ContextTimed,
+) => Promise<NodesAuthenticateConnectionMessage>;
+
+/**
+ * Callback should throw on authentication failure
+ */
+type AuthenticateNetworkReverseCallback = (
+  message: NodesAuthenticateConnectionMessage,
+  ctx: ContextTimed,
+) => Promise<void>;
+
 export type {
   NodeId,
   NodeIdString,
@@ -85,6 +100,9 @@ export type {
   NodeBucketMeta,
   NodeBucket,
   NodeGraphSpace,
+  NetworkId,
+  AuthenticateNetworkForwardCallback,
+  AuthenticateNetworkReverseCallback,
 };
 
 export { ConnectionErrorCode, ConnectionErrorReason };

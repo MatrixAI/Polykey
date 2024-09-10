@@ -7,9 +7,9 @@ import type Sigchain from '../sigchain/Sigchain';
 import type TaskManager from '../tasks/TaskManager';
 import type GestaltGraph from '../gestalts/GestaltGraph';
 import type {
+  Task,
   TaskHandler,
   TaskHandlerId,
-  Task,
   TaskInfo,
 } from '../tasks/types';
 import type { SignedTokenEncoded } from '../tokens/types';
@@ -23,34 +23,33 @@ import type {
 import type { ClaimLinkNode } from '../claims/payloads';
 import type NodeConnection from '../nodes/NodeConnection';
 import type {
+  AgentClaimMessage,
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-  AgentClaimMessage,
 } from './agent/types';
 import type {
-  NodeId,
   NodeAddress,
   NodeBucket,
   NodeBucketIndex,
   NodeContactAddressData,
+  NodeId,
   NodeIdEncoded,
 } from './types';
 import type NodeConnectionManager from './NodeConnectionManager';
 import type NodeGraph from './NodeGraph';
 import type { ServicePOJO } from '@matrixai/mdns';
-import Logger from '@matrixai/logger';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import { Semaphore, Lock } from '@matrixai/async-locks';
-import { IdInternal } from '@matrixai/id';
-import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
 import { withF } from '@matrixai/resources';
-import { MDNS, events as mdnsEvents, utils as mdnsUtils } from '@matrixai/mdns';
+import { events as mdnsEvents, MDNS, utils as mdnsUtils } from '@matrixai/mdns';
+import Logger from '@matrixai/logger';
+import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
+import { Lock, LockBox, Semaphore } from '@matrixai/async-locks';
+import { IdInternal } from '@matrixai/id';
+import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
 import * as agentErrors from './agent/errors';
 import NodeConnectionQueue from './NodeConnectionQueue';
-import { ErrorNodeManagerFindNodeFailed } from './errors';
 import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority';
 import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess';
 import Token from '../tokens/Token';
@@ -122,6 +121,11 @@ class NodeManager {
   > = new Map();
   protected concurrencyLimit = 3;
   protected dnsServers: Array<string> | undefined = undefined;
+
+  /**
+   * Used to track locks for authentication failure and acquiring connections
+   */
+  protected connectionLockBox: LockBox<Lock> = new LockBox();
 
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -304,8 +308,8 @@ class NodeManager {
   public readonly syncNodeGraphHandlerId: TaskHandlerId =
     `${this.tasksPath}.syncNodeGraphHandler` as TaskHandlerId;
 
-  protected handleEventNodeConnectionManagerConnection = async (
-    e: nodesEvents.EventNodeConnectionManagerConnection,
+  protected handleEventNodeConnectionManagerConnectionAuthenticated = async (
+    e: nodesEvents.EventNodeConnectionManagerConnectionAuthenticated,
   ) => {
     await this.setNode(
       e.detail.remoteNodeId,
@@ -434,8 +438,8 @@ class NodeManager {
     }
     // Add handling for connections
     this.nodeConnectionManager.addEventListener(
-      nodesEvents.EventNodeConnectionManagerConnection.name,
-      this.handleEventNodeConnectionManagerConnection,
+      nodesEvents.EventNodeConnectionManagerConnectionAuthenticated.name,
+      this.handleEventNodeConnectionManagerConnectionAuthenticated,
     );
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -444,8 +448,8 @@ class NodeManager {
     this.logger.info(`Stopping ${this.constructor.name}`);
     // Remove handling for connections
     this.nodeConnectionManager.removeEventListener(
-      nodesEvents.EventNodeConnectionManagerConnection.name,
-      this.handleEventNodeConnectionManagerConnection,
+      nodesEvents.EventNodeConnectionManagerConnectionAuthenticated.name,
+      this.handleEventNodeConnectionManagerConnectionAuthenticated,
     );
     await this.mdns?.stop();
     await this.stopTasks();
@@ -470,24 +474,29 @@ class NodeManager {
     ctx?: Partial<ContextTimedInput>,
   ): ResourceAcquire<NodeConnection> {
     if (this.keyRing.getNodeId().equals(nodeId)) {
-      this.logger.warn('Attempting connection to our own NodeId');
       throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
     }
     return async () => {
-      // Checking if connection already exists
-      if (!this.nodeConnectionManager.hasConnection(nodeId)) {
-        // Establish the connection
-        const result = await this.findNode(
-          {
-            nodeId: nodeId,
-          },
-          ctx,
-        );
-        if (result == null) {
-          throw new nodesErrors.ErrorNodeManagerConnectionFailed();
-        }
-      }
-      return await this.nodeConnectionManager.acquireConnection(nodeId)();
+      return await this.connectionLockBox.withF(
+        [['acquireConnection', nodeId.toString()].join('.'), Lock],
+        async () => {
+          // Checking if connection already exists
+          if (!this.nodeConnectionManager.hasConnection(nodeId)) {
+            // Establish the connection
+            const result = await this.findNode(
+              {
+                nodeId: nodeId,
+              },
+              ctx,
+            );
+            if (result == null) {
+              throw new nodesErrors.ErrorNodeManagerConnectionFailed();
+            }
+          }
+          // Initiate authentication and await
+          return await this.nodeConnectionManager.acquireConnection(nodeId)();
+        },
+      );
     };
   }
 
@@ -536,7 +545,7 @@ class NodeManager {
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(nodeId, ctx);
     const [release, conn] = await acquire();
-    let caughtError;
+    let caughtError: Error | undefined;
     try {
       if (conn == null) utils.never('NodeConnection should exist');
       return yield* g(conn);
@@ -641,9 +650,11 @@ class NodeManager {
       if (e instanceof AggregateError) {
         for (const error of e.errors) {
           // Checking if each error is an expected error
-          if (!(error instanceof ErrorNodeManagerFindNodeFailed)) throw e;
+          if (!(error instanceof nodesErrors.ErrorNodeManagerFindNodeFailed)) {
+            throw e;
+          }
         }
-      } else if (!(e instanceof ErrorNodeManagerFindNodeFailed)) {
+      } else if (!(e instanceof nodesErrors.ErrorNodeManagerFindNodeFailed)) {
         throw e;
       }
       return;
@@ -1586,7 +1597,7 @@ class NodeManager {
       } catch {
         continue;
       }
-      // No need to check if local claims are correctly signed by an Network Authority.
+      // No need to check if local claims are correctly signed by a Network Authority.
       if (
         authorityToken.verifyWithPublicKey(
           keysUtils.publicKeyFromNodeId(
@@ -1665,8 +1676,7 @@ class NodeManager {
       );
     }
 
-    // Need to await node connection verification. If failed, need to reject
-    // connection.
+    // Need to await node connection verification, if failed, need to reject connection.
 
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
@@ -2185,7 +2195,7 @@ class NodeManager {
    *
    * From the spec:
    * To join the network, a node u must have a contact to an already participating node w. u inserts w into the
-   * appropriate k-bucket. u then performs a node lookup for its own node ID. Finally, u refreshes all kbuckets further
+   * appropriate k-bucket. u then performs a node lookup for its own node ID. Finally, u refreshes all k-buckets further
    * away than its closest neighbor. During the refreshes, u both populates its own k-buckets and inserts itself into
    * other nodes’ k-buckets as necessary.
    *

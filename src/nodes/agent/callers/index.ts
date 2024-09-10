@@ -1,3 +1,4 @@
+import nodesAuthenticateConnection from './nodesAuthenticateConnection';
 import nodesClaimsGet from './nodesClaimsGet';
 import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet';
 import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet';
@@ -15,6 +16,7 @@ import vaultsScan from './vaultsScan';
  * Client manifest
  */
 const manifestClient = {
+  nodesAuthenticateConnection,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
@@ -34,6 +36,7 @@ type AgentClientManifest = typeof manifestClient;
 export default manifestClient;
 
 export {
+  nodesAuthenticateConnection,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,

@@ -7,10 +7,11 @@ import type { NodeConnection } from '@/nodes';
 import type { ActiveConnectionDataMessage } from '@/nodes/agent/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as keysUtils from '@/keys/utils';
+import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import NodesClosestActiveConnectionsGet from '@/nodes/agent/handlers/NodesClosestActiveConnectionsGet';
 import * as nodesUtils from '@/nodes/utils';
 import * as testsUtils from '../../../utils';
-import NodeConnectionManager from '../../../../src/nodes/NodeConnectionManager';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -61,11 +62,18 @@ describe('nodesClosestLocalNode', () => {
 
     await Promise.all([
       nodeConnectionManagerLocal.start({
-        agentService: {} as AgentServerManifest,
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManagerLocal,
+          }),
+        } as AgentServerManifest,
         host: localHost,
       }),
       nodeConnectionManagerPeer1.start({
         agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManagerPeer1,
+          }),
           nodesClosestActiveConnectionsGet:
             new NodesClosestActiveConnectionsGet({
               nodeConnectionManager: nodeConnectionManagerPeer1,
@@ -135,14 +143,20 @@ describe('nodesClosestLocalNode', () => {
       dummyConnections.set(nodeIdString, entry);
     }
 
-    const resultStream =
-      await connection.rpcClient.methods.nodesClosestActiveConnectionsGet({
-        nodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-      });
-    const results: Array<ActiveConnectionDataMessage> = [];
-    for await (const result of resultStream) {
-      results.push(result);
-    }
+    const results = await nodeConnectionManagerLocal.withConnF(
+      nodeIdPeer1,
+      async () => {
+        const resultStream =
+          await connection.rpcClient.methods.nodesClosestActiveConnectionsGet({
+            nodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+          });
+        const results: Array<ActiveConnectionDataMessage> = [];
+        for await (const result of resultStream) {
+          results.push(result);
+        }
+        return results;
+      },
+    );
 
     // @ts-ignore: restore existing connections
     nodeConnectionManagerPeer1.connections = existingConnections;

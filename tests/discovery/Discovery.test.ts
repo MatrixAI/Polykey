@@ -23,6 +23,7 @@ import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import KeyRing from '@/keys/KeyRing';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
@@ -183,7 +184,11 @@ describe('Discovery', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
-      agentService: {} as AgentServerManifest,
+      agentService: {
+        nodesAuthenticateConnection: new NodesAuthenticateConnection({
+          nodeConnectionManager: nodeConnectionManager,
+        }),
+      } as AgentServerManifest,
     });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({

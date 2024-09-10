@@ -24,6 +24,7 @@ import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
 import NodeManager from '@/nodes/NodeManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import KeyRing from '@/keys/KeyRing';
 import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
@@ -706,10 +707,6 @@ describe('VaultManager', () => {
         tlsConfig,
         logger,
       });
-      await nodeConnectionManager.start({
-        host: localhost as Host,
-        agentService: {} as AgentServerManifest,
-      });
       nodeManager = new NodeManager({
         db,
         keyRing,
@@ -721,6 +718,14 @@ describe('VaultManager', () => {
         logger,
       });
       await nodeManager.start();
+      await nodeConnectionManager.start({
+        host: localhost as Host,
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManager,
+          }),
+        } as AgentServerManifest,
+      });
       await taskManager.startProcessing();
       await nodeGraph.setNodeContactAddressData(
         remoteKeynode1Id,

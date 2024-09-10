@@ -1,6 +1,15 @@
 import type { ResourceAcquire } from '@matrixai/resources';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { QUICConnection } from '@matrixai/quic';
+import type { JSONRPCRequest, JSONRPCResponse } from '@matrixai/rpc';
+import type {
+  AuthenticateNetworkForwardCallback,
+  AuthenticateNetworkReverseCallback,
+  NodeId,
+  NodeIdString,
+} from './types';
+import type { NodesAuthenticateConnectionMessage } from './agent/types';
+import type { AgentServerManifest } from './agent/handlers';
 import type KeyRing from '../keys/KeyRing';
 import type { CertificatePEM } from '../keys/types';
 import type {
@@ -10,8 +19,8 @@ import type {
   Port,
   TLSConfig,
 } from '../network/types';
-import type { AgentServerManifest } from './agent/handlers';
-import type { NodeId, NodeIdString } from './types';
+import type { JSONValue } from '../types';
+import { TransformStream } from 'stream/web';
 import {
   events as quicEvents,
   QUICServer,
@@ -42,6 +51,7 @@ import agentClientManifest from './agent/callers';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
+import * as agentUtils from './agent/utils';
 import * as keysUtils from '../keys/utils';
 import * as networkUtils from '../network/utils';
 import * as utils from '../utils';
@@ -54,9 +64,24 @@ type ConnectionAndTimer = {
   usageCount: number;
 };
 
+enum AuthenticatingState {
+  PENDING = 1,
+  SUCCESS = 2,
+  FAIL = 3,
+}
+
 type ConnectionsEntry = {
   activeConnection: string;
   connections: Record<string, ConnectionAndTimer>;
+  // This tracks the authentication state machine
+  authenticatedForward: AuthenticatingState;
+  reasonForward?: Error;
+  authenticatedReverse: AuthenticatingState;
+  reasonReverse?: Error;
+  authenticateComplete: boolean;
+  authenticatedP: Promise<void>;
+  authenticatedResolveP: (value: void) => void;
+  authenticatedRejectP: (reason?: Error) => void;
 };
 
 type ConnectionInfo = {
@@ -76,12 +101,24 @@ const abortPendingConnectionsReason = Symbol(
   'abort pending connections reason',
 );
 
+const timerCancellationReason = Symbol('timer cancellation reason');
+
+const activePunchCancellationReason = Symbol(
+  'active punch cancellation reason',
+);
+
+const activeForwardAuthenticateCancellationReason = Symbol(
+  'active forward authenticate cancellation reason',
+);
+
+const rpcMethodsWhitelist = ['nodesAuthenticateConnection'];
+
 /**
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections.
  *
  * It acts like a phone call system.
- * It can maintain mulitple calls to other nodes.
+ * It can maintain multiple calls to other nodes.
  * There's no guarantee that we need to make it.
  *
  * Node connections make use of the QUIC protocol.
@@ -154,7 +191,7 @@ class NodeConnectionManager {
   public readonly connectionInitialMaxStreamsUni: number;
 
   /**
-   * Max parse buffer size before RPC parser throws an parse error.
+   * Max parse buffer size before RPC parser throws a parse error.
    */
   public readonly rpcParserBufferSize: number;
 
@@ -189,6 +226,23 @@ class NodeConnectionManager {
    */
   protected rateLimiter = new RateLimiter(60000, 20, 10, 1);
 
+  /**
+   * Used to track the active authentication RPC calls
+   */
+  protected activeForwardAuthenticateCalls = new Map<
+    string,
+    PromiseCancellable<void>
+  >();
+
+  /**
+   * Callback used to generate authentication data when making the authentication call
+   */
+  protected authenticateNetworkForwardCallback: AuthenticateNetworkForwardCallback;
+  /**
+   * Callback used to authenticate the peer when processing an authentication request from the peer
+   */
+  protected authenticateNetworkReverseCallback: AuthenticateNetworkReverseCallback;
+
   protected logger: Logger;
   protected keyRing: KeyRing;
   protected tlsConfig: TLSConfig;
@@ -197,8 +251,8 @@ class NodeConnectionManager {
   protected quicServer: QUICServer;
 
   /**
-   * Data structure to store all NodeConnections. If a connection to a node n does
-   * not exist, no entry for n will exist in the map. Alternatively, if a
+   * Data structure to store all NodeConnections. If a connection to a node `N` does
+   * not exist, no entry for `N` will exist in the map. Alternatively, if a
    * connection is currently being instantiated by some thread, an entry will
    * exist in the map, but only with the lock (no connection object). Once a
    * connection is instantiated, the entry in the map is updated to include the
@@ -254,7 +308,7 @@ class NodeConnectionManager {
     const connectionAndTimer = connectionsEntry.connections[connectionId];
     if (connectionAndTimer == null) utils.never('should have a connection');
     connectionAndTimer.usageCount += 1;
-    connectionAndTimer.timer?.cancel();
+    connectionAndTimer.timer?.cancel(timerCancellationReason);
     connectionAndTimer.timer = null;
     void stream.closedP.finally(() => {
       connectionAndTimer.usageCount -= 1;
@@ -272,6 +326,8 @@ class NodeConnectionManager {
             await this.destroyConnection(nodeId, false, connectionId),
           delay,
         });
+        // Prevent unhandled exceptions when cancelling
+        connectionAndTimer.timer.catch(() => {});
       }
     });
   };
@@ -292,7 +348,7 @@ class NodeConnectionManager {
   };
 
   /**
-   * Redispatches `QUICSOcket` or `QUICServer` error events as `NodeConnectionManager` error events.
+   * Redispatches `QUICSocket` or `QUICServer` error events as `NodeConnectionManager` error events.
    * This should trigger the destruction of the `NodeConnection` through the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
@@ -308,7 +364,7 @@ class NodeConnectionManager {
 
   /**
    * Handle unexpected stoppage of the QUICSocket. Not expected to happen
-   * without error but we have it just in case.
+   * without error, but we have it just in case.
    */
   protected handleEventQUICSocketStopped = (
     _evt: quicEvents.EventQUICSocketStopped,
@@ -323,7 +379,7 @@ class NodeConnectionManager {
 
   /**
    * Handle unexpected stoppage of the QUICServer. Not expected to happen
-   * without error but we have it just in case.
+   * without error, but we have it just in case.
    */
   protected handleEventQUICServerStopped = (
     _evt: quicEvents.EventQUICServerStopped,
@@ -338,8 +394,8 @@ class NodeConnectionManager {
 
   /**
    * Handles `EventQUICServerConnection` events. These are reverser or server
-   * peer initated connections that needs to be handled and added to the
-   * connectio map.
+   * peer initiated connections that needs to be handled and added to the
+   * connection map.
    */
   protected handleEventQUICServerConnection = (
     evt: quicEvents.EventQUICServerConnection,
@@ -386,6 +442,8 @@ class NodeConnectionManager {
       .nodesConnectionInitialMaxStreamsUni,
     rpcParserBufferSize = config.defaultsSystem.rpcParserBufferSize,
     rpcCallTimeoutTime = config.defaultsSystem.rpcCallTimeoutTime,
+    authenticateNetworkForwardCallback = nodesUtils.nodesAuthenticateConnectionForwardDefault,
+    authenticateNetworkReverseCallback = nodesUtils.nodesAuthenticateConnectionReverseDefault,
     logger,
   }: {
     keyRing: KeyRing;
@@ -403,6 +461,8 @@ class NodeConnectionManager {
     connectionInitialMaxStreamsUni?: number;
     rpcParserBufferSize?: number;
     rpcCallTimeoutTime?: number;
+    authenticateNetworkForwardCallback?: AuthenticateNetworkForwardCallback;
+    authenticateNetworkReverseCallback?: AuthenticateNetworkReverseCallback;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -421,6 +481,10 @@ class NodeConnectionManager {
     this.connectionInitialMaxStreamsUni = connectionInitialMaxStreamsUni;
     this.rpcParserBufferSize = rpcParserBufferSize;
     this.rpcCallTimeoutTime = rpcCallTimeoutTime;
+    this.authenticateNetworkForwardCallback =
+      authenticateNetworkForwardCallback;
+    this.authenticateNetworkReverseCallback =
+      authenticateNetworkReverseCallback;
 
     const quicSocket = new QUICSocket({
       resolveHostname: () => {
@@ -450,7 +514,7 @@ class NodeConnectionManager {
     });
     const rpcServer = new RPCServer({
       middlewareFactory: rpcMiddleware.defaultServerMiddlewareWrapper(
-        undefined,
+        this.authenticationMiddlewareClient,
         this.rpcParserBufferSize,
       ),
       fromError: networkUtils.fromError,
@@ -590,25 +654,40 @@ class NodeConnectionManager {
     );
     this.quicSocket.removeEventListener(EventAll.name, this.handleEventAll);
 
-    const destroyPs: Array<Promise<void>> = [];
-    for (const [nodeId] of this.connections) {
-      // It exists so we want to destroy it
-      const destroyP = this.destroyConnection(
-        IdInternal.fromString<NodeId>(nodeId),
-        force,
+    const destroyConnectionPs: Array<Promise<void>> = [];
+    const cancelSignallingPs: Array<PromiseCancellable<void> | Promise<void>> =
+      [];
+    const authenticationCancelPs: Array<Promise<void>> = [];
+    const cancelAuthenticationPs: Array<PromiseCancellable<void>> = [];
+    const cancelReason = new nodesErrors.ErrorNodeConnectionManagerStopping();
+    for (const [nodeIdString] of this.connections) {
+      const destroyP = this.authenticateCancel(nodeIdString, cancelReason).then(
+        async () => {
+          return await this.destroyConnection(
+            IdInternal.fromString<NodeId>(nodeIdString),
+            force,
+          );
+        },
       );
-      destroyPs.push(destroyP);
+      destroyConnectionPs.push(destroyP);
     }
-    await Promise.all(destroyPs);
-    const signallingPs: Array<PromiseCancellable<void> | Promise<void>> = [];
     for (const [, activePunch] of this.activeHolePunchPs) {
-      signallingPs.push(activePunch);
-      activePunch.cancel();
+      cancelSignallingPs.push(activePunch);
+      activePunch.cancel(activePunchCancellationReason);
     }
     for (const activeSignal of this.activeSignalFinalPs) {
-      signallingPs.push(activeSignal);
+      cancelSignallingPs.push(activeSignal);
     }
-    await Promise.allSettled(signallingPs);
+    for (const activeForwardAuthenticateCall of this.activeForwardAuthenticateCalls.values()) {
+      cancelAuthenticationPs.push(activeForwardAuthenticateCall);
+      activeForwardAuthenticateCall.cancel(
+        activeForwardAuthenticateCancellationReason,
+      );
+    }
+    await Promise.all(destroyConnectionPs);
+    await Promise.allSettled(cancelSignallingPs);
+    await Promise.allSettled(authenticationCancelPs);
+    await Promise.allSettled(cancelAuthenticationPs);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
     await this.rpcServer.stop({ force: true });
@@ -616,6 +695,7 @@ class NodeConnectionManager {
   }
 
   /**
+   * This is the internal acquireConnection for using connections without authentication.
    * For usage with withF, to acquire a connection
    * This unique acquire function structure of returning the ResourceAcquire
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
@@ -623,8 +703,7 @@ class NodeConnectionManager {
    * @param targetNodeId Id of target node to communicate with
    * @returns ResourceAcquire Resource API for use in with contexts
    */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  public acquireConnection(
+  protected acquireConnectionInternal(
     targetNodeId: NodeId,
   ): ResourceAcquire<NodeConnection> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
@@ -647,7 +726,7 @@ class NodeConnectionManager {
 
       // Increment usage count, and cancel timer
       connectionAndTimer.usageCount += 1;
-      connectionAndTimer.timer?.cancel();
+      connectionAndTimer.timer?.cancel(timerCancellationReason);
       connectionAndTimer.timer = null;
       // Return tuple of [ResourceRelease, Resource]
       return [
@@ -667,13 +746,36 @@ class NodeConnectionManager {
             );
             connectionAndTimer.timer = new Timer({
               handler: async () =>
-                await this.destroyConnection(targetNodeId, false),
+                await this.destroyConnection(
+                  targetNodeId,
+                  false,
+                  connectionAndTimer.connection.connectionId,
+                ),
               delay,
             });
+            // Prevent unhandled exceptions when cancelling
+            connectionAndTimer.timer.catch(() => {});
           }
         },
         connectionAndTimer.connection,
       ];
+    };
+  }
+
+  /**
+   * For usage with withF, to acquire a connection
+   * This unique acquire function structure of returning the ResourceAcquire
+   * itself is such that we can pass targetNodeId as a parameter (as opposed to
+   * an acquire function with no parameters).
+   * @param targetNodeId Id of target node to communicate with
+   * @returns ResourceAcquire Resource API for use in with contexts
+   */
+  public acquireConnection(
+    targetNodeId: NodeId,
+  ): ResourceAcquire<NodeConnection> {
+    return async () => {
+      await this.isAuthenticatedP(targetNodeId);
+      return await this.acquireConnectionInternal(targetNodeId)();
     };
   }
 
@@ -712,7 +814,7 @@ class NodeConnectionManager {
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(targetNodeId);
     const [release, conn] = await acquire();
-    let caughtError;
+    let caughtError: Error | undefined;
     try {
       if (conn == null) utils.never('NodeConnection should exist');
       return yield* g(conn);
@@ -781,6 +883,13 @@ class NodeConnectionManager {
         detail: connectionData,
       }),
     );
+    if (this.isAuthenticated(connectionData.remoteNodeId)) {
+      this.dispatchEvent(
+        new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
+          detail: connectionData,
+        }),
+      );
+    }
     return nodeConnection;
   }
 
@@ -945,13 +1054,32 @@ class NodeConnectionManager {
           await this.destroyConnection(nodeId, false, connectionId),
         delay: this.getStickyTimeoutValue(nodeId, true),
       });
+      // Prevent unhandled exceptions when cancelling
+      newConnAndTimer.timer.catch(() => {});
+      const {
+        p: authenticatedP,
+        resolveP: authenticatedResolveP,
+        rejectP: authenticatedRejectP,
+      } = utils.promise<void>();
+      // Prevent unhandled rejections
+      authenticatedP.then(
+        () => {},
+        () => {},
+      );
       entry = {
         activeConnection: connectionId,
         connections: {
           [connectionId]: newConnAndTimer,
         },
+        authenticatedForward: AuthenticatingState.PENDING,
+        authenticatedReverse: AuthenticatingState.PENDING,
+        authenticateComplete: false,
+        authenticatedP,
+        authenticatedResolveP,
+        authenticatedRejectP,
       };
       this.connections.set(nodeIdString, entry);
+      this.initiateForwardAuthenticate(nodeId);
     } else {
       newConnAndTimer.timer = new Timer({
         handler: async () =>
@@ -961,6 +1089,8 @@ class NodeConnectionManager {
           entry.activeConnection > connectionId,
         ),
       });
+      // Prevent unhandled exceptions when cancelling
+      newConnAndTimer.timer.catch(() => {});
       // Updating existing entry
       entry.connections[connectionId] = newConnAndTimer;
       // If the new connection ID is less than the old then replace it
@@ -1012,14 +1142,27 @@ class NodeConnectionManager {
         );
         destroyPs.push(connAndTimer.connection.destroy({ force }));
         // Destroying TTL timer
-        if (connAndTimer.timer != null) connAndTimer.timer.cancel();
+        connAndTimer.timer?.cancel(timerCancellationReason);
+        connAndTimer.timer = null;
         delete connections[connectionId];
       }
     }
     // If empty then remove the entry
     const remainingKeys = Object.keys(connectionsEntry.connections);
     if (remainingKeys.length === 0) {
+      // Clean up authentication
+      await this.authenticateCancel(
+        targetNodeIdString,
+        new nodesErrors.ErrorNodeManagerAuthenticationFailed(
+          'Connection destroyed before authentication could complete',
+        ),
+      );
       this.connections.delete(targetNodeIdString);
+      this.dispatchEvent(
+        new nodesEvents.EventNodeConnectionManagerConnectionDestroyed({
+          detail: targetNodeId,
+        }),
+      );
     } else {
       // Check if the active connection was removed.
       if (connections[connectionsEntry.activeConnection] == null) {
@@ -1034,7 +1177,7 @@ class NodeConnectionManager {
   /**
    * Will determine how long to keep a node around for.
    *
-   * Timeout is scaled linearly from 1 min to 2 hours based on it's bucket.
+   * Timeout is scaled linearly from 1 min to 2 hours based on its bucket.
    * The value will be symmetric for two nodes,
    * they will assign the same timeout for each other.
    */
@@ -1101,6 +1244,13 @@ class NodeConnectionManager {
         detail: connectionData,
       }),
     );
+    if (this.isAuthenticated(nodeId)) {
+      this.dispatchEvent(
+        new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
+          detail: connectionData,
+        }),
+      );
+    }
   }
 
   /**
@@ -1150,7 +1300,7 @@ class NodeConnectionManager {
     try {
       while (true) {
         const message = keysUtils.getRandomBytes(32);
-        // Since the intention is to abstract away the success/failure of the holepunch operation,
+        // Since the intention is to abstract away the success/failure of the hole-punch operation,
         // We should catch any errors thrown out of this, as the caller does not expect the method to throw
         await this.quicSocket
           .send(Buffer.from(message), port, host)
@@ -1236,7 +1386,7 @@ class NodeConnectionManager {
    * Will validate the message, and initiate hole punching in the background and return immediately.
    * Attempts to the same host and port are coalesced.
    * Attempts to the same host are limited by a semaphore.
-   * Active attempts are tracked inside of the `activeHolePunchPs` set and are cancelled and awaited when the
+   * Active attempts are tracked inside the `activeHolePunchPs` set and are cancelled and awaited when the
    * `NodeConnectionManager` stops.
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
@@ -1252,17 +1402,24 @@ class NodeConnectionManager {
     }
     const holePunchAttempt = new PromiseCancellable<void>(
       async (res, rej, signal) => {
-        await semaphore!.withF(async () => {
-          this.holePunch(host, port, { signal })
-            .finally(() => {
-              this.activeHolePunchPs.delete(id);
-              if (semaphore!.count === 0) {
-                this.activeHolePunchAddresses.delete(host);
-              }
-            })
-            .then(res, rej);
-        });
+        await semaphore!
+          .withF(async () => {
+            await this.holePunch(host, port, { signal });
+          })
+          .finally(() => {
+            this.activeHolePunchPs.delete(id);
+            if (semaphore!.count === 0) {
+              this.activeHolePunchAddresses.delete(host);
+            }
+          })
+          .then(res, rej);
       },
+    ).finally(() => {
+      this.activeHolePunchPs.delete(id);
+    });
+    holePunchAttempt.then(
+      () => {},
+      () => {},
     );
     // Prevent promise rejection leak
     void holePunchAttempt.catch(() => {});
@@ -1396,6 +1553,353 @@ class NodeConnectionManager {
       return entryRecord;
     });
   }
+
+  public forwardAuthenticate(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async forwardAuthenticate(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
+    const targetNodeIdString = nodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    // Need to make an authenticate request here. Get the connection and RPC.
+    try {
+      const authenticateMessage =
+        await this.authenticateNetworkForwardCallback(ctx);
+      await withF([this.acquireConnectionInternal(nodeId)], async ([conn]) => {
+        await conn.rpcClient.methods.nodesAuthenticateConnection(
+          authenticateMessage,
+          ctx,
+        );
+      });
+      connectionsEntry.authenticatedForward = AuthenticatingState.SUCCESS;
+    } catch (e) {
+      const err = new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
+        undefined,
+        { cause: e },
+      );
+      connectionsEntry.authenticatedForward = AuthenticatingState.FAIL;
+      connectionsEntry.reasonForward = err;
+      this.authenticateFail(targetNodeIdString);
+      return;
+    }
+    // Check the reverse result
+    switch (connectionsEntry.authenticatedReverse) {
+      case AuthenticatingState.SUCCESS:
+        // Authentication succeeded
+        connectionsEntry.authenticatedResolveP();
+        connectionsEntry.authenticateComplete = true;
+        // Dispatching authenticated events for every active connection
+        for (const connAndTimer of Object.values(
+          connectionsEntry.connections,
+        )) {
+          const connectionData: ConnectionData = {
+            remoteNodeId: connAndTimer.connection.nodeId,
+            remoteHost: connAndTimer.connection.host,
+            remotePort: connAndTimer.connection.port,
+          };
+          this.dispatchEvent(
+            new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
+              detail: connectionData,
+            }),
+          );
+        }
+        return;
+      case AuthenticatingState.FAIL:
+        // Authenticating failed
+        this.authenticateFail(targetNodeIdString);
+        return;
+      case AuthenticatingState.PENDING:
+        return;
+      default:
+        utils.never('authenticatedReverse has invalid state');
+    }
+  }
+
+  public handleReverseAuthenticate(
+    nodeId: NodeId,
+    message: NodesAuthenticateConnectionMessage,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<void>;
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async handleReverseAuthenticate(
+    nodeId: NodeId,
+    message: NodesAuthenticateConnectionMessage,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
+    const targetNodeIdString = nodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    try {
+      // Should resolve without issue if authentication succeeds.
+      await this.authenticateNetworkReverseCallback(message, ctx);
+      connectionsEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
+    } catch (e) {
+      const err = new nodesErrors.ErrorNodeManagerAuthenticationFailedReverse(
+        undefined,
+        { cause: e },
+      );
+      connectionsEntry.authenticatedReverse = AuthenticatingState.FAIL;
+      connectionsEntry.reasonReverse = err;
+      this.authenticateFail(targetNodeIdString);
+      // Throw back up the RPC
+      throw err;
+    }
+    // Check the forward result
+    switch (connectionsEntry.authenticatedForward) {
+      case AuthenticatingState.SUCCESS:
+        // Authentication succeeded
+        connectionsEntry.authenticatedResolveP();
+        connectionsEntry.authenticateComplete = true;
+        // Dispatching authenticated events for every active connection
+        for (const connAndTimer of Object.values(
+          connectionsEntry.connections,
+        )) {
+          const connectionData: ConnectionData = {
+            remoteNodeId: connAndTimer.connection.nodeId,
+            remoteHost: connAndTimer.connection.host,
+            remotePort: connAndTimer.connection.port,
+          };
+          this.dispatchEvent(
+            new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
+              detail: connectionData,
+            }),
+          );
+        }
+        return;
+      case AuthenticatingState.FAIL:
+        // Authenticating failed
+        this.authenticateFail(targetNodeIdString);
+        return;
+      case AuthenticatingState.PENDING:
+        return;
+      default:
+        utils.never('authenticatedForward has invalid state');
+    }
+  }
+
+  /**
+   * Will initiate a forward authentication call and coalesce
+   */
+  public initiateForwardAuthenticate(nodeId: NodeId) {
+    // Needs check the map if one is already running, otherwise it needs to start one and manage it.
+    const nodeIdString = nodeId.toString() as NodeIdString;
+    const authenticationEntry = this.connections.get(nodeIdString);
+    if (authenticationEntry == null) {
+      utils.never('authenticationEntry must be defined');
+    }
+    const existingAuthenticate =
+      this.activeForwardAuthenticateCalls.get(nodeIdString);
+    // If it exists in the map then we don't need to start one and can just return
+    if (existingAuthenticate != null) return;
+    if (
+      authenticationEntry.authenticatedForward !== AuthenticatingState.PENDING
+    ) {
+      return;
+    }
+    // Otherwise we need to start one and add it to the map
+    const forwardAuthenticateP = this.forwardAuthenticate(nodeId).finally(
+      () => {
+        this.activeForwardAuthenticateCalls.delete(nodeIdString);
+      },
+    );
+    // Prevent unhandled errors
+    forwardAuthenticateP.then(
+      () => {},
+      () => {},
+    );
+    this.activeForwardAuthenticateCalls.set(nodeIdString, forwardAuthenticateP);
+  }
+
+  /**
+   * Returns true if the connection has been authenticated
+   */
+  public isAuthenticated(nodeId: NodeId): boolean {
+    const targetNodeIdString = nodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) return false;
+    const forwardAuthenticated =
+      connectionsEntry.authenticatedForward === AuthenticatingState.SUCCESS;
+    const reverseAuthenticated =
+      connectionsEntry.authenticatedReverse === AuthenticatingState.SUCCESS;
+    return forwardAuthenticated && reverseAuthenticated;
+  }
+
+  /**
+   * Returns a promise that resolves once the connection has authenticated,
+   * otherwise it rejects with the authentication failure
+   * @param nodeId
+   */
+  public async isAuthenticatedP(nodeId: NodeId): Promise<void> {
+    const targetNodeIdString = nodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    try {
+      return await connectionsEntry.authenticatedP;
+    } catch (e) {
+      // Capture the stacktrace here since knowing where we're waiting for authentication is more useful
+      Error.captureStackTrace(e);
+      throw e;
+    }
+  }
+
+  protected authenticateFail(targetNodeIdString: NodeIdString) {
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) {
+      return;
+    }
+    // Wait for both directions of authentication to complete first
+    if (
+      connectionsEntry.authenticatedForward === AuthenticatingState.PENDING ||
+      connectionsEntry.authenticatedReverse === AuthenticatingState.PENDING
+    ) {
+      return;
+    }
+    // Skip if already completed
+    if (connectionsEntry.authenticateComplete) {
+      return;
+    }
+    connectionsEntry.authenticateComplete = true;
+    const authenticatedRejectP = connectionsEntry.authenticatedRejectP;
+    let reason: Error;
+    if (
+      connectionsEntry.reasonForward != null &&
+      connectionsEntry.reasonReverse != null
+    ) {
+      // Both errors
+      reason = new AggregateError([
+        connectionsEntry.reasonForward,
+        connectionsEntry.reasonReverse,
+      ]);
+    } else if (connectionsEntry.reasonForward != null) {
+      // Just the forward error
+      reason = connectionsEntry.reasonForward;
+    } else if (connectionsEntry.reasonReverse != null) {
+      // Just the reverse error
+      reason = connectionsEntry.reasonReverse;
+    } else {
+      utils.never('No reason was provided');
+    }
+    // Removing authentication entry
+    authenticatedRejectP(
+      new nodesErrors.ErrorNodeManagerAuthenticationFailed(undefined, {
+        cause: reason,
+      }),
+    );
+  }
+
+  protected async authenticateCancel(
+    targetNodeIdString: NodeIdString,
+    reason: Error,
+  ) {
+    const authenticationEntry = this.connections.get(targetNodeIdString);
+    if (authenticationEntry == null) {
+      return;
+    }
+    if (authenticationEntry.authenticateComplete) {
+      return;
+    }
+    if (
+      authenticationEntry!.authenticatedForward === AuthenticatingState.PENDING
+    ) {
+      authenticationEntry!.authenticatedForward = AuthenticatingState.FAIL;
+      authenticationEntry!.reasonForward = reason;
+    }
+    if (
+      authenticationEntry!.authenticatedReverse === AuthenticatingState.PENDING
+    ) {
+      authenticationEntry!.authenticatedReverse = AuthenticatingState.FAIL;
+      authenticationEntry!.reasonReverse = reason;
+    }
+    if (
+      authenticationEntry!.authenticatedForward === AuthenticatingState.FAIL ||
+      authenticationEntry!.authenticatedReverse === AuthenticatingState.FAIL
+    ) {
+      this.authenticateFail(targetNodeIdString);
+    }
+  }
+
+  public setAuthenticateNetworkForwardCallback(
+    authenticateNetworkForwardCallback: AuthenticateNetworkForwardCallback,
+  ) {
+    this.authenticateNetworkForwardCallback =
+      authenticateNetworkForwardCallback;
+  }
+
+  public setAuthenticateNetworkReverseCallback(
+    authenticateNetworkReverseCallback: AuthenticateNetworkReverseCallback,
+  ) {
+    this.authenticateNetworkReverseCallback =
+      authenticateNetworkReverseCallback;
+  }
+
+  protected authenticationMiddlewareClient = (
+    _ctx: ContextTimed,
+    _cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
+  ) => {
+    const nodeId = agentUtils.nodeIdFromMeta(meta);
+    if (nodeId == null) utils.never('NodeId should be defined here');
+    let isAllowed = this.isAuthenticated(nodeId);
+    const {
+      p: waitP,
+      resolveP: resolveWaitP,
+      rejectP: rejectWaitP,
+    } = utils.promise();
+    return {
+      forward: new TransformStream<JSONRPCRequest, JSONRPCRequest>({
+        transform: (chunk, controller) => {
+          if (isAllowed) {
+            controller.enqueue(chunk);
+          } else {
+            if (rpcMethodsWhitelist.includes(chunk.method)) {
+              // Success
+              isAllowed = true;
+              controller.enqueue(chunk);
+              resolveWaitP();
+              return;
+            } else {
+              // Fail
+              const e = new nodesErrors.ErrorNodeConnectionManagerRPCDenied();
+              controller.error(e);
+              rejectWaitP(e);
+              return;
+            }
+          }
+        },
+      }),
+      reverse: new TransformStream<
+        JSONRPCResponse<JSONRPCResponse>,
+        JSONRPCResponse<JSONRPCResponse>
+      >({
+        transform: async (chunk, controller) => {
+          if (!isAllowed) {
+            await waitP.catch((e) => controller.error(e));
+            return;
+          }
+          controller.enqueue(chunk);
+        },
+      }),
+    };
+  };
 }
 
 export default NodeConnectionManager;

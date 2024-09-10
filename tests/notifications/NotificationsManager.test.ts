@@ -20,6 +20,7 @@ import KeyRing from '@/keys/KeyRing';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as nodesErrors from '@/nodes/errors';
 import * as notificationsErrors from '@/notifications/errors';
@@ -135,7 +136,11 @@ describe('NotificationsManager', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
-      agentService: {} as AgentServerManifest,
+      agentService: {
+        nodesAuthenticateConnection: new NodesAuthenticateConnection({
+          nodeConnectionManager: nodeConnectionManager,
+        }),
+      } as AgentServerManifest,
     });
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
