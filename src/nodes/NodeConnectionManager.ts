@@ -76,6 +76,8 @@ const abortPendingConnectionsReason = Symbol(
   'abort pending connections reason',
 );
 
+// TODO: modify this to handle network authentication logic
+
 /**
  * NodeConnectionManager is a server that manages all node connections.
  * It manages both initiated and received connections.
