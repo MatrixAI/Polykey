@@ -52,6 +52,8 @@ type ConnectionAndTimer = {
   connection: NodeConnection;
   timer: Timer | null;
   usageCount: number;
+  authenticatedForward: boolean;
+  authenticatedReverse: boolean;
 };
 
 type ConnectionsEntry = {
@@ -75,8 +77,6 @@ type ActiveConnectionsInfo = {
 const abortPendingConnectionsReason = Symbol(
   'abort pending connections reason',
 );
-
-// TODO: modify this to handle network authentication logic
 
 /**
  * NodeConnectionManager is a server that manages all node connections.
@@ -189,8 +189,8 @@ class NodeConnectionManager {
   protected quicServer: QUICServer;
 
   /**
-   * Data structure to store all NodeConnections. If a connection to a node n does
-   * not exist, no entry for n will exist in the map. Alternatively, if a
+   * Data structure to store all NodeConnections. If a connection to a node `N` does
+   * not exist, no entry for `N` will exist in the map. Alternatively, if a
    * connection is currently being instantiated by some thread, an entry will
    * exist in the map, but only with the lock (no connection object). Once a
    * connection is instantiated, the entry in the map is updated to include the
@@ -745,6 +745,7 @@ class NodeConnectionManager {
       },
       ctx,
     );
+    // FIXME: How do we even handle cancellation here if we stop the NCM?
     this.addConnection(nodeConnection.validatedNodeId, nodeConnection);
     // Dispatch the connection event
     const connectionData: ConnectionData = {
@@ -882,6 +883,8 @@ class NodeConnectionManager {
     return await this.createConnection([nodeIdTarget], host, port, ctx);
   }
 
+  // TODO: this needs to hook up authentication logic for the forward and reverse.
+  //  How do we handle timeouts for this?
   /**
    * Adds connection to the connections map. Preforms some checks and lifecycle hooks.
    * This code is shared between the reverse and forward connection creation.
@@ -914,6 +917,8 @@ class NodeConnectionManager {
       connection: nodeConnection,
       timer: null,
       usageCount: 0,
+      authenticatedForward: false,
+      authenticatedReverse: false,
     };
 
     // Adding the new connection into the connection map
@@ -926,6 +931,7 @@ class NodeConnectionManager {
           await this.destroyConnection(nodeId, false, connectionId),
         delay: this.getStickyTimeoutValue(nodeId, true),
       });
+      // TODO: only update the active connection once the authentication has been completed.
       entry = {
         activeConnection: connectionId,
         connections: {
@@ -945,6 +951,7 @@ class NodeConnectionManager {
       // Updating existing entry
       entry.connections[connectionId] = newConnAndTimer;
       // If the new connection ID is less than the old then replace it
+      // TODO: only update the active connection once the authentication has been completed.
       if (entry.activeConnection > connectionId) {
         entry.activeConnection = connectionId;
       }
@@ -1005,6 +1012,7 @@ class NodeConnectionManager {
       // Check if the active connection was removed.
       if (connections[connectionsEntry.activeConnection] == null) {
         // Find the new lowest
+        // TODO: filter out only the authenticated connections when picking the next lowest
         connectionsEntry.activeConnection = remainingKeys.sort()[0];
       }
     }
