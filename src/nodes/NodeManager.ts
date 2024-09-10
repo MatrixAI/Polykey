@@ -641,6 +641,7 @@ class NodeManager {
     try {
       return await Promise.any([findBySignal, findByDirect, findByMDNS]);
     } catch (e) {
+      // TODO: definitely fix this while I'm here..
       // FIXME: check error type and throw if not connection related failure
       return;
     } finally {
