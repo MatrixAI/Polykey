@@ -306,6 +306,13 @@ type SecretPathMessage = {
 
 type SecretIdentifierMessage = VaultIdentifierMessage & SecretPathMessage;
 
+type SecretRemoveMessage = {
+  secretNames: Array<Array<string>>;
+  options?: {
+    recursive?: boolean;
+  };
+};
+
 // Contains binary content as a binary string 'toString('binary')'
 type ContentMessage = {
   secretContent: string;
@@ -416,6 +423,7 @@ export type {
   VaultsLatestVersionMessage,
   SecretPathMessage,
   SecretIdentifierMessage,
+  SecretRemoveMessage,
   ContentMessage,
   SecretContentMessage,
   SecretMkdirMessage,
