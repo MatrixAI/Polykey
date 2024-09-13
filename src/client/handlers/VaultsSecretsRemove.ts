@@ -3,34 +3,44 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SuccessMessage,
-  SecretRemoveMessage,
+  SecretIdentifierMessage,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import { UnaryHandler } from '@matrixai/rpc';
+import { ClientHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 
-class VaultsSecretsRemove extends UnaryHandler<
+class VaultsSecretsRemove extends ClientHandler<
   {
     vaultManager: VaultManager;
     db: DB;
   },
-  ClientRPCRequestParams<SecretRemoveMessage>,
+  ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SuccessMessage>
 > {
   public handle = async (
-    input: ClientRPCRequestParams<SecretRemoveMessage>,
+    input: AsyncIterable<ClientRPCRequestParams<SecretIdentifierMessage>>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { vaultManager, db } = this.container;
     // Create a record of secrets to be removed, grouped by vault names
-    const vaultGroups: Record<string, string[]> = {};
-    input.secretNames.forEach(([vaultName, secretName]) => {
+    const vaultGroups: Record<string, Array<string>> = {};
+    const secretNames: Array<[string, string]> = [];
+    let metadata: any = undefined;
+    for await (const secretRemoveMessage of input) {
+      if (metadata == null) metadata = secretRemoveMessage.metadata ?? {};
+      secretNames.push([
+        secretRemoveMessage.nameOrId,
+        secretRemoveMessage.secretName,
+      ]);
+    }
+    secretNames.forEach(([vaultName, secretName]) => {
       if (vaultGroups[vaultName] == null) {
         vaultGroups[vaultName] = [];
       }
       vaultGroups[vaultName].push(secretName);
     });
+
     await db.withTransactionF(async (tran) => {
       for (const [vaultName, secretNames] of Object.entries(vaultGroups)) {
         const vaultIdFromName = await vaultManager.getVaultId(vaultName, tran);
@@ -40,7 +50,7 @@ class VaultsSecretsRemove extends UnaryHandler<
           [vaultId],
           async (vault) => {
             await vaultOps.deleteSecret(vault, secretNames, {
-              recursive: input.options?.recursive,
+              recursive: metadata?.options?.recursive,
             });
           },
           tran,
