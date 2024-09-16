@@ -31,7 +31,7 @@ import {
   VaultsPermissionSet,
   VaultsPermissionUnset,
   VaultsRename,
-  VaultsSecretsDelete,
+  VaultsSecretsRemove,
   VaultsSecretsEdit,
   VaultsSecretsEnv,
   VaultsSecretsGet,
@@ -52,7 +52,7 @@ import {
   vaultsPermissionSet,
   vaultsPermissionUnset,
   vaultsRename,
-  vaultsSecretsDelete,
+  vaultsSecretsRemove,
   vaultsSecretsEdit,
   vaultsSecretsEnv,
   vaultsSecretsGet,
@@ -1352,8 +1352,10 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
     vaultsSecretsNew: typeof vaultsSecretsNew;
-    vaultsSecretsDelete: typeof vaultsSecretsDelete;
+    vaultsSecretsRemove: typeof vaultsSecretsRemove;
     vaultsSecretsGet: typeof vaultsSecretsGet;
+    vaultsSecretsNewDir: typeof vaultsSecretsNewDir;
+    vaultsSecretsStat: typeof vaultsSecretsStat;
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
@@ -1396,11 +1398,20 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
           db,
           vaultManager,
         }),
-        vaultsSecretsDelete: new VaultsSecretsDelete({
+        vaultsSecretsRemove: new VaultsSecretsRemove({
           db,
           vaultManager,
         }),
         vaultsSecretsGet: new VaultsSecretsGet({
+          db,
+          vaultManager,
+        }),
+        vaultsSecretsNewDir: new VaultsSecretsNewDir({
+          db,
+          fs,
+          vaultManager,
+        }),
+        vaultsSecretsStat: new VaultsSecretsStat({
           db,
           vaultManager,
         }),
@@ -1418,8 +1429,10 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsNew,
-        vaultsSecretsDelete,
+        vaultsSecretsRemove,
         vaultsSecretsGet,
+        vaultsSecretsNewDir,
+        vaultsSecretsStat,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
@@ -1456,9 +1469,8 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretContent = getResponse1.secretContent;
     expect(secretContent).toStrictEqual(secret);
     // Delete secret
-    const deleteResponse = await rpcClient.methods.vaultsSecretsDelete({
-      nameOrId: vaultIdEncoded,
-      secretName: secret,
+    const deleteResponse = await rpcClient.methods.vaultsSecretsRemove({
+      secretNames: [[vaultIdEncoded, secret]],
     });
     expect(deleteResponse.success).toBeTruthy();
     // Check secret was deleted
@@ -1466,6 +1478,195 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
       rpcClient.methods.vaultsSecretsGet({
         nameOrId: vaultIdEncoded,
         secretName: secret,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+  });
+  test('deletes multiple secrets', async () => {
+    // Create secret
+    const secret1 = 'test-secret1';
+    const secret2 = 'test-secret2';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded,
+      secretName: secret1,
+      secretContent: Buffer.from(secret1).toString('binary'),
+    });
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded,
+      secretName: secret2,
+      secretContent: Buffer.from(secret2).toString('binary'),
+    });
+    // Get secret
+    const getResponse1 = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded,
+      secretName: secret1,
+    });
+    const getResponse2 = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded,
+      secretName: secret2,
+    });
+    expect(getResponse1.secretContent).toStrictEqual(secret1);
+    expect(getResponse2.secretContent).toStrictEqual(secret2);
+    // Delete secret
+    const deleteResponse = await rpcClient.methods.vaultsSecretsRemove({
+      secretNames: [
+        [vaultIdEncoded, secret1],
+        [vaultIdEncoded, secret2],
+      ],
+    });
+    expect(deleteResponse.success).toBeTruthy();
+    // Check secret was deleted
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsGet({
+        nameOrId: vaultIdEncoded,
+        secretName: secret1,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsGet({
+        nameOrId: vaultIdEncoded,
+        secretName: secret2,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+  });
+  test('deletes multiple secrets from multiple vaults with a single log message', async () => {
+    // Create secret
+    const secret1 = 'test-secret1';
+    const secret2 = 'test-secret2';
+    const secret3 = 'test-secret3';
+    const vaultId1 = await vaultManager.createVault('test-vault1');
+    const vaultId2 = await vaultManager.createVault('test-vault2');
+    const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
+    const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded1,
+      secretName: secret1,
+      secretContent: Buffer.from(secret1).toString('binary'),
+    });
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded1,
+      secretName: secret2,
+      secretContent: Buffer.from(secret2).toString('binary'),
+    });
+    await rpcClient.methods.vaultsSecretsNew({
+      nameOrId: vaultIdEncoded2,
+      secretName: secret3,
+      secretContent: Buffer.from(secret3).toString('binary'),
+    });
+    // Get secret
+    const getResponse1 = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded1,
+      secretName: secret1,
+    });
+    const getResponse2 = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded1,
+      secretName: secret2,
+    });
+    const getResponse3 = await rpcClient.methods.vaultsSecretsGet({
+      nameOrId: vaultIdEncoded2,
+      secretName: secret3,
+    });
+    expect(getResponse1.secretContent).toStrictEqual(secret1);
+    expect(getResponse2.secretContent).toStrictEqual(secret2);
+    expect(getResponse3.secretContent).toStrictEqual(secret3);
+    // Get log size
+    let logLength1: number;
+    let logLength2: number;
+    await vaultManager.withVaults([vaultId1], async (vault) => {
+      logLength1 = (await vault.log()).length;
+    });
+    await vaultManager.withVaults([vaultId2], async (vault) => {
+      logLength2 = (await vault.log()).length;
+    });
+    // Delete secret
+    const deleteResponse = await rpcClient.methods.vaultsSecretsRemove({
+      secretNames: [
+        [vaultIdEncoded1, secret1],
+        [vaultIdEncoded1, secret2],
+        [vaultIdEncoded2, secret3],
+      ],
+    });
+    expect(deleteResponse.success).toBeTruthy();
+    // Check secret was deleted
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsGet({
+        nameOrId: vaultIdEncoded1,
+        secretName: secret1,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsGet({
+        nameOrId: vaultIdEncoded1,
+        secretName: secret2,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsGet({
+        nameOrId: vaultIdEncoded2,
+        secretName: secret3,
+      }),
+      vaultsErrors.ErrorSecretsSecretUndefined,
+    );
+    // Ensure single log message for deleting the secrets
+    await vaultManager.withVaults([vaultId1], async (vault) => {
+      expect((await vault.log()).length).toEqual(logLength1 + 1);
+    });
+    await vaultManager.withVaults([vaultId2], async (vault) => {
+      expect((await vault.log()).length).toEqual(logLength2 + 1);
+    });
+  });
+  test('deletes directory recursively', async () => {
+    // Create secrets
+    const vaultName = 'test-vault';
+    const secretDirName = 'secretDir';
+    const secretList = ['test-secret1', 'test-secret2', 'test-secret3'];
+    const secretDir = path.join(dataDir, secretDirName);
+    const secretNames = secretList.map((v) => path.join(secretDirName, v));
+    await fs.promises.mkdir(secretDir);
+    for (const secret of secretList) {
+      const secretFile = path.join(secretDir, secret);
+      // Write secret to file
+      await fs.promises.writeFile(secretFile, secret);
+    }
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultsIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const addResponse = await rpcClient.methods.vaultsSecretsNewDir({
+      nameOrId: vaultsIdEncoded,
+      dirName: secretDir,
+    });
+    expect(addResponse.success).toBeTruthy();
+    // Delete secret
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsRemove({
+        secretNames: [[vaultsIdEncoded, secretDirName]],
+      }),
+      vaultsErrors.ErrorVaultsRecursive,
+    );
+    const deleteResponse = await rpcClient.methods.vaultsSecretsRemove({
+      secretNames: [[vaultsIdEncoded, secretDirName]],
+      options: { recursive: true },
+    });
+    expect(deleteResponse.success).toBeTruthy();
+    // Check secret was deleted
+    for (const secretName of secretNames) {
+      await testsUtils.expectRemoteError(
+        rpcClient.methods.vaultsSecretsGet({
+          nameOrId: vaultsIdEncoded,
+          secretName: secretName,
+        }),
+        vaultsErrors.ErrorSecretsSecretUndefined,
+      );
+    }
+    await testsUtils.expectRemoteError(
+      rpcClient.methods.vaultsSecretsStat({
+        nameOrId: vaultsIdEncoded,
+        secretName: secretDirName,
       }),
       vaultsErrors.ErrorSecretsSecretUndefined,
     );

@@ -129,37 +129,39 @@ async function statSecret(vault: Vault, secretName: string): Promise<Stat> {
  */
 async function deleteSecret(
   vault: Vault,
-  secretName: string,
+  secretNames: Array<string>,
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
-  try {
-    await vault.writeF(async (efs) => {
-      const stat = await efs.stat(secretName);
-      if (stat.isDirectory()) {
-        await efs.rmdir(secretName, fileOptions);
-        logger?.info(`Deleted directory at '${secretName}'`);
-      } else {
-        // Remove the specified file
-        await efs.unlink(secretName);
-        logger?.info(`Deleted secret at '${secretName}'`);
+  await vault.writeF(async (efs) => {
+    for (const secretName of secretNames) {
+      try {
+        const stat = await efs.stat(secretName);
+        if (stat.isDirectory()) {
+          await efs.rmdir(secretName, fileOptions);
+          logger?.info(`Deleted directory at '${secretName}'`);
+        } else {
+          // Remove the specified file
+          await efs.unlink(secretName);
+          logger?.info(`Deleted secret at '${secretName}'`);
+        }
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          throw new vaultsErrors.ErrorSecretsSecretUndefined(
+            `Secret with name: ${secretName} does not exist`,
+            { cause: e },
+          );
+        }
+        if (e.code === 'ENOTEMPTY') {
+          throw new vaultsErrors.ErrorVaultsRecursive(
+            `Could not delete directory '${secretName}' without recursive option`,
+            { cause: e },
+          );
+        }
+        throw e;
       }
-    });
-  } catch (e) {
-    if (e.code === 'ENOENT') {
-      throw new vaultsErrors.ErrorSecretsSecretUndefined(
-        `Secret with name: ${secretName} does not exist`,
-        { cause: e },
-      );
     }
-    if (e.code === 'ENOTEMPTY') {
-      throw new vaultsErrors.ErrorVaultsRecursive(
-        `Could not delete directory '${secretName}' without recursive option`,
-        { cause: e },
-      );
-    }
-    throw e;
-  }
+  });
 }
 
 /**

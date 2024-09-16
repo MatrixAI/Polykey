@@ -265,38 +265,60 @@ describe('VaultOps', () => {
   describe('deleteSecret', () => {
     test('deleting a secret', async () => {
       await writeSecret(secretName, secretContent);
-      await vaultOps.deleteSecret(vault, secretName);
+      await vaultOps.deleteSecret(vault, [secretName]);
       await expectSecretNot(secretName);
     });
     test('deleting a secret in a directory', async () => {
       const secretPath = path.join(dirName, secretName);
       await writeSecret(secretPath, secretContent);
-      await vaultOps.deleteSecret(vault, secretPath);
+      await vaultOps.deleteSecret(vault, [secretPath]);
       await expectSecretNot(secretPath);
       await expectDirExists(dirName);
     });
     test('deleting a directory', async () => {
       await mkdir(dirName);
-      await vaultOps.deleteSecret(vault, dirName);
+      await vaultOps.deleteSecret(vault, [dirName]);
       await expectDirExistsNot(dirName);
     });
     test('deleting a directory with a file should fail', async () => {
       const secretPath = path.join(dirName, secretName);
       await writeSecret(secretPath, secretContent);
-      await expect(vaultOps.deleteSecret(vault, dirName)).rejects.toThrow(
+      await expect(vaultOps.deleteSecret(vault, [dirName])).rejects.toThrow(
         vaultsErrors.ErrorVaultsRecursive,
       );
     });
     test('deleting a directory with force', async () => {
       const secretPath = path.join(dirName, secretName);
       await writeSecret(secretPath, secretContent);
-      await vaultOps.deleteSecret(vault, dirName, { recursive: true });
+      await vaultOps.deleteSecret(vault, [dirName], { recursive: true });
       await expectDirExistsNot(dirName);
     });
     test('deleting a secret that does not exist should fail', async () => {
-      await expect(vaultOps.deleteSecret(vault, secretName)).rejects.toThrow(
+      await expect(vaultOps.deleteSecret(vault, [secretName])).rejects.toThrow(
         vaultsErrors.ErrorSecretsSecretUndefined,
       );
+    });
+    test('deleting multiple secrets', async () => {
+      const secretNames = ['secret1', 'secret2', 'secret3'];
+      for (const secretName of secretNames) {
+        await writeSecret(secretName, secretName);
+      }
+      await vaultOps.deleteSecret(vault, secretNames);
+      for (const secretName of secretNames) {
+        await expectSecretNot(secretName);
+      }
+    });
+    test('deleting multiple secrets should add only one new log message', async () => {
+      const secretNames = ['secret1', 'secret2', 'secret3'];
+      for (const secretName of secretNames) {
+        await writeSecret(secretName, secretName);
+      }
+      const logLength = (await vault.log()).length;
+      await vaultOps.deleteSecret(vault, secretNames);
+      for (const secretName of secretNames) {
+        await expectSecretNot(secretName);
+      }
+      expect((await vault.log()).length).toBe(logLength + 1);
     });
   });
   describe('mkdir', () => {
@@ -521,8 +543,10 @@ describe('VaultOps', () => {
           await vaultOps.getSecret(vault, '.hidingDir/.hiddenInSecret')
         ).toString(),
       ).toStrictEqual('change_inside');
-      await vaultOps.deleteSecret(vault, '.hidingSecret', { recursive: true });
-      await vaultOps.deleteSecret(vault, '.hidingDir', { recursive: true });
+      await vaultOps.deleteSecret(vault, ['.hidingSecret'], {
+        recursive: true,
+      });
+      await vaultOps.deleteSecret(vault, ['.hidingDir'], { recursive: true });
       list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual([].sort());
     },
