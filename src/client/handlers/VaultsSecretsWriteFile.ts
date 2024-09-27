@@ -11,7 +11,7 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 
-class VaultsSecretsEdit extends UnaryHandler<
+class VaultsSecretsWriteFile extends UnaryHandler<
   {
     vaultManager: VaultManager;
     db: DB;
@@ -37,7 +37,7 @@ class VaultsSecretsEdit extends UnaryHandler<
       await vaultManager.withVaults(
         [vaultId],
         async (vault) => {
-          await vaultOps.updateSecret(vault, input.secretName, secretContent);
+          await vaultOps.writeSecret(vault, input.secretName, secretContent);
         },
         tran,
       );
@@ -48,4 +48,4 @@ class VaultsSecretsEdit extends UnaryHandler<
   };
 }
 
-export default VaultsSecretsEdit;
+export default VaultsSecretsWriteFile;

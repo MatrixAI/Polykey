@@ -500,6 +500,24 @@ describe('VaultOps', () => {
       expect(secretList).toHaveLength(0);
     });
   });
+  describe('writeSecret', () => {
+    const secretName = 'secret';
+    const secretContent = 'secret-content';
+    const newSecretContent = 'updated-secret-content';
+
+    test('updates existing secret', async () => {
+      await vaultOps.addSecret(vault, secretName, secretContent);
+      await vaultOps.writeSecret(vault, secretName, newSecretContent);
+      const result = await vaultOps.getSecret(vault, secretName);
+      expect(result.toString()).toStrictEqual(newSecretContent);
+    });
+
+    test('creates new secret if it does not exist', async () => {
+      await vaultOps.writeSecret(vault, secretName, newSecretContent);
+      const result = await vaultOps.getSecret(vault, secretName);
+      expect(result.toString()).toStrictEqual(newSecretContent);
+    });
+  });
   test('adding hidden files and directories', async () => {
     await vaultOps.addSecret(vault, '.hiddenSecret', 'hidden_contents');
     await vaultOps.mkdir(vault, '.hiddenDir', { recursive: true });

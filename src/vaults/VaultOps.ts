@@ -263,6 +263,21 @@ async function listSecrets(vault: Vault): Promise<string[]> {
   });
 }
 
+/**
+ * Changes the contents of a secret. Creates a new file if it doesn't exist.
+ */
+async function writeSecret(
+  vault: Vault,
+  secretName: string,
+  content: Buffer | string,
+  logger?: Logger,
+): Promise<void> {
+  await vault.writeF(async (efs) => {
+    await efs.writeFile(secretName, content);
+  });
+  logger?.info(`Wrote secret ${secretName} in vault ${vault.vaultId}`);
+}
+
 export {
   addSecret,
   updateSecret,
@@ -273,4 +288,5 @@ export {
   mkdir,
   addSecretDirectory,
   listSecrets,
+  writeSecret,
 };
