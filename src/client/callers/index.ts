@@ -63,7 +63,6 @@ import vaultsPermissionUnset from './vaultsPermissionUnset';
 import vaultsPull from './vaultsPull';
 import vaultsRename from './vaultsRename';
 import vaultsScan from './vaultsScan';
-import vaultsSecretsEdit from './vaultsSecretsEdit';
 import vaultsSecretsEnv from './vaultsSecretsEnv';
 import vaultsSecretsGet from './vaultsSecretsGet';
 import vaultsSecretsList from './vaultsSecretsList';
@@ -73,6 +72,7 @@ import vaultsSecretsNewDir from './vaultsSecretsNewDir';
 import vaultsSecretsRename from './vaultsSecretsRename';
 import vaultsSecretsRemove from './vaultsSecretsRemove';
 import vaultsSecretsStat from './vaultsSecretsStat';
+import vaultsSecretsWriteFile from './vaultsSecretsWriteFile';
 import vaultsVersion from './vaultsVersion';
 
 /**
@@ -144,7 +144,6 @@ const clientManifest = {
   vaultsPull,
   vaultsRename,
   vaultsScan,
-  vaultsSecretsEdit,
   vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,
@@ -154,6 +153,7 @@ const clientManifest = {
   vaultsSecretsRename,
   vaultsSecretsRemove,
   vaultsSecretsStat,
+  vaultsSecretsWriteFile,
   vaultsVersion,
 };
 
@@ -224,7 +224,6 @@ export {
   vaultsPull,
   vaultsRename,
   vaultsScan,
-  vaultsSecretsEdit,
   vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,
@@ -234,5 +233,6 @@ export {
   vaultsSecretsRename,
   vaultsSecretsRemove,
   vaultsSecretsStat,
+  vaultsSecretsWriteFile,
   vaultsVersion,
 };
