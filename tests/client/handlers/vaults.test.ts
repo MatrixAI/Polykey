@@ -12,6 +12,7 @@ import type {
   SecretRenameMessage,
   SecretsRemoveHeaderMessage,
   VaultListMessage,
+  VaultNamesHeaderMessageTagged,
   VaultPermissionMessage,
   VaultsLogMessage,
 } from '@/client/types';
@@ -49,6 +50,7 @@ import {
   VaultsSecretsNewDir,
   VaultsSecretsRename,
   VaultsSecretsStat,
+  VaultsSecretsTouch,
   VaultsVersion,
 } from '@/client/handlers';
 import {
@@ -69,6 +71,7 @@ import {
   vaultsSecretsNewDir,
   vaultsSecretsRename,
   vaultsSecretsStat,
+  vaultsSecretsTouch,
   vaultsVersion,
 } from '@/client/callers';
 import * as keysUtils from '@/keys/utils';
@@ -1833,7 +1836,7 @@ describe('vaultsSecretsMkdir', () => {
       };
       await expect(consumeP()).rejects.toThrow(cancelMessage);
 
-      // await vaultManager.stop();
+      // Await vaultManager.stop();
       // await vaultManager.start({ fresh: true});
     },
   );
@@ -3538,6 +3541,676 @@ describe('vaultsSecretsStat', () => {
     expect(stat.blksize).toBe(4096);
     expect(stat.blocks).toBe(1);
   });
+});
+describe('vaultsSecretsTouch', () => {
+  const logger = new Logger('vaultsSecretsTouch test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsTouch: typeof vaultsSecretsTouch;
+  }>;
+  let vaultManager: VaultManager;
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password: password,
+      keysPath: keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger: logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({ dbPath, logger });
+    const vaultsPath = path.join(dataDir, 'vaults');
+    vaultManager = await VaultManager.createVaultManager({
+      vaultsPath: vaultsPath,
+      db: db,
+      acl: {} as ACL,
+      keyRing: keyRing,
+      nodeManager: {} as NodeManager,
+      gestaltGraph: {} as GestaltGraph,
+      notificationsManager: {} as NotificationsManager,
+      logger: logger,
+    });
+    clientService = new ClientService({
+      tlsConfig: tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsTouch: new VaultsSecretsTouch({
+          db: db,
+          vaultManager: vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
+        vaultsSecretsTouch,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    await clientService?.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await vaultManager.stop();
+    await db.stop();
+    await keyRing.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('fails when header is not sent', async () => {
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Not sending the header message
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: 'invalid',
+      secretName: 'invalid',
+    });
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientInvalidHeader,
+    );
+  });
+  test('fails when only the header is sent', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Not sending the content messages
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientProtocolError,
+    );
+  });
+  test('fails when the header is sent multiple times', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientProtocolError,
+    );
+  });
+  test('fails with invalid vault name', async () => {
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: ['invalid'],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: 'invalid',
+      secretName: 'invalid',
+    });
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      vaultsErrors.ErrorVaultsVaultUndefined,
+    );
+  });
+  test('creates a file if it does not exist', async () => {
+    // Create secrets
+    const secretName = 'test-secret1';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Touch secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName,
+    });
+    await writer.close();
+    let loopRun = false;
+    for await (const data of response.readable) {
+      if (loopRun) {
+        fail('Only one iteration should run');
+      }
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
+      }
+      loopRun = true;
+    }
+    // Check
+    expect(loopRun).toBeTruthy();
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        // Ensure file exists
+        expect(await efs.exists(secretName)).toBeTruthy();
+      });
+    });
+  });
+  test('updates the timestamps of a file if it exists', async () => {
+    // Create secrets
+    const secretName = 'test-secret1';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    let oldMtime: Date | undefined = undefined;
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secretName);
+        const stat = await efs.stat(secretName);
+        oldMtime = stat.mtime;
+      });
+    });
+    if (oldMtime == null) fail('Mtime cannot be nullish');
+    // Touch secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    const startTime = new Date();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName,
+    });
+    await writer.close();
+    let loopRun = false;
+    for await (const data of response.readable) {
+      loopRun = true;
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
+      }
+    }
+    const endTime = new Date();
+    // Check
+    expect(loopRun).toBeTruthy();
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(secretName)).toBeTruthy();
+        // Ensure the timestamps have changed
+        const stat = await efs.stat(secretName);
+        expect(
+          stat.mtime >= startTime &&
+            stat.mtime <= endTime &&
+            stat.mtime !== oldMtime,
+        ).toBeTruthy();
+      });
+    });
+  });
+  test('creates multiple files', async () => {
+    // Create secrets
+    const secretName1 = 'test-secret1';
+    const secretName2 = 'test-secret2';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Touch secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
+    await writer.close();
+    let loopRun = false;
+    for await (const data of response.readable) {
+      loopRun = true;
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
+      }
+    }
+    // Check
+    expect(loopRun).toBeTruthy();
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(secretName1)).toBeTruthy();
+        expect(await efs.exists(secretName2)).toBeTruthy();
+      });
+    });
+  });
+  test('should continue on error', async () => {
+    // Create secrets
+    const secretName1 = 'test-secret1';
+    const secretName2 = 'test-secret2';
+    const invalidName = 'invalid/path';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Create secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: invalidName,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
+    await writer.close();
+    let errorCount = 0;
+    for await (const data of response.readable) {
+      if (data.type === 'ErrorMessage') {
+        // No other file name should raise this error
+        expect(data.reason).toEqual(invalidName);
+        errorCount++;
+        continue;
+      }
+      expect(data.type).toEqual('SuccessMessage');
+    }
+    // Only one error should have happened
+    expect(errorCount).toEqual(1);
+    // Check each secret was created
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(secretName1)).toBeTruthy();
+        expect(await efs.exists(secretName2)).toBeTruthy();
+      });
+    });
+  });
+  test('should mix file creation and touching', async () => {
+    // Create secrets
+    const secretName1 = 'test-secret1';
+    const secretName2 = 'test-secret2';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    let oldMtime: Date | undefined = undefined;
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secretName1);
+        const stat = await efs.stat(secretName1);
+        oldMtime = stat.mtime;
+      });
+    });
+    if (oldMtime == null) fail('Mtime cannot be nullish');
+    // Create secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    const startTime = new Date();
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
+    await writer.close();
+    for await (const data of response.readable) {
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
+      }
+    }
+    const endTime = new Date();
+    // Check each secret was created or modified
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        // Ensure both files exist
+        expect(await efs.exists(secretName1)).toBeTruthy();
+        expect(await efs.exists(secretName2)).toBeTruthy();
+        // Ensure the timestamps are correct for both files
+        const stat1 = await efs.stat(secretName1);
+        expect(
+          stat1.mtime >= startTime &&
+            stat1.mtime <= endTime &&
+            stat1.mtime !== oldMtime,
+        ).toBeTruthy();
+        const stat2 = await efs.stat(secretName2);
+        expect(
+          stat2.mtime >= startTime &&
+            stat2.mtime <= endTime &&
+            stat2.mtime !== oldMtime,
+        ).toBeTruthy();
+      });
+    });
+  });
+  test('touches multiple secrets in one log message', async () => {
+    // Create secret
+    const secretName1 = 'test-secret1';
+    const secretName2 = 'test-secret2';
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Get log size
+    let logLength = 0;
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      logLength = (await vault.log()).length;
+    });
+    // Touch secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
+    await writer.close();
+    let loopRun = false;
+    for await (const data of response.readable) {
+      loopRun = true;
+      expect(data.type).toEqual('SuccessMessage');
+    }
+    expect(loopRun).toBeTruthy();
+    // Ensure single log message for creating the secrets
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      expect((await vault.log()).length).toEqual(logLength + 1);
+    });
+  });
+  test('touches secrets from multiple vaults', async () => {
+    // Create secret
+    const secretName1 = 'test-secret1';
+    const secretName2 = 'test-secret2';
+    const secretName3 = 'test-secret3';
+    const vaultId1 = await vaultManager.createVault('test-vault1');
+    const vaultId2 = await vaultManager.createVault('test-vault2');
+    const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
+    const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
+    // Write files
+    await vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        await vault1.writeF(async (efs) => {
+          await efs.writeFile(secretName1, secretName1);
+          await efs.writeFile(secretName3, secretName3);
+        });
+        await vault2.writeF(async (efs) => {
+          await efs.writeFile(secretName2, secretName2);
+        });
+      },
+    );
+    // Delete secret
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded1, vaultIdEncoded2],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded1,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded2,
+      secretName: secretName2,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded1,
+      secretName: secretName3,
+    });
+    await writer.close();
+    let loopRun = false;
+    for await (const data of response.readable) {
+      loopRun = true;
+      expect(data.type).toEqual('SuccessMessage');
+    }
+    // Ensure single log message for deleting the secrets
+    expect(loopRun).toBeTruthy();
+    await vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        await vault1.readF(async (efs) => {
+          expect(await efs.exists(secretName1)).toBeTruthy();
+          expect(await efs.exists(secretName3)).toBeTruthy();
+        });
+        await vault2.readF(async (efs) => {
+          expect(await efs.exists(secretName2)).toBeTruthy();
+        });
+      },
+    );
+  });
+  test('should update timestamp of directory', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const dirName = 'dir';
+    let oldMtime: Date | undefined = undefined;
+    // Create secrets
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.mkdir(dirName);
+        const stat = await efs.stat(dirName);
+        oldMtime = stat.mtime;
+      });
+    });
+    if (oldMtime == null) fail('Mtime cannot be nullish');
+    // Touch secrets
+    const response = await rpcClient.methods.vaultsSecretsTouch();
+    const writer = response.writable.getWriter();
+    const startTime = new Date();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: dirName,
+    });
+    await writer.close();
+    for await (const data of response.readable) {
+      expect(data.type).toEqual('SuccessMessage');
+    }
+    const endTime = new Date();
+    // Check each secret and the secret directory were deleted
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(dirName)).toBeTruthy();
+        const stat = await efs.stat(dirName);
+        expect(
+          stat.mtime >= startTime &&
+            stat.mtime <= endTime &&
+            stat.mtime !== oldMtime,
+        ).toBeTruthy();
+      });
+    });
+  });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          for (const file of fileNames) {
+            await efs.writeFile(file, file);
+          }
+        });
+      });
+
+      const inputGen = async function* (): AsyncGenerator<
+        VaultNamesHeaderMessageTagged | SecretIdentifierMessageTagged,
+        void,
+        void
+      > {
+        // Header message
+        yield {
+          type: 'VaultNamesHeaderMessage',
+          vaultNames: [vaultIdEncoded],
+        };
+        // Content messages
+        for (const file of fileNames) {
+          yield {
+            type: 'SecretIdentifierMessage',
+            nameOrId: vaultIdEncoded,
+            secretName: file,
+          };
+        }
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsTouch({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputGen(), () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
 describe('vaultsVersion', () => {
   const logger = new Logger('vaultsVersion test', LogLevel.WARN, [

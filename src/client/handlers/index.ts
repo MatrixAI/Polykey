@@ -88,6 +88,7 @@ import VaultsSecretsNewDir from './VaultsSecretsNewDir';
 import VaultsSecretsRename from './VaultsSecretsRename';
 import VaultsSecretsRemove from './VaultsSecretsRemove';
 import VaultsSecretsStat from './VaultsSecretsStat';
+import VaultsSecretsTouch from './VaultsSecretsTouch';
 import VaultsSecretsWriteFile from './VaultsSecretsWriteFile';
 import VaultsVersion from './VaultsVersion';
 
@@ -191,6 +192,7 @@ const serverManifest = (container: {
     vaultsSecretsRename: new VaultsSecretsRename(container),
     vaultsSecretsRemove: new VaultsSecretsRemove(container),
     vaultsSecretsStat: new VaultsSecretsStat(container),
+    vaultsSecretsTouch: new VaultsSecretsTouch(container),
     vaultsSecretsWriteFile: new VaultsSecretsWriteFile(container),
     vaultsVersion: new VaultsVersion(container),
   };
@@ -272,6 +274,7 @@ export {
   VaultsSecretsRename,
   VaultsSecretsRemove,
   VaultsSecretsStat,
+  VaultsSecretsTouch,
   VaultsSecretsWriteFile,
   VaultsVersion,
 };

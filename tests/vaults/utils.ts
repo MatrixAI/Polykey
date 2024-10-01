@@ -74,12 +74,14 @@ async function readSecret(vault: Vault, path: string) {
 async function expectSecret(
   vault: Vault,
   path: string,
-  contentsExpected: string,
+  contentsExpected?: string,
 ) {
   const contentsSecretP = readSecret(vault, path);
   await expect(contentsSecretP).resolves.toBeDefined();
-  const contentsSecretValue = (await contentsSecretP).toString();
-  expect(contentsSecretValue).toBe(contentsExpected);
+  if (contentsExpected != null) {
+    const contentsSecretValue = (await contentsSecretP).toString();
+    expect(contentsSecretValue).toBe(contentsExpected);
+  }
 }
 
 async function expectSecretNot(vault: Vault, path: string) {

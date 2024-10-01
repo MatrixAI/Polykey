@@ -299,6 +299,43 @@ async function writeSecret(
   }
 }
 
+/**
+ * Performs a touch operation on a secret by updating all it's timestamps to the
+ * current time.
+ */
+async function touchSecret(
+  vault: Vault,
+  secretName: string,
+  ctx?: ContextTimed,
+): Promise<void> {
+  const now = new Date();
+  try {
+    await vault.writeF(
+      async (efs) => {
+        // If the file exists, update its timestamps. Otherwise, create the
+        // file. Note that this can throw errors, which are handled later.
+        if (await efs.exists(secretName)) {
+          await efs.utimes(secretName, now, now);
+        } else {
+          await efs.writeFile(secretName);
+        }
+      },
+      undefined,
+      ctx,
+    );
+  } catch (e) {
+    switch (e.code) {
+      case 'ENOENT':
+        throw new vaultsErrors.ErrorSecretsSecretUndefined(
+          `One or more parent directories for '${secretName}' do not exist`,
+          { cause: e },
+        );
+      default:
+        throw e;
+    }
+  }
+}
+
 export {
   addSecret,
   renameSecret,
@@ -309,4 +346,5 @@ export {
   addSecretDirectory,
   listSecrets,
   writeSecret,
+  touchSecret,
 };
