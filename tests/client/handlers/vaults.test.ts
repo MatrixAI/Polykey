@@ -3,6 +3,7 @@ import type { FileSystem } from '@/types';
 import type { VaultId } from '@/ids';
 import type NodeManager from '@/nodes/NodeManager';
 import type {
+  ErrorMessage,
   LogEntryMessage,
   SecretContentMessage,
   VaultListMessage,
@@ -1341,15 +1342,153 @@ describe('vaultsSecretsMkdir', () => {
     const vaultName = 'test-vault';
     const vaultId = await vaultManager.createVault(vaultName);
     const dirPath = 'dir/dir1/dir2';
-    const response = await rpcClient.methods.vaultsSecretsMkdir({
-      recursive: true,
+    const response = await rpcClient.methods.vaultsSecretsMkdir();
+    const writer = response.writable.getWriter();
+    await writer.write({
       nameOrId: vaultsUtils.encodeVaultId(vaultId),
       dirName: dirPath,
+      metadata: { options: { recursive: true } },
     });
-    expect(response.success).toBeTruthy();
+    await writer.close();
+
+    for await (const data of response.readable) {
+      expect(data.type).toEqual('success');
+    }
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         expect(await efs.exists(dirPath)).toBeTruthy();
+      });
+    });
+  });
+  test('fails to make directories without recursive', async () => {
+    const vaultName = 'test-vault';
+    const vaultId = await vaultManager.createVault(vaultName);
+    const encodeVaultId = vaultsUtils.encodeVaultId(vaultId);
+    const dirPath = 'dir/dir1/dir2';
+    const response = await rpcClient.methods.vaultsSecretsMkdir();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: encodeVaultId, dirName: dirPath });
+    await writer.close();
+    for await (const data of response.readable) {
+      expect(data.type).toEqual('error');
+      // TS cannot properly evaluate a type as nested as this, so we use the
+      // as keyword to help it. Inside this block, the type of data is 'error'.
+      const error = data as ErrorMessage;
+      expect(error.code).toEqual('ENOENT');
+      expect(error.reason).toEqual(dirPath);
+    }
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(dirPath)).toBeFalsy();
+      });
+    });
+  });
+  test('makes directories across multiple vaults', async () => {
+    const vaultName1 = 'test-vault1';
+    const vaultName2 = 'test-vault2';
+    const vaultId1 = await vaultManager.createVault(vaultName1);
+    const vaultId2 = await vaultManager.createVault(vaultName2);
+    const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
+    const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
+    const dirPath1 = 'dir-1';
+    const dirPath2 = 'dir-2';
+    const dirPath3 = 'dir-3';
+    // Attempt to make directories
+    const response = await rpcClient.methods.vaultsSecretsMkdir();
+    const writer = response.writable.getWriter();
+    await writer.write({
+      nameOrId: vaultIdEncoded1,
+      dirName: dirPath1,
+      metadata: { options: { recursive: true } },
+    });
+    await writer.write({ nameOrId: vaultIdEncoded2, dirName: dirPath2 });
+    await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath3 });
+    await writer.close();
+    // Check if the operation concluded as expected
+    for await (const data of response.readable) {
+      expect(data.type).toEqual('success');
+    }
+    await vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        await vault1.readF(async (efs) => {
+          expect(await efs.exists(dirPath1)).toBeTruthy();
+          expect(await efs.exists(dirPath3)).toBeTruthy();
+        });
+        await vault2.readF(async (efs) => {
+          expect(await efs.exists(dirPath2)).toBeTruthy();
+        });
+      },
+    );
+  });
+  test('continues on error', async () => {
+    const vaultName1 = 'test-vault1';
+    const vaultName2 = 'test-vault2';
+    const vaultId1 = await vaultManager.createVault(vaultName1);
+    const vaultId2 = await vaultManager.createVault(vaultName2);
+    const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
+    const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
+    const dirPath1 = 'dir-1';
+    const dirPath2 = 'dir-2';
+    const dirPath3 = 'nodir/dir-3';
+    // Attempt to make directories
+    const response = await rpcClient.methods.vaultsSecretsMkdir();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath1 });
+    await writer.write({ nameOrId: vaultIdEncoded2, dirName: dirPath2 });
+    await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath3 });
+    await writer.close();
+    // Check if the operation concluded as expected
+    for await (const data of response.readable) {
+      if (data.type === 'error') {
+        // TS cannot properly evaluate a type as nested as this, so we use the
+        // as keyword to help it. Inside this block, the type of data is 'error'.
+        const error = data as ErrorMessage;
+        expect(error.code).toEqual('ENOENT');
+        expect(error.reason).toEqual(dirPath3);
+      }
+    }
+    await vaultManager.withVaults(
+      [vaultId1, vaultId2],
+      async (vault1, vault2) => {
+        await vault1.readF(async (efs) => {
+          expect(await efs.exists(dirPath1)).toBeTruthy();
+          expect(await efs.exists(dirPath3)).toBeFalsy();
+        });
+        await vault2.readF(async (efs) => {
+          expect(await efs.exists(dirPath2)).toBeTruthy();
+        });
+      },
+    );
+  });
+  test('fails if secret with same name exists', async () => {
+    const vaultName = 'test-vault';
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const dirPath = 'secret-first';
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(dirPath, dirPath);
+      });
+    });
+    // Attempt to make directory
+    const response = await rpcClient.methods.vaultsSecretsMkdir();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: vaultIdEncoded, dirName: dirPath });
+    await writer.close();
+    // Check if the operation concluded as expected
+    for await (const data of response.readable) {
+      expect(data.type).toEqual('error');
+      // TS cannot properly evaluate a type as nested as this, so we use the
+      // as keyword to help it. Inside this block, the type of data is 'error'.
+      const error = data as ErrorMessage;
+      expect(error.code).toEqual('EEXIST');
+      expect(error.reason).toEqual(dirPath);
+    }
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        const stat = await efs.stat(dirPath);
+        expect(stat.isFile).toBeTruthy();
       });
     });
   });
@@ -1377,35 +1516,45 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
   }>;
   let vaultManager: VaultManager;
   // Helper function to create secrets in a vault
-  const createVaultSecret = async (vaultName: string, secretName: string) => {
-    const createResponse = await rpcClient.methods.vaultsSecretsNew({
-      nameOrId: vaultName,
-      secretName: secretName,
-      secretContent: Buffer.from(secretName).toString('binary'),
+  const createVaultSecret = async (
+    vaultId: VaultId,
+    secretName: string,
+    content: string,
+  ) => {
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secretName, content);
+        expect(await efs.exists(secretName)).toBeTruthy();
+      });
     });
-    expect(createResponse.success).toBeTruthy();
   };
   // Helper function to ensure each file path was deleted
-  const checkSecretIsDeleted = async (
-    vaultName: string,
-    secretName: string,
-  ) => {
-    await testsUtils.expectRemoteError(
-      rpcClient.methods.vaultsSecretsStat({
-        nameOrId: vaultName,
-        secretName: secretName,
-      }),
-      vaultsErrors.ErrorSecretsSecretUndefined,
-    );
+  const checkSecretIsDeleted = async (vaultId: VaultId, secretName: string) => {
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(secretName)).toBeFalsy();
+      });
+    });
   };
   // Helper function to ensure each file path exists in the vault
-  const checkSecretExists = async (vaultName: string, secretName: string) => {
-    await expect(
-      rpcClient.methods.vaultsSecretsStat({
-        nameOrId: vaultName,
-        secretName: secretName,
-      }),
-    ).toResolve();
+  const checkSecretExists = async (vaultId: VaultId, secretName: string) => {
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        expect(await efs.exists(secretName)).toBeTruthy();
+      });
+    });
+  };
+  // Helper function to create a directory
+  const createVaultDir = async (
+    vaultId: VaultId,
+    dirName: string,
+    recursive: boolean = false,
+  ) => {
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.mkdir(dirName, { recursive: recursive });
+      });
+    });
   };
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -1554,9 +1703,9 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretName3 = 'test-secret3';
     const vaultId = await vaultManager.createVault('test-vault');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
-    await createVaultSecret(vaultIdEncoded, secretName1);
-    await createVaultSecret(vaultIdEncoded, secretName2);
-    await createVaultSecret(vaultIdEncoded, secretName3);
+    await createVaultSecret(vaultId, secretName1, secretName1);
+    await createVaultSecret(vaultId, secretName2, secretName2);
+    await createVaultSecret(vaultId, secretName3, secretName3);
     // Get secrets
     const getStream = await rpcClient.methods.vaultsSecretsGet();
     const getWriter = getStream.writable.getWriter();
@@ -1587,8 +1736,8 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretName2 = 'test-secret2';
     const vaultId = await vaultManager.createVault('test-vault');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
-    await createVaultSecret(vaultIdEncoded, secretName1);
-    await createVaultSecret(vaultIdEncoded, secretName2);
+    await createVaultSecret(vaultId, secretName1, secretName1);
+    await createVaultSecret(vaultId, secretName2, secretName2);
     // Get secrets
     const getStream = await rpcClient.methods.vaultsSecretsGet();
     const getWriter = getStream.writable.getWriter();
@@ -1622,8 +1771,8 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretName2 = 'test-secret2';
     const vaultId = await vaultManager.createVault('test-vault');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
-    await createVaultSecret(vaultIdEncoded, secretName1);
-    await createVaultSecret(vaultIdEncoded, secretName2);
+    await createVaultSecret(vaultId, secretName1, secretName1);
+    await createVaultSecret(vaultId, secretName2, secretName2);
     // Delete secrets
     const deleteStream = await rpcClient.methods.vaultsSecretsRemove();
     const deleteWriter = deleteStream.writable.getWriter();
@@ -1638,8 +1787,8 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     await deleteWriter.close();
     expect((await deleteStream.output).success).toBeTruthy();
     // Check each secret was deleted
-    await checkSecretIsDeleted(vaultIdEncoded, secretName1);
-    await checkSecretIsDeleted(vaultIdEncoded, secretName2);
+    await checkSecretIsDeleted(vaultId, secretName1);
+    await checkSecretIsDeleted(vaultId, secretName2);
   });
   test('gets secrets from multiple vaults', async () => {
     // Create secret
@@ -1650,9 +1799,9 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const vaultId2 = await vaultManager.createVault('test-vault2');
     const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
     const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
-    await createVaultSecret(vaultIdEncoded1, secretName1);
-    await createVaultSecret(vaultIdEncoded1, secretName2);
-    await createVaultSecret(vaultIdEncoded2, secretName3);
+    await createVaultSecret(vaultId1, secretName1, secretName1);
+    await createVaultSecret(vaultId1, secretName2, secretName2);
+    await createVaultSecret(vaultId2, secretName3, secretName3);
     // Get secret
     const getStream = await rpcClient.methods.vaultsSecretsGet();
     const getWriter = getStream.writable.getWriter();
@@ -1686,9 +1835,9 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const vaultId2 = await vaultManager.createVault('test-vault2');
     const vaultIdEncoded1 = vaultsUtils.encodeVaultId(vaultId1);
     const vaultIdEncoded2 = vaultsUtils.encodeVaultId(vaultId2);
-    await createVaultSecret(vaultIdEncoded1, secretName1);
-    await createVaultSecret(vaultIdEncoded1, secretName2);
-    await createVaultSecret(vaultIdEncoded2, secretName3);
+    await createVaultSecret(vaultId1, secretName1, secretName1);
+    await createVaultSecret(vaultId1, secretName2, secretName2);
+    await createVaultSecret(vaultId2, secretName3, secretName3);
     // Get log size
     let logLength1 = 0;
     let logLength2 = 0;
@@ -1726,15 +1875,6 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     );
   });
   test('should recursively delete directories', async () => {
-    // Helper function to create directories
-    const createDir = async (vaultName: string, dirName: string) => {
-      const createResponse = await rpcClient.methods.vaultsSecretsMkdir({
-        nameOrId: vaultName,
-        dirName: dirName,
-        recursive: false,
-      });
-      expect(createResponse.success).toBeTruthy();
-    };
     // Create secrets
     const vaultId = await vaultManager.createVault('test-vault');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
@@ -1742,10 +1882,10 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretName1 = `${secretDir}/test-secret1`;
     const secretName2 = `${secretDir}/test-secret2`;
     const secretName3 = `${secretDir}/test-secret3`;
-    await createDir(vaultIdEncoded, secretDir);
-    await createVaultSecret(vaultIdEncoded, secretName1);
-    await createVaultSecret(vaultIdEncoded, secretName2);
-    await createVaultSecret(vaultIdEncoded, secretName3);
+    await createVaultDir(vaultId, secretDir);
+    await createVaultSecret(vaultId, secretName1, secretName1);
+    await createVaultSecret(vaultId, secretName2, secretName2);
+    await createVaultSecret(vaultId, secretName3, secretName3);
     // Deleting directory with recursive set should not fail
     const deleteStream = await rpcClient.methods.vaultsSecretsRemove();
     await (async () => {
@@ -1759,9 +1899,9 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     })();
     expect((await deleteStream.output).success).toBeTruthy();
     // Check each secret and the secret directory were deleted
-    await checkSecretIsDeleted(vaultIdEncoded, secretName1);
-    await checkSecretIsDeleted(vaultIdEncoded, secretName2);
-    await checkSecretIsDeleted(vaultIdEncoded, secretName3);
+    await checkSecretIsDeleted(vaultId, secretName1);
+    await checkSecretIsDeleted(vaultId, secretName2);
+    await checkSecretIsDeleted(vaultId, secretName3);
     await testsUtils.expectRemoteError(
       rpcClient.methods.vaultsSecretsStat({
         nameOrId: vaultIdEncoded,
@@ -1771,15 +1911,6 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     );
   });
   test('should fail to delete directory without recursive option', async () => {
-    // Helper function to create directories
-    const createDir = async (vaultName: string, dirName: string) => {
-      const createResponse = await rpcClient.methods.vaultsSecretsMkdir({
-        nameOrId: vaultName,
-        dirName: dirName,
-        recursive: false,
-      });
-      expect(createResponse.success).toBeTruthy();
-    };
     // Create secrets
     const vaultId = await vaultManager.createVault('test-vault');
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
@@ -1787,10 +1918,10 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
     const secretName1 = `${secretDir}/test-secret1`;
     const secretName2 = `${secretDir}/test-secret2`;
     const secretName3 = `${secretDir}/test-secret3`;
-    await createDir(vaultIdEncoded, secretDir);
-    await createVaultSecret(vaultIdEncoded, secretName1);
-    await createVaultSecret(vaultIdEncoded, secretName2);
-    await createVaultSecret(vaultIdEncoded, secretName3);
+    await createVaultDir(vaultId, secretDir);
+    await createVaultSecret(vaultId, secretName1, secretName1);
+    await createVaultSecret(vaultId, secretName2, secretName2);
+    await createVaultSecret(vaultId, secretName3, secretName3);
     // Deleting directory with recursive unset should fail
     const failDeleteStream = await rpcClient.methods.vaultsSecretsRemove();
     await (async () => {
@@ -1803,10 +1934,10 @@ describe('vaultsSecretsNew and vaultsSecretsDelete, vaultsSecretsGet', () => {
       vaultsErrors.ErrorVaultsRecursive,
     );
     // Check each secret and the secret directory exist
-    await checkSecretExists(vaultIdEncoded, secretName1);
-    await checkSecretExists(vaultIdEncoded, secretName2);
-    await checkSecretExists(vaultIdEncoded, secretName3);
-    await checkSecretExists(vaultIdEncoded, secretDir);
+    await checkSecretExists(vaultId, secretName1);
+    await checkSecretExists(vaultId, secretName2);
+    await checkSecretExists(vaultId, secretName3);
+    await checkSecretExists(vaultId, secretDir);
   });
 });
 describe('vaultsSecretsNewDir and vaultsSecretsList', () => {

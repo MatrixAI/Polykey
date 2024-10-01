@@ -18,7 +18,7 @@ class AgentStatus extends UnaryHandler<
   public handle = async (): Promise<
     ClientRPCResponseResult<StatusResultMessage>
   > => {
-    const { polykeyAgent } = this.container;
+    const { polykeyAgent }: { polykeyAgent: PolykeyAgent } = this.container;
     return {
       pid: process.pid,
       nodeIdEncoded: nodesUtils.encodeNodeId(polykeyAgent.keyRing.getNodeId()),

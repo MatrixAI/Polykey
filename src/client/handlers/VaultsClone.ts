@@ -23,7 +23,8 @@ class VaultsClone extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<CloneMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { db, vaultManager } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     const {
       nodeId,
     }: {
@@ -43,9 +44,7 @@ class VaultsClone extends UnaryHandler<
     await db.withTransactionF(async (tran) => {
       await vaultManager.cloneVault(nodeId, input.nameOrId, tran);
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

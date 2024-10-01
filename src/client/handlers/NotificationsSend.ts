@@ -21,7 +21,9 @@ class NotificationsSend extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NotificationSendMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { notificationsManager } = this.container;
+    const {
+      notificationsManager,
+    }: { notificationsManager: NotificationsManager } = this.container;
     const {
       nodeId,
     }: {

@@ -14,8 +14,8 @@ import { matchSync } from '../../utils';
 
 class GestaltsGestaltTrustByNode extends UnaryHandler<
   {
-    gestaltGraph: GestaltGraph;
     db: DB;
+    gestaltGraph: GestaltGraph;
     discovery: Discovery;
   },
   ClientRPCRequestParams<NodeIdMessage>,
@@ -24,7 +24,12 @@ class GestaltsGestaltTrustByNode extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { db, gestaltGraph, discovery } = this.container;
+    const {
+      db,
+      gestaltGraph,
+      discovery,
+    }: { db: DB; gestaltGraph: GestaltGraph; discovery: Discovery } =
+      this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(

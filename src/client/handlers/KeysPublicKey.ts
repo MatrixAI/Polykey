@@ -17,7 +17,7 @@ class KeysPublicKey extends UnaryHandler<
   public handle = async (): Promise<
     ClientRPCResponseResult<PublicKeyMessage>
   > => {
-    const { keyRing } = this.container;
+    const { keyRing }: { keyRing: KeyRing } = this.container;
     const publicKeyJwk = keysUtils.publicKeyToJWK(keyRing.keyPair.publicKey);
     return {
       publicKeyJwk,

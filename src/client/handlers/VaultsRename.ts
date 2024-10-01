@@ -12,8 +12,8 @@ import * as vaultsErrors from '../../vaults/errors';
 
 class VaultsRename extends UnaryHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<VaultsRenameMessage>,
   ClientRPCResponseResult<VaultIdMessage>
@@ -21,7 +21,8 @@ class VaultsRename extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<VaultsRenameMessage>,
   ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
-    const { db, vaultManager } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,

@@ -29,7 +29,8 @@ class GestaltsActionsGetByIdentity extends UnaryHandler<
       actionsList: Array<GestaltAction>;
     }>
   > => {
-    const { db, gestaltGraph } = this.container;
+    const { db, gestaltGraph }: { db: DB; gestaltGraph: GestaltGraph } =
+      this.container;
     const {
       providerId,
       identityId,

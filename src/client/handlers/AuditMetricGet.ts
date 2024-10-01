@@ -35,7 +35,7 @@ class AuditMetricGet extends UnaryHandler<
     _meta,
     _ctx,
   ): Promise<ClientRPCResponseResult<MetricPathToAuditMetric<T>>> => {
-    const { audit } = this.container;
+    const { audit }: { audit: Audit } = this.container;
     let seek_: AuditEventId | number | undefined;
     if (seek != null) {
       seek_ =

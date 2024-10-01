@@ -4,6 +4,7 @@
 import type Logger from '@matrixai/logger';
 import type { Vault } from './Vault';
 import type { Stat } from 'encryptedfs';
+import type { SuccessOrErrorMessage } from '../client/types';
 import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
@@ -173,29 +174,35 @@ async function mkdir(
   dirPath: string,
   fileOptions?: FileOptions,
   logger?: Logger,
-): Promise<void> {
+): Promise<SuccessOrErrorMessage> {
   const recursive = fileOptions?.recursive ?? false;
-
-  await vault.writeF(async (efs) => {
-    try {
+  // Technically, writing an empty directory won't make a commit, and doesn't
+  // need a write resource as git doesn't track empty directories. It is
+  // still being used to allow concurrency.
+  try {
+    await vault.writeF(async (efs) => {
       await efs.mkdir(dirPath, fileOptions);
-    } catch (e) {
-      if (e.code === 'ENOENT' && !recursive) {
-        throw new vaultsErrors.ErrorVaultsRecursive(
-          `Could not create directory '${dirPath}' without recursive option`,
-          { cause: e },
-        );
-      }
-      if (e.code === 'EEXIST') {
-        throw new vaultsErrors.ErrorSecretsSecretDefined(
-          `${dirPath} already exists`,
-          { cause: e },
-        );
-      }
-      throw e;
+      logger?.info(`Created secret directory at '${dirPath}'`);
+    });
+    return { type: 'success', success: true };
+  } catch (e) {
+    logger?.error(`Failed to create directory '${dirPath}'. Reason: ${e.code}`);
+    if (e.code === 'ENOENT' && !recursive) {
+      return {
+        type: 'error',
+        code: e.code,
+        reason: dirPath,
+      };
     }
-    logger?.info(`Created secret directory at '${dirPath}'`);
-  });
+    if (e.code === 'EEXIST') {
+      return {
+        type: 'error',
+        code: e.code,
+        reason: dirPath,
+      };
+    }
+    throw e;
+  }
 }
 
 /**

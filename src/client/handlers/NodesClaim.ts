@@ -14,8 +14,8 @@ import { validateSync } from '../../validation';
 
 class NodesClaim extends UnaryHandler<
   {
-    nodeManager: NodeManager;
     db: DB;
+    nodeManager: NodeManager;
   },
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult<SuccessMessage>
@@ -23,8 +23,8 @@ class NodesClaim extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<ClaimNodeMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { nodeManager, db } = this.container;
-
+    const { db, nodeManager }: { db: DB; nodeManager: NodeManager } =
+      this.container;
     const {
       nodeId,
     }: {
@@ -45,9 +45,7 @@ class NodesClaim extends UnaryHandler<
       // if there is no permission then we get an error
       await nodeManager.claimNode(nodeId, tran);
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

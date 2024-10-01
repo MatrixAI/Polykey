@@ -21,7 +21,7 @@ class KeysVerify extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<VerifySignatureMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { keyRing } = this.container;
+    const { keyRing }: { keyRing: KeyRing } = this.container;
     let publicKey: PublicKey | undefined;
     try {
       const jwk = input.publicKeyJwk;
@@ -35,9 +35,7 @@ class KeysVerify extends UnaryHandler<
       Buffer.from(input.data, 'binary'),
       Buffer.from(input.signature, 'binary') as Signature,
     );
-    return {
-      success,
-    };
+    return { type: 'success', success: success };
   };
 }
 

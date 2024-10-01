@@ -24,7 +24,8 @@ class GestaltsActionsSetByNode extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<SetNodeActionMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { db, gestaltGraph } = this.container;
+    const { db, gestaltGraph }: { db: DB; gestaltGraph: GestaltGraph } =
+      this.container;
     const { nodeId, action }: { nodeId: NodeId; action: GestaltAction } =
       validateSync(
         (keyPath, value) => {

@@ -24,14 +24,18 @@ class VaultsPermissionGet extends ServerHandler<
   ClientRPCRequestParams<VaultIdentifierMessage>,
   ClientRPCResponseResult<VaultPermissionMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultPermissionMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { db, vaultManager, acl } = this.container;
+    const {
+      db,
+      vaultManager,
+      acl,
+    }: { db: DB; vaultManager: VaultManager; acl: ACL } = this.container;
     const [rawPermissions, vaultId] = await db.withTransactionF(
       async (tran) => {
         const vaultIdFromName = await vaultManager.getVaultId(
@@ -65,7 +69,7 @@ class VaultsPermissionGet extends ServerHandler<
         vaultPermissionList: actions,
       };
     }
-  }
+  };
 }
 
 export default VaultsPermissionGet;

@@ -3,7 +3,6 @@ import type {
   ClientRPCResponseResult,
   NodesGetMessage,
 } from '../types';
-import type KeyRing from '../../keys/KeyRing';
 import type NodeGraph from '../../nodes/NodeGraph';
 import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils';
@@ -11,12 +10,11 @@ import * as nodesUtils from '../../nodes/utils';
 class NodesGetAll extends ServerHandler<
   {
     nodeGraph: NodeGraph;
-    keyRing: KeyRing;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult<NodesGetMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     _input,
     _cancel,
     _meta,
@@ -38,7 +36,7 @@ class NodesGetAll extends ServerHandler<
         };
       }
     }
-  }
+  };
 }
 
 export default NodesGetAll;

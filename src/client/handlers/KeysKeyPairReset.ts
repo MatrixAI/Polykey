@@ -16,7 +16,7 @@ class KeysKeyPairReset extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<PasswordMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { certManager } = this.container;
+    const { certManager }: { certManager: CertManager } = this.container;
     // Other domains will be updated accordingly via the `EventBus` so we
     // only need to modify the KeyManager
     await certManager.resetCertWithNewKeyPair(input.password);

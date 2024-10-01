@@ -16,7 +16,8 @@ class IdentitiesProvidersList extends UnaryHandler<
       providerIds: Array<string>;
     }>
   > => {
-    const { identitiesManager } = this.container;
+    const { identitiesManager }: { identitiesManager: IdentitiesManager } =
+      this.container;
     const providers = identitiesManager.getProviders();
     return {
       providerIds: Object.keys(providers),

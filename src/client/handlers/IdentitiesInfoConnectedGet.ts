@@ -20,14 +20,15 @@ class IdentitiesInfoConnectedGet extends ServerHandler<
   ClientRPCRequestParams<ProviderSearchMessage>,
   ClientRPCResponseResult<IdentityInfoMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: ClientRPCRequestParams<ProviderSearchMessage>,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { identitiesManager } = this.container;
+    const { identitiesManager }: { identitiesManager: IdentitiesManager } =
+      this.container;
     const {
       providerIds,
     }: {
@@ -105,7 +106,7 @@ class IdentitiesInfoConnectedGet extends ServerHandler<
         count++;
       }
     }
-  }
+  };
 }
 
 export default IdentitiesInfoConnectedGet;

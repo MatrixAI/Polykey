@@ -5,12 +5,12 @@ import type {
   PermissionSetMessage,
   SuccessMessage,
 } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type ACL from '../../acl/ACL';
-import type NotificationsManager from '../../notifications/NotificationsManager';
 import type { VaultAction, VaultActions } from '../../vaults/types';
 import type { NodeId } from '../../ids';
+import type VaultManager from '../../vaults/VaultManager';
+import type NotificationsManager from '../../notifications/NotificationsManager';
+import type GestaltGraph from '../../gestalts/GestaltGraph';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
@@ -32,8 +32,19 @@ class VaultsPermissionSet extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<PermissionSetMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { db, vaultManager, gestaltGraph, acl, notificationsManager } =
-      this.container;
+    const {
+      db,
+      vaultManager,
+      gestaltGraph,
+      acl,
+      notificationsManager,
+    }: {
+      db: DB;
+      vaultManager: VaultManager;
+      gestaltGraph: GestaltGraph;
+      acl: ACL;
+      notificationsManager: NotificationsManager;
+    } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
@@ -84,9 +95,7 @@ class VaultsPermissionSet extends UnaryHandler<
         },
       });
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

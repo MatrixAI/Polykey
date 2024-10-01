@@ -20,7 +20,7 @@ class GestaltsDiscoveryByNode extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { discovery } = this.container;
+    const { discovery }: { discovery: Discovery } = this.container;
     const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(

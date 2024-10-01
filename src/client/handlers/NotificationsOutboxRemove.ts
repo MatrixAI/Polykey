@@ -20,7 +20,10 @@ class NotificationsOutboxRemove extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NotificationRemoveMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { db, notificationsManager } = this.container;
+    const {
+      db,
+      notificationsManager,
+    }: { db: DB; notificationsManager: NotificationsManager } = this.container;
     const notificationId = notificationsUtils.decodeNotificationId(
       input.notificationIdEncoded,
     );

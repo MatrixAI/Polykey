@@ -25,7 +25,10 @@ class NotificationsInboxRead extends ServerHandler<
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<NotificationInboxMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { db, notificationsManager } = this.container;
+    const {
+      db,
+      notificationsManager,
+    }: { db: DB; notificationsManager: NotificationsManager } = this.container;
     const { seek, seekEnd, unread, order, limit } = input;
 
     let seek_: NotificationId | number | undefined;

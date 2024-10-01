@@ -12,7 +12,8 @@ class AgentLockAll extends UnaryHandler<
   ClientRPCResponseResult
 > {
   public handle = async (): Promise<ClientRPCResponseResult> => {
-    const { db, sessionManager } = this.container;
+    const { db, sessionManager }: { db: DB; sessionManager: SessionManager } =
+      this.container;
     await db.withTransactionF((tran) => sessionManager.resetKey(tran));
     return {};
   };

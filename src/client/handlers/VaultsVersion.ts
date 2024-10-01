@@ -12,8 +12,8 @@ import * as vaultsErrors from '../../vaults/errors';
 
 class VaultsVersion extends UnaryHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<VaultsVersionMessage>,
   ClientRPCResponseResult<VaultsLatestVersionMessage>
@@ -21,7 +21,8 @@ class VaultsVersion extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<VaultsVersionMessage>,
   ): Promise<ClientRPCResponseResult<VaultsLatestVersionMessage>> => {
-    const { vaultManager, db } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,

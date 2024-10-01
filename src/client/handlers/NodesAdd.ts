@@ -16,8 +16,8 @@ import { validateSync } from '../../validation';
 
 class NodesAdd extends UnaryHandler<
   {
-    nodeManager: NodeManager;
     db: DB;
+    nodeManager: NodeManager;
   },
   ClientRPCRequestParams<NodesAddMessage>,
   ClientRPCResponseResult
@@ -25,7 +25,8 @@ class NodesAdd extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NodesAddMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { nodeManager, db } = this.container;
+    const { db, nodeManager }: { db: DB; nodeManager: NodeManager } =
+      this.container;
     const {
       nodeId,
       host,

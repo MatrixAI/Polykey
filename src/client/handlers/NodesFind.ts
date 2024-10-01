@@ -26,8 +26,7 @@ class NodesFind extends UnaryHandler<
     _meta,
     ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<NodesFindMessage>> => {
-    const { nodeManager } = this.container;
-
+    const { nodeManager }: { nodeManager: NodeManager } = this.container;
     const {
       nodeId,
     }: {
