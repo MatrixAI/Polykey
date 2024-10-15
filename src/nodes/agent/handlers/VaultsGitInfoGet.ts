@@ -33,15 +33,17 @@ class VaultsGitInfoGet extends RawHandler<{
     const [headerMessage, inputStream] = input;
     await inputStream.cancel();
     const params = headerMessage.params;
-    if (params == null || !utils.isObject(params)) utils.never();
+    if (params == null || !utils.isObject(params)) {
+      utils.never('params must be defined and an object');
+    }
     if (
       !('vaultNameOrId' in params) ||
       typeof params.vaultNameOrId != 'string'
     ) {
-      utils.never();
+      utils.never('vaultNameOrId must be defined and a string');
     }
     if (!('action' in params) || typeof params.action != 'string') {
-      utils.never();
+      utils.never('action must be defined and a string');
     }
     const vaultNameOrId = params.vaultNameOrId;
     const actionType = vaultsUtils.parseVaultAction(params.action);

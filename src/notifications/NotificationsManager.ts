@@ -26,6 +26,7 @@ import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import * as notificationsEvents from './events';
 import config from '../config';
+import { ErrorPolykeyRemote } from '../network/errors';
 import * as nodesUtils from '../nodes/utils';
 import { never } from '../utils/utils';
 
@@ -385,8 +386,22 @@ class NotificationsManager {
       tran,
     );
     const sendP = (async () => {
-      while (pendingTask != null) {
-        pendingTask = await pendingTask.promise();
+      try {
+        while (pendingTask != null) {
+          pendingTask = await pendingTask.promise();
+        }
+      } catch (e) {
+        if (
+          e instanceof ErrorPolykeyRemote &&
+          e.cause instanceof
+            notificationsErrors.ErrorNotificationsPermissionsNotFound
+        ) {
+          throw new notificationsErrors.ErrorNotificationsNotificationRejected(
+            undefined,
+            { cause: e },
+          );
+        }
+        throw e;
       }
     })();
     sendP.catch(() => {});
@@ -497,7 +512,9 @@ class NotificationsManager {
 
     for await (const id of notificationIds) {
       const notification = await this.readOutboxNotificationById(id, tran);
-      if (notification == null) never();
+      if (notification == null) {
+        never('failed to read existing outbox notification');
+      }
       yield notification;
     }
   }
@@ -695,7 +712,9 @@ class NotificationsManager {
     });
     for await (const id of notificationIds) {
       const notification = await this.readInboxNotificationById(id, tran);
-      if (notification == null) never();
+      if (notification == null) {
+        never('failed to read existing inbox notification');
+      }
       yield notification;
     }
   }

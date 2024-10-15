@@ -659,7 +659,9 @@ class NodeGraph {
           IdInternal.fromBuffer<NodeId>(nodeIdBuffer),
           tran,
         );
-        if (nodeContact == null) utils.never();
+        if (nodeContact == null) {
+          utils.never('failed to get expected NodeContact');
+        }
         bucket.push([nodeId, nodeContact]);
       }
     }

@@ -23,6 +23,11 @@ class ErrorNotificationsPermissionsNotFound<T> extends ErrorNotifications<T> {
   exitCode = sysexits.NOUSER;
 }
 
+class ErrorNotificationsNotificationRejected<T> extends ErrorNotifications<T> {
+  static description = 'Notification was rejected due to lack of permissions';
+  exitCode = sysexits.NOPERM;
+}
+
 class ErrorNotificationsDb<T> extends ErrorNotifications<T> {
   static description = 'Database consistency error';
   exitCode = sysexits.IOERR;
@@ -79,6 +84,7 @@ export {
   ErrorNotificationsNotRunning,
   ErrorNotificationsDestroyed,
   ErrorNotificationsPermissionsNotFound,
+  ErrorNotificationsNotificationRejected,
   ErrorNotificationsDb,
   ErrorNotificationsParse,
   ErrorNotificationsInvalidType,

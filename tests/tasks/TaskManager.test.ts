@@ -927,7 +927,7 @@ describe(TaskManager.name, () => {
 
     // Task should be updated
     const oldTask = await taskManager.getTask(task1.id);
-    if (oldTask == null) utils.never();
+    if (oldTask == null) utils.never('failed to get old task');
     expect(oldTask.id.equals(task1.id)).toBeTrue();
     expect(oldTask.handlerId).toEqual(handlerId2);
     expect(oldTask.delay).toBe(0);
@@ -983,7 +983,7 @@ describe(TaskManager.name, () => {
     ).rejects.toThrow(tasksErrors.ErrorTaskRunning);
     // Task has not been updated
     const oldTask = await taskManager.getTask(task1.id);
-    if (oldTask == null) utils.never();
+    if (oldTask == null) utils.never('failed to get old task');
     expect(oldTask.delay).toBe(0);
     expect(oldTask.parameters).toEqual([]);
     await taskManager.stop();
@@ -1019,7 +1019,7 @@ describe(TaskManager.name, () => {
     });
     // Task should be updated
     const newTask = await taskManager.getTask(task1.id);
-    if (newTask == null) utils.never();
+    if (newTask == null) utils.never('failed to get new task');
     expect(newTask.delay).toBe(0);
     expect(newTask.parameters).toEqual([1]);
     // Task should resolve with new parameter

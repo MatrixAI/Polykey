@@ -27,7 +27,7 @@ class KeysEncrypt extends UnaryHandler<
     try {
       const jwk = input.publicKeyJwk;
       publicKey = keysUtils.publicKeyFromJWK(jwk);
-      if (publicKey == null) never();
+      if (publicKey == null) never('failed to get public key from JWK');
     } catch (e) {
       throw new keysErrors.ErrorPublicKeyParse(undefined, { cause: e });
     }

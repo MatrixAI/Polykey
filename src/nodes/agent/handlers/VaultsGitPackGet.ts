@@ -33,12 +33,14 @@ class VaultsGitPackGet extends RawHandler<{
     }
     const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
     const params = headerMessage.params;
-    if (params == null || !utils.isObject(params)) utils.never();
+    if (params == null || !utils.isObject(params)) {
+      utils.never('params must be defined and an object');
+    }
     if (!('nameOrId' in params) || typeof params.nameOrId != 'string') {
-      utils.never();
+      utils.never('nameOrId must be defined and a string');
     }
     if (!('vaultAction' in params) || typeof params.vaultAction != 'string') {
-      utils.never();
+      utils.never('vaultAction must be defined and a string');
     }
     const nameOrId = params.nameOrId;
     const actionType = vaultsUtils.parseVaultAction(params.vaultAction);

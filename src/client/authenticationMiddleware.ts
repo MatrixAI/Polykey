@@ -105,7 +105,9 @@ function authenticationMiddlewareClient(
       >({
         transform: async (chunk, controller) => {
           if (forwardFirst) {
-            if (chunk.params == null) utils.never();
+            if (chunk.params == null) {
+              utils.never('chunk.params must be defined');
+            }
             if (chunk.params.metadata?.authorization == null) {
               const token = await session.readToken();
               if (token != null) {

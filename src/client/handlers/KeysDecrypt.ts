@@ -19,7 +19,7 @@ class KeysDecrypt extends UnaryHandler<
   ): Promise<ClientRPCResponseResult<DataMessage>> => {
     const { keyRing }: { keyRing: KeyRing } = this.container;
     const data = keyRing.decrypt(Buffer.from(input.data, 'binary'));
-    if (data == null) never();
+    if (data == null) never('failed to decrypt DataMessage');
     return {
       data: data.toString('binary'),
     };

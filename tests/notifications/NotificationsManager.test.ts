@@ -345,8 +345,7 @@ describe('NotificationsManager', () => {
         pull: null,
       } as VaultActions,
     };
-
-    await testUtils.expectRemoteError(
+    await expect(
       notificationsManager
         .sendNotification({
           nodeId: receiver.keyRing.getNodeId(),
@@ -354,9 +353,10 @@ describe('NotificationsManager', () => {
           retries: 0,
         })
         .then((value) => value.sendP),
-      notificationsErrors.ErrorNotificationsPermissionsNotFound,
+    ).rejects.toThrow(
+      notificationsErrors.ErrorNotificationsNotificationRejected,
     );
-    await testUtils.expectRemoteError(
+    await expect(
       notificationsManager
         .sendNotification({
           nodeId: receiver.keyRing.getNodeId(),
@@ -364,9 +364,10 @@ describe('NotificationsManager', () => {
           retries: 0,
         })
         .then((value) => value.sendP),
-      notificationsErrors.ErrorNotificationsPermissionsNotFound,
+    ).rejects.toThrow(
+      notificationsErrors.ErrorNotificationsNotificationRejected,
     );
-    await testUtils.expectRemoteError(
+    await expect(
       notificationsManager
         .sendNotification({
           nodeId: receiver.keyRing.getNodeId(),
@@ -374,7 +375,8 @@ describe('NotificationsManager', () => {
           retries: 0,
         })
         .then((value) => value.sendP),
-      notificationsErrors.ErrorNotificationsPermissionsNotFound,
+    ).rejects.toThrow(
+      notificationsErrors.ErrorNotificationsNotificationRejected,
     );
     await expect(
       notificationsManager
