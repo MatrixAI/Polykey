@@ -39,6 +39,13 @@ class ErrorPolykey<T> extends AbstractError<T> {
     json.data.exitCode = this.exitCode;
     return json;
   }
+
+  public toString(): string {
+    const messageString =
+      this.message.length > 0 ? `("${this.message}")` : '()';
+    const chainString = this.cause != null ? `>${String(this.cause)}` : '';
+    return `${this.name}${messageString}${chainString}`;
+  }
 }
 
 export default ErrorPolykey;
