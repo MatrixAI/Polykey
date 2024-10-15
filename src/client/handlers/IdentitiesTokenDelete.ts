@@ -22,7 +22,10 @@ class IdentitiesTokenDeleteHandler extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<IdentityMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { identitiesManager, db } = this.container;
+    const {
+      db,
+      identitiesManager,
+    }: { db: DB; identitiesManager: IdentitiesManager } = this.container;
     const {
       providerId,
       identityId,

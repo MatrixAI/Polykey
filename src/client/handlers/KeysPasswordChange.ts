@@ -16,7 +16,7 @@ class KeysPasswordChange extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<PasswordMessage>,
   ): Promise<ClientRPCResponseResult> => {
-    const { keyRing } = this.container;
+    const { keyRing }: { keyRing: KeyRing } = this.container;
     await keyRing.changePassword(input.password);
     return {};
   };

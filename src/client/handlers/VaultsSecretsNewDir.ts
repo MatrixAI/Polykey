@@ -14,9 +14,9 @@ import * as vaultOps from '../../vaults/VaultOps';
 
 class VaultsSecretsNewDir extends UnaryHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
     fs: FileSystem;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretDirMessage>,
   ClientRPCResponseResult<SuccessMessage>
@@ -24,7 +24,11 @@ class VaultsSecretsNewDir extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<SecretDirMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { vaultManager, db, fs } = this.container;
+    const {
+      db,
+      fs,
+      vaultManager,
+    }: { db: DB; fs: FileSystem; vaultManager: VaultManager } = this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
@@ -43,9 +47,7 @@ class VaultsSecretsNewDir extends UnaryHandler<
         tran,
       );
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

@@ -12,8 +12,8 @@ import * as vaultsErrors from '../../vaults/errors';
 
 class VaultsSecretsList extends DuplexHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SecretContentMessage>
@@ -27,7 +27,7 @@ class VaultsSecretsList extends DuplexHandler<
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<SecretContentMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { vaultManager, db }: { vaultManager: VaultManager; db: DB } =
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
 
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<

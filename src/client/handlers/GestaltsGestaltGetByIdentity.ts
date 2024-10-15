@@ -15,8 +15,8 @@ import { matchSync } from '../../utils';
 
 class GestaltsGestaltGetByIdentity extends UnaryHandler<
   {
-    gestaltGraph: GestaltGraph;
     db: DB;
+    gestaltGraph: GestaltGraph;
   },
   ClientRPCRequestParams<IdentityMessage>,
   ClientRPCResponseResult<GestaltMessage>
@@ -24,7 +24,8 @@ class GestaltsGestaltGetByIdentity extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<IdentityMessage>,
   ): Promise<ClientRPCResponseResult<GestaltMessage>> => {
-    const { db, gestaltGraph } = this.container;
+    const { db, gestaltGraph }: { db: DB; gestaltGraph: GestaltGraph } =
+      this.container;
     const {
       providerId,
       identityId,

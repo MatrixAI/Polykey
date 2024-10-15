@@ -21,7 +21,7 @@ class NodesPing extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { nodeManager } = this.container;
+    const { nodeManager }: { nodeManager: NodeManager } = this.container;
     const {
       nodeId,
     }: {
@@ -38,9 +38,7 @@ class NodesPing extends UnaryHandler<
       },
     );
     const result = await nodeManager.pingNode(nodeId);
-    return {
-      success: result != null,
-    };
+    return { type: 'success', success: result != null };
   };
 }
 

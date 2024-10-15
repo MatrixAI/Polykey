@@ -11,18 +11,18 @@ class GestaltsDiscoveryQueue extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<DiscoveryQueueInfo>
 > {
-  public async *handle(
+  public handle = async function* (
     _input: ClientRPCRequestParams,
     _cancel,
     _meta,
     ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<DiscoveryQueueInfo>> {
-    const { discovery } = this.container;
+    const { discovery }: { discovery: Discovery } = this.container;
     for await (const discoveryQueueInfo of discovery.getDiscoveryQueue()) {
       ctx.signal.throwIfAborted();
       yield discoveryQueueInfo;
     }
-  }
+  };
 }
 
 export default GestaltsDiscoveryQueue;

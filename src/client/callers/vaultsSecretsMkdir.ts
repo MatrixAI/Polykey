@@ -1,10 +1,10 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type VaultsSecretsMkdir from '../handlers/VaultsSecretsMkdir';
-import { UnaryCaller } from '@matrixai/rpc';
+import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsMkdir>;
 
-const vaultsSecretsMkdir = new UnaryCaller<
+const vaultsSecretsMkdir = new DuplexCaller<
   CallerTypes['input'],
   CallerTypes['output']
 >();

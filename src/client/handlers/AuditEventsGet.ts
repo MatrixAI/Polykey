@@ -25,7 +25,7 @@ class AuditEventsGet extends ServerHandler<
   }>,
   ClientRPCResponseResult<AuditEventSerialized>
 > {
-  public async *handle(
+  public handle = async function* (
     {
       paths,
       seek,
@@ -46,7 +46,7 @@ class AuditEventsGet extends ServerHandler<
     _meta,
     ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<AuditEventSerialized>> {
-    const { audit } = this.container;
+    const { audit }: { audit: Audit } = this.container;
     const iterators: Array<AsyncGenerator<AuditEvent>> = [];
     let seek_: AuditEventId | number | undefined;
     if (seek != null) {
@@ -109,7 +109,7 @@ class AuditEventsGet extends ServerHandler<
         data: auditEvent.data,
       };
     }
-  }
+  };
 }
 
 export default AuditEventsGet;

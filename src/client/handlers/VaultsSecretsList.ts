@@ -13,17 +13,17 @@ import * as vaultsErrors from '../../vaults/errors';
 
 class VaultsSecretsList extends ServerHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SecretFilesMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
-    _cancel: any,
   ): AsyncGenerator<ClientRPCResponseResult<SecretFilesMessage>, void, void> {
-    const { vaultManager, db } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     const vaultId = await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
@@ -65,7 +65,7 @@ class VaultsSecretsList extends ServerHandler<
         }
       });
     });
-  }
+  };
 }
 
 export default VaultsSecretsList;

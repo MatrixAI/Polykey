@@ -13,8 +13,8 @@ import * as vaultOps from '../../vaults/VaultOps';
 
 class VaultsSecretsRename extends UnaryHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretRenameMessage>,
   ClientRPCResponseResult<SuccessMessage>
@@ -22,7 +22,8 @@ class VaultsSecretsRename extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<SecretRenameMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { vaultManager, db } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
@@ -45,9 +46,7 @@ class VaultsSecretsRename extends UnaryHandler<
         tran,
       );
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

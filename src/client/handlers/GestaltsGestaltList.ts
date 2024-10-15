@@ -10,19 +10,20 @@ import * as nodesUtils from '../../nodes/utils';
 
 class GestaltsGestaltList extends ServerHandler<
   {
-    gestaltGraph: GestaltGraph;
     db: DB;
+    gestaltGraph: GestaltGraph;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult<GestaltMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     _input,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<GestaltMessage>> {
-    const { db, gestaltGraph } = this.container;
+    const { db, gestaltGraph }: { db: DB; gestaltGraph: GestaltGraph } =
+      this.container;
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       ClientRPCResponseResult<GestaltMessage>
     > {
@@ -57,7 +58,7 @@ class GestaltsGestaltList extends ServerHandler<
         yield gestaltMessage;
       }
     });
-  }
+  };
 }
 
 export default GestaltsGestaltList;

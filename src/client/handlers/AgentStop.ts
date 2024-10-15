@@ -11,7 +11,7 @@ class AgentStop extends UnaryHandler<
   ClientRPCResponseResult
 > {
   public handle = async (): Promise<ClientRPCResponseResult> => {
-    const { polykeyAgent } = this.container;
+    const { polykeyAgent }: { polykeyAgent: PolykeyAgent } = this.container;
     // If not running or in stopping status, then respond successfully
     if (!polykeyAgent[running] || polykeyAgent[status] === 'stopping') {
       return {};

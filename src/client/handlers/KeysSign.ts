@@ -17,7 +17,7 @@ class KeysSign extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<DataMessage>,
   ): Promise<ClientRPCResponseResult<SignatureMessage>> => {
-    const { keyRing } = this.container;
+    const { keyRing }: { keyRing: KeyRing } = this.container;
     const signature = keyRing.sign(Buffer.from(input.data, 'binary'));
     return {
       signature: signature.toString('binary'),

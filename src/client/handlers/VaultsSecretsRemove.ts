@@ -13,8 +13,8 @@ import * as vaultOps from '../../vaults/VaultOps';
 
 class VaultsSecretsRemove extends ClientHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SuccessMessage>
@@ -22,7 +22,8 @@ class VaultsSecretsRemove extends ClientHandler<
   public handle = async (
     input: AsyncIterable<ClientRPCRequestParams<SecretIdentifierMessage>>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { vaultManager, db } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     // Create a record of secrets to be removed, grouped by vault names
     const vaultGroups: Record<string, Array<string>> = {};
     const secretNames: Array<[string, string]> = [];
@@ -58,7 +59,7 @@ class VaultsSecretsRemove extends ClientHandler<
       }
     });
 
-    return { success: true };
+    return { type: 'success', success: true };
   };
 }
 

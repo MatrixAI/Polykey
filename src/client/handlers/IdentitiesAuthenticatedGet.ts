@@ -14,21 +14,18 @@ class IdentitiesAuthenticatedGet extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  ClientRPCRequestParams<{
-    providerId?: string;
-  }>,
+  ClientRPCRequestParams<{ providerId?: string }>,
   ClientRPCResponseResult<IdentityMessage>
 > {
-  public async *handle(
-    input: ClientRPCRequestParams<{
-      providerId?: string;
-    }>,
+  public handle = async function* (
+    input: ClientRPCRequestParams<{ providerId?: string }>,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { identitiesManager } = this.container;
+    const { identitiesManager }: { identitiesManager: IdentitiesManager } =
+      this.container;
     let providerId: ProviderId | undefined;
     if (input.providerId != null) {
       providerId = validateSync(
@@ -61,7 +58,7 @@ class IdentitiesAuthenticatedGet extends ServerHandler<
         };
       }
     }
-  }
+  };
 }
 
 export default IdentitiesAuthenticatedGet;

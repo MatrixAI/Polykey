@@ -18,14 +18,14 @@ class VaultsScan extends ServerHandler<
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<VaultsScanMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     input: ClientRPCRequestParams<NodeIdMessage>,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { vaultManager } = this.container;
+    const { vaultManager }: { vaultManager: VaultManager } = this.container;
     const {
       nodeId,
     }: {
@@ -53,7 +53,7 @@ class VaultsScan extends ServerHandler<
         permissions: vaultPermissions,
       };
     }
-  }
+  };
 }
 
 export default VaultsScan;

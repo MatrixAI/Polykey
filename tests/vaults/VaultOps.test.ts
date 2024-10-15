@@ -4,6 +4,7 @@ import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
 import type { FileTree } from '@/vaults/types';
 import type { ContentNode, TreeNode } from '@/vaults/types';
+import type { ErrorMessage } from '@/client/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -323,32 +324,40 @@ describe('VaultOps', () => {
   });
   describe('mkdir', () => {
     test('can create directory', async () => {
-      await vaultOps.mkdir(vault, dirName);
+      const response = await vaultOps.mkdir(vault, dirName);
+      expect(response.type).toEqual('success');
       await expectDirExists(dirName);
     });
     test('can create recursive directory', async () => {
       const dirPath = path.join(dirName, dirName);
-      await vaultOps.mkdir(vault, dirPath, { recursive: true });
+      const response = await vaultOps.mkdir(vault, dirPath, {
+        recursive: true,
+      });
+      expect(response.type).toEqual('success');
       await expectDirExists(dirPath);
     });
-    test('creating recursive directory fails without recursive set', async () => {
+    test('creating directories fails without recursive', async () => {
       const dirPath = path.join(dirName, dirName);
-      await expect(vaultOps.mkdir(vault, dirPath)).rejects.toThrow(
-        vaultsErrors.ErrorVaultsRecursive,
-      );
+      const response = await vaultOps.mkdir(vault, dirPath);
+      expect(response.type).toEqual('error');
+      const error = response as ErrorMessage;
+      expect(error.code).toEqual('ENOENT');
       await expectDirExistsNot(dirPath);
     });
     test('creating existing directory should fail', async () => {
       await mkdir(dirName);
-      await expect(vaultOps.mkdir(vault, dirName)).rejects.toThrow(
-        vaultsErrors.ErrorSecretsSecretDefined,
-      );
+      const response = await vaultOps.mkdir(vault, dirName);
+      expect(response.type).toEqual('error');
+      const error = response as ErrorMessage;
+      expect(error.code).toEqual('EEXIST');
     });
     test('creating existing secret should fail', async () => {
       await writeSecret(secretName, secretContent);
-      await expect(vaultOps.mkdir(vault, secretName)).rejects.toThrow(
-        vaultsErrors.ErrorSecretsSecretDefined,
-      );
+      const response = await vaultOps.mkdir(vault, secretName);
+      expect(response.type).toEqual('error');
+      const error = response as ErrorMessage;
+      expect(error.code).toEqual('EEXIST');
+      await expectSecret(secretName, secretContent);
     });
   });
   describe('addSecretDirectory', () => {

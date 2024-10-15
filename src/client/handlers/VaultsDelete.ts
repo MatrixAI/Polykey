@@ -22,7 +22,8 @@ class VaultsDelete extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { db, vaultManager } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId as VaultName,
@@ -35,9 +36,7 @@ class VaultsDelete extends UnaryHandler<
       }
       await vaultManager.destroyVault(vaultId, tran);
     });
-    return {
-      success: true,
-    };
+    return { type: 'success', success: true };
   };
 }
 

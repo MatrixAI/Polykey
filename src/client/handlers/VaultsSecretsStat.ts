@@ -13,8 +13,8 @@ import * as vaultOps from '../../vaults/VaultOps';
 
 class VaultsSecretsStat extends UnaryHandler<
   {
-    vaultManager: VaultManager;
     db: DB;
+    vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<SecretStatMessage>
@@ -22,7 +22,8 @@ class VaultsSecretsStat extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
   ): Promise<ClientRPCResponseResult<SecretStatMessage>> => {
-    const { vaultManager, db } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     return await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,

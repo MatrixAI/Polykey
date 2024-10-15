@@ -15,22 +15,19 @@ class IdentitiesAuthenticate extends ServerHandler<
   {
     identitiesManager: IdentitiesManager;
   },
-  ClientRPCRequestParams<{
-    providerId: string;
-  }>,
+  ClientRPCRequestParams<{ providerId: string }>,
   ClientRPCResponseResult<AuthProcessMessage>
 > {
   public timeout = 120000; // 2 Minutes
-  public async *handle(
-    input: ClientRPCRequestParams<{
-      providerId: string;
-    }>,
+  public handle = async function* (
+    input: ClientRPCRequestParams<{ providerId: string }>,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<AuthProcessMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { identitiesManager } = this.container;
+    const { identitiesManager }: { identitiesManager: IdentitiesManager } =
+      this.container;
     const {
       providerId,
     }: {
@@ -72,7 +69,7 @@ class IdentitiesAuthenticate extends ServerHandler<
         identityId: authFlowResult.value,
       },
     };
-  }
+  };
 }
 
 export default IdentitiesAuthenticate;

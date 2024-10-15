@@ -16,14 +16,15 @@ class VaultsList extends ServerHandler<
   ClientRPCRequestParams,
   ClientRPCResponseResult<VaultListMessage>
 > {
-  public async *handle(
+  public handle = async function* (
     _input,
     _cancel,
     _meta,
     ctx,
   ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
-    const { db, vaultManager } = this.container;
+    const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
+      this.container;
     const vaults = await db.withTransactionF((tran) =>
       vaultManager.listVaults(tran),
     );
@@ -34,7 +35,7 @@ class VaultsList extends ServerHandler<
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
       };
     }
-  }
+  };
 }
 
 export default VaultsList;

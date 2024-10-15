@@ -12,7 +12,10 @@ class NotificationsInboxClear extends UnaryHandler<
   ClientRPCResponseResult
 > {
   public handle = async (): Promise<ClientRPCResponseResult> => {
-    const { db, notificationsManager } = this.container;
+    const {
+      db,
+      notificationsManager,
+    }: { db: DB; notificationsManager: NotificationsManager } = this.container;
     await db.withTransactionF((tran) =>
       notificationsManager.clearInboxNotifications(tran),
     );

@@ -201,8 +201,18 @@ type SignatureMessage = {
 type VerifySignatureMessage = PublicKeyMessage & DataMessage & SignatureMessage;
 
 type SuccessMessage = {
+  type: 'success';
   success: boolean;
 };
+
+type ErrorMessage = {
+  type: 'error';
+  code: string;
+  reason?: string;
+  data?: JSONObject;
+};
+
+type SuccessOrErrorMessage = SuccessMessage | ErrorMessage;
 
 // Notifications messages
 
@@ -317,11 +327,6 @@ type ContentWithErrorMessage = ContentMessage & {
 
 type SecretContentMessage = SecretIdentifierMessage & ContentMessage;
 
-type SecretMkdirMessage = VaultIdentifierMessage & {
-  dirName: string;
-  recursive: boolean;
-};
-
 type SecretDirMessage = VaultIdentifierMessage & {
   dirName: string;
 };
@@ -398,6 +403,8 @@ export type {
   NodesGetMessage,
   NodesAddMessage,
   SuccessMessage,
+  ErrorMessage,
+  SuccessOrErrorMessage,
   NotificationInboxMessage,
   NotificationOutboxMessage,
   NotificationReadMessage,
@@ -423,7 +430,6 @@ export type {
   ContentMessage,
   ContentWithErrorMessage,
   SecretContentMessage,
-  SecretMkdirMessage,
   SecretDirMessage,
   SecretRenameMessage,
   SecretFilesMessage,
