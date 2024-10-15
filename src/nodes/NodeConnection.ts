@@ -279,7 +279,7 @@ class NodeConnection {
     }
     const quicConnection = quicClient.connection;
     const throwFunction = () =>
-      never('We should never get connections before setting up handling');
+      never('we should never get connections before setting up handling');
     quicConnection.addEventListener(
       quicEvents.EventQUICConnectionStream.name,
       throwFunction,
@@ -293,7 +293,9 @@ class NodeConnection {
       toError: networkUtils.toError,
       logger: logger.getChild(RPCClient.name),
     });
-    if (validatedNodeId == null) never();
+    if (validatedNodeId == null) {
+      never(`connection validated but no valid NodeId was returned`);
+    }
     // Obtaining remote node ID from certificate chain. It should always exist in the chain if validated.
     //  This may de different from the NodeId we validated it as if it renewed at some point.
     const connection = quicClient.connection;

@@ -171,7 +171,9 @@ class Discovery {
       if (e === discoveryStoppingTaskReason) {
         // We need to recreate the task for the vertex
         const vertexId = gestaltsUtils.decodeGestaltId(vertex);
-        if (vertexId == null) never();
+        if (vertexId == null) {
+          never(`failed to decode vertex GestaltId "${vertex}"`);
+        }
         await this.scheduleDiscoveryForVertex(
           vertexId,
           undefined,
@@ -399,7 +401,9 @@ class Discovery {
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
     const vertexId = gestaltsUtils.decodeGestaltId(vertex);
-    if (vertexId == null) never();
+    if (vertexId == null) {
+      never(`failed to decode vertex GestaltId "${vertex}"`);
+    }
     const [type, id] = vertexId;
     switch (type) {
       case 'node':
@@ -407,7 +411,7 @@ class Discovery {
       case 'identity':
         return await this.processIdentity(id, ctx, lastProcessedCutoffTime);
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -446,7 +450,7 @@ class Discovery {
       this.logger.info(
         `Failed to discover ${nodesUtils.encodeNodeId(
           nodeId,
-        )} - ${e.toString()}`,
+        )} - Reason: ${String(e)}`,
       );
       return;
     }
@@ -470,7 +474,9 @@ class Discovery {
           );
           break;
         default:
-          never();
+          never(
+            `signedClaim.payload.typ must be "ClaimLinkNode" or "ClaimLinkIdentity" got "${signedClaim.payload.typ}"`,
+          );
       }
     }
     await this.gestaltGraph.setVertexProcessedTime(
@@ -488,9 +494,13 @@ class Discovery {
     // Could be node1 or node2 in the claim so get the one that's
     // not equal to nodeId from above
     const node1Id = nodesUtils.decodeNodeId(signedClaim.payload.iss);
-    if (node1Id == null) never();
+    if (node1Id == null) {
+      never(`failed to decode issuer NodeId "${signedClaim.payload.iss}"`);
+    }
     const node2Id = nodesUtils.decodeNodeId(signedClaim.payload.sub);
-    if (node2Id == null) never();
+    if (node2Id == null) {
+      never(`failed to decode subject NodeId "${signedClaim.payload.sub}"`);
+    }
     // Verify the claim
     const node1PublicKey = keysUtils.publicKeyFromNodeId(node1Id);
     const node2PublicKey = keysUtils.publicKeyFromNodeId(node2Id);
@@ -519,7 +529,9 @@ class Discovery {
       },
     );
     const claimId = decodeClaimId(signedClaim.payload.jti);
-    if (claimId == null) never();
+    if (claimId == null) {
+      never(`failed to decode claimId "${signedClaim.payload.jti}"`);
+    }
     await this.gestaltGraph.setClaimIdNewest(nodeId, claimId);
     // Add this vertex to the queue if it hasn't already been visited
     const linkedGestaltId: GestaltId = ['node', linkedNodeId];
@@ -556,7 +568,9 @@ class Discovery {
       return;
     }
     // Attempt to get the identity info on the identity provider
-    if (signedClaim.payload.sub == null) never();
+    if (signedClaim.payload.sub == null) {
+      never('signedClaim.payload.sub must be defined');
+    }
     const [providerId, identityId] = JSON.parse(signedClaim.payload.sub);
     const identityInfo = await this.getIdentityInfo(
       providerId,
@@ -617,7 +631,9 @@ class Discovery {
       },
     );
     const claimId = decodeClaimId(signedClaim.payload.jti);
-    if (claimId == null) never();
+    if (claimId == null) {
+      never(`failed to decode ClaimId "${signedClaim.payload.jti}"`);
+    }
     await this.gestaltGraph.setClaimIdNewest(nodeId, claimId);
     // Add this identity vertex to the queue if it is not present
     const providerIdentityId = JSON.parse(signedClaim.payload.sub!);
@@ -675,7 +691,9 @@ class Discovery {
       // Claims on an identity provider will always be node -> identity
       // So just cast payload data as such
       const linkedNodeId = nodesUtils.decodeNodeId(claim.payload.iss);
-      if (linkedNodeId == null) never();
+      if (linkedNodeId == null) {
+        never(`failed to decode issuer NodeId "${claim.payload.iss}"`);
+      }
       // With this verified chain, we can link
       const linkedVertexNodeInfo = {
         nodeId: linkedNodeId,
@@ -927,7 +945,7 @@ class Discovery {
       const data = claim.payload;
       // Verify the claim with the public key of the node
       const nodeId = nodesUtils.decodeNodeId(data.iss);
-      if (nodeId == null) never();
+      if (nodeId == null) never(`failed to decode issuer NodeId "${data.iss}"`);
       const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
       const token = Token.fromSigned(claim);
       // If verified, add to the record

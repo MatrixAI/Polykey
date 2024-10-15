@@ -803,7 +803,9 @@ class PolykeyAgent {
       const setNodeProms = new Array<Promise<void>>();
       for (const nodeIdEncoded in optionsDefaulted.seedNodes) {
         const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-        if (nodeId == null) utils.never();
+        if (nodeId == null) {
+          utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+        }
         const setNodeProm = this.nodeManager.setNode(
           nodeId,
           optionsDefaulted.seedNodes[nodeIdEncoded],
@@ -825,7 +827,9 @@ class PolykeyAgent {
         const initialNodes = seedNodeEntries.map(
           ([nodeIdEncoded, nodeAddress]) => {
             const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-            if (nodeId == null) utils.never('nodeId should be defined');
+            if (nodeId == null) {
+              utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+            }
             return [nodeId, nodeAddress] as [NodeId, NodeAddress];
           },
         );

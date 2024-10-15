@@ -123,7 +123,10 @@ function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
       // Generate an empty buffer to simulate the stream running out of data to process
       return Buffer.alloc(0);
     default:
-      utils.never();
+      // @ts-ignore: if we're here then data isn't the type we expect
+      utils.never(
+        `data.type must be "want", "have", "SEPARATOR", "done", "none", got "${data.type}"`,
+      );
   }
 }
 
@@ -151,39 +154,42 @@ function request({
     body: Array<Buffer>;
   }) => {
     // Console.log('body', body.map(v => v.toString()))
-    if (method === 'GET') {
-      // Send back the GET request info response
-      const advertiseRefGen = gitHttp.advertiseRefGenerator({
-        efs,
-        dir,
-        gitDir,
-      });
+    switch (method) {
+      case 'GET': {
+        // Send back the GET request info response
+        const advertiseRefGen = gitHttp.advertiseRefGenerator({
+          efs,
+          dir,
+          gitDir,
+        });
 
-      return {
-        url: url,
-        method: method,
-        body: advertiseRefGen,
-        headers: headers,
-        statusCode: 200,
-        statusMessage: 'OK',
-      };
-    } else if (method === 'POST') {
-      const packGen = gitHttp.generatePackRequest({
-        efs,
-        dir,
-        gitDir,
-        body,
-      });
-      return {
-        url: url,
-        method: method,
-        body: packGen,
-        headers: headers,
-        statusCode: 200,
-        statusMessage: 'OK',
-      };
-    } else {
-      utils.never();
+        return {
+          url: url,
+          method: method,
+          body: advertiseRefGen,
+          headers: headers,
+          statusCode: 200,
+          statusMessage: 'OK',
+        };
+      }
+      case 'POST': {
+        const packGen = gitHttp.generatePackRequest({
+          efs,
+          dir,
+          gitDir,
+          body,
+        });
+        return {
+          url: url,
+          method: method,
+          body: packGen,
+          headers: headers,
+          statusCode: 200,
+          statusMessage: 'OK',
+        };
+      }
+      default:
+        utils.never(`method must be "GET" or "POST" got "${method}"`);
     }
   };
 }

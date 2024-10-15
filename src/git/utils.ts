@@ -248,7 +248,9 @@ async function listObjectsAll({
   const objectSet: Set<string> = new Set();
   const objectDirs = await fs.promises.readdir(objectsDirPath);
   for (const objectDir of objectDirs) {
-    if (typeof objectDir !== 'string') utils.never();
+    if (typeof objectDir !== 'string') {
+      utils.never('objectDir should be a string');
+    }
     if (excludedDirs.includes(objectDir)) continue;
     const objectIds = await fs.promises.readdir(
       path.join(objectsDirPath, objectDir),

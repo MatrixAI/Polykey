@@ -497,7 +497,9 @@ class NotificationsManager {
 
     for await (const id of notificationIds) {
       const notification = await this.readOutboxNotificationById(id, tran);
-      if (notification == null) never();
+      if (notification == null) {
+        never('failed to read existing outbox notification');
+      }
       yield notification;
     }
   }
@@ -695,7 +697,9 @@ class NotificationsManager {
     });
     for await (const id of notificationIds) {
       const notification = await this.readInboxNotificationById(id, tran);
-      if (notification == null) never();
+      if (notification == null) {
+        never('failed to read existing inbox notification');
+      }
       yield notification;
     }
   }

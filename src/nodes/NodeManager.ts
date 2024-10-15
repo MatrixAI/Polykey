@@ -240,7 +240,9 @@ class NodeManager {
           );
         }
         const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-        if (nodeId == null) utils.never();
+        if (nodeId == null) {
+          utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+        }
         return this.nodeConnectionManager.createConnectionMultiple(
           [nodeId],
           resolvedHosts,
@@ -541,7 +543,7 @@ class NodeManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      if (conn == null) utils.never();
+      if (conn == null) utils.never('NodeConnection should exist');
       return yield* g(conn);
     } catch (e) {
       caughtError = e;
@@ -1106,7 +1108,7 @@ class NodeManager {
         for await (const result of resultStream) {
           const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
           if (nodeIdNew == null) {
-            utils.never('failed to decode nodeId');
+            utils.never(`failed to decode NodeId "${result.nodeId}"`);
           }
           nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
         }
@@ -1118,7 +1120,9 @@ class NodeManager {
           });
         for await (const { nodeIdEncoded, nodeContact } of resultStream) {
           const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-          if (nodeId == null) utils.never();
+          if (nodeId == null) {
+            utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+          }
           nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
         }
       })();
@@ -1826,7 +1830,7 @@ class NodeManager {
       this.nodeGraph.nodeBucketLimit,
       tran,
     );
-    if (bucket == null) utils.never();
+    if (bucket == null) utils.never('bucket should exist');
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
@@ -2156,7 +2160,7 @@ class NodeManager {
         priority: 0,
       });
     }
-    if (foundTask == null) utils.never();
+    if (foundTask == null) utils.never('task should exist');
     return foundTask;
   }
 

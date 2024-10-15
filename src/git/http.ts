@@ -324,9 +324,7 @@ async function parsePackRequest(
         case 'done':
           return [wants, haves, capabilities];
         default:
-          utils.never(
-            `Type should be either 'want' or 'have', found '${type}'`,
-          );
+          utils.never(`Type should be either "want" or "have", got "${type}"`);
       }
     }
   }

@@ -50,7 +50,7 @@ class IdentitiesAuthenticate extends ServerHandler<
     const authFlow = provider.authenticate(ctx.timer.getTimeout());
     let authFlowResult = await authFlow.next();
     if (authFlowResult.done) {
-      never();
+      never('authFlow signalled done too soon');
     }
     if (ctx.signal.aborted) throw ctx.signal.reason;
     yield {
@@ -61,7 +61,7 @@ class IdentitiesAuthenticate extends ServerHandler<
     };
     authFlowResult = await authFlow.next();
     if (!authFlowResult.done) {
-      never();
+      never('authFlow did not signal done when expected');
     }
     if (ctx.signal.aborted) throw ctx.signal.reason;
     yield {

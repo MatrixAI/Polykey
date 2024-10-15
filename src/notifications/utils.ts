@@ -58,7 +58,9 @@ async function verifyAndDecodeNotif(
   const token = Token.fromEncoded(JSON.parse(signedNotification));
   assertNotification(token.payload);
   const issuerNodeId = nodesUtils.decodeNodeId(token.payload.iss);
-  if (issuerNodeId == null) never();
+  if (issuerNodeId == null) {
+    never(`failed to decode issuer NodeId "${token.payload.iss}"`);
+  }
   const issuerPublicKey = keysUtils.publicKeyFromNodeId(issuerNodeId);
   if (!token.verifyWithPublicKey(issuerPublicKey)) {
     throw new notificationsErrors.ErrorNotificationsVerificationFailed();

@@ -407,9 +407,9 @@ class NodeConnectionManager {
 
     const quicSocket = new QUICSocket({
       resolveHostname: () => {
-        // `NodeConnectionManager` must resolve all hostnames before it reaches
-        // `QUICSocket`.
-        utils.never();
+        utils.never(
+          '"NodeConnectionManager" must resolve all hostnames before it reaches "QUICSocket"',
+        );
       },
       logger: this.logger.getChild(QUICSocket.name),
     });
@@ -695,7 +695,7 @@ class NodeConnectionManager {
     const [release, conn] = await acquire();
     let caughtError;
     try {
-      if (conn == null) utils.never();
+      if (conn == null) utils.never('NodeConnection should exist');
       return yield* g(conn);
     } catch (e) {
       caughtError = e;
@@ -1042,12 +1042,16 @@ class NodeConnectionManager {
       const cert = keysUtils.certFromPEM(
         quicUtils.derToPEM(der) as CertificatePEM,
       );
-      if (cert == null) utils.never();
+      if (cert == null) {
+        utils.never('failed to parse certificate from connection cert chain');
+      }
       return cert;
     });
-    if (certChain == null) utils.never();
+    if (certChain.length === 0) {
+      utils.never('there must be at least 1 certificate in the chain');
+    }
     const nodeId = keysUtils.certNodeId(certChain[0]);
-    if (nodeId == null) utils.never();
+    if (nodeId == null) utils.never('failed to get NodeId from certificate');
     const nodeConnectionNew = NodeConnection.createNodeConnectionReverse({
       nodeId,
       certChain,

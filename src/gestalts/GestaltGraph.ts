@@ -298,7 +298,7 @@ class GestaltGraph {
           break;
         case 'identity':
         default:
-          never();
+          never(`type must be either "node" or "identity" got "${type}"`);
       }
     }
     // 2. remove the node information.
@@ -318,7 +318,7 @@ class GestaltGraph {
       case 'identity':
         return this.setIdentity(info, tran);
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -335,7 +335,7 @@ class GestaltGraph {
       case 'identity':
         return this.unsetIdentity(id, tran);
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -468,7 +468,9 @@ class GestaltGraph {
         never('lastProcessedTime should be valid here');
       }
       const gestaltId = gestaltsUtils.decodeGestaltId(gestaltIdEncoded);
-      if (gestaltId == null) never('GestaltId should be valid here');
+      if (gestaltId == null) {
+        never(`failed to decode GestaltId "${gestaltIdEncoded}"`);
+      }
       yield [gestaltId, lastProcessedTime];
     }
   }
@@ -872,7 +874,9 @@ class GestaltGraph {
         tran,
       );
     } else {
-      never();
+      never(
+        `invalid claim between "${gestaltInfo1[0]}" and "${gestaltInfo2[0]}", must be a node to node or identity to node claim`,
+      );
     }
   }
 
@@ -1065,7 +1069,9 @@ class GestaltGraph {
         tran,
       );
     } else {
-      never();
+      never(
+        `invalid link between "${type1}" and "${type2}", must be node to node or node to identity`,
+      );
     }
   }
 
@@ -1104,7 +1110,7 @@ class GestaltGraph {
         return perm.gestalt;
       }
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -1143,7 +1149,7 @@ class GestaltGraph {
         return;
       }
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -1183,7 +1189,7 @@ class GestaltGraph {
         return;
       }
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -1231,7 +1237,7 @@ class GestaltGraph {
       case 'identity':
         return await this.getGestaltByIdentity(id, tran);
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 
@@ -1335,7 +1341,7 @@ class GestaltGraph {
         return ['identity', gestaltIdentityInfo];
       }
       default:
-        never();
+        never(`type must be either "node" or "identity" got "${type}"`);
     }
   }
 

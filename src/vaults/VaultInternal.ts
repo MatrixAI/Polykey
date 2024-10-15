@@ -819,16 +819,16 @@ class VaultInternal {
 
     const result = vaultsGitInfoGetStream.meta?.result;
     if (result == null || !utils.isObject(result)) {
-      utils.never('`result` must be a defined object');
+      utils.never('"result" must be a defined object');
     }
     if (!('vaultName' in result) || typeof result.vaultName !== 'string') {
-      utils.never('`vaultName` must be defined and a string');
+      utils.never('"vaultName" must be defined and a string');
     }
     if (
       !('vaultIdEncoded' in result) ||
       typeof result.vaultIdEncoded !== 'string'
     ) {
-      utils.never('`vaultIdEncoded` must be defined and a string');
+      utils.never('"vaultIdEncoded" must be defined and a string');
     }
     const vaultName = result.vaultName;
     const remoteVaultId = ids.parseVaultId(result.vaultIdEncoded);
@@ -850,30 +850,33 @@ class VaultInternal {
         headers: POJO;
         body: Array<Buffer>;
       }) {
-        if (method === 'GET') {
-          // Send back the GET request info response
-          return {
-            url: url,
-            method: method,
-            body: vaultsGitInfoGetStream.readable,
-            headers: headers,
-            statusCode: 200,
-            statusMessage: 'OK',
-          };
-        } else if (method === 'POST') {
-          const writer = vaultsGitPackGetStream.writable.getWriter();
-          await writer.write(body[0]);
-          await writer.close();
-          return {
-            url: url,
-            method: method,
-            body: vaultsGitPackGetStream.readable,
-            headers: headers,
-            statusCode: 200,
-            statusMessage: 'OK',
-          };
-        } else {
-          utils.never();
+        switch (method) {
+          case 'GET': {
+            // Send back the GET request info response
+            return {
+              url: url,
+              method: method,
+              body: vaultsGitInfoGetStream.readable,
+              headers: headers,
+              statusCode: 200,
+              statusMessage: 'OK',
+            };
+          }
+          case 'POST': {
+            const writer = vaultsGitPackGetStream.writable.getWriter();
+            await writer.write(body[0]);
+            await writer.close();
+            return {
+              url: url,
+              method: method,
+              body: vaultsGitPackGetStream.readable,
+              headers: headers,
+              statusCode: 200,
+              statusMessage: 'OK',
+            };
+          }
+          default:
+            utils.never(`method must be "GET" or "POST" got "${method}"`);
         }
       },
       vaultName,

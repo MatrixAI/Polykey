@@ -401,11 +401,13 @@ function parseRemoteCertsChain(remoteCertChain: Array<Uint8Array>) {
     const cert = keysUtils.certFromPEM(
       quicUtils.derToPEM(der) as CertificatePEM,
     );
-    if (cert == null) utils.never();
+    if (cert == null) {
+      utils.never('failed to parse certificate from cert chain');
+    }
     return cert;
   });
   const nodeId = keysUtils.certNodeId(certChain[0]);
-  if (nodeId == null) utils.never();
+  if (nodeId == null) utils.never('failed to get NodeId from certificate');
   return { nodeId, certChain };
 }
 

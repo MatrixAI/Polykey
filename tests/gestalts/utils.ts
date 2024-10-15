@@ -238,7 +238,7 @@ class UnsetVertexCommand implements GestaltGraphCommand {
     for (const vertex of vertices) {
       randomVertex2 = vertex;
     }
-    if (randomVertex2 == null) never();
+    if (randomVertex2 == null) never('randomVertex2 must be defined');
     const gestalt2ModelNew = getGestaltFromModel(
       model,
       gestaltsUtils.decodeGestaltId(randomVertex2)!,

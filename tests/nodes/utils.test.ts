@@ -427,7 +427,9 @@ describe('nodes/utils', () => {
           cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
         );
         expect(result.result).toBe('fail');
-        if (result.result !== 'fail') utils.never();
+        if (result.result !== 'fail') {
+          utils.never('result.result should be "fail"');
+        }
         expect(result.value).toBe(CryptoError.CertificateExpired);
       });
     });
