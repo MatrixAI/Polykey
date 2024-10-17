@@ -1,12 +1,15 @@
+import type { Vault } from '@/vaults';
 import type {
   VaultActions,
   HeaderContent,
   HeaderGeneric,
 } from '@/vaults/types';
 import { TransformStream } from 'stream/web';
+import path from 'path';
 import fc from 'fast-check';
 import { vaultActions } from '@/vaults/types';
 import { HeaderType } from '@/vaults/fileTree';
+import * as vaultsUtils from '@/vaults/utils';
 
 const vaultActionArb = fc.constantFrom(...vaultActions);
 
@@ -55,6 +58,57 @@ function binaryStreamToSnippedStream(
   });
 }
 
+async function writeSecret(vault: Vault, secretPath: string, contents: string) {
+  return await vault.writeF(async (efs) => {
+    await vaultsUtils.mkdirExists(efs, path.dirname(secretPath));
+    await efs.writeFile(secretPath, contents);
+  });
+}
+
+async function readSecret(vault: Vault, path: string) {
+  return await vault.readF(async (efs) => {
+    return await efs.readFile(path);
+  });
+}
+
+async function expectSecret(
+  vault: Vault,
+  path: string,
+  contentsExpected: string,
+) {
+  const contentsSecretP = readSecret(vault, path);
+  await expect(contentsSecretP).resolves.toBeDefined();
+  const contentsSecretValue = (await contentsSecretP).toString();
+  expect(contentsSecretValue).toBe(contentsExpected);
+}
+
+async function expectSecretNot(vault: Vault, path: string) {
+  const contentsSecretP = readSecret(vault, path);
+  await expect(contentsSecretP).rejects.toThrow(
+    'ENOENT: no such file or directory',
+  );
+}
+
+async function mkdir(vault: Vault, path: string) {
+  return await vault.writeF(async (efs) => {
+    await vaultsUtils.mkdirExists(efs, path);
+  });
+}
+
+async function expectDirExists(vault: Vault, path: string) {
+  return await vault.readF(async (efs) => {
+    const dirP = efs.readdir(path);
+    await expect(dirP).resolves.toBeDefined();
+  });
+}
+
+async function expectDirExistsNot(vault: Vault, path: string) {
+  return await vault.readF(async (efs) => {
+    const dirP = efs.readdir(path);
+    await expect(dirP).rejects.toThrow('ENOENT');
+  });
+}
+
 export {
   vaultActionArb,
   vaultActionsArb,
@@ -62,4 +116,11 @@ export {
   headerGenericArb,
   headerContentArb,
   binaryStreamToSnippedStream,
+  writeSecret,
+  readSecret,
+  expectSecret,
+  expectSecretNot,
+  mkdir,
+  expectDirExists,
+  expectDirExistsNot,
 };
