@@ -125,8 +125,8 @@ describe('mkdir', () => {
     await testVaultsUtils.expectSecret(vault, secretName, secretContent);
   });
   test('can create a hidden directory', async () => {
-    await vaultOps.mkdir(vault, dirNameHidden, { recursive: true });
-    const list = await vaultOps.listSecrets(vault);
-    expect(list).toContain(dirNameHidden);
+    const response = await vaultOps.mkdir(vault, dirNameHidden);
+    expect(response.type).toEqual('success');
+    await testVaultsUtils.expectDirExists(vault, dirNameHidden);
   });
 });
