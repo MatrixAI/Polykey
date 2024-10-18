@@ -1,4 +1,5 @@
 import type { DB } from '@matrixai/db';
+import type {ContextTimed} from '@matrixai/contexts';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -25,6 +26,7 @@ class VaultsScan extends ServerHandler<
     input: AgentRPCRequestParams,
     _cancel,
     meta,
+    ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
     const { vaultManager, db } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
@@ -36,6 +38,7 @@ class VaultsScan extends ServerHandler<
     > {
       const listResponse = vaultManager.handleScanVaults(
         requestingNodeId,
+        ctx,
         tran,
       );
       for await (const {
@@ -43,6 +46,7 @@ class VaultsScan extends ServerHandler<
         vaultName,
         vaultPermissions,
       } of listResponse) {
+        ctx.signal.throwIfAborted();
         yield {
           vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
           vaultName,

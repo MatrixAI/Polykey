@@ -13,6 +13,7 @@ import git from 'isomorphic-git';
 import { requestTypes } from './types';
 import * as utils from '../utils';
 import * as validationErrors from '../validation/errors';
+import {ContextCancellable} from "@matrixai/contexts";
 
 // Constants
 // Total number of bytes per pack line minus the 4 size bytes and 1 channel byte
@@ -75,7 +76,7 @@ async function* listReferencesGenerator({
   efs: EncryptedFS;
   dir: string;
   gitDir: string;
-}): AsyncGenerator<[Reference, ObjectId], void, void> {
+}, ctx: ContextCancellable): AsyncGenerator<[Reference, ObjectId], void, void> {
   const refs: Array<[string, Promise<string>]> = await git
     .listBranches({
       fs: efs,
@@ -84,6 +85,7 @@ async function* listReferencesGenerator({
     })
     .then((refs) => {
       return refs.map((ref) => {
+        ctx.signal.throwIfAborted();
         return [
           `${REFERENCES_STRING}${ref}`,
           git.resolveRef({ fs: efs, dir, gitdir: gitDir, ref: ref }),
@@ -99,6 +101,7 @@ async function* listReferencesGenerator({
   });
   yield [HEAD_REFERENCE, resolvedHead];
   for (const [key, refP] of refs) {
+    ctx.signal.throwIfAborted();
     yield [key, await refP];
   }
 }
@@ -155,7 +158,7 @@ async function listObjects({
   gitDir: string;
   wants: ObjectIdList;
   haves: ObjectIdList;
-}): Promise<ObjectIdList> {
+}, ctx: ContextCancellable): Promise<ObjectIdList> {
   const commits = new Set<string>();
   const trees = new Set<string>();
   const blobs = new Set<string>();
@@ -163,6 +166,7 @@ async function listObjects({
   const havesSet: Set<string> = new Set(haves);
 
   async function walk(objectId: ObjectId, type: ObjectType): Promise<void> {
+    ctx.signal.throwIfAborted();
     // If object was listed as a have then we don't need to walk over it
     if (havesSet.has(objectId)) return;
     switch (type) {
@@ -243,7 +247,7 @@ async function listObjectsAll({
 }: {
   fs: EncryptedFS;
   gitDir: string;
-}) {
+}): Promise<Array<string>> {
   const objectsDirPath = path.join(gitDir, objectsDirName);
   const objectSet: Set<string> = new Set();
   const objectDirs = await fs.promises.readdir(objectsDirPath);

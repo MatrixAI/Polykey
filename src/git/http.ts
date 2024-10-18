@@ -10,6 +10,7 @@ import { Buffer } from 'buffer';
 import git from 'isomorphic-git';
 import * as gitUtils from './utils';
 import * as utils from '../utils';
+import {ContextCancellable} from "@matrixai/contexts";
 
 /**
  * Reference discovery
@@ -118,7 +119,7 @@ async function* advertiseRefGenerator({
   efs: EncryptedFS;
   dir: string;
   gitDir: string;
-}): AsyncGenerator<Buffer, void, void> {
+}, ctx: ContextCancellable): AsyncGenerator<Buffer, void, void> {
   // Providing side-band-64, symref for the HEAD and agent name capabilities
   const capabilityList = [
     gitUtils.SIDE_BAND_64_CAPABILITY,
@@ -134,14 +135,14 @@ async function* advertiseRefGenerator({
     efs,
     dir,
     gitDir,
-  });
+  }, ctx );
 
   // PKT-LINE("# service=$servicename" LF)
   yield packetLineBuffer(gitUtils.REFERENCE_DISCOVERY_HEADER);
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
   // Ref_list
-  yield* referenceListGenerator(objectGenerator, capabilityList);
+  yield* referenceListGenerator(objectGenerator, capabilityList, ctx);
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
 }
@@ -165,6 +166,7 @@ async function* advertiseRefGenerator({
 async function* referenceListGenerator(
   objectGenerator: AsyncGenerator<[Reference, ObjectId], void, void>,
   capabilities: CapabilityList,
+  ctx: ContextCancellable,
 ): AsyncGenerator<Buffer, void, void> {
   // Cap-list        =  capability *(SP capability)
   const capabilitiesListBuffer = Buffer.from(
@@ -175,6 +177,7 @@ async function* referenceListGenerator(
   //                    *ref_record
   let first = true;
   for await (const [name, objectId] of objectGenerator) {
+    ctx.signal.throwIfAborted();
     if (first) {
       // PKT-LINE(obj-id SP name NUL cap_list LF)
       yield packetLineBuffer(
@@ -351,7 +354,7 @@ async function* generatePackRequest({
   dir: string;
   gitDir: string;
   body: Array<Buffer>;
-}): AsyncGenerator<Buffer, void, void> {
+}, ctx: ContextCancellable): AsyncGenerator<Buffer, void, void> {
   const [wants, haves, _capabilities] = await parsePackRequest(body);
   const objectIds = await gitUtils.listObjects({
     efs: efs,
@@ -359,7 +362,7 @@ async function* generatePackRequest({
     gitDir: gitDir,
     wants,
     haves,
-  });
+  }, ctx);
   // Reply that we have no common history and that we need to send everything
   yield packetLineBuffer(gitUtils.NAK_BUFFER);
   // Send everything over in pack format
@@ -368,7 +371,7 @@ async function* generatePackRequest({
     dir,
     gitDir,
     objectIds,
-  });
+  }, ctx);
   // Send dummy progress data
   yield packetLineBuffer(
     gitUtils.DUMMY_PROGRESS_BUFFER,
@@ -396,7 +399,7 @@ async function* generatePackData({
   gitDir: string;
   objectIds: Array<ObjectId>;
   chunkSize?: number;
-}): AsyncGenerator<Buffer, void, void> {
+}, ctx: ContextCancellable): AsyncGenerator<Buffer, void, void> {
   let packFile: PackObjectsResult;
   // In case of errors we don't want to throw them. This will result in the error being thrown into `isometric-git`
   // when it consumes the response. It handles this by logging out the error which we don't want to happen.
@@ -423,6 +426,7 @@ async function* generatePackData({
   // Streaming the packFile as chunks of the length specified by the `chunkSize`.
   // Each line is formatted as a `PKT-LINE`
   do {
+    ctx.signal.throwIfAborted();
     const subBuffer = packFileBuffer.subarray(0, chunkSize);
     packFileBuffer = packFileBuffer.subarray(chunkSize);
     yield packetLineBuffer(subBuffer, gitUtils.CHANNEL_DATA);

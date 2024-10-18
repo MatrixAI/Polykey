@@ -1,5 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
+import type {ContextTimed} from '@matrixai/contexts';
 import type { VaultName } from '../../../vaults/types';
 import type ACL from '../../../acl/ACL';
 import type VaultManager from '../../../vaults/VaultManager';
@@ -24,6 +25,7 @@ class VaultsGitPackGet extends RawHandler<{
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
     _cancel,
     meta,
+    ctx: ContextTimed,
   ): Promise<[JSONObject, ReadableStream<Uint8Array>]> => {
     const { vaultManager, acl, db } = this.container;
     const [headerMessage, inputStream] = input;

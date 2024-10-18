@@ -40,6 +40,7 @@ import * as nodesUtils from '../nodes/utils';
 import * as keysUtils from '../keys/utils';
 import config from '../config';
 import { mkdirExists } from '../utils/utils';
+import {ContextCancellable} from "@matrixai/contexts";
 
 /**
  * Object map pattern for each vault
@@ -838,12 +839,13 @@ class VaultManager {
   public async *handlePackRequest(
     vaultId: VaultId,
     body: Array<Buffer>,
+    ctx: ContextCancellable,
     tran?: DBTransaction,
   ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
       // Lambda to maintain `this` context
       const handlePackRequest = (tran: DBTransaction) =>
-        this.handlePackRequest(vaultId, body, tran);
+        this.handlePackRequest(vaultId, body, ctx, tran);
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* handlePackRequest(tran);
       });
@@ -853,8 +855,8 @@ class VaultManager {
     const efs = this.efs;
     yield* withG(
       [
-        this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read']),
-        vault.getLock().read(),
+        this.vaultLocks.lock([vaultId.toString(), RWLockWriter, 'read'], ctx),
+        vault.getLock().read(ctx),
       ],
       async function* (): AsyncGenerator<Buffer, void, void> {
         yield* gitHttp.generatePackRequest({
@@ -862,7 +864,7 @@ class VaultManager {
           dir: path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
           gitDir: path.join(vaultsUtils.encodeVaultId(vaultId), '.git'),
           body: body,
-        });
+        }, ctx);
       },
     );
   }
@@ -900,6 +902,7 @@ class VaultManager {
    */
   public async *handleScanVaults(
     nodeId: NodeId,
+    ctx: ContextCancellable,
     tran?: DBTransaction,
   ): AsyncGenerator<{
     vaultId: VaultId;
@@ -909,7 +912,7 @@ class VaultManager {
     if (tran == null) {
       // Lambda to maintain `this` context
       const handleScanVaults = (tran: DBTransaction) =>
-        this.handleScanVaults(nodeId, tran);
+        this.handleScanVaults(nodeId, ctx,  tran);
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* handleScanVaults(tran);
       });
@@ -932,6 +935,7 @@ class VaultManager {
     // Getting the list of vaults
     const vaults = permissions.vaults;
     for (const vaultIdString of Object.keys(vaults)) {
+      ctx.signal.throwIfAborted();
       // Getting vault permissions
       const vaultId = IdInternal.fromString<VaultId>(vaultIdString);
       const vaultPermissions = Object.keys(
