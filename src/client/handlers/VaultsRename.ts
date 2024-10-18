@@ -31,12 +31,12 @@ class VaultsRename extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       await vaultManager.renameVault(vaultId, input.newName, tran);
-      return {
-        vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
-      };
+      return { vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId) };
     });
   };
 }

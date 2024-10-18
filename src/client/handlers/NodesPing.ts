@@ -38,7 +38,7 @@ class NodesPing extends UnaryHandler<
       },
     );
     const result = await nodeManager.pingNode(nodeId);
-    return { type: 'success', success: result != null };
+    return { success: result != null };
   };
 }
 

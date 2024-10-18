@@ -18,10 +18,10 @@ class NodesClaimNetworkSign extends UnaryHandler<
 > {
   public handle = async (
     input: AgentRPCRequestParams<AgentClaimMessage>,
-    _cancel,
+    _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
   ): Promise<AgentRPCResponseResult<AgentClaimMessage>> => {
-    const { nodeManager } = this.container;
+    const { nodeManager }: { nodeManager: NodeManager } = this.container;
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {

@@ -49,7 +49,9 @@ class VaultsPermissionUnset extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       const {
         nodeId,
@@ -93,7 +95,7 @@ class VaultsPermissionUnset extends UnaryHandler<
       }
     });
     // Formatting response
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

@@ -144,11 +144,7 @@ class ACL {
       if (permId in permIds) {
         nodePerm = permIds[permId];
         // Get the first existing perm object
-        let perm: Permission;
-        for (const nodeId_ in nodePerm) {
-          perm = nodePerm[nodeId_];
-          break;
-        }
+        const perm = Object.values(nodePerm)[0];
         // All perm objects are shared
         nodePerm[nodeId] = perm!;
       } else {
@@ -614,8 +610,8 @@ class ACL {
         [...this.aclNodesDbPath, nodeId.toBuffer()],
         true,
       );
-      // Skip if the nodeId doesn't exist
-      // this means that it previously been removed
+      // Skip if the nodeId doesn't exist. This means that it has previously
+      // been removed.
       if (permId == null) {
         continue;
       }

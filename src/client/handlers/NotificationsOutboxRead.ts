@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -20,15 +22,17 @@ class NotificationsOutboxRead extends ServerHandler<
 > {
   public handle(
     input: ClientRPCRequestParams<NotificationOutboxReadMessage>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<NotificationOutboxMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const {
       db,
       notificationsManager,
-    }: { db: DB; notificationsManager: NotificationsManager } = this.container;
+    }: {
+      db: DB;
+      notificationsManager: NotificationsManager;
+    } = this.container;
     const { seek, seekEnd, order, limit } = input;
 
     let seek_: NotificationId | number | undefined;
@@ -54,7 +58,7 @@ class NotificationsOutboxRead extends ServerHandler<
         tran,
       });
       for await (const notification of notifications) {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
+        ctx.signal.throwIfAborted();
         const taskInfo =
           await notificationsManager.getOutboxNotificationTaskInfoById(
             notificationsUtils.decodeNotificationId(

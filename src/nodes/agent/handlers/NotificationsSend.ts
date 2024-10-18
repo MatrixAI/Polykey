@@ -6,7 +6,6 @@ import type {
 } from '../types';
 import type KeyRing from '../../../keys/KeyRing';
 import type NotificationsManager from '../../../notifications/NotificationsManager';
-import type { SignedNotification } from '../../../notifications/types';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as notificationsUtils from '../../../notifications/utils';
 
@@ -25,9 +24,17 @@ class NotificationsSend extends UnaryHandler<
   public handle = async (
     input: AgentRPCRequestParams<SignedNotificationEncoded>,
   ): Promise<AgentRPCResponseResult> => {
-    const { db, keyRing, notificationsManager } = this.container;
+    const {
+      db,
+      keyRing,
+      notificationsManager,
+    }: {
+      db: DB;
+      keyRing: KeyRing;
+      notificationsManager: NotificationsManager;
+    } = this.container;
     const notification = await notificationsUtils.verifyAndDecodeNotif(
-      input.signedNotificationEncoded as SignedNotification,
+      input.signedNotificationEncoded,
       keyRing.getNodeId(),
     );
     await db.withTransactionF((tran) =>

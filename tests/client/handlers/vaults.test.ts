@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { TLSConfig } from '@/network/types';
 import type { FileSystem } from '@/types';
 import type { VaultId } from '@/ids';
@@ -5,12 +6,20 @@ import type NodeManager from '@/nodes/NodeManager';
 import type {
   LogEntryMessage,
   SecretContentMessage,
+  SecretDirMessage,
+  SecretIdentifierMessage,
+  SecretIdentifierMessageTagged,
+  SecretRenameMessage,
+  SecretsRemoveHeaderMessage,
   VaultListMessage,
   VaultPermissionMessage,
+  VaultsLogMessage,
 } from '@/client/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import fc from 'fast-check';
+import { test } from '@fast-check/jest';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
@@ -72,7 +81,6 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as clientErrors from '@/client/errors';
 import * as networkUtils from '@/network/utils';
-import * as utils from '@/utils';
 import * as testsUtils from '../../utils';
 
 describe('vaultsClone', () => {
@@ -414,6 +422,66 @@ describe('vaultsLog', () => {
     // Checking commits exist in order.
     expect(logMessages[0].commitId).toEqual(commit2Oid);
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 2,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        for (const file of fileNames) {
+          await vault.writeF(async (efs) => {
+            await efs.writeFile(file);
+          });
+        }
+      });
+
+      const inputVal: VaultsLogMessage = {
+        nameOrId: vaultIdEncoded,
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsLog({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputVal, () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
 describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet', () => {
   const logger = new Logger('vaultsPermissionSetUnsetGet test', LogLevel.WARN, [
@@ -1076,6 +1144,37 @@ describe('vaultsSecretsWriteFile', () => {
       });
     });
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameArb()], {
+    numRuns: 10,
+  })('cancellation should abort the handler', async (vaultName, fileName) => {
+    // Skip if the vault already exists
+    fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+    const cancelMessage = new Error('cancel message');
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+
+    const inputVal = {
+      nameOrId: vaultIdEncoded,
+      secretName: fileName,
+      secretContent: fileName,
+    };
+
+    // Instantiate the handler
+    const handler = new VaultsSecretsWriteFile({
+      db: db,
+      vaultManager: vaultManager,
+    });
+
+    // Create a dummy context object to be used for cancellation
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+
+    // The `cancel` and `meta` aren't being used here, so dummy values can be
+    // passed.
+    const result = handler.handle(inputVal, () => {}, {}, ctx);
+    abortController.abort(cancelMessage);
+    await expect(result).rejects.toThrow(cancelMessage);
+  });
 });
 describe('vaultsSecretEnv', () => {
   const logger = new Logger('vaultsSecretEnv test', LogLevel.WARN, [
@@ -1339,6 +1438,75 @@ describe('vaultsSecretEnv', () => {
     );
     await writeP;
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          for (const fileName of fileNames) {
+            await efs.writeFile(fileName, fileName);
+          }
+        });
+      });
+
+      const inputGen = async function* (): AsyncGenerator<
+        SecretIdentifierMessage,
+        void,
+        void
+      > {
+        for (const fileName of fileNames) {
+          yield {
+            nameOrId: vaultIdEncoded,
+            secretName: fileName,
+          };
+        }
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsEnv({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputGen(), () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
 describe('vaultsSecretsMkdir', () => {
   const logger = new Logger('vaultsSecretsMkdir test', LogLevel.WARN, [
@@ -1441,7 +1609,9 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     const consumeP = async () => {
       try {
-        for await (const _ of response.readable);
+        for await (const _ of response.readable) {
+          // Consume
+        }
       } catch (e) {
         throw e.cause;
       }
@@ -1465,7 +1635,7 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
-      expect(data.type).toEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
@@ -1485,8 +1655,9 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
-      expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
+      if (data.type !== 'ErrorMessage') {
+        fail('Type should be "ErrorMessage"');
+      }
       expect(data.code).toEqual('ENOENT');
       expect(data.reason).toEqual(dirPath);
     }
@@ -1519,7 +1690,7 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
-      expect(data.type).toEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     await vaultManager.withVaults(
       [vaultId1, vaultId2],
@@ -1554,7 +1725,7 @@ describe('vaultsSecretsMkdir', () => {
     // Check if the operation concluded as expected
     let successCount = 0;
     for await (const data of response.readable) {
-      if (data.type === 'error') {
+      if (data.type === 'ErrorMessage') {
         expect(data.code).toEqual('ENOENT');
         expect(data.reason).toEqual(dirPath3);
       } else {
@@ -1592,8 +1763,10 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
-      expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
+      expect(data.type).toEqual('ErrorMessage');
+      if (data.type !== 'ErrorMessage') {
+        fail('Type should be "ErrorMessage"');
+      }
       expect(data.code).toEqual('EEXIST');
       expect(data.reason).toEqual(dirPath);
     }
@@ -1604,6 +1777,70 @@ describe('vaultsSecretsMkdir', () => {
       });
     });
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [dirNames, maxLogicalSteps]) => {
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+
+      const inputGen = async function* (): AsyncGenerator<
+        SecretDirMessage,
+        void,
+        void
+      > {
+        for (const dir of dirNames) {
+          yield {
+            nameOrId: vaultIdEncoded,
+            dirName: dir,
+          };
+        }
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsMkdir({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputGen(), () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+
+      // await vaultManager.stop();
+      // await vaultManager.start({ fresh: true});
+    },
+  );
 });
 describe('vaultsSecretsCat', () => {
   const logger = new Logger('vaultsSecretsCat test', LogLevel.WARN, [
@@ -1707,7 +1944,9 @@ describe('vaultsSecretsCat', () => {
     await writer.close();
     // Read response
     const consumeP = async () => {
-      for await (const _ of response.readable);
+      for await (const _ of response.readable) {
+        // Consume
+      }
     };
     await testsUtils.expectRemoteError(
       consumeP(),
@@ -1735,9 +1974,8 @@ describe('vaultsSecretsCat', () => {
     await writer.close();
     // Read response
     for await (const data of response.readable) {
-      expect(data.type).toEqual('success');
-      if (data.type !== 'success') {
-        utils.never("Type is asserted to be 'success'");
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
       }
       expect(data.secretContent).toEqual(secretContent);
     }
@@ -1756,8 +1994,9 @@ describe('vaultsSecretsCat', () => {
     await writer.close();
     // Read response
     for await (const data of response.readable) {
-      expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
+      if (data.type !== 'ErrorMessage') {
+        fail('Type should be "ErrorMessage"');
+      }
       expect(data.code).toEqual('ENOENT');
       expect(data.reason).toEqual(secretName);
     }
@@ -1782,8 +2021,9 @@ describe('vaultsSecretsCat', () => {
     await writer.close();
     // Read response
     for await (const data of response.readable) {
-      expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
+      if (data.type !== 'ErrorMessage') {
+        fail('Type should be "ErrorMessage"');
+      }
       expect(data.code).toEqual('EISDIR');
       expect(data.reason).toEqual(secretName);
     }
@@ -1812,9 +2052,8 @@ describe('vaultsSecretsCat', () => {
     // Read response
     let totalContent = '';
     for await (const data of response.readable) {
-      expect(data.type).toEqual('success');
-      if (data.type !== 'success') {
-        utils.never("Type is asserted to be 'success'");
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
       }
       totalContent += data.secretContent;
     }
@@ -1856,9 +2095,8 @@ describe('vaultsSecretsCat', () => {
     // Read response
     let totalContent = '';
     for await (const data of response.readable) {
-      expect(data.type).toEqual('success');
-      if (data.type !== 'success') {
-        utils.never("Type is asserted to be 'success'");
+      if (data.type !== 'SuccessMessage') {
+        fail('Type should be "SuccessMessage"');
       }
       totalContent += data.secretContent;
     }
@@ -1905,7 +2143,7 @@ describe('vaultsSecretsCat', () => {
     // Read response
     let totalContent = '';
     for await (const data of response.readable) {
-      if (data.type === 'success') {
+      if (data.type === 'SuccessMessage') {
         totalContent += data.secretContent;
       } else {
         expect(data.code).toEqual('ENOENT');
@@ -1916,6 +2154,75 @@ describe('vaultsSecretsCat', () => {
       `${secretContent1}${secretContent2}${secretContent3}`,
     );
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          for (const file of fileNames) {
+            await efs.writeFile(file);
+          }
+        });
+      });
+
+      const inputGen = async function* (): AsyncGenerator<
+        SecretIdentifierMessage,
+        void,
+        void
+      > {
+        for (const file of fileNames) {
+          yield {
+            nameOrId: vaultIdEncoded,
+            secretName: file,
+          };
+        }
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsCat({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputGen(), () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
 describe('vaultsSecretsGet', () => {
   const logger = new Logger('vaultsSecretsGet test', LogLevel.WARN, [
@@ -2010,16 +2317,13 @@ describe('vaultsSecretsGet', () => {
     const vaultName = 'test-vault';
     const secretName = 'secret';
     // Get file
-    const response = await rpcClient.methods.vaultsSecretsGet({
+    const responseP = rpcClient.methods.vaultsSecretsGet({
       nameOrId: vaultName,
       secretName: secretName,
     });
     // Read response
-    const consumeP = async () => {
-      for await (const _ of response);
-    };
     await testsUtils.expectRemoteError(
-      consumeP(),
+      responseP,
       vaultsErrors.ErrorVaultsVaultUndefined,
     );
   });
@@ -2034,33 +2338,26 @@ describe('vaultsSecretsGet', () => {
         await efs.writeFile(secretName, secretContent);
       });
     });
-    // Cat file
+    // Get file
     const response = await rpcClient.methods.vaultsSecretsGet({
       nameOrId: vaultsUtils.encodeVaultId(vaultId),
       secretName: secretName,
     });
     // Read response
-    let totalContent = '';
-    for await (const data of response) {
-      totalContent += data.secretContent;
-    }
-    expect(totalContent).toEqual(secretContent);
+    expect(response.secretContent).toEqual(secretContent);
   });
   test('fails to read invalid secret', async () => {
     const vaultName = 'test-vault';
     const vaultId = await vaultManager.createVault(vaultName);
     const secretName = 'secret';
-    // Cat file
-    const response = await rpcClient.methods.vaultsSecretsGet({
+    // Get file
+    const responseP = rpcClient.methods.vaultsSecretsGet({
       nameOrId: vaultsUtils.encodeVaultId(vaultId),
       secretName: secretName,
     });
     // Read response
-    const consumeP = async () => {
-      for await (const _ of response);
-    };
     await testsUtils.expectRemoteError(
-      consumeP(),
+      responseP,
       vaultsErrors.ErrorSecretsSecretUndefined,
     );
   });
@@ -2074,17 +2371,14 @@ describe('vaultsSecretsGet', () => {
         await efs.mkdir(secretName);
       });
     });
-    // Cat file
-    const response = await rpcClient.methods.vaultsSecretsGet({
+    // Get file
+    const responseP = rpcClient.methods.vaultsSecretsGet({
       nameOrId: vaultsUtils.encodeVaultId(vaultId),
       secretName: secretName,
     });
     // Read response
-    const consumeP = async () => {
-      for await (const _ of response);
-    };
     await testsUtils.expectRemoteError(
-      consumeP(),
+      responseP,
       vaultsErrors.ErrorSecretsIsDirectory,
     );
   });
@@ -2486,9 +2780,10 @@ describe('vaultsSecretsRemove', () => {
     let loopRun = false;
     for await (const data of response.readable) {
       loopRun = true;
-      expect(data.type).toStrictEqual('error');
-      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
-      expect(data.code).toStrictEqual('EINVAL');
+      if (data.type !== 'ErrorMessage') {
+        fail('Type should be "ErrorMessage"');
+      }
+      expect(data.code).toEqual('EINVAL');
     }
     // Check
     expect(loopRun).toBeTruthy();
@@ -2533,7 +2828,7 @@ describe('vaultsSecretsRemove', () => {
     let loopRun = false;
     for await (const data of response.readable) {
       loopRun = true;
-      expect(data.type).toStrictEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     expect(loopRun).toBeTruthy();
     // Check each secret was deleted
@@ -2544,7 +2839,7 @@ describe('vaultsSecretsRemove', () => {
       });
     });
   });
-  test('continues on error', async () => {
+  test('should continue on error', async () => {
     // Create secrets
     const secretName1 = 'test-secret1';
     const secretName2 = 'test-secret2';
@@ -2584,13 +2879,13 @@ describe('vaultsSecretsRemove', () => {
     await writer.close();
     let errorCount = 0;
     for await (const data of response.readable) {
-      if (data.type === 'error') {
+      if (data.type === 'ErrorMessage') {
         // No other file name should raise this error
-        expect(data.reason).toStrictEqual(invalidName);
+        expect(data.reason).toEqual(invalidName);
         errorCount++;
         continue;
       }
-      expect(data.type).toStrictEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     // Only one error should have happened
     expect(errorCount).toEqual(1);
@@ -2642,7 +2937,7 @@ describe('vaultsSecretsRemove', () => {
     let loopRun = false;
     for await (const data of response.readable) {
       loopRun = true;
-      expect(data.type).toStrictEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     expect(loopRun).toBeTruthy();
     // Ensure single log message for deleting the secrets
@@ -2700,7 +2995,7 @@ describe('vaultsSecretsRemove', () => {
     let loopRun = false;
     for await (const data of response.readable) {
       loopRun = true;
-      expect(data.type).toStrictEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     // Ensure single log message for deleting the secrets
     expect(loopRun).toBeTruthy();
@@ -2750,7 +3045,7 @@ describe('vaultsSecretsRemove', () => {
     });
     await writer.close();
     for await (const data of response.readable) {
-      expect(data.type).toStrictEqual('success');
+      expect(data.type).toEqual('SuccessMessage');
     }
     // Check each secret and the secret directory were deleted
     await vaultManager.withVaults([vaultId], async (vault) => {
@@ -2793,7 +3088,7 @@ describe('vaultsSecretsRemove', () => {
     });
     await writer.close();
     for await (const data of response.readable) {
-      expect(data.type).toStrictEqual('error');
+      expect(data.type).toEqual('ErrorMessage');
     }
     // Check each secret and the secret directory were deleted
     await vaultManager.withVaults([vaultId], async (vault) => {
@@ -2804,9 +3099,85 @@ describe('vaultsSecretsRemove', () => {
       });
     });
   });
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          for (const file of fileNames) {
+            await efs.writeFile(file, file);
+          }
+        });
+      });
+
+      const inputGen = async function* (): AsyncGenerator<
+        SecretsRemoveHeaderMessage | SecretIdentifierMessageTagged,
+        void,
+        void
+      > {
+        // Header message
+        yield {
+          type: 'VaultNamesHeaderMessage',
+          vaultNames: [vaultIdEncoded],
+        };
+        // Content messages
+        for (const file of fileNames) {
+          yield {
+            type: 'SecretIdentifierMessage',
+            nameOrId: vaultIdEncoded,
+            secretName: file,
+          };
+        }
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsRemove({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputGen(), () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
-describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
-  const logger = new Logger('vaultsSecretsNewDirList test', LogLevel.WARN, [
+describe('vaultsSecretsNewDir', () => {
+  const logger = new Logger('vaultsSecretsNewDir test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -2822,7 +3193,6 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
     vaultsSecretsNewDir: typeof vaultsSecretsNewDir;
-    vaultsSecretsList: typeof vaultsSecretsList;
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
@@ -2866,10 +3236,6 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
           fs,
           vaultManager,
         }),
-        vaultsSecretsList: new VaultsSecretsList({
-          db,
-          vaultManager,
-        }),
       },
       host: localhost,
     });
@@ -2884,6 +3250,132 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
     rpcClient = new RPCClient({
       manifest: {
         vaultsSecretsNewDir,
+      },
+      streamFactory: () => webSocketClient.connection.newStream(),
+      toError: networkUtils.toError,
+      logger: logger.getChild(RPCClient.name),
+    });
+  });
+  afterEach(async () => {
+    await clientService?.stop({ force: true });
+    await webSocketClient.destroy({ force: true });
+    await vaultManager.stop();
+    await db.stop();
+    await keyRing.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test('should fail with an invalid vault name', async () => {
+    const responseP = rpcClient.methods.vaultsSecretsNewDir({
+      nameOrId: 'doesnt-exist',
+      dirName: 'doesnt-matter',
+    });
+    await testsUtils.expectRemoteError(
+      responseP,
+      vaultsErrors.ErrorVaultsVaultUndefined,
+    );
+  });
+  test('adds a directory of secrets', async () => {
+    // Add directory of secrets
+    const vaultName = 'test-vault';
+    const secretList = ['test-secret1', 'test-secret2', 'test-secret3'];
+    const secretDir = path.join(dataDir, 'secretDir');
+    await fs.promises.mkdir(secretDir);
+    for (const secret of secretList) {
+      const secretFile = path.join(secretDir, secret);
+      // Write secret to file
+      await fs.promises.writeFile(secretFile, secret);
+    }
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultsIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const addResponse = await rpcClient.methods.vaultsSecretsNewDir({
+      nameOrId: vaultsIdEncoded,
+      dirName: secretDir,
+    });
+    expect(addResponse.success).toBeTruthy();
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.readF(async (efs) => {
+        const dirContents = await efs.readdir('secretDir');
+        const files = dirContents.map((value) => value.toString());
+        expect(files).toContainAllValues(secretList);
+      });
+    });
+  });
+});
+describe('vaultsSecretsList', () => {
+  const logger = new Logger('vaultsSecretsList test', LogLevel.WARN, [
+    new StreamHandler(
+      formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
+    ),
+  ]);
+  const password = 'helloWorld';
+  const localhost = '127.0.0.1';
+  const fs: FileSystem = require('fs');
+  let dataDir: string;
+  let db: DB;
+  let keyRing: KeyRing;
+  let tlsConfig: TLSConfig;
+  let clientService: ClientService;
+  let webSocketClient: WebSocketClient;
+  let rpcClient: RPCClient<{
+    vaultsSecretsList: typeof vaultsSecretsList;
+  }>;
+  let vaultManager: VaultManager;
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const keysPath = path.join(dataDir, 'keys');
+    keyRing = await KeyRing.createKeyRing({
+      password: password,
+      keysPath: keysPath,
+      passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+      passwordMemLimit: keysUtils.passwordMemLimits.min,
+      strictMemoryLock: false,
+      logger: logger,
+    });
+    tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
+    const dbPath = path.join(dataDir, 'db');
+    db = await DB.createDB({
+      dbPath: dbPath,
+      logger: logger,
+    });
+    const vaultsPath = path.join(dataDir, 'vaults');
+    vaultManager = await VaultManager.createVaultManager({
+      vaultsPath: vaultsPath,
+      db: db,
+      acl: {} as ACL,
+      keyRing: keyRing,
+      nodeManager: {} as NodeManager,
+      gestaltGraph: {} as GestaltGraph,
+      notificationsManager: {} as NotificationsManager,
+      logger: logger,
+    });
+    clientService = new ClientService({
+      tlsConfig: tlsConfig,
+      logger: logger.getChild(ClientService.name),
+    });
+    await clientService.start({
+      manifest: {
+        vaultsSecretsList: new VaultsSecretsList({
+          db: db,
+          vaultManager: vaultManager,
+        }),
+      },
+      host: localhost,
+    });
+    webSocketClient = await WebSocketClient.createWebSocketClient({
+      config: {
+        verifyPeer: false,
+      },
+      host: localhost,
+      logger: logger.getChild(WebSocketClient.name),
+      port: clientService.port,
+    });
+    rpcClient = new RPCClient({
+      manifest: {
         vaultsSecretsList,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
@@ -2902,53 +3394,233 @@ describe('vaultsSecretsNewDir and vaultsSecretsList', () => {
       recursive: true,
     });
   });
-  test('adds and lists a directory of secrets', async () => {
-    // Doing the test
-    // Add directory of secrets
-    const vaultName = 'test-vault';
-    const secretList = ['test-secret1', 'test-secret2', 'test-secret3'];
-    const secretDir = path.join(dataDir, 'secretDir');
-    await fs.promises.mkdir(secretDir);
-    for (const secret of secretList) {
-      const secretFile = path.join(secretDir, secret);
-      // Write secret to file
-      await fs.promises.writeFile(secretFile, secret);
-    }
-    const vaultId = await vaultManager.createVault(vaultName);
-    const vaultsIdEncoded = vaultsUtils.encodeVaultId(vaultId);
-    const addResponse = await rpcClient.methods.vaultsSecretsNewDir({
-      nameOrId: vaultsIdEncoded,
-      dirName: secretDir,
+  test('should fail with an invalid vault name', async () => {
+    const response = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: 'doesnt-exist',
+      secretName: 'doesnt-matter',
     });
-    expect(addResponse.success).toBeTruthy();
-
-    const noFiles = await rpcClient.methods.vaultsSecretsList({
-      nameOrId: vaultsIdEncoded,
-      secretName: 'doesntExist',
-    });
-
-    await expect(async () => {
-      try {
-        for await (const _ of noFiles);
-      } catch (e) {
-        throw e.cause;
+    const consumeP = async () => {
+      for await (const _ of response) {
+        // Consume values
       }
-    }).rejects.toThrow(vaultsErrors.ErrorSecretsDirectoryUndefined);
-
-    const secrets = await rpcClient.methods.vaultsSecretsList({
-      nameOrId: vaultsIdEncoded,
-      secretName: 'secretDir',
-    });
-
-    // Extract secret file paths
-    const parsedFiles: Array<string> = [];
-    for await (const file of secrets) {
-      parsedFiles.push(file.path);
-    }
-    expect(parsedFiles).toIncludeAllMembers(
-      secretList.map((secret) => path.join('secretDir', secret)),
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      vaultsErrors.ErrorVaultsVaultUndefined,
     );
   });
+  test('should fail with an invalid secret name', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const response = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: vaultIdEncoded,
+      secretName: 'doesnt-matter',
+    });
+    const consumeP = async () => {
+      for await (const _ of response) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      vaultsErrors.ErrorSecretsDirectoryUndefined,
+    );
+  });
+  test('should list secret path and type', async () => {
+    // Add secrets
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('secret');
+      });
+    });
+    // List secrets
+    const response = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: vaultIdEncoded,
+      secretName: '.',
+    });
+    // Parse response
+    let file: string = '';
+    let type: string = '';
+    for await (const data of response) {
+      file = data.path;
+      type = data.type;
+    }
+    expect(file).toEqual('secret');
+    expect(type).toEqual('FILE');
+  });
+  test.prop(
+    [
+      testsUtils.vaultNameArb(),
+      fc.array(testsUtils.fileNameArb(), { minLength: 2, maxLength: 10 }),
+    ],
+    {
+      numRuns: 1,
+    },
+  )(
+    'should list secrets directory with correct type',
+    async (vaultName, fileNames) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      // Add secrets
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      const parentDir = 'dir';
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          await efs.mkdir(parentDir);
+          for (const file of fileNames) {
+            await efs.writeFile(file);
+            await efs.writeFile(path.join(parentDir, file));
+          }
+        });
+      });
+      // List secrets
+      const response = await rpcClient.methods.vaultsSecretsList({
+        nameOrId: vaultIdEncoded,
+        secretName: '.',
+      });
+      // Parse response
+      const result: Record<string, string> = {};
+      for await (const data of response) {
+        result[data.path] = data.type;
+      }
+      expect(result).toContainAllKeys([...fileNames, parentDir]);
+      expect(result[parentDir]).toEqual('DIRECTORY');
+    },
+  );
+  test.prop(
+    [
+      testsUtils.vaultNameArb(),
+      fc.array(testsUtils.fileNameArb(), { minLength: 2, maxLength: 10 }),
+    ],
+    {
+      numRuns: 1,
+    },
+  )('should list multiple secrets', async (vaultName, fileNames) => {
+    // Skip if the vault already exists
+    fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+    // Add secrets
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        for (const file of fileNames) {
+          await efs.writeFile(file);
+        }
+      });
+    });
+    // List secrets
+    const response = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: vaultIdEncoded,
+      secretName: '.',
+    });
+    // Parse response
+    const files: Array<string> = [];
+    for await (const data of response) {
+      files.push(data.path);
+    }
+    expect(files).toContainAllValues(fileNames);
+  });
+  test.prop(
+    [
+      testsUtils.vaultNameArb(),
+      fc.array(testsUtils.fileNameArb(), { minLength: 2, maxLength: 10 }),
+    ],
+    {
+      numRuns: 1,
+    },
+  )('should list contents of a directory', async (vaultName, fileNames) => {
+    // Skip if the vault already exists
+    fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+    // Add secrets
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    const parentDir = 'dir';
+    const dirFileNames = fileNames.map((file) => path.join(parentDir, file));
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.mkdir(parentDir);
+        for (const file of dirFileNames) {
+          await efs.writeFile(file);
+        }
+      });
+    });
+    // List secrets
+    const response = await rpcClient.methods.vaultsSecretsList({
+      nameOrId: vaultIdEncoded,
+      secretName: parentDir,
+    });
+    // Parse response
+    const files: Array<string> = [];
+    for await (const data of response) {
+      files.push(data.path);
+    }
+    expect(files).toContainAllValues(dirFileNames);
+  });
+  test.todo('should list secrets from multiple vaults');
+  test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
+    numRuns: 10,
+  })(
+    'cancellation should abort the handler',
+    async (vaultName, [fileNames, maxLogicalSteps]) => {
+      // Skip if the vault already exists
+      fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+      const cancelMessage = new Error('cancel message');
+      const vaultId = await vaultManager.createVault(vaultName);
+      const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+      await vaultManager.withVaults([vaultId], async (vault) => {
+        await vault.writeF(async (efs) => {
+          for (const file of fileNames) {
+            await efs.writeFile(file);
+          }
+        });
+      });
+
+      const inputVal: SecretIdentifierMessage = {
+        nameOrId: vaultIdEncoded,
+        secretName: '.',
+      };
+
+      // Instantiate the handler
+      let logicalStepsCounter = 0;
+      const handler = new VaultsSecretsList({
+        db: db,
+        vaultManager: vaultManager,
+      });
+
+      // Create a dummy context object to be used for cancellation
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+
+      // The `cancel` and `meta` aren't being used here, so dummy values can be
+      // passed.
+      const result = handler.handle(inputVal, () => {}, {}, ctx);
+
+      // Create a promise which consumes data from the handler and advances the
+      // logical step counter. If the count matches a randomly selected value,
+      // then abort the handler, which would reject the promise.
+      const consumeP = async () => {
+        let aborted = false;
+        for await (const _ of result) {
+          // If we have already aborted, then the handler should not be sending
+          // any further information.
+          if (aborted) {
+            fail('The handler should not continue after cancellation');
+          }
+          // If we are on a logical step that matches what we have to abort on,
+          // then send an abort signal. Next loop should throw an error.
+          if (logicalStepsCounter === maxLogicalSteps) {
+            abortController.abort(cancelMessage);
+            aborted = true;
+          }
+          logicalStepsCounter++;
+        }
+      };
+      await expect(consumeP()).rejects.toThrow(cancelMessage);
+    },
+  );
 });
 describe('vaultsSecretsRename', () => {
   const logger = new Logger('vaultsSecretsRename test', LogLevel.WARN, [
@@ -3062,6 +3734,42 @@ describe('vaultsSecretsRename', () => {
         );
       });
     });
+  });
+  test.prop([testsUtils.vaultNameArb()], {
+    numRuns: 10,
+  })('cancellation should abort the handler', async (vaultName) => {
+    // Skip if the vault already exists
+    fc.pre((await vaultManager.getVaultId(vaultName)) == null);
+    const cancelMessage = new Error('cancel message');
+    const vaultId = await vaultManager.createVault(vaultName);
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile('old', 'old');
+      });
+    });
+
+    const inputVal: SecretRenameMessage = {
+      nameOrId: vaultIdEncoded,
+      secretName: 'old',
+      newSecretName: 'new',
+    };
+
+    // Instantiate the handler
+    const handler = new VaultsSecretsRename({
+      db: db,
+      vaultManager: vaultManager,
+    });
+
+    // Create a dummy context object to be used for cancellation
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+
+    // The `cancel` and `meta` aren't being used here, so dummy values can be
+    // passed.
+    const result = handler.handle(inputVal, () => {}, {}, ctx);
+    abortController.abort(cancelMessage);
+    await expect(result).rejects.toThrow(cancelMessage);
   });
 });
 describe('vaultsSecretsStat', () => {

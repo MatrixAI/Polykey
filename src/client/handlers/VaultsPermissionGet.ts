@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -26,11 +28,10 @@ class VaultsPermissionGet extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<VaultPermissionMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const {
       db,
       vaultManager,
@@ -45,7 +46,9 @@ class VaultsPermissionGet extends ServerHandler<
         const vaultId =
           vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
         if (vaultId == null) {
-          throw new vaultsErrors.ErrorVaultsVaultUndefined();
+          throw new vaultsErrors.ErrorVaultsVaultUndefined(
+            `Vault "${input.nameOrId}" does not exist`,
+          );
         }
         // Getting permissions
         return [await acl.getVaultPerm(vaultId, tran), vaultId];
@@ -62,7 +65,7 @@ class VaultsPermissionGet extends ServerHandler<
       const actions = Object.keys(
         permissionList[nodeIdString],
       ) as Array<VaultAction>;
-      if (ctx.signal.aborted) throw ctx.signal.reason;
+      ctx.signal.throwIfAborted();
       yield {
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
         nodeIdEncoded: nodesUtils.encodeNodeId(nodeId),

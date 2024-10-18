@@ -7,16 +7,16 @@ import type {
 } from '../types';
 import type ACL from '../../acl/ACL';
 import type { VaultAction, VaultActions } from '../../vaults/types';
-import type { NodeId } from '../../ids';
 import type VaultManager from '../../vaults/VaultManager';
 import type NotificationsManager from '../../notifications/NotificationsManager';
 import type GestaltGraph from '../../gestalts/GestaltGraph';
+import type { NodeId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 import * as ids from '../../ids';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 
 class VaultsPermissionSet extends UnaryHandler<
   {
@@ -53,7 +53,9 @@ class VaultsPermissionSet extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       const {
         nodeId,
@@ -76,7 +78,11 @@ class VaultsPermissionSet extends UnaryHandler<
       );
       // Checking if vault exists
       const vaultMeta = await vaultManager.getVaultMeta(vaultId, tran);
-      if (!vaultMeta) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      if (!vaultMeta) {
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
+      }
       // Setting permissions
       const actionsSet: VaultActions = {};
       await gestaltGraph.setGestaltAction(['node', nodeId], 'scan', tran);
@@ -86,7 +92,7 @@ class VaultsPermissionSet extends UnaryHandler<
       }
       // Sending notification
       await notificationsManager.sendNotification({
-        nodeId,
+        nodeId: nodeId,
         data: {
           type: 'VaultShare',
           vaultId: vaultsUtils.encodeVaultId(vaultId),
@@ -95,7 +101,7 @@ class VaultsPermissionSet extends UnaryHandler<
         },
       });
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

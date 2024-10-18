@@ -1,15 +1,17 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NodeIdMessage,
   VaultsScanMessage,
 } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
+import type VaultManager from '../../vaults/VaultManager';
 import { ServerHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
+import * as ids from '../../ids';
 
 class VaultsScan extends ServerHandler<
   {
@@ -20,17 +22,12 @@ class VaultsScan extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<NodeIdMessage>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<VaultsScanMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { vaultManager }: { vaultManager: VaultManager } = this.container;
-    const {
-      nodeId,
-    }: {
-      nodeId: NodeId;
-    } = validateSync(
+    const { nodeId }: { nodeId: NodeId } = validateSync(
       (keyPath, value) => {
         return matchSync(keyPath)(
           [['nodeId'], () => ids.parseNodeId(value)],
@@ -45,11 +42,11 @@ class VaultsScan extends ServerHandler<
       vaultIdEncoded,
       vaultName,
       vaultPermissions,
-    } of vaultManager.scanVaults(nodeId)) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
+    } of vaultManager.scanVaults(nodeId, ctx)) {
+      ctx.signal.throwIfAborted();
       yield {
-        vaultName,
-        vaultIdEncoded,
+        vaultName: vaultName,
+        vaultIdEncoded: vaultIdEncoded,
         permissions: vaultPermissions,
       };
     }

@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { POJO } from '@';
 import type { CapabilityList } from '@/git/types';
 import type { Arbitrary } from 'fast-check';
@@ -153,15 +154,15 @@ function request({
     headers: POJO;
     body: Array<Buffer>;
   }) => {
-    // Console.log('body', body.map(v => v.toString()))
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     switch (method) {
       case 'GET': {
         // Send back the GET request info response
-        const advertiseRefGen = gitHttp.advertiseRefGenerator({
-          efs,
-          dir,
-          gitDir,
-        });
+        const advertiseRefGen = gitHttp.advertiseRefGenerator(
+          { efs, dir, gitDir },
+          ctx,
+        );
 
         return {
           url: url,
@@ -173,12 +174,10 @@ function request({
         };
       }
       case 'POST': {
-        const packGen = gitHttp.generatePackRequest({
-          efs,
-          dir,
-          gitDir,
-          body,
-        });
+        const packGen = gitHttp.generatePackRequest(
+          { efs, dir, gitDir, body },
+          ctx,
+        );
         return {
           url: url,
           method: method,

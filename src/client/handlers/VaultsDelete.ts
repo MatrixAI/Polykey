@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -6,10 +8,9 @@ import type {
   VaultIdentifierMessage,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import type { VaultName } from '../../vaults/types';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
+import * as vaultsUtils from '../../vaults/utils';
 
 class VaultsDelete extends UnaryHandler<
   {
@@ -21,22 +22,27 @@ class VaultsDelete extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<VaultIdentifierMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     await db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
-        input.nameOrId as VaultName,
+        input.nameOrId,
         tran,
       );
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
-      await vaultManager.destroyVault(vaultId, tran);
+      await vaultManager.destroyVault(vaultId, tran, ctx);
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

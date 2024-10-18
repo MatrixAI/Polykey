@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -8,11 +10,11 @@ import type { IdentityId, ProviderId } from '../../ids';
 import type IdentitiesManager from '../../identities/IdentitiesManager';
 import type { IdentityData } from '../../identities/types';
 import { ServerHandler } from '@matrixai/rpc';
+import { validateSync } from '../../validation';
+import { matchSync } from '../../utils';
 import * as ids from '../../ids';
 import * as identitiesErrors from '../../identities/errors';
 import * as identitiesUtils from '../../identities/utils';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
 
 class IdentitiesInfoGet extends ServerHandler<
   {
@@ -23,9 +25,9 @@ class IdentitiesInfoGet extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<ProviderSearchMessage>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
     if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager }: { identitiesManager: IdentitiesManager } =
@@ -86,7 +88,7 @@ class IdentitiesInfoGet extends ServerHandler<
       input.limit = identities.length;
     }
     for (let i = 0; i < input.limit; i++) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
+      ctx.signal.throwIfAborted();
       const identity = identities[i];
       if (identity !== undefined) {
         if (identitiesUtils.matchIdentityData(identity, searchTerms)) {

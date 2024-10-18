@@ -15,7 +15,10 @@ class NotificationsInboxClear extends UnaryHandler<
     const {
       db,
       notificationsManager,
-    }: { db: DB; notificationsManager: NotificationsManager } = this.container;
+    }: {
+      db: DB;
+      notificationsManager: NotificationsManager;
+    } = this.container;
     await db.withTransactionF((tran) =>
       notificationsManager.clearInboxNotifications(tran),
     );

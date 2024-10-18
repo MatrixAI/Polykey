@@ -1,3 +1,4 @@
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -23,10 +24,16 @@ class NodesCrossSignClaim extends DuplexHandler<
 > {
   public handle = async function* (
     input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
-    _cancel,
-    meta,
+    _cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue>,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
-    const { acl, nodeManager } = this.container;
+    const {
+      acl,
+      nodeManager,
+    }: {
+      acl: ACL;
+      nodeManager: NodeManager;
+    } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();

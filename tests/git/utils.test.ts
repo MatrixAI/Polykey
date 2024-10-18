@@ -1,9 +1,10 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import git from 'isomorphic-git';
-import { test } from '@fast-check/jest';
 import fc from 'fast-check';
+import { test } from '@fast-check/jest';
 import * as gitUtils from '@/git/utils';
 import * as validationErrors from '@/validation/errors';
 import * as gitTestUtils from './utils';
@@ -81,9 +82,12 @@ describe('Git utils', () => {
       })
     )[0].oid;
     const expectedReferences = ['HEAD', 'refs/heads/master'];
-    for await (const [reference, objectId] of gitUtils.listReferencesGenerator({
-      ...gitDirs,
-    })) {
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    for await (const [reference, objectId] of gitUtils.listReferencesGenerator(
+      { ...gitDirs },
+      ctx,
+    )) {
       expect(reference).toBeOneOf(expectedReferences);
       expect(objectId).toBe(headObjectId);
     }
@@ -178,12 +182,17 @@ describe('Git utils', () => {
       })
     ).map((v) => v.oid);
 
-    const objectList = await gitUtils.listObjects({
-      ...gitDirs,
-      wants: commitIds,
-      haves: [],
-    });
-    const expectedObjectIds = await gitUtils.listObjectsAll(gitDirs);
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const objectList = await gitUtils.listObjects(
+      {
+        ...gitDirs,
+        wants: commitIds,
+        haves: [],
+      },
+      ctx,
+    );
+    const expectedObjectIds = await gitUtils.listObjectsAll(gitDirs, ctx);
     // Found objects should include all the commits
     expect(objectList).toIncludeAllMembers(commitIds);
     // Since it was an exhaustive walk of all commits, all objectIds should be included

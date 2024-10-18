@@ -1,16 +1,18 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   CloneMessage,
   SuccessMessage,
 } from '../types';
-import type VaultManager from '../../vaults/VaultManager';
 import type { NodeId } from '../../ids';
+import type VaultManager from '../../vaults/VaultManager';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
+import * as ids from '../../ids';
 
 class VaultsClone extends UnaryHandler<
   {
@@ -22,6 +24,9 @@ class VaultsClone extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<CloneMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -40,11 +45,10 @@ class VaultsClone extends UnaryHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
-    // Vault id
     await db.withTransactionF(async (tran) => {
-      await vaultManager.cloneVault(nodeId, input.nameOrId, tran);
+      await vaultManager.cloneVault(nodeId, input.nameOrId, tran, ctx);
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

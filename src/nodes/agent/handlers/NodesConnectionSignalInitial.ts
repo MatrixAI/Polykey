@@ -4,13 +4,16 @@ import type {
   HolePunchSignalMessage,
   AddressMessage,
 } from '../types';
+import type { NodeId } from '../../../ids';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type { Host, Port } from '../../../network/types';
 import type { JSONValue } from '../../../types';
 import { UnaryHandler } from '@matrixai/rpc';
+import { validateSync } from '../../../validation';
+import { matchSync } from '../../../utils';
+import { never } from '../../../utils';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
-import { never } from '../../../utils';
 import * as keysUtils from '../../../keys/utils';
 import * as ids from '../../../ids';
 
@@ -23,16 +26,30 @@ class NodesConnectionSignalInitial extends UnaryHandler<
 > {
   public handle = async (
     input: AgentRPCRequestParams<HolePunchSignalMessage>,
-    _cancel,
+    _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
   ): Promise<AgentRPCResponseResult<AddressMessage>> => {
-    const { nodeConnectionManager } = this.container;
+    const {
+      nodeConnectionManager,
+    }: {
+      nodeConnectionManager: NodeConnectionManager;
+    } = this.container;
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
-    const targetNodeId = ids.parseNodeId(input.targetNodeIdEncoded);
+    const { targetNodeId }: { targetNodeId: NodeId } = validateSync(
+      (keyPath, value) => {
+        return matchSync(keyPath)(
+          [['targetNodeId'], () => ids.parseNodeId(value)],
+          () => value,
+        );
+      },
+      {
+        targetNodeId: input.targetNodeIdEncoded,
+      },
+    );
     const signature = Buffer.from(input.signature, 'base64url');
     // Checking signature, data is just `<sourceNodeId><targetNodeId>` concatenated
     const data = Buffer.concat([requestingNodeId, targetNodeId]);

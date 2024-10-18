@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
@@ -5,6 +6,7 @@ import type {
   VaultListMessage,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
+import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 
@@ -17,21 +19,20 @@ class VaultsList extends ServerHandler<
   ClientRPCResponseResult<VaultListMessage>
 > {
   public handle = async function* (
-    _input,
-    _cancel,
-    _meta,
-    ctx,
+    _input: ClientRPCRequestParams,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<VaultListMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     const vaults = await db.withTransactionF((tran) =>
-      vaultManager.listVaults(tran),
+      vaultManager.listVaults(ctx, tran),
     );
     for await (const [vaultName, vaultId] of vaults) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
+      ctx.signal.throwIfAborted();
       yield {
-        vaultName,
+        vaultName: vaultName,
         vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
       };
     }

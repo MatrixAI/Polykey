@@ -166,12 +166,16 @@ class NotificationsManager {
     );
     // The task id if a new task has been scheduled for a retry.
     try {
-      await this.nodeManager.withConnF(nodeId, async (connection) => {
-        const client = connection.getClient();
-        await client.methods.notificationsSend({
-          signedNotificationEncoded: signedNotification,
-        });
-      });
+      await this.nodeManager.withConnF(
+        nodeId,
+        undefined,
+        async (connection) => {
+          const client = connection.getClient();
+          await client.methods.notificationsSend({
+            signedNotificationEncoded: signedNotification,
+          });
+        },
+      );
       await this.db.del(notificationKeyPath);
     } catch (e) {
       this.logger.warn(

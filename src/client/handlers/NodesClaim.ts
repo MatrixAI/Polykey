@@ -41,11 +41,11 @@ class NodesClaim extends UnaryHandler<
       },
     );
     await db.withTransactionF(async (tran) => {
-      // Attempt to claim the node,
-      // if there is no permission then we get an error
+      // Attempt to claim the node. If there is no permission then we get an
+      // error.
       await nodeManager.claimNode(nodeId, tran);
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   AuthProcessMessage,
   ClientRPCRequestParams,
@@ -21,11 +23,10 @@ class IdentitiesAuthenticate extends ServerHandler<
   public timeout = 120000; // 2 Minutes
   public handle = async function* (
     input: ClientRPCRequestParams<{ providerId: string }>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<AuthProcessMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager }: { identitiesManager: IdentitiesManager } =
       this.container;
     const {
@@ -52,7 +53,7 @@ class IdentitiesAuthenticate extends ServerHandler<
     if (authFlowResult.done) {
       never('authFlow signalled done too soon');
     }
-    if (ctx.signal.aborted) throw ctx.signal.reason;
+    ctx.signal.throwIfAborted();
     yield {
       request: {
         url: authFlowResult.value.url,
@@ -63,7 +64,7 @@ class IdentitiesAuthenticate extends ServerHandler<
     if (!authFlowResult.done) {
       never('authFlow did not signal done when expected');
     }
-    if (ctx.signal.aborted) throw ctx.signal.reason;
+    ctx.signal.throwIfAborted();
     yield {
       response: {
         identityId: authFlowResult.value,

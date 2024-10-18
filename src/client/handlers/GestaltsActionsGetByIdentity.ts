@@ -8,9 +8,9 @@ import type GestaltGraph from '../../gestalts/GestaltGraph';
 import type { GestaltAction } from '../../gestalts/types';
 import type { IdentityId, ProviderId } from '../../ids';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
+import * as ids from '../../ids';
 
 class GestaltsActionsGetByIdentity extends UnaryHandler<
   {

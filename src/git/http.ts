@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   CapabilityList,
   Reference,
@@ -110,15 +111,18 @@ import * as utils from '../utils';
  *
  * `referenceList` is called for generating the `ref_list` stage.
  */
-async function* advertiseRefGenerator({
-  efs,
-  dir,
-  gitDir,
-}: {
-  efs: EncryptedFS;
-  dir: string;
-  gitDir: string;
-}): AsyncGenerator<Buffer, void, void> {
+async function* advertiseRefGenerator(
+  {
+    efs,
+    dir,
+    gitDir,
+  }: {
+    efs: EncryptedFS;
+    dir: string;
+    gitDir: string;
+  },
+  ctx: ContextTimed,
+): AsyncGenerator<Buffer, void, void> {
   // Providing side-band-64, symref for the HEAD and agent name capabilities
   const capabilityList = [
     gitUtils.SIDE_BAND_64_CAPABILITY,
@@ -130,18 +134,21 @@ async function* advertiseRefGenerator({
     }),
     gitUtils.AGENT_CAPABILITY,
   ];
-  const objectGenerator = gitUtils.listReferencesGenerator({
-    efs,
-    dir,
-    gitDir,
-  });
+  const objectGenerator = gitUtils.listReferencesGenerator(
+    {
+      efs,
+      dir,
+      gitDir,
+    },
+    ctx,
+  );
 
   // PKT-LINE("# service=$servicename" LF)
   yield packetLineBuffer(gitUtils.REFERENCE_DISCOVERY_HEADER);
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
   // Ref_list
-  yield* referenceListGenerator(objectGenerator, capabilityList);
+  yield* referenceListGenerator(objectGenerator, capabilityList, ctx);
   // "0000"
   yield gitUtils.FLUSH_PACKET_BUFFER;
 }
@@ -165,6 +172,7 @@ async function* advertiseRefGenerator({
 async function* referenceListGenerator(
   objectGenerator: AsyncGenerator<[Reference, ObjectId], void, void>,
   capabilities: CapabilityList,
+  ctx: ContextTimed,
 ): AsyncGenerator<Buffer, void, void> {
   // Cap-list        =  capability *(SP capability)
   const capabilitiesListBuffer = Buffer.from(
@@ -175,6 +183,7 @@ async function* referenceListGenerator(
   //                    *ref_record
   let first = true;
   for await (const [name, objectId] of objectGenerator) {
+    ctx.signal.throwIfAborted();
     if (first) {
       // PKT-LINE(obj-id SP name NUL cap_list LF)
       yield packetLineBuffer(
@@ -341,34 +350,54 @@ async function parsePackRequest(
  * It will respond with the `PKT-LINE(NAK_BUFFER)` and then the `packFile` data chunked into lines for the stream.
  *
  */
-async function* generatePackRequest({
-  efs,
-  dir,
-  gitDir,
-  body,
-}: {
-  efs: EncryptedFS;
-  dir: string;
-  gitDir: string;
-  body: Array<Buffer>;
-}): AsyncGenerator<Buffer, void, void> {
-  const [wants, haves, _capabilities] = await parsePackRequest(body);
-  const objectIds = await gitUtils.listObjects({
-    efs: efs,
-    dir,
-    gitDir: gitDir,
-    wants,
-    haves,
-  });
-  // Reply that we have no common history and that we need to send everything
-  yield packetLineBuffer(gitUtils.NAK_BUFFER);
-  // Send everything over in pack format
-  yield* generatePackData({
-    efs: efs,
+async function* generatePackRequest(
+  {
+    efs,
     dir,
     gitDir,
-    objectIds,
+    body,
+  }: {
+    efs: EncryptedFS;
+    dir: string;
+    gitDir: string;
+    body: Array<Buffer>;
+  },
+  ctx: ContextTimed,
+): AsyncGenerator<Buffer, void, void> {
+  const [wants, haves, _capabilities] = await parsePackRequest(body);
+  const efsProxy = new Proxy(efs, {
+    get: (target, key) => {
+      ctx.signal.throwIfAborted();
+      const resource = target[key];
+      if (typeof resource === 'function') {
+        return (...args) => resource.apply(target, args);
+      }
+      return resource;
+    },
   });
+  const objectIds = await gitUtils.listObjects(
+    {
+      efs: efsProxy,
+      dir: dir,
+      gitDir: gitDir,
+      wants: wants,
+      haves: haves,
+    },
+    ctx,
+  );
+  // Reply that we have no common history and that we need to send everything
+  yield packetLineBuffer(gitUtils.NAK_BUFFER);
+  // Send everything over in pack format. This method already proxies efs, so
+  // there's no need to double-proxy it.
+  yield* generatePackData(
+    {
+      efs: efs,
+      dir: dir,
+      gitDir: gitDir,
+      objectIds: objectIds,
+    },
+    ctx,
+  );
   // Send dummy progress data
   yield packetLineBuffer(
     gitUtils.DUMMY_PROGRESS_BUFFER,
@@ -384,31 +413,45 @@ async function* generatePackRequest({
  * The `packFile` is chunked into the `packetLineBuffer` with the size defined by `chunkSize`.
  *
  */
-async function* generatePackData({
-  efs,
-  dir,
-  gitDir,
-  objectIds,
-  chunkSize = gitUtils.PACK_CHUNK_SIZE,
-}: {
-  efs: EncryptedFS;
-  dir: string;
-  gitDir: string;
-  objectIds: Array<ObjectId>;
-  chunkSize?: number;
-}): AsyncGenerator<Buffer, void, void> {
+async function* generatePackData(
+  {
+    efs,
+    dir,
+    gitDir,
+    objectIds,
+    chunkSize = gitUtils.PACK_CHUNK_SIZE,
+  }: {
+    efs: EncryptedFS;
+    dir: string;
+    gitDir: string;
+    objectIds: Array<ObjectId>;
+    chunkSize?: number;
+  },
+  ctx: ContextTimed,
+): AsyncGenerator<Buffer, void, void> {
   let packFile: PackObjectsResult;
   // In case of errors we don't want to throw them. This will result in the error being thrown into `isometric-git`
   // when it consumes the response. It handles this by logging out the error which we don't want to happen.
+  const efsProxy = new Proxy(efs, {
+    get: (target, key) => {
+      ctx.signal.throwIfAborted();
+      const resource = target[key];
+      if (typeof resource === 'function') {
+        return (...args) => resource.apply(target, args);
+      }
+      return resource;
+    },
+  });
   try {
     packFile = await git.packObjects({
-      fs: efs,
-      dir,
+      fs: efsProxy,
+      dir: dir,
       gitdir: gitDir,
       oids: objectIds,
     });
-  } catch {
+  } catch (e) {
     // Return without sending any data
+    if (e === ctx.signal.reason) throw e;
     return;
   }
   // Pack file will only be undefined if it was written to disk instead
@@ -423,6 +466,7 @@ async function* generatePackData({
   // Streaming the packFile as chunks of the length specified by the `chunkSize`.
   // Each line is formatted as a `PKT-LINE`
   do {
+    ctx.signal.throwIfAborted();
     const subBuffer = packFileBuffer.subarray(0, chunkSize);
     packFileBuffer = packFileBuffer.subarray(chunkSize);
     yield packetLineBuffer(subBuffer, gitUtils.CHANNEL_DATA);

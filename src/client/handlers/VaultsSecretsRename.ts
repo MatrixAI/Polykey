@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -21,6 +23,9 @@ class VaultsSecretsRename extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<SecretRenameMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -32,7 +37,9 @@ class VaultsSecretsRename extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       await vaultManager.withVaults(
         [vaultId],
@@ -41,12 +48,15 @@ class VaultsSecretsRename extends UnaryHandler<
             vault,
             input.secretName,
             input.newSecretName,
+            undefined,
+            ctx,
           );
         },
         tran,
+        ctx,
       );
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

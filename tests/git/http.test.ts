@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -115,7 +116,9 @@ describe('Git Http', () => {
         },
       ],
     });
-    const gen = gitHttp.advertiseRefGenerator(gitDirs);
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const gen = gitHttp.advertiseRefGenerator(gitDirs, ctx);
     let response = '';
     for await (const result of gen) {
       response += result.toString();
@@ -194,11 +197,10 @@ describe('Git Http', () => {
         },
       ],
     });
-    const objectIds = await gitUtils.listObjectsAll(gitDirs);
-    const gen = gitHttp.generatePackData({
-      ...gitDirs,
-      objectIds,
-    });
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const objectIds = await gitUtils.listObjectsAll(gitDirs, ctx);
+    const gen = gitHttp.generatePackData({ ...gitDirs, objectIds }, ctx);
     let acc = Buffer.alloc(0);
     for await (const line of gen) {
       acc = Buffer.concat([acc, line.subarray(5)]);
@@ -211,6 +213,53 @@ describe('Git Http', () => {
       filepath: 'pack',
     });
     expect(result.oids).toIncludeAllMembers(objectIds);
+  });
+  test('generatePackData should respect cancellation', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
+    });
+    const abortMessage = new Error('abort test');
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const objectIds = await gitUtils.listObjectsAll(gitDirs, ctx);
+    const gen = gitHttp.generatePackData({ ...gitDirs, objectIds }, ctx);
+    abortController.abort(abortMessage);
+    const consumeP = async () => {
+      for await (const _ of gen) {
+        // Consume
+      }
+    };
+    await expect(consumeP).rejects.toThrow(abortMessage);
   });
   test('generatePackRequest', async () => {
     await gitTestUtils.createGitRepo({
@@ -246,10 +295,9 @@ describe('Git Http', () => {
         },
       ],
     });
-    const gen = gitHttp.generatePackRequest({
-      ...gitDirs,
-      body: [],
-    });
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const gen = gitHttp.generatePackRequest({ ...gitDirs, body: [] }, ctx);
     let response = '';
     for await (const line of gen) {
       response += line.toString();
@@ -262,6 +310,52 @@ describe('Git Http', () => {
     expect(response).toInclude('0017\x02progress is at 50%');
     // Flush packet included
     expect(response).toInclude('0000');
+  });
+  test('generatePackRequest should respect cancellation', async () => {
+    await gitTestUtils.createGitRepo({
+      ...gitDirs,
+      author: 'tester',
+      commits: [
+        {
+          message: 'commit1',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a file',
+            },
+          ],
+        },
+        {
+          message: 'commit2',
+          files: [
+            {
+              name: 'file2',
+              contents: 'this is another file',
+            },
+          ],
+        },
+        {
+          message: 'commit3',
+          files: [
+            {
+              name: 'file1',
+              contents: 'this is a changed file',
+            },
+          ],
+        },
+      ],
+    });
+    const abortMessage = new Error('abort test');
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const gen = gitHttp.generatePackRequest({ ...gitDirs, body: [] }, ctx);
+    abortController.abort(abortMessage);
+    const consumeP = async () => {
+      for await (const _ of gen) {
+        // Consume
+      }
+    };
+    await expect(consumeP).rejects.toThrow(abortMessage);
   });
   test('end to end clone', async () => {
     await gitTestUtils.createGitRepo({
@@ -301,14 +395,14 @@ describe('Git Http', () => {
     const request = gitTestUtils.request(gitDirs);
     const newDir = path.join(dataDir, 'newRepo');
     const newDirs = {
-      fs,
+      fs: fs,
       dir: newDir,
       gitdir: path.join(newDir, '.git'),
       gitDir: path.join(newDir, '.git'),
     };
 
     await git.clone({
-      fs,
+      fs: fs,
       dir: newDir,
       http: { request },
       url: 'http://',
@@ -321,7 +415,7 @@ describe('Git Http', () => {
       (await fs.promises.readFile(path.join(newDirs.dir, 'file2'))).toString(),
     ).toBe('this is another file');
   });
-  test('end to end Pull', async () => {
+  test('end to end pull', async () => {
     await gitTestUtils.createGitRepo({
       ...gitDirs,
       author: 'tester',
@@ -357,14 +451,14 @@ describe('Git Http', () => {
     });
     const newDir = path.join(dataDir, 'newRepo');
     const newDirs = {
-      fs,
+      fs: fs,
       dir: newDir,
       gitdir: path.join(newDir, '.git'),
       gitDir: path.join(newDir, '.git'),
     };
     const request = gitTestUtils.request(gitDirs);
     await git.clone({
-      fs,
+      fs: fs,
       dir: newDir,
       http: { request },
       url: 'http://',

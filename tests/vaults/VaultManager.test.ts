@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { NodeId } from '@/ids/types';
 import type {
   VaultAction,
@@ -12,12 +13,12 @@ import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import git from 'isomorphic-git';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { destroyed, running } from '@matrixai/async-init';
-import git from 'isomorphic-git';
 import { RWLockWriter } from '@matrixai/async-locks';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import TaskManager from '@/tasks/TaskManager';
 import ACL from '@/acl/ACL';
 import GestaltGraph from '@/gestalts/GestaltGraph';
@@ -26,12 +27,12 @@ import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import KeyRing from '@/keys/KeyRing';
 import PolykeyAgent from '@/PolykeyAgent';
 import VaultManager from '@/vaults/VaultManager';
-import * as vaultsErrors from '@/vaults/errors';
 import NodeGraph from '@/nodes/NodeGraph';
-import * as vaultsUtils from '@/vaults/utils';
-import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
+import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
+import * as vaultsErrors from '@/vaults/errors';
+import * as vaultsUtils from '@/vaults/utils';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
@@ -351,8 +352,10 @@ describe('VaultManager', () => {
       await acl.setVaultAction(vault2, nodeId1, 'clone');
       // No permissions for vault3
 
-      // scanning vaults
-      const gen = vaultManager.handleScanVaults(nodeId1);
+      // Scanning vaults
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
+      const gen = vaultManager.handleScanVaults(nodeId1, undefined, ctx);
       const vaults: Record<VaultId, [VaultName, VaultAction[]]> = {};
       for await (const vault of gen) {
         vaults[vault.vaultId] = [vault.vaultName, vault.vaultPermissions];
@@ -363,14 +366,26 @@ describe('VaultManager', () => {
 
       // Should throw due to no permission
       await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
+        const abortController = new AbortController();
+        const ctx = { signal: abortController.signal } as ContextTimed;
+        for await (const _ of vaultManager.handleScanVaults(
+          nodeId2,
+          undefined,
+          ctx,
+        )) {
           // Should throw
         }
       }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);
       // Should throw due to lack of scan permission
       await gestaltGraph.setGestaltAction(['node', nodeId2], 'notify');
       await expect(async () => {
-        for await (const _ of vaultManager.handleScanVaults(nodeId2)) {
+        const abortController = new AbortController();
+        const ctx = { signal: abortController.signal } as ContextTimed;
+        for await (const _ of vaultManager.handleScanVaults(
+          nodeId2,
+          undefined,
+          ctx,
+        )) {
           // Should throw
         }
       }).rejects.toThrow(vaultsErrors.ErrorVaultsPermissionDenied);

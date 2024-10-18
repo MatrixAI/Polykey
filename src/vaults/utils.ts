@@ -16,16 +16,16 @@ import * as nodesUtils from '../nodes/utils';
 import * as validationErrors from '../validation/errors';
 
 /**
- * Vault history is designed for linear-history
- * The canonical branch represents the one and only true timeline
- * In the future, we can introduce non-linear history
- * Where branches are automatically made when new timelines are created
+ * Vault history is designed for linear-history.
+ * The canonical branch represents the one and only true timeline.
+ * In the future, we can introduce non-linear history where branches are
+ * automatically made when new timelines are created.
  */
 const canonicalBranch = 'master';
 const canonicalBranchRef = 'refs/heads/' + canonicalBranch;
 
 /**
- * Vault reference can be HEAD, any of the special tags or a commit ID
+ * Vault reference can be HEAD, any of the special tags, or a commit ID.
  */
 function validateRef(ref: any): ref is VaultRef {
   return refs.includes(ref) || validateCommitId(ref);
@@ -38,7 +38,8 @@ function assertRef(ref: any): asserts ref is VaultRef {
 }
 
 /**
- * Commit ids are SHA1 hashes encoded as 40-character long lowercase hexadecimal strings
+ * Commit IDs are SHA1 hashes encoded as 40-character long lowercase
+ * hexadecimal strings.
  */
 function validateCommitId(commitId: any): commitId is CommitId {
   return /^[a-f0-9]{40}$/.test(commitId);
@@ -70,7 +71,7 @@ async function* readDirRecursively(
 async function* walkFs(
   efs: FileSystemReadable,
   path: string = '.',
-): AsyncGenerator<string, undefined, undefined> {
+): AsyncGenerator<string, void, void> {
   const shortList: Array<string> = [path];
   let path_: Path | undefined = undefined;
   while ((path_ = shortList.shift()) != null) {
@@ -102,7 +103,11 @@ function parseVaultAction(data: any): VaultAction {
   return data;
 }
 
-async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
+async function deleteObject(
+  fs: EncryptedFS,
+  gitdir: string,
+  ref: string,
+): Promise<void> {
   const bucket = ref.slice(0, 2);
   const shortRef = ref.slice(2);
   const objectPath = path.join(gitdir, 'objects', bucket, shortRef);
@@ -113,32 +118,33 @@ async function deleteObject(fs: EncryptedFS, gitdir: string, ref: string) {
   }
 }
 
-async function mkdirExists(efs: FileSystemWritable, directory: string) {
+async function mkdirExists(
+  efs: FileSystemWritable,
+  directory: string,
+): Promise<void> {
   try {
     await efs.mkdir(directory, { recursive: true });
   } catch (e) {
-    if (e.code !== 'EEXIST') {
-      throw e;
-    }
+    if (e.code !== 'EEXIST') throw e;
   }
 }
 
 /**
- * Converts a `Buffer` to a `Uint8Array` without copying the contents
+ * Converts a `Buffer` to a `Uint8Array` without copying the contents.
  */
 function bufferToUint8ArrayCopyless(data: Buffer): Uint8Array {
   return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
 }
 
 /**
- * Converts a `Uint8Array` to a `Buffer` without copying the contents
+ * Converts a `Uint8Array` to a `Buffer` without copying the contents.
  */
 function uint8ArrayToBufferCopyless(data: Uint8Array): Buffer {
   return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
 }
 
 /**
- * Concatenates `Buffers` or `Uint8Array`s into a `Uint8Array`
+ * Concatenates `Buffers` or `Uint8Array`s into a `Uint8Array`.
  */
 function uint8ArrayConcat(list: Array<Uint8Array>): Uint8Array {
   return bufferToUint8ArrayCopyless(Buffer.concat(list));

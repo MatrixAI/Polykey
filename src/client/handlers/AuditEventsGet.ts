@@ -1,4 +1,5 @@
 import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
 import type {
   AuditEvent,
@@ -42,8 +43,8 @@ class AuditEventsGet extends ServerHandler<
     }> & {
       paths: Array<TopicSubPath>;
     },
-    _cancel,
-    _meta,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
     ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<AuditEventSerialized>> {
     const { audit }: { audit: Audit } = this.container;

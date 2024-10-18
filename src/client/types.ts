@@ -201,18 +201,22 @@ type SignatureMessage = {
 type VerifySignatureMessage = PublicKeyMessage & DataMessage & SignatureMessage;
 
 type SuccessMessage = {
-  type: 'success';
   success: boolean;
 };
 
-type ErrorMessage = {
-  type: 'error';
+type SuccessMessageTagged = {
+  type: 'SuccessMessage';
+  success: boolean;
+};
+
+type ErrorMessageTagged = {
+  type: 'ErrorMessage';
   code?: string | number;
   reason?: string;
   data?: JSONObject;
 };
 
-type SuccessOrErrorMessage = SuccessMessage | ErrorMessage;
+type SuccessOrErrorMessageTagged = SuccessMessageTagged | ErrorMessageTagged;
 
 // Notifications messages
 
@@ -321,9 +325,9 @@ type ContentMessage = {
   secretContent: string;
 };
 
-type ContentSuccessMessage = ContentMessage & SuccessMessage;
+type ContentSuccessMessage = ContentMessage & SuccessMessageTagged;
 
-type ContentOrErrorMessage = ContentSuccessMessage | ErrorMessage;
+type ContentOrErrorMessage = ContentSuccessMessage | ErrorMessageTagged;
 
 type SecretContentMessage = SecretIdentifierMessage & ContentMessage;
 
@@ -364,12 +368,12 @@ type SecretIdentifierMessageTagged = SecretIdentifierMessage & {
   type: 'SecretIdentifierMessage';
 };
 
-type VaultNamesHeaderMessage = {
+type VaultNamesHeaderMessageTagged = {
   type: 'VaultNamesHeaderMessage';
   vaultNames: Array<string>;
 };
 
-type SecretsRemoveHeaderMessage = VaultNamesHeaderMessage & {
+type SecretsRemoveHeaderMessage = VaultNamesHeaderMessageTagged & {
   recursive?: boolean;
 };
 
@@ -416,8 +420,9 @@ export type {
   NodesGetMessage,
   NodesAddMessage,
   SuccessMessage,
-  ErrorMessage,
-  SuccessOrErrorMessage,
+  SuccessMessageTagged,
+  ErrorMessageTagged,
+  SuccessOrErrorMessageTagged,
   NotificationInboxMessage,
   NotificationOutboxMessage,
   NotificationReadMessage,
@@ -449,7 +454,7 @@ export type {
   SecretFilesMessage,
   SecretStatMessage,
   SecretIdentifierMessageTagged,
-  VaultNamesHeaderMessage,
+  VaultNamesHeaderMessageTagged,
   SecretsRemoveHeaderMessage,
   SignatureMessage,
   OverrideRPClientType,

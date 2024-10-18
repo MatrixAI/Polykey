@@ -1,10 +1,10 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type VaultsSecretsGet from '../handlers/VaultsSecretsGet';
-import { ServerCaller } from '@matrixai/rpc';
+import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsGet>;
 
-const vaultsSecretsGet = new ServerCaller<
+const vaultsSecretsGet = new UnaryCaller<
   CallerTypes['input'],
   CallerTypes['output']
 >();

@@ -31,24 +31,25 @@ class VaultsVersion extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       const versionId = input.versionId;
       const [latestOid, currentVersionId] = await vaultManager.withVaults(
         [vaultId],
         async (vault) => {
+          // Use default values for the ref and limit. We only care about
+          // passing in the relevant context.
           const latestOid = (await vault.log())[0].commitId;
           await vault.version(versionId);
-          const currentVersionId = (await vault.log(versionId, 0))[0]?.commitId;
+          const currentVersionId = (await vault.log(versionId))[0]?.commitId;
           return [latestOid, currentVersionId];
         },
         tran,
       );
       // Checking if latest version ID
-      const latestVersion = latestOid === currentVersionId;
-      return {
-        latestVersion,
-      };
+      return { latestVersion: latestOid === currentVersionId };
     });
   };
 }
