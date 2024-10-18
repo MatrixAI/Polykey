@@ -1,14 +1,24 @@
-import type { ContentNode, FileTree, TreeNode } from '@/vaults/types';
+import type { ContentNode, FileTree, TreeNode, VaultId } from '@/vaults/types';
+import type { Vault } from '@/vaults';
+import type KeyRing from '../../src/keys/KeyRing';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { ReadableStream } from 'stream/web';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
+import { EncryptedFS } from 'encryptedfs';
+import { DB, type LevelPath } from '@matrixai/db';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as fileTree from '@/vaults/fileTree';
+import * as vaultsUtils from '@/vaults/utils';
+import * as keysUtils from '@/keys/utils';
 import * as vaultsTestUtils from './utils';
+import VaultInternal from '../../src/vaults/VaultInternal';
+import * as testNodesUtils from '../nodes/utils';
 
 describe('fileTree', () => {
+  const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
 
   beforeEach(async () => {
@@ -718,5 +728,152 @@ describe('fileTree', () => {
     // TODO: tests for
     //  - empty files
     //  - files larger than content chunks
+  });
+  describe('with EFS', () => {
+    const relativeBase = '.';
+    const dir1: string = 'dir1';
+    const dir11: string = path.join(dir1, 'dir11');
+    const file0b: string = 'file0.b';
+    const file1a: string = path.join(dir1, 'file1.a');
+    const file2b: string = path.join(dir1, 'file2.b');
+    const file3a: string = path.join(dir11, 'file3.a');
+    const file4b: string = path.join(dir11, 'file4.b');
+
+    let baseEfs: EncryptedFS;
+    let vaultId: VaultId;
+    let vaultInternal: VaultInternal;
+    let vault: Vault;
+    let db: DB;
+    let vaultsDbPath: LevelPath;
+    const vaultIdGenerator = vaultsUtils.createVaultIdGenerator();
+    const dummyKeyRing = {
+      getNodeId: () => {
+        return testNodesUtils.generateRandomNodeId();
+      },
+    } as KeyRing;
+
+    beforeEach(async () => {
+      const dbPath = path.join(dataDir, 'efsDb');
+      const dbKey = keysUtils.generateKey();
+      baseEfs = await EncryptedFS.createEncryptedFS({
+        dbKey,
+        dbPath,
+        logger,
+      });
+      await baseEfs.start();
+
+      vaultId = vaultIdGenerator();
+      await baseEfs.mkdir(
+        path.join(vaultsUtils.encodeVaultId(vaultId), 'contents'),
+        {
+          recursive: true,
+        },
+      );
+      db = await DB.createDB({
+        dbPath: path.join(dataDir, 'db'),
+        logger,
+      });
+      vaultsDbPath = ['vaults'];
+      vaultInternal = await VaultInternal.createVaultInternal({
+        keyRing: dummyKeyRing,
+        vaultId,
+        efs: baseEfs,
+        logger: logger.getChild(VaultInternal.name),
+        fresh: true,
+        db,
+        vaultsDbPath: vaultsDbPath,
+        vaultName: 'VaultName',
+      });
+      vault = vaultInternal as Vault;
+
+      await vault.writeF(async (fs) => {
+        await fs.promises.mkdir(dir1);
+        await fs.promises.mkdir(dir11);
+        await fs.promises.writeFile(file0b, 'content-file0');
+        await fs.promises.writeFile(file1a, 'content-file1');
+        await fs.promises.writeFile(file2b, 'content-file2');
+        await fs.promises.writeFile(file3a, 'content-file3');
+        await fs.promises.writeFile(file4b, 'content-file4');
+      });
+    });
+    afterEach(async () => {
+      await vaultInternal.stop();
+      await vaultInternal.destroy();
+      await db.stop();
+      await db.destroy();
+      await baseEfs.stop();
+      await baseEfs.destroy();
+      await fs.promises.rm(dataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    test('globWalk works with efs', async () => {
+      const files = await vault.readF(async (fs) => {
+        const tree: FileTree = [];
+        for await (const treeNode of fileTree.globWalk({
+          fs: fs,
+          basePath: '.',
+          yieldDirectories: true,
+          yieldFiles: true,
+          yieldParents: true,
+          yieldRoot: true,
+        })) {
+          tree.push(treeNode);
+        }
+        return tree.map((v) => v.path ?? '');
+      });
+      expect(files).toContainAllValues([
+        relativeBase,
+        dir1,
+        dir11,
+        file0b,
+        file1a,
+        file2b,
+        file3a,
+        file4b,
+      ]);
+    });
+    test('serializer with content works with efs', async () => {
+      const data = await vault.readF(async (fs) => {
+        const fileTreeGen = fileTree.globWalk({
+          fs,
+          yieldStats: false,
+          yieldRoot: false,
+          yieldFiles: true,
+          yieldParents: true,
+          yieldDirectories: true,
+        });
+        const data: Array<TreeNode | ContentNode | Uint8Array> = [];
+        const parserTransform = fileTree.parserTransformStreamFactory();
+        const serializedStream = fileTree.serializerStreamFactory(
+          fs,
+          fileTreeGen,
+          true,
+        );
+        const outputStream = serializedStream.pipeThrough(parserTransform);
+        for await (const output of outputStream) {
+          data.push(output);
+        }
+        return data;
+      });
+      const contents = data
+        .filter((v) => v instanceof Uint8Array)
+        .map((v) => Buffer.from(v as Uint8Array).toString());
+      const contentHeaders = data.filter(
+        (v) => !(v instanceof Uint8Array) && v.type === 'CONTENT',
+      ) as Array<ContentNode>;
+      expect(contents).toIncludeAllMembers([
+        'content-file0',
+        'content-file1',
+        'content-file2',
+        'content-file3',
+        'content-file4',
+      ]);
+      for (const contentHeader of contentHeaders) {
+        expect(contentHeader.dataSize).toBe(13n);
+      }
+    });
   });
 });
