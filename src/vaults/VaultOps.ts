@@ -4,7 +4,6 @@
 import type Logger from '@matrixai/logger';
 import type { Vault } from './Vault';
 import type { Stat } from 'encryptedfs';
-import type { SuccessOrErrorMessage } from '../client/types';
 import path from 'path';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
@@ -130,37 +129,35 @@ async function statSecret(vault: Vault, secretName: string): Promise<Stat> {
  */
 async function deleteSecret(
   vault: Vault,
-  secretNames: Array<string>,
+  secretName: string,
   fileOptions?: FileOptions,
   logger?: Logger,
 ): Promise<void> {
   await vault.writeF(async (efs) => {
-    for (const secretName of secretNames) {
-      try {
-        const stat = await efs.stat(secretName);
-        if (stat.isDirectory()) {
-          await efs.rmdir(secretName, fileOptions);
-          logger?.info(`Deleted directory at '${secretName}'`);
-        } else {
-          // Remove the specified file
-          await efs.unlink(secretName);
-          logger?.info(`Deleted secret at '${secretName}'`);
-        }
-      } catch (e) {
-        if (e.code === 'ENOENT') {
-          throw new vaultsErrors.ErrorSecretsSecretUndefined(
-            `Secret with name: ${secretName} does not exist`,
-            { cause: e },
-          );
-        }
-        if (e.code === 'ENOTEMPTY') {
-          throw new vaultsErrors.ErrorVaultsRecursive(
-            `Could not delete directory '${secretName}' without recursive option`,
-            { cause: e },
-          );
-        }
-        throw e;
+    try {
+      const stat = await efs.stat(secretName);
+      if (stat.isDirectory()) {
+        await efs.rmdir(secretName, fileOptions);
+        logger?.info(`Deleted directory at '${secretName}'`);
+      } else {
+        // Remove the specified file
+        await efs.unlink(secretName);
+        logger?.info(`Deleted secret at '${secretName}'`);
       }
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        throw new vaultsErrors.ErrorSecretsSecretUndefined(
+          `Secret with name: ${secretName} does not exist`,
+          { cause: e },
+        );
+      }
+      if (e.code === 'ENOTEMPTY') {
+        throw new vaultsErrors.ErrorVaultsRecursive(
+          `Could not delete directory '${secretName}' without recursive option`,
+          { cause: e },
+        );
+      }
+      throw e;
     }
   });
 }
@@ -174,7 +171,7 @@ async function mkdir(
   dirPath: string,
   fileOptions?: FileOptions,
   logger?: Logger,
-): Promise<SuccessOrErrorMessage> {
+): Promise<void> {
   const recursive = fileOptions?.recursive ?? false;
   // Technically, writing an empty directory won't make a commit, and doesn't
   // need a write resource as git doesn't track empty directories. It is
@@ -184,22 +181,19 @@ async function mkdir(
       await efs.mkdir(dirPath, fileOptions);
       logger?.info(`Created secret directory at '${dirPath}'`);
     });
-    return { type: 'success', success: true };
   } catch (e) {
     logger?.error(`Failed to create directory '${dirPath}'. Reason: ${e.code}`);
     if (e.code === 'ENOENT' && !recursive) {
-      return {
-        type: 'error',
-        code: e.code,
-        reason: dirPath,
-      };
+      throw new vaultsErrors.ErrorVaultsRecursive(
+        `Could not create direcotry '${dirPath}' without recursive option`,
+        { cause: e },
+      );
     }
     if (e.code === 'EEXIST') {
-      return {
-        type: 'error',
-        code: e.code,
-        reason: dirPath,
-      };
+      throw new vaultsErrors.ErrorSecretsSecretDefined(
+        `${dirPath} already exists`,
+        { cause: e },
+      );
     }
     throw e;
   }
@@ -280,9 +274,25 @@ async function writeSecret(
   logger?: Logger,
 ): Promise<void> {
   await vault.writeF(async (efs) => {
-    await efs.writeFile(secretName, content);
+    try {
+      await efs.writeFile(secretName, content);
+      logger?.info(`Wrote secret ${secretName} in vault ${vault.vaultId}`);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        throw new vaultsErrors.ErrorSecretsSecretUndefined(
+          `One or more parent directories for '${secretName}' do not exist`,
+          { cause: e },
+        );
+      }
+      if (e.code === 'EISDIR') {
+        throw new vaultsErrors.ErrorSecretsIsDirectory(
+          `Secret path '${secretName}' is a directory`,
+          { cause: e },
+        );
+      }
+      throw e;
+    }
   });
-  logger?.info(`Wrote secret ${secretName} in vault ${vault.vaultId}`);
 }
 
 export {

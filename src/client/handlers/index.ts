@@ -80,6 +80,7 @@ import VaultsPermissionUnset from './VaultsPermissionUnset';
 import VaultsPull from './VaultsPull';
 import VaultsRename from './VaultsRename';
 import VaultsScan from './VaultsScan';
+import VaultsSecretsCat from './VaultsSecretsCat';
 import VaultsSecretsEnv from './VaultsSecretsEnv';
 import VaultsSecretsGet from './VaultsSecretsGet';
 import VaultsSecretsList from './VaultsSecretsList';
@@ -184,6 +185,7 @@ const serverManifest = (container: {
     vaultsPull: new VaultsPull(container),
     vaultsRename: new VaultsRename(container),
     vaultsScan: new VaultsScan(container),
+    vaultsSecretsCat: new VaultsSecretsCat(container),
     vaultsSecretsEnv: new VaultsSecretsEnv(container),
     vaultsSecretsGet: new VaultsSecretsGet(container),
     vaultsSecretsList: new VaultsSecretsList(container),
@@ -266,6 +268,7 @@ export {
   VaultsPull,
   VaultsRename,
   VaultsScan,
+  VaultsSecretsCat,
   VaultsSecretsEnv,
   VaultsSecretsGet,
   VaultsSecretsList,

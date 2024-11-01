@@ -450,7 +450,14 @@ function fromError(error: any) {
   if (error instanceof Error) {
     const cause = fromError(error.cause);
     const timestamp: string = ((error as any).timestamp ?? new Date()).toJSON();
-    if (error instanceof AbstractError) {
+    // ErrorParse is an exception to the Polykey error tree, where the error is
+    // not actually derived from ErrorPolykey, but rather an AbstractError. We
+    // cannot simply check for AbstractError because other libraries can also
+    // throw that, and those errors should be wrapped in ErrorPolykeyUnexpected.
+    if (
+      error instanceof ErrorPolykey ||
+      error instanceof validationErrors.ErrorParse
+    ) {
       return error.toJSON();
     } else if (error instanceof AggregateError) {
       // AggregateError has an `errors` property
@@ -466,18 +473,55 @@ function fromError(error: any) {
       };
     }
 
-    // If it's some other type of error then only serialise the message and
-    // stack (and the type of the error)
-    return {
-      type: error.name,
-      message: error.message,
-      data: {
-        stack: error.stack,
-        timestamp,
-        cause,
-      },
-    };
+    // If it's some other type of error then wrap it in ErrorPolykeyUnexpected,
+    // serialising only the error type, message and its stack.
+    const wrappedError = new errors.ErrorPolykeyUnexpected(
+      `Unexpected error occurred: ${error.name}`,
+      { cause: error },
+    );
+    return wrappedError.toJSON();
   }
+
+  // Use the properties of the error to create an appropriate error message.
+  let message = '';
+  switch (typeof error) {
+    case 'boolean':
+    case 'number':
+    case 'string':
+    case 'bigint':
+    case 'symbol':
+      message = `Non-error literal ${String(error)} was thrown`;
+      break;
+    case 'object':
+      // Let the fallback handler catch null values.
+      if (error == null) break;
+      // If we have an error message defined, then return that.
+      if ('message' in error && typeof error.message === 'string') {
+        message = error.message;
+      }
+      // If present, mention the constructor name in the message.
+      if (error.constructor?.name != null) {
+        message = `Non-error object ${error.constructor.name} was thrown`;
+      }
+      // Any other values should be handled by the fallback handler.
+      break;
+  }
+
+  // Handle cases where the error is not serialisable, like objects created
+  // using Object.create(null). Trying to serialise this throws a TypeError.
+  try {
+    message = `Non-error value ${String(error)} was thrown`;
+  } catch (e) {
+    if (e instanceof TypeError) message = 'Non-error value was thrown';
+    else throw e;
+  }
+
+  // If the error was not an Error, then wrap it inside ErrorPolykeyUnexpected
+  // and return that.
+  const wrappedError = new errors.ErrorPolykeyUnexpected(message, {
+    cause: error,
+  });
+  return wrappedError.toJSON();
 }
 
 const standardErrors: {

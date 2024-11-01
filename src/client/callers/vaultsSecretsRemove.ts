@@ -1,10 +1,10 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type VaultsSecretsRemove from '../handlers/VaultsSecretsRemove';
-import { ClientCaller } from '@matrixai/rpc';
+import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsRemove>;
 
-const vaultsSecretsRemove = new ClientCaller<
+const vaultsSecretsRemove = new DuplexCaller<
   CallerTypes['input'],
   CallerTypes['output']
 >();
