@@ -211,7 +211,7 @@ class Discovery {
       Date.now() - this.rediscoverVertexThresholdTime,
     );
     await this.taskManager.scheduleTask({
-      handlerId: this.discoverVertexHandlerId,
+      handlerId: this.checkRediscoveryHandlerId,
       path: [this.constructor.name, this.checkRediscoveryHandlerId],
       lazy: true,
       delay: this.rediscoverCheckIntervalTime,
@@ -285,7 +285,7 @@ class Discovery {
     );
     // Start up rediscovery task
     await this.taskManager.scheduleTask({
-      handlerId: this.discoverVertexHandlerId,
+      handlerId: this.checkRediscoveryHandlerId,
       path: [this.constructor.name, this.checkRediscoveryHandlerId],
       lazy: true,
       delay: this.rediscoverCheckIntervalTime,
