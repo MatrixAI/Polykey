@@ -63,6 +63,7 @@ import vaultsPermissionUnset from './vaultsPermissionUnset';
 import vaultsPull from './vaultsPull';
 import vaultsRename from './vaultsRename';
 import vaultsScan from './vaultsScan';
+import vaultsSecretsCat from './vaultsSecretsCat';
 import vaultsSecretsEnv from './vaultsSecretsEnv';
 import vaultsSecretsGet from './vaultsSecretsGet';
 import vaultsSecretsList from './vaultsSecretsList';
@@ -144,6 +145,7 @@ const clientManifest = {
   vaultsPull,
   vaultsRename,
   vaultsScan,
+  vaultsSecretsCat,
   vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,
@@ -224,6 +226,7 @@ export {
   vaultsPull,
   vaultsRename,
   vaultsScan,
+  vaultsSecretsCat,
   vaultsSecretsEnv,
   vaultsSecretsGet,
   vaultsSecretsList,

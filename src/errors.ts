@@ -11,6 +11,11 @@ class ErrorPolykeyUnknown<T> extends ErrorPolykey<T> {
   exitCode = sysexits.PROTOCOL;
 }
 
+class ErrorPolykeyUnexpected<T> extends ErrorPolykey<T> {
+  static description = 'An error originating outside Polykey was thrown';
+  exitCode = sysexits.UNKNOWN;
+}
+
 class ErrorPolykeyAgentRunning<T> extends ErrorPolykey<T> {
   static description = 'PolykeyAgent is running';
   exitCode = sysexits.USAGE;
@@ -56,6 +61,7 @@ export {
   ErrorPolykey,
   ErrorPolykeyUnimplemented,
   ErrorPolykeyUnknown,
+  ErrorPolykeyUnexpected,
   ErrorPolykeyAgentRunning,
   ErrorPolykeyAgentNotRunning,
   ErrorPolykeyAgentDestroyed,

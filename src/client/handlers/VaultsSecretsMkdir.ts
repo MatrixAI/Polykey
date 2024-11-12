@@ -48,9 +48,25 @@ class VaultsSecretsMkdir extends DuplexHandler<
           yield await vaultManager.withVaults(
             [vaultId],
             async (vault) => {
-              return await vaultOps.mkdir(vault, dirName, {
-                recursive: metadata?.options?.recursive,
-              });
+              try {
+                await vaultOps.mkdir(vault, dirName, {
+                  recursive: metadata?.options?.recursive,
+                });
+                return { type: 'success', success: true };
+              } catch (e) {
+                if (
+                  e instanceof vaultsErrors.ErrorVaultsRecursive ||
+                  e instanceof vaultsErrors.ErrorSecretsSecretDefined
+                ) {
+                  return {
+                    type: 'error',
+                    code: e.cause.code,
+                    reason: dirName,
+                  };
+                } else {
+                  throw e;
+                }
+              }
             },
             tran,
           );

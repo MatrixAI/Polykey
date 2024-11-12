@@ -207,7 +207,7 @@ type SuccessMessage = {
 
 type ErrorMessage = {
   type: 'error';
-  code: string;
+  code?: string | number;
   reason?: string;
   data?: JSONObject;
 };
@@ -321,9 +321,9 @@ type ContentMessage = {
   secretContent: string;
 };
 
-type ContentWithErrorMessage = ContentMessage & {
-  error?: string;
-};
+type ContentSuccessMessage = ContentMessage & SuccessMessage;
+
+type ContentOrErrorMessage = ContentSuccessMessage | ErrorMessage;
 
 type SecretContentMessage = SecretIdentifierMessage & ContentMessage;
 
@@ -428,7 +428,8 @@ export type {
   SecretPathMessage,
   SecretIdentifierMessage,
   ContentMessage,
-  ContentWithErrorMessage,
+  ContentSuccessMessage,
+  ContentOrErrorMessage,
   SecretContentMessage,
   SecretDirMessage,
   SecretRenameMessage,
