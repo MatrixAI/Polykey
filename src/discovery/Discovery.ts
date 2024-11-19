@@ -838,6 +838,9 @@ class Discovery {
     }
     // Only create if it doesn't exist
     if (taskExisting != null) return;
+    this.logger.info(
+      `Scheduling new discovery for vertex with gestaltId ${gestaltIdEncoded}`,
+    );
     await this.taskManager.scheduleTask(
       {
         handlerId: this.discoverVertexHandlerId,
@@ -1097,6 +1100,9 @@ class Discovery {
       }
       if (taskExisting != null) continue;
       // Schedule a new task
+      this.logger.info(
+        `Scheduling new discovery for vertex with gestaltId ${gestaltIdEncoded}`,
+      );
       await this.taskManager.scheduleTask(
         {
           handlerId: this.discoverVertexHandlerId,

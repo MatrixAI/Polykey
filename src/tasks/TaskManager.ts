@@ -916,8 +916,10 @@ class TaskManager {
       tran.queueSuccess(() => {
         this.triggerQueuing();
       });
+      this.schedulerLogger.debug(
+        `Queued Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+      );
     });
-    this.schedulerLogger.debug(`Queued Task ${taskIdEncoded}`);
   }
 
   /**
@@ -1015,7 +1017,9 @@ class TaskManager {
               try {
                 await this.requeueTask(taskId);
               } catch (e) {
-                this.logger.error(`Failed Requeuing Task ${taskIdEncoded}`);
+                this.logger.error(
+                  `Failed Requeuing Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+                );
                 // This is an unrecoverable error
                 throw new tasksErrors.ErrorTaskRequeue(taskIdEncoded, {
                   cause: e,
@@ -1024,15 +1028,24 @@ class TaskManager {
             } else {
               if (succeeded) {
                 taskLogger.debug('Succeeded');
+                taskLogger.info(
+                  `Task ${tasksUtils.encodeTaskId(
+                    taskId,
+                  )} succeeded with handler ${taskData.handlerId}`,
+                );
               } else {
-                taskLogger.warn(`Failed - Reason: ${String(taskReason)}`);
+                taskLogger.warn(
+                  `Failed - Reason: ${String(taskReason)}, Handler: ${
+                    taskData.handlerId
+                  }`,
+                );
               }
               // GC the task before dispatching events
               try {
                 await this.gcTask(taskId);
               } catch (e) {
                 this.logger.error(
-                  `Failed Garbage Collecting Task ${taskIdEncoded}`,
+                  `Failed Garbage Collecting Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
                 );
                 // This is an unrecoverable error
                 throw new tasksErrors.ErrorTaskGarbageCollection(
@@ -1075,7 +1088,9 @@ class TaskManager {
           abortController,
         );
         this.activePromises.set(taskIdEncoded, activePromiseCancellable);
-        this.queueLogger.debug(`Started Task ${taskIdEncoded}`);
+        this.queueLogger.debug(
+          `Started Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+        );
       });
     });
   }
@@ -1096,7 +1111,9 @@ class TaskManager {
       taskId.toBuffer(),
     ]);
     if (taskData == null) return;
-    this.logger.debug(`Garbage Collecting Task ${taskIdEncoded}`);
+    this.logger.debug(
+      `Garbage Collecting Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+    );
     const taskScheduleTime = taskData.timestamp + taskData.delay;
     await tran.del([
       ...this.tasksPathDbPath,
@@ -1116,7 +1133,9 @@ class TaskManager {
       taskIdBuffer,
     ]);
     await tran.del([...this.tasksTaskDbPath, taskId.toBuffer()]);
-    this.logger.debug(`Garbage Collected Task ${taskIdEncoded}`);
+    this.logger.debug(
+      `Garbage Collected Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+    );
   }
 
   protected async requeueTask(
@@ -1128,7 +1147,6 @@ class TaskManager {
     }
     const taskIdBuffer = taskId.toBuffer();
     const taskIdEncoded = tasksUtils.encodeTaskId(taskId);
-    this.logger.debug(`Requeuing Task ${taskIdEncoded}`);
     await this.lockTask(tran, taskId);
     const taskData = await tran.get<TaskData>([
       ...this.tasksTaskDbPath,
@@ -1137,6 +1155,9 @@ class TaskManager {
     if (taskData == null) {
       throw new tasksErrors.ErrorTaskMissing(taskIdEncoded);
     }
+    this.logger.debug(
+      `Requeuing Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+    );
     // Put task into the active index
     // this index will be used to retry tasks if they don't finish
     await tran.del([...this.tasksActiveDbPath, taskIdBuffer]);
@@ -1150,7 +1171,9 @@ class TaskManager {
       ],
       null,
     );
-    this.logger.debug(`Requeued Task ${taskIdEncoded}`);
+    this.logger.debug(
+      `Requeued Task ${taskIdEncoded} with handler ${taskData.handlerId}`,
+    );
   }
 
   protected async cancelTask(taskId: TaskId, cancelReason: any): Promise<void> {
@@ -1244,7 +1267,7 @@ class TaskManager {
           // Removing task from active index
           await tran.del([...this.tasksActiveDbPath, ...kP]);
           this.logger.warn(
-            `Moving Task ${taskIdEncoded} from Active to Queued`,
+            `Moving Task ${taskIdEncoded} with handler ${taskData.handlerId} from Active to Queued`,
           );
         }
       }
