@@ -8,6 +8,8 @@ interface Vault {
   writeG: VaultInternal['writeG'];
   readF: VaultInternal['readF'];
   readG: VaultInternal['readG'];
+  acquireRead: VaultInternal['acquireRead'];
+  acquireWrite: VaultInternal['acquireWrite'];
   log: VaultInternal['log'];
   version: VaultInternal['version'];
 }
