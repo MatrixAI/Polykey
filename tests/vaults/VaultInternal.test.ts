@@ -7,6 +7,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { DB } from '@matrixai/db';
+import { withF } from '@matrixai/resources';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { EncryptedFS } from 'encryptedfs';
 import git from 'isomorphic-git';
@@ -491,6 +492,8 @@ describe('VaultInternal', () => {
     expect(vaultInterface.writeG).toBeTruthy();
     expect(vaultInterface.readF).toBeTruthy();
     expect(vaultInterface.readG).toBeTruthy();
+    expect(vaultInterface.acquireRead).toBeTruthy();
+    expect(vaultInterface.acquireWrite).toBeTruthy();
     expect(vaultInterface.log).toBeTruthy();
     expect(vaultInterface.version).toBeTruthy();
 
@@ -872,6 +875,82 @@ describe('VaultInternal', () => {
     ]);
     expect(finished.length).toBe(4);
     await releaseRead();
+  });
+  test('can acquire a read resource', async () => {
+    await vault.writeF(async (efs) => {
+      await efs.writeFile(secret1.name, secret1.content);
+    });
+    const acquireRead = vault.acquireRead();
+    await withF([acquireRead], async ([efs]) => {
+      const content = await efs.readFile(secret1.name);
+      expect(content.toString()).toEqual(secret1.content);
+    });
+  });
+  test('acquiring read resource respects locking', async () => {
+    const lock = vault.getLock();
+    const [releaseWrite] = await lock.write()();
+    let finished = false;
+    const readP = withF([vault.acquireRead()], async () => {
+      finished = true;
+    });
+    await sleep(waitDelay);
+    expect(finished).toBe(false);
+    await releaseWrite();
+    await readP;
+    expect(finished).toBe(true);
+  });
+  test('acquiring read resource allows concurrency', async () => {
+    const lock = vault.getLock();
+    const [releaseRead] = await lock.read()();
+    const finished: Array<boolean> = [];
+    const read1P = withF([vault.acquireRead()], async () => {
+      finished.push(true);
+    });
+    const read2P = withF([vault.acquireRead()], async () => {
+      finished.push(true);
+    });
+    const read3P = withF([vault.acquireRead()], async () => {
+      finished.push(true);
+    });
+    await Promise.all([read1P, read2P, read3P]);
+    expect(finished.length).toBe(3);
+    await releaseRead();
+  });
+  test('can acquire a write resource', async () => {
+    const acquireWrite = vault.acquireWrite();
+    await withF([acquireWrite], async ([efs]) => {
+      await efs.writeFile(secret1.name, secret1.content);
+    });
+    await vault.readF(async (efs) => {
+      const content = await efs.readFile(secret1.name);
+      expect(content.toString()).toEqual(secret1.content);
+    });
+  });
+  test('acquiring write resource respects write locking', async () => {
+    const lock = vault.getLock();
+    const [releaseWrite] = await lock.write()();
+    let finished = false;
+    const writeP = withF([vault.acquireWrite()], async () => {
+      finished = true;
+    });
+    await sleep(waitDelay);
+    expect(finished).toBe(false);
+    await releaseWrite();
+    await writeP;
+    expect(finished).toBe(true);
+  });
+  test('acquiring write resource respects read locking', async () => {
+    const lock = vault.getLock();
+    const [releaseRead] = await lock.read()();
+    let finished = false;
+    const writeP = withF([vault.acquireWrite()], async () => {
+      finished = true;
+    });
+    await sleep(waitDelay);
+    expect(finished).toBe(false);
+    await releaseRead();
+    await writeP;
+    expect(finished).toBe(true);
   });
   // Life-cycle
   test('can create with CreateVaultInternal', async () => {

@@ -18,6 +18,11 @@ class ErrorClientAuthDenied<T> extends ErrorClient<T> {
   exitCode = sysexits.NOPERM;
 }
 
+class ErrorClientInvalidHeader<T> extends ErrorClient<T> {
+  static description = 'The header message does not match the expected type'
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorClientService<T> extends ErrorClient<T> {}
 
 class ErrorClientServiceRunning<T> extends ErrorClientService<T> {
@@ -45,6 +50,7 @@ export {
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
+  ErrorClientInvalidHeader,
   ErrorClientService,
   ErrorClientServiceRunning,
   ErrorClientServiceNotRunning,

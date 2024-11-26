@@ -3,10 +3,13 @@ import type { FileSystem } from '@/types';
 import type { VaultId } from '@/ids';
 import type NodeManager from '@/nodes/NodeManager';
 import type {
+    ClientRPCRequestParams,
   ContentSuccessMessage,
   ErrorMessage,
   LogEntryMessage,
   SecretContentMessage,
+  SecretIdentifierMessage,
+  SecretsRemoveHeaderMessage,
   VaultListMessage,
   VaultPermissionMessage,
 } from '@/client/types';
@@ -2371,7 +2374,19 @@ describe('vaultsSecretsRemove', () => {
     // Write paths
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: 'invalid', secretName: 'invalid' });
+    let variable: ClientRPCRequestParams<SecretsRemoveHeaderMessage | SecretIdentifierMessage> = {type: 'VaultNamesHeaderMesage', vaultNames: ['invalid']};
+    console.log(variable);
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMesage',
+      vaultNames: ['invalid'],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: 'invalid',
+      secretName: 'invalid',
+    });
     await writer.close();
     // Read response
     const consumeP = async () => {

@@ -360,6 +360,19 @@ type SecretStatMessage = {
   };
 };
 
+type SecretIdentifierMessageTagged = SecretIdentifierMessage & {
+  type: 'SecretIdentifierMessage';
+}
+
+type VaultNamesHeaderMesage = {
+  type: 'VaultNamesHeaderMesage';
+  vaultNames: Array<string>;
+};
+
+type SecretsRemoveHeaderMessage = VaultNamesHeaderMesage & {
+  recursive?: boolean;
+};
+
 // Type casting for tricky handlers
 
 type OverrideRPClientType<T extends RPCClient<ClientManifest>> = Omit<
@@ -435,6 +448,9 @@ export type {
   SecretRenameMessage,
   SecretFilesMessage,
   SecretStatMessage,
+  SecretIdentifierMessageTagged,
+  VaultNamesHeaderMesage,
+  SecretsRemoveHeaderMessage,
   SignatureMessage,
   OverrideRPClientType,
   AuditMetricGetTypeOverride,
