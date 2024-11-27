@@ -19,7 +19,7 @@ class ErrorClientAuthDenied<T> extends ErrorClient<T> {
 }
 
 class ErrorClientInvalidHeader<T> extends ErrorClient<T> {
-  static description = 'The header message does not match the expected type'
+  static description = 'The header message does not match the expected type';
   exitCode = sysexits.USAGE;
 }
 

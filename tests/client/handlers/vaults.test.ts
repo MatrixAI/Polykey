@@ -3,13 +3,8 @@ import type { FileSystem } from '@/types';
 import type { VaultId } from '@/ids';
 import type NodeManager from '@/nodes/NodeManager';
 import type {
-    ClientRPCRequestParams,
-  ContentSuccessMessage,
-  ErrorMessage,
   LogEntryMessage,
   SecretContentMessage,
-  SecretIdentifierMessage,
-  SecretsRemoveHeaderMessage,
   VaultListMessage,
   VaultPermissionMessage,
 } from '@/client/types';
@@ -76,6 +71,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as networkUtils from '@/network/utils';
+import * as utils from '@/utils';
 import * as testsUtils from '../../utils';
 
 describe('vaultsClone', () => {
@@ -1486,11 +1482,9 @@ describe('vaultsSecretsMkdir', () => {
     await writer.close();
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'error'.
-      const error = data as ErrorMessage;
-      expect(error.code).toEqual('ENOENT');
-      expect(error.reason).toEqual(dirPath);
+      if (data.type !== 'error') utils.never();
+      expect(data.code).toEqual('ENOENT');
+      expect(data.reason).toEqual(dirPath);
     }
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
@@ -1556,11 +1550,8 @@ describe('vaultsSecretsMkdir', () => {
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
       if (data.type === 'error') {
-        // TS cannot properly evaluate a type as nested as this, so we use the
-        // as keyword to help it. Inside this block, the type of data is 'error'.
-        const error = data as ErrorMessage;
-        expect(error.code).toEqual('ENOENT');
-        expect(error.reason).toEqual(dirPath3);
+        expect(data.code).toEqual('ENOENT');
+        expect(data.reason).toEqual(dirPath3);
       }
     }
     await vaultManager.withVaults(
@@ -1594,11 +1585,9 @@ describe('vaultsSecretsMkdir', () => {
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'error'.
-      const error = data as ErrorMessage;
-      expect(error.code).toEqual('EEXIST');
-      expect(error.reason).toEqual(dirPath);
+      if (data.type !== 'error') utils.never();
+      expect(data.code).toEqual('EEXIST');
+      expect(data.reason).toEqual(dirPath);
     }
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
@@ -1739,10 +1728,8 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'success'.
-      const message = data as ContentSuccessMessage;
-      expect(message.secretContent).toEqual(secretContent);
+      if (data.type !== 'success') utils.never();
+      expect(data.secretContent).toEqual(secretContent);
     }
   });
   test('fails to read invalid secret', async () => {
@@ -1760,11 +1747,9 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'success'.
-      const error = data as ErrorMessage;
-      expect(error.code).toEqual('ENOENT');
-      expect(error.reason).toEqual(secretName);
+      if (data.type !== 'error') utils.never();
+      expect(data.code).toEqual('ENOENT');
+      expect(data.reason).toEqual(secretName);
     }
   });
   test('fails to read a directory', async () => {
@@ -1788,11 +1773,9 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'success'.
-      const error = data as ErrorMessage;
-      expect(error.code).toEqual('EISDIR');
-      expect(error.reason).toEqual(secretName);
+      if (data.type !== 'error') utils.never();
+      expect(data.code).toEqual('EISDIR');
+      expect(data.reason).toEqual(secretName);
     }
   });
   test('reads multiple secrets in order', async () => {
@@ -1820,10 +1803,8 @@ describe('vaultsSecretsCat', () => {
     let totalContent = '';
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'success'.
-      const message = data as ContentSuccessMessage;
-      totalContent += message.secretContent;
+      if (data.type !== 'success') utils.never();
+      totalContent += data.secretContent;
     }
     expect(totalContent).toEqual(`${secretContent1}${secretContent2}`);
   });
@@ -1864,10 +1845,8 @@ describe('vaultsSecretsCat', () => {
     let totalContent = '';
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'success'.
-      const message = data as ContentSuccessMessage;
-      totalContent += message.secretContent;
+      if (data.type !== 'success') utils.never();
+      totalContent += data.secretContent;
     }
     expect(totalContent).toEqual(
       `${secretContent1}${secretContent2}${secretContent3}`,
@@ -1913,16 +1892,10 @@ describe('vaultsSecretsCat', () => {
     let totalContent = '';
     for await (const data of response.readable) {
       if (data.type === 'success') {
-        // TS cannot properly evaluate a type as nested as this, so we use the
-        // as keyword to help it. Inside this block, the type of data is 'success'.
-        const message = data as ContentSuccessMessage;
-        totalContent += message.secretContent;
+        totalContent += data.secretContent;
       } else {
-        // TS cannot properly evaluate a type as nested as this, so we use the
-        // as keyword to help it. Inside this block, the type of data is 'success'.
-        const error = data as ErrorMessage;
-        expect(error.code).toEqual('ENOENT');
-        expect(error.reason).toEqual(invalidName);
+        expect(data.code).toEqual('ENOENT');
+        expect(data.reason).toEqual(invalidName);
       }
     }
     expect(totalContent).toEqual(
@@ -2374,11 +2347,9 @@ describe('vaultsSecretsRemove', () => {
     // Write paths
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    let variable: ClientRPCRequestParams<SecretsRemoveHeaderMessage | SecretIdentifierMessage> = {type: 'VaultNamesHeaderMesage', vaultNames: ['invalid']};
-    console.log(variable);
     // Header message
     await writer.write({
-      type: 'VaultNamesHeaderMesage',
+      type: 'VaultNamesHeaderMessage',
       vaultNames: ['invalid'],
     });
     // Content messages
@@ -2410,17 +2381,27 @@ describe('vaultsSecretsRemove', () => {
     // Delete secrets
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: '/' });
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: '/',
+    });
     await writer.close();
+    let loopRun = false;
     for await (const data of response.readable) {
+      loopRun = true;
       expect(data.type).toStrictEqual('error');
-      // TS cannot properly evaluate a type as nested as this, so we use the
-      // as keyword to help it. Inside this block, the type of data is 'error'.
-      const error = data as ErrorMessage;
-      // The error code should be an invalid operation
-      expect(error.code).toStrictEqual('EINVAL');
+      if (data.type !== 'error') utils.never();
+      expect(data.code).toStrictEqual('EINVAL');
     }
     // Check
+    expect(loopRun).toBeTruthy();
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
         expect(await efs.exists(secretName)).toBeTruthy();
@@ -2442,12 +2423,29 @@ describe('vaultsSecretsRemove', () => {
     // Delete secrets
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName1 });
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName2 });
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
     await writer.close();
+    let loopRun = false;
     for await (const data of response.readable) {
+      loopRun = true;
       expect(data.type).toStrictEqual('success');
     }
+    expect(loopRun).toBeTruthy();
     // Check each secret was deleted
     await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.readF(async (efs) => {
@@ -2472,18 +2470,33 @@ describe('vaultsSecretsRemove', () => {
     // Delete secrets
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName1 });
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: invalidName });
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName2 });
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: invalidName,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
     await writer.close();
     let errorCount = 0;
     for await (const data of response.readable) {
       if (data.type === 'error') {
-        // TS cannot properly evaluate a type as nested as this, so we use the
-        // as keyword to help it. Inside this block, the type of data is 'error'.
-        const error = data as ErrorMessage;
         // No other file name should raise this error
-        expect(error.reason).toStrictEqual(invalidName);
+        expect(data.reason).toStrictEqual(invalidName);
         errorCount++;
         continue;
       }
@@ -2519,12 +2532,29 @@ describe('vaultsSecretsRemove', () => {
     // Delete secret
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName1 });
-    await writer.write({ nameOrId: vaultIdEncoded, secretName: secretName2 });
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded,
+      secretName: secretName2,
+    });
     await writer.close();
+    let loopRun = false;
     for await (const data of response.readable) {
+      loopRun = true;
       expect(data.type).toStrictEqual('success');
     }
+    expect(loopRun).toBeTruthy();
     // Ensure single log message for deleting the secrets
     await vaultManager.withVaults([vaultId], async (vault) => {
       expect((await vault.log()).length).toEqual(logLength + 1);
@@ -2555,14 +2585,35 @@ describe('vaultsSecretsRemove', () => {
     // Delete secret
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded1, secretName: secretName1 });
-    await writer.write({ nameOrId: vaultIdEncoded2, secretName: secretName2 });
-    await writer.write({ nameOrId: vaultIdEncoded1, secretName: secretName3 });
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded1, vaultIdEncoded2],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded1,
+      secretName: secretName1,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded2,
+      secretName: secretName2,
+    });
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: vaultIdEncoded1,
+      secretName: secretName3,
+    });
     await writer.close();
+    let loopRun = false;
     for await (const data of response.readable) {
+      loopRun = true;
       expect(data.type).toStrictEqual('success');
     }
     // Ensure single log message for deleting the secrets
+    expect(loopRun).toBeTruthy();
     await vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -2595,10 +2646,17 @@ describe('vaultsSecretsRemove', () => {
     // Deleting directory with recursive set should not fail
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
+    // Header message
     await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+      recursive: true,
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
       nameOrId: vaultIdEncoded,
       secretName: dirName,
-      metadata: { options: { recursive: true } },
     });
     await writer.close();
     for await (const data of response.readable) {
@@ -2632,7 +2690,14 @@ describe('vaultsSecretsRemove', () => {
     // Deleting directory with recursive set should not fail
     const response = await rpcClient.methods.vaultsSecretsRemove();
     const writer = response.writable.getWriter();
+    // Header message
     await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
       nameOrId: vaultIdEncoded,
       secretName: dirName,
     });

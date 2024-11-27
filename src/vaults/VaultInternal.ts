@@ -564,7 +564,7 @@ class VaultInternal {
     return async () => {
       let releaseTran: ResourceRelease | undefined = undefined;
       const acquire = this.lock.write();
-      const [release] = await acquire([tran]);
+      const [release] = await acquire();
       if (tran == null) {
         const acquireTran = this.db.transaction();
         [releaseTran, tran] = await acquireTran();
@@ -590,7 +590,7 @@ class VaultInternal {
       );
       return [
         async (e?: Error) => {
-          if (e != null) {
+          if (e == null) {
             try {
               // After doing mutation we need to commit the new history
               await this.createCommit();

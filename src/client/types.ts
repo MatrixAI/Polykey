@@ -1,7 +1,8 @@
 import type {
   ClientManifest,
   JSONObject,
-  JSONRPCResponseResult,
+  JSONRPCResponseMetadata,
+  // JSONRPCResponseResult,
   RPCClient,
 } from '@matrixai/rpc';
 import type {
@@ -24,6 +25,16 @@ import type {
   NodeContactAddressData,
 } from '../nodes/types';
 import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
+
+// TEMP: For testing and debugging. This will go into js-rpc or something.
+type JSONRPCResponseResult<
+  T extends JSONObject = JSONObject,
+  M extends JSONObject = JSONObject,
+> = T & {
+  metadata?: JSONRPCResponseMetadata &
+    M &
+    (T extends { metadata: infer U } ? U : JSONObject);
+};
 
 type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<
@@ -362,14 +373,14 @@ type SecretStatMessage = {
 
 type SecretIdentifierMessageTagged = SecretIdentifierMessage & {
   type: 'SecretIdentifierMessage';
-}
+};
 
-type VaultNamesHeaderMesage = {
-  type: 'VaultNamesHeaderMesage';
+type VaultNamesHeaderMessage = {
+  type: 'VaultNamesHeaderMessage';
   vaultNames: Array<string>;
 };
 
-type SecretsRemoveHeaderMessage = VaultNamesHeaderMesage & {
+type SecretsRemoveHeaderMessage = VaultNamesHeaderMessage & {
   recursive?: boolean;
 };
 
@@ -449,7 +460,7 @@ export type {
   SecretFilesMessage,
   SecretStatMessage,
   SecretIdentifierMessageTagged,
-  VaultNamesHeaderMesage,
+  VaultNamesHeaderMessage,
   SecretsRemoveHeaderMessage,
   SignatureMessage,
   OverrideRPClientType,
