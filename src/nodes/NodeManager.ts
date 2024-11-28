@@ -50,6 +50,7 @@ import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
 import * as agentErrors from './agent/errors';
 import NodeConnectionQueue from './NodeConnectionQueue';
+import { ErrorNodeManagerFindNodeFailed } from './errors';
 import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority';
 import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess';
 import Token from '../tokens/Token';
@@ -637,7 +638,14 @@ class NodeManager {
     try {
       return await Promise.any([findBySignal, findByDirect, findByMDNS]);
     } catch (e) {
-      // FIXME: check error type and throw if not connection related failure
+      if (e instanceof AggregateError) {
+        for (const error of e.errors) {
+          // Checking if each error is an expected error
+          if (!(error instanceof ErrorNodeManagerFindNodeFailed)) throw e;
+        }
+      } else if (!(e instanceof ErrorNodeManagerFindNodeFailed)) {
+        throw e;
+      }
       return;
     } finally {
       abortController.abort(abortPendingConnectionsReason);
