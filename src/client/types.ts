@@ -1,8 +1,7 @@
 import type {
   ClientManifest,
   JSONObject,
-  JSONRPCResponseMetadata,
-  // JSONRPCResponseResult,
+  JSONRPCResponseResult,
   RPCClient,
 } from '@matrixai/rpc';
 import type {
@@ -25,16 +24,6 @@ import type {
   NodeContactAddressData,
 } from '../nodes/types';
 import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
-
-// TEMP: For testing and debugging. This will go into js-rpc or something.
-type JSONRPCResponseResult<
-  T extends JSONObject = JSONObject,
-  M extends JSONObject = JSONObject,
-> = T & {
-  metadata?: JSONRPCResponseMetadata &
-    M &
-    (T extends { metadata: infer U } ? U : JSONObject);
-};
 
 type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<
