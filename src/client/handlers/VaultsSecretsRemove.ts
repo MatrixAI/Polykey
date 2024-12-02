@@ -26,7 +26,7 @@ class VaultsSecretsRemove extends DuplexHandler<
   ClientRPCResponseResult<SuccessOrErrorMessage>
 > {
   public handle = async function* (
-    input: AsyncIterable<
+    input: AsyncIterableIterator<
       ClientRPCRequestParams<
         SecretsRemoveHeaderMessage | SecretIdentifierMessageTagged
       >
@@ -34,18 +34,19 @@ class VaultsSecretsRemove extends DuplexHandler<
   ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
-    const vaultAcquires: Array<ResourceAcquire<FileSystemWritable>> = [];
-    // Extracts the header message from the iterator
-    const headerMessage = await (async () => {
-      const iterator = input[Symbol.asyncIterator]();
-      const header = (await iterator.next()).value;
-      if (header.type === 'VaultNamesHeaderMessage') {
-        if (header == null) throw new clientErrors.ErrorClientInvalidHeader();
-        return header;
-      }
-    })();
+    // Extract the header message from the iterator
+    const headerMessage:
+      | SecretsRemoveHeaderMessage
+      | SecretIdentifierMessageTagged = (await input.next()).value;
+    if (
+      headerMessage == null ||
+      headerMessage.type !== 'VaultNamesHeaderMessage'
+    ) {
+      throw new clientErrors.ErrorClientInvalidHeader();
+    }
     // Create an array of write acquires
-    await db.withTransactionF(async (tran) => {
+    const vaultAcquires = await db.withTransactionF(async (tran) => {
+      const vaultAcquires: Array<ResourceAcquire<FileSystemWritable>> = [];
       for (const vaultName of headerMessage.vaultNames) {
         const vaultIdFromName = await vaultManager.getVaultId(vaultName, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(vaultName);
@@ -60,6 +61,7 @@ class VaultsSecretsRemove extends DuplexHandler<
         );
         vaultAcquires.push(acquire);
       }
+      return vaultAcquires;
     });
     // Acquire all locks in parallel and perform all operations at once
     yield* withG(
@@ -72,7 +74,11 @@ class VaultsSecretsRemove extends DuplexHandler<
         }
         for await (const message of input) {
           // Ignoring any header messages
-          if (message.type !== 'SecretIdentifierMessage') continue;
+          if (message.type === 'VaultNamesHeaderMessage') {
+            throw new clientErrors.ErrorClientInvalidHeader(
+              'The header message cannot be sent multiple times',
+            );
+          }
           const efs = vaultMap.get(message.nameOrId);
           if (efs == null) {
             throw new vaultsErrors.ErrorVaultsVaultUndefined(
@@ -98,7 +104,7 @@ class VaultsSecretsRemove extends DuplexHandler<
               e.code === 'ENOTEMPTY' ||
               e.code === 'EINVAL'
             ) {
-              // INVAL can be triggered if removing the root of the
+              // EINVAL can be triggered if removing the root of the
               // vault is attempted.
               yield {
                 type: 'error',

@@ -10,7 +10,7 @@ import { DuplexHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 
-class VaultsSecretsList extends DuplexHandler<
+class VaultsSecretsEnv extends DuplexHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -86,4 +86,4 @@ class VaultsSecretsList extends DuplexHandler<
   };
 }
 
-export default VaultsSecretsList;
+export default VaultsSecretsEnv;

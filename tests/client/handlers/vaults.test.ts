@@ -1453,6 +1453,7 @@ describe('vaultsSecretsMkdir', () => {
     const vaultName = 'test-vault';
     const vaultId = await vaultManager.createVault(vaultName);
     const dirPath = 'dir/dir1/dir2';
+    // Attempt to make directories
     const response = await rpcClient.methods.vaultsSecretsMkdir();
     const writer = response.writable.getWriter();
     await writer.write({
@@ -1461,7 +1462,7 @@ describe('vaultsSecretsMkdir', () => {
       metadata: { options: { recursive: true } },
     });
     await writer.close();
-
+    // Check if the operation concluded as expected
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
     }
@@ -1476,13 +1477,15 @@ describe('vaultsSecretsMkdir', () => {
     const vaultId = await vaultManager.createVault(vaultName);
     const encodeVaultId = vaultsUtils.encodeVaultId(vaultId);
     const dirPath = 'dir/dir1/dir2';
+    // Attempt to make directories
     const response = await rpcClient.methods.vaultsSecretsMkdir();
     const writer = response.writable.getWriter();
     await writer.write({ nameOrId: encodeVaultId, dirName: dirPath });
     await writer.close();
+    // Check if the operation concluded as expected
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never();
+      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
       expect(data.code).toEqual('ENOENT');
       expect(data.reason).toEqual(dirPath);
     }
@@ -1543,17 +1546,21 @@ describe('vaultsSecretsMkdir', () => {
     // Attempt to make directories
     const response = await rpcClient.methods.vaultsSecretsMkdir();
     const writer = response.writable.getWriter();
-    await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath1 });
-    await writer.write({ nameOrId: vaultIdEncoded2, dirName: dirPath2 });
     await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath3 });
+    await writer.write({ nameOrId: vaultIdEncoded2, dirName: dirPath2 });
+    await writer.write({ nameOrId: vaultIdEncoded1, dirName: dirPath1 });
     await writer.close();
     // Check if the operation concluded as expected
+    let successCount = 0;
     for await (const data of response.readable) {
       if (data.type === 'error') {
         expect(data.code).toEqual('ENOENT');
         expect(data.reason).toEqual(dirPath3);
+      } else {
+        successCount++;
       }
     }
+    expect(successCount).toEqual(2);
     await vaultManager.withVaults(
       [vaultId1, vaultId2],
       async (vault1, vault2) => {
@@ -1585,7 +1592,7 @@ describe('vaultsSecretsMkdir', () => {
     // Check if the operation concluded as expected
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never();
+      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
       expect(data.code).toEqual('EEXIST');
       expect(data.reason).toEqual(dirPath);
     }
@@ -1728,7 +1735,9 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      if (data.type !== 'success') utils.never();
+      if (data.type !== 'success') {
+        utils.never("Type is asserted to be 'success'");
+      }
       expect(data.secretContent).toEqual(secretContent);
     }
   });
@@ -1747,7 +1756,7 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never();
+      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
       expect(data.code).toEqual('ENOENT');
       expect(data.reason).toEqual(secretName);
     }
@@ -1773,7 +1782,7 @@ describe('vaultsSecretsCat', () => {
     // Read response
     for await (const data of response.readable) {
       expect(data.type).toEqual('error');
-      if (data.type !== 'error') utils.never();
+      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
       expect(data.code).toEqual('EISDIR');
       expect(data.reason).toEqual(secretName);
     }
@@ -1803,7 +1812,9 @@ describe('vaultsSecretsCat', () => {
     let totalContent = '';
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      if (data.type !== 'success') utils.never();
+      if (data.type !== 'success') {
+        utils.never("Type is asserted to be 'success'");
+      }
       totalContent += data.secretContent;
     }
     expect(totalContent).toEqual(`${secretContent1}${secretContent2}`);
@@ -1845,7 +1856,9 @@ describe('vaultsSecretsCat', () => {
     let totalContent = '';
     for await (const data of response.readable) {
       expect(data.type).toEqual('success');
-      if (data.type !== 'success') utils.never();
+      if (data.type !== 'success') {
+        utils.never("Type is asserted to be 'success'");
+      }
       totalContent += data.secretContent;
     }
     expect(totalContent).toEqual(
@@ -2397,7 +2410,7 @@ describe('vaultsSecretsRemove', () => {
     for await (const data of response.readable) {
       loopRun = true;
       expect(data.type).toStrictEqual('error');
-      if (data.type !== 'error') utils.never();
+      if (data.type !== 'error') utils.never("Type is asserted to be 'error'");
       expect(data.code).toStrictEqual('EINVAL');
     }
     // Check

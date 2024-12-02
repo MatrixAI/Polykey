@@ -571,7 +571,7 @@ class VaultInternal {
       }
       // The returned transaction can be undefined, too. We won't handle those
       // cases.
-      if (tran == null) utils.never();
+      if (tran == null) utils.never('Acquired transactions cannot be null');
       await tran.lock(
         [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
       );

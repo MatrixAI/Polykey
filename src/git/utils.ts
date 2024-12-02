@@ -218,7 +218,7 @@ async function listObjects({
         }
         return;
       default:
-        utils.never();
+        utils.never('Invalid type');
     }
   }
 
