@@ -403,6 +403,8 @@ class NodeManager {
       this.syncNodeGraphHandlerId,
       this.syncNodeGraphHandler,
     );
+    // This will clean up tasks that were not properly cleaned up during an ungracefully shutdown of the process
+    await this.stopTasks();
     await this.setupRefreshBucketTasks();
     // Can be disabled with 0 delay, only use for testing
     if (this.retryConnectionsDelayTime > 0) {
@@ -445,15 +447,7 @@ class NodeManager {
       this.handleEventNodeConnectionManagerConnection,
     );
     await this.mdns?.stop();
-    // Cancels all NodeManager tasks
-    const taskPs: Array<Promise<any>> = [];
-    for await (const task of this.taskManager.getTasks(undefined, false, [
-      this.tasksPath,
-    ])) {
-      taskPs.push(task.promise());
-      task.cancel(abortEphemeralTaskReason);
-    }
-    await Promise.allSettled(taskPs);
+    await this.stopTasks();
     this.taskManager.deregisterHandler(this.refreshBucketHandlerId);
     this.taskManager.deregisterHandler(this.gcBucketHandlerId);
     this.taskManager.deregisterHandler(this.checkConnectionsHandlerId);
@@ -2087,6 +2081,21 @@ class NodeManager {
       }
     }
     this.logger.info('Set up refreshBucket tasks');
+  }
+
+  /**
+   * Cancels all NodeManager tasks.
+   * These are ephemeral and will be recreated next time we start.
+   */
+  protected async stopTasks() {
+    const taskPs: Array<Promise<any>> = [];
+    for await (const task of this.taskManager.getTasks(undefined, false, [
+      this.tasksPath,
+    ])) {
+      taskPs.push(task.promise());
+      task.cancel(abortEphemeralTaskReason);
+    }
+    await Promise.allSettled(taskPs);
   }
 
   @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
