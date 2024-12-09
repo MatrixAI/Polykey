@@ -571,25 +571,25 @@ class NodeConnectionManager {
     );
     this.quicSocket.removeEventListener(EventAll.name, this.handleEventAll);
 
-    const destroyProms: Array<Promise<void>> = [];
+    const destroyPs: Array<Promise<void>> = [];
     for (const [nodeId] of this.connections) {
       // It exists so we want to destroy it
-      const destroyProm = this.destroyConnection(
+      const destroyP = this.destroyConnection(
         IdInternal.fromString<NodeId>(nodeId),
         force,
       );
-      destroyProms.push(destroyProm);
+      destroyPs.push(destroyP);
     }
-    await Promise.all(destroyProms);
-    const signallingProms: Array<PromiseCancellable<void> | Promise<void>> = [];
+    await Promise.all(destroyPs);
+    const signallingPs: Array<PromiseCancellable<void> | Promise<void>> = [];
     for (const [, activePunch] of this.activeHolePunchPs) {
-      signallingProms.push(activePunch);
+      signallingPs.push(activePunch);
       activePunch.cancel();
     }
     for (const activeSignal of this.activeSignalFinalPs) {
-      signallingProms.push(activeSignal);
+      signallingPs.push(activeSignal);
     }
-    await Promise.allSettled(signallingProms);
+    await Promise.allSettled(signallingPs);
     await this.quicServer.stop({ force: true });
     await this.quicSocket.stop({ force: true });
     await this.rpcServer.stop({ force: true });
@@ -1113,13 +1113,13 @@ class NodeConnectionManager {
   ): Promise<void> {
     // We need to send a random data packet to the target until the process times out or a connection is established
     let ended = false;
-    const endedProm = utils.promise();
+    const { p: endedP, resolveP: endedResolveP } = utils.promise();
     if (ctx.signal.aborted) {
-      endedProm.resolveP();
+      endedResolveP();
     }
     const onAbort = () => {
       ended = true;
-      endedProm.resolveP();
+      endedResolveP();
       ctx.signal.removeEventListener('abort', onAbort);
     };
     ctx.signal.addEventListener('abort', onAbort);
@@ -1134,7 +1134,7 @@ class NodeConnectionManager {
         await this.quicSocket
           .send(Buffer.from(message), port, host)
           .catch(() => {});
-        await Promise.race([utils.sleep(delay), endedProm.p]);
+        await Promise.race([utils.sleep(delay), endedP]);
         if (ended) break;
         delay *= 2;
       }

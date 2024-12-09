@@ -189,6 +189,7 @@ export class NodeConnectionQueue {
     ctx: ContextCancellable,
   ): Promise<void> {
     const abortP = utils.signalPromise(ctx.signal);
+    void abortP.catch(() => {});
     try {
       while (
         !this.connectionMade &&

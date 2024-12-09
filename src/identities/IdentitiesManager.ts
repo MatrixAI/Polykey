@@ -265,7 +265,8 @@ class IdentitiesManager {
       );
     }
     // Create identity claim on our node
-    const publishedClaimProm = promise<IdentitySignedClaim>();
+    const { p: publishedClaimP, resolveP: publishedClaimResolveP } =
+      promise<IdentitySignedClaim>();
     await this.db.withTransactionF((tran) =>
       this.sigchain.addClaim(
         {
@@ -281,7 +282,7 @@ class IdentitiesManager {
             identityId,
             claim,
           );
-          publishedClaimProm.resolveP(identitySignedClaim);
+          publishedClaimResolveP(identitySignedClaim);
           // Append the ProviderIdentityClaimId to the token
           const payload: ClaimLinkIdentity = {
             ...claim.payload,
@@ -294,7 +295,7 @@ class IdentitiesManager {
         tran,
       ),
     );
-    const publishedClaim = await publishedClaimProm.p;
+    const publishedClaim = await publishedClaimP;
     // Publish claim on identity
     const issNodeInfo = {
       nodeId: this.keyRing.getNodeId(),

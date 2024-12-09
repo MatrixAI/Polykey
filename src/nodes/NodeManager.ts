@@ -290,12 +290,12 @@ class NodeManager {
       const task = await this.updateRefreshBucketDelay(i, 0, false);
       refreshBuckets.push(task.promise());
     }
-    const signalProm = utils.signalPromise(ctx.signal);
-    await Promise.race([Promise.all(refreshBuckets), signalProm]).finally(
+    const signalP = utils.signalPromise(ctx.signal);
+    await Promise.race([Promise.all(refreshBuckets), signalP]).finally(
       async () => {
         // Clean up signal promise when done
-        signalProm.cancel();
-        await signalProm;
+        signalP.cancel();
+        await signalP;
       },
     );
   };
@@ -1424,8 +1424,9 @@ class NodeManager {
     };
 
     // Now we want to send our own claim signed
-    const halfSignedClaimProm = utils.promise<SignedTokenEncoded>();
-    const claimProm = this.sigchain.addClaim(
+    const { p: halfSignedClaimP, resolveP: halfSignedClaimResolveP } =
+      utils.promise<SignedTokenEncoded>();
+    const claimP = this.sigchain.addClaim(
       {
         typ: 'ClaimLinkNode',
         iss: nodesUtils.encodeNodeId(requestingNodeId),
@@ -1436,7 +1437,7 @@ class NodeManager {
         const halfSignedClaim = token.toSigned();
         const halfSignedClaimEncoded =
           claimsUtils.generateSignedClaim(halfSignedClaim);
-        halfSignedClaimProm.resolveP(halfSignedClaimEncoded);
+        halfSignedClaimResolveP(halfSignedClaimEncoded);
         const readStatus = await input.next();
         if (readStatus.done) {
           throw new claimsErrors.ErrorEmptyStream();
@@ -1462,10 +1463,11 @@ class NodeManager {
         return fullySignedToken;
       },
     );
+    void claimP.catch(() => {});
     yield {
-      signedTokenEncoded: await halfSignedClaimProm.p,
+      signedTokenEncoded: await halfSignedClaimP,
     };
-    const [, claim] = await claimProm;
+    const [, claim] = await claimP;
     // With the claim created we want to add it to the gestalt graph
     const issNodeInfo = {
       nodeId: requestingNodeId,

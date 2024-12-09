@@ -177,7 +177,7 @@ class Audit {
         promise.cancel(new auditErrors.ErrorAuditNotRunning());
       }
     }
-    await Promise.all([...this.taskPromises]).catch(() => {});
+    await Promise.allSettled([...this.taskPromises]);
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
@@ -333,6 +333,7 @@ class Audit {
           resolveBlockP = resolveP;
           blockPSignal = signal;
         });
+        void blockP.catch(() => {});
         this.taskPromises.add(blockP);
 
         const iterator = this.getAuditEvents(topicPath, {

@@ -806,7 +806,7 @@ class PolykeyAgent {
         if (nodeId == null) {
           utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
         }
-        const setNodeProm = this.nodeManager.setNode(
+        const setNodeP = this.nodeManager.setNode(
           nodeId,
           optionsDefaulted.seedNodes[nodeIdEncoded],
           {
@@ -816,7 +816,7 @@ class PolykeyAgent {
           },
           true,
         );
-        setNodeProms.push(setNodeProm);
+        setNodeProms.push(setNodeP);
       }
       await Promise.all(setNodeProms);
       await this.nodeGraph.start({ fresh });
