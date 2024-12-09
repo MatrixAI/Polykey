@@ -1243,6 +1243,8 @@ class NodeConnectionManager {
         });
       },
     );
+    // Prevent promise rejection leak
+    void holePunchAttempt.catch(() => {});
     this.activeHolePunchPs.set(id, holePunchAttempt);
   }
 
@@ -1299,7 +1301,7 @@ class NodeConnectionManager {
       this.keyRing.keyPair,
       data,
     );
-    const connProm = this.withConnF(targetNodeId, async (conn) => {
+    const connectionSignalP = this.withConnF(targetNodeId, async (conn) => {
       const client = conn.getClient();
       await client.methods.nodesConnectionSignalFinal({
         sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
@@ -1325,9 +1327,11 @@ class NodeConnectionManager {
         },
       )
       .finally(() => {
-        this.activeSignalFinalPs.delete(connProm);
+        this.activeSignalFinalPs.delete(connectionSignalP);
       });
-    this.activeSignalFinalPs.add(connProm);
+    // Preventing promise rejection leak.
+    connectionSignalP.catch(() => {});
+    this.activeSignalFinalPs.add(connectionSignalP);
     return {
       host,
       port,
