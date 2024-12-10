@@ -23,7 +23,9 @@ class VaultsSecretsCat extends DuplexHandler<
   ClientRPCResponseResult<ContentOrErrorMessage>
 > {
   public handle = async function* (
-    input: AsyncIterable<ClientRPCRequestParams<SecretIdentifierMessage>>,
+    input: AsyncIterableIterator<
+      ClientRPCRequestParams<SecretIdentifierMessage>
+    >,
   ): AsyncGenerator<ClientRPCResponseResult<ContentOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;

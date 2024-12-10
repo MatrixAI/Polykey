@@ -825,7 +825,6 @@ describe('nodesGetAll', () => {
       manifest: {
         nodesGetAll: new NodesGetAll({
           nodeGraph,
-          keyRing,
         }),
       },
       host: localhost,

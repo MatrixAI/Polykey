@@ -1,6 +1,8 @@
 import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { RPCClient } from '@matrixai/rpc';
+import type { ResourceAcquire, ResourceRelease } from '@matrixai/resources';
 import type {
   CommitId,
   CommitLog,
@@ -15,7 +17,6 @@ import type {
 import type KeyRing from '../keys/KeyRing';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
 import type NodeManager from '../nodes/NodeManager';
-import type { RPCClient } from '@matrixai/rpc';
 import type agentClientManifest from '../nodes/agent/callers';
 import type { POJO } from '../types';
 import path from 'path';
@@ -534,6 +535,83 @@ class VaultInternal {
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], false);
       return result;
     });
+  }
+
+  /**
+   * Acquire a read-only lock on this vault
+   */
+  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  public acquireRead(): ResourceAcquire<FileSystemReadable> {
+    return async () => {
+      const acquire = this.lock.read();
+      const [release] = await acquire();
+      return [
+        async (e?: Error) => {
+          await release(e);
+        },
+        this.efsVault,
+      ];
+    };
+  }
+
+  /**
+   * Acquire a read-write lock on this vault
+   */
+  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  public acquireWrite(
+    tran?: DBTransaction,
+  ): ResourceAcquire<FileSystemWritable> {
+    return async () => {
+      let releaseTran: ResourceRelease | undefined = undefined;
+      const acquire = this.lock.write();
+      const [release] = await acquire();
+      if (tran == null) {
+        const acquireTran = this.db.transaction();
+        [releaseTran, tran] = await acquireTran();
+      }
+      // The returned transaction can be undefined, too. We won't handle those
+      // cases.
+      if (tran == null) utils.never('Acquired transactions cannot be null');
+      await tran.lock(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
+      );
+      if (
+        (await tran.get([
+          ...this.vaultMetadataDbPath,
+          VaultInternal.remoteKey,
+        ])) != null
+      ) {
+        // Mirrored vaults are immutable
+        throw new vaultsErrors.ErrorVaultRemoteDefined();
+      }
+      await tran.put(
+        [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
+        true,
+      );
+      return [
+        async (e?: Error) => {
+          if (e == null) {
+            try {
+              // After doing mutation we need to commit the new history
+              await this.createCommit();
+            } catch (e_) {
+              e = e_;
+              // Error implies dirty state
+              await this.cleanWorkingDirectory();
+            }
+          }
+          // For some reason, the transaction type doesn't properly waterfall
+          // down to here.
+          await tran!.put(
+            [...this.vaultMetadataDbPath, VaultInternal.dirtyKey],
+            false,
+          );
+          if (releaseTran != null) await releaseTran(e);
+          await release(e);
+        },
+        this.efsVault,
+      ];
+    };
   }
 
   /**

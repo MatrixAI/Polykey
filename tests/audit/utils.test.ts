@@ -47,6 +47,7 @@ describe('Audit Utils', () => {
       ['f'],
       ['f'],
     ];
+    // @ts-ignore: treating TopicSubPath as string for testing
     const filtered = auditUtils.filterSubPaths(data).map((v) => v.join('.'));
     expect(filtered).toHaveLength(3);
     expect(filtered).toInclude('a.b');

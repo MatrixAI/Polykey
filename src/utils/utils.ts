@@ -48,7 +48,7 @@ function getDefaultNodePath(): string | undefined {
   return p;
 }
 
-function never(message?: string): never {
+function never(message: string): never {
   throw new utilsErrors.ErrorUtilsUndefinedBehaviour(message);
 }
 

@@ -21,7 +21,7 @@ class VaultsSecretsMkdir extends DuplexHandler<
   ClientRPCResponseResult<SuccessOrErrorMessage>
 > {
   public handle = async function* (
-    input: AsyncIterable<ClientRPCRequestParams<SecretDirMessage>>,
+    input: AsyncIterableIterator<ClientRPCRequestParams<SecretDirMessage>>,
   ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
