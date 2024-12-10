@@ -70,6 +70,7 @@ import * as keysUtils from '@/keys/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
+import * as clientErrors from '@/client/errors';
 import * as networkUtils from '@/network/utils';
 import * as utils from '@/utils';
 import * as testsUtils from '../../utils';
@@ -2356,6 +2357,80 @@ describe('vaultsSecretsRemove', () => {
       recursive: true,
     });
   });
+  test('fails when header is not sent', async () => {
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsRemove();
+    const writer = response.writable.getWriter();
+    // Not sending the header message
+    // Content messages
+    await writer.write({
+      type: 'SecretIdentifierMessage',
+      nameOrId: 'invalid',
+      secretName: 'invalid',
+    });
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientInvalidHeader,
+    );
+  });
+  test('fails when only the header is sent', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsRemove();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    // Not sending the content messages
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientProtocolError,
+    );
+  });
+  test('fails when the header is sent multiple times', async () => {
+    const vaultId = await vaultManager.createVault('test-vault');
+    const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
+    // Write paths
+    const response = await rpcClient.methods.vaultsSecretsRemove();
+    const writer = response.writable.getWriter();
+    // Header message
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    await writer.write({
+      type: 'VaultNamesHeaderMessage',
+      vaultNames: [vaultIdEncoded],
+    });
+    await writer.close();
+    // Read response
+    const consumeP = async () => {
+      for await (const _ of response.readable) {
+        // Consume values
+      }
+    };
+    await testsUtils.expectRemoteError(
+      consumeP(),
+      clientErrors.ErrorClientProtocolError,
+    );
+  });
   test('fails with invalid vault name', async () => {
     // Write paths
     const response = await rpcClient.methods.vaultsSecretsRemove();
@@ -2374,7 +2449,9 @@ describe('vaultsSecretsRemove', () => {
     await writer.close();
     // Read response
     const consumeP = async () => {
-      for await (const _ of response.readable);
+      for await (const _ of response.readable) {
+        // Consume values
+      }
     };
     await testsUtils.expectRemoteError(
       consumeP(),

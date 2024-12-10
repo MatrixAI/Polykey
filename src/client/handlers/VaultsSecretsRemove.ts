@@ -35,11 +35,13 @@ class VaultsSecretsRemove extends DuplexHandler<
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     // Extract the header message from the iterator
+    const headerMessagePair = await input.next();
     const headerMessage:
       | SecretsRemoveHeaderMessage
-      | SecretIdentifierMessageTagged = (await input.next()).value;
+      | SecretIdentifierMessageTagged = headerMessagePair.value;
+    // Testing if the header is of the expected format
     if (
-      headerMessage == null ||
+      headerMessagePair.done ||
       headerMessage.type !== 'VaultNamesHeaderMessage'
     ) {
       throw new clientErrors.ErrorClientInvalidHeader();
@@ -72,10 +74,12 @@ class VaultsSecretsRemove extends DuplexHandler<
         for (let i = 0; i < efses.length; i++) {
           vaultMap.set(headerMessage!.vaultNames[i], efses[i]);
         }
+        let loopRan = false;
         for await (const message of input) {
-          // Ignoring any header messages
+          loopRan = true;
+          // Header messages should not be seen anymore
           if (message.type === 'VaultNamesHeaderMessage') {
-            throw new clientErrors.ErrorClientInvalidHeader(
+            throw new clientErrors.ErrorClientProtocolError(
               'The header message cannot be sent multiple times',
             );
           }
@@ -115,6 +119,12 @@ class VaultsSecretsRemove extends DuplexHandler<
               throw e;
             }
           }
+        }
+        // Content messages must follow header messages
+        if (!loopRan) {
+          throw new clientErrors.ErrorClientProtocolError(
+            'No content messages followed header message',
+          );
         }
       },
     );

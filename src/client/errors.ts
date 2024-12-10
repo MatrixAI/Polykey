@@ -23,6 +23,11 @@ class ErrorClientInvalidHeader<T> extends ErrorClient<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorClientProtocolError<T> extends ErrorClient<T> {
+  static description = 'Data does not match the protocol requirements';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorClientService<T> extends ErrorClient<T> {}
 
 class ErrorClientServiceRunning<T> extends ErrorClientService<T> {
@@ -51,6 +56,7 @@ export {
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
   ErrorClientInvalidHeader,
+  ErrorClientProtocolError,
   ErrorClientService,
   ErrorClientServiceRunning,
   ErrorClientServiceNotRunning,

@@ -90,7 +90,8 @@ type NegotiationTestData =
  * @param rest - Random buffer data to be appended to the end to simulate more lines in the stream.
  */
 function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
-  switch (data.type) {
+  const type = data.type;
+  switch (type) {
     case 'want': {
       // Generate a `want` line that includes `want`, the `objectId` and capabilities
       const line = Buffer.concat([
@@ -123,9 +124,8 @@ function generateGitNegotiationLine(data: NegotiationTestData, rest: Buffer) {
       // Generate an empty buffer to simulate the stream running out of data to process
       return Buffer.alloc(0);
     default:
-      // @ts-ignore: if we're here then data isn't the type we expect
       utils.never(
-        `data.type must be "want", "have", "SEPARATOR", "done", "none", got "${data.type}"`,
+        `data.type must be "want", "have", "SEPARATOR", "done", "none", got "${type}"`,
       );
   }
 }

@@ -596,9 +596,6 @@ class VaultInternal {
               await this.createCommit();
             } catch (e_) {
               e = e_;
-            }
-            // This would happen if an error was caught inside the catch block
-            if (e != null) {
               // Error implies dirty state
               await this.cleanWorkingDirectory();
             }

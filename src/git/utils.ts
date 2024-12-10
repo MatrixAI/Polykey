@@ -218,7 +218,9 @@ async function listObjects({
         }
         return;
       default:
-        utils.never('Invalid type');
+        utils.never(
+          `type must be one of "commit", "tree", "blob", or "tag", got "${type}"`,
+        );
     }
   }
 
