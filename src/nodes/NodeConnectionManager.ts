@@ -144,6 +144,16 @@ class NodeConnectionManager {
   public readonly connectionHolePunchIntervalTime: number;
 
   /**
+   * Total number of active bidirectional streams that can be created
+   */
+  public readonly connectionInitialMaxStreamsBidi: number;
+
+  /**
+   * Total number of active unidirectional streams that can be created
+   */
+  public readonly connectionInitialMaxStreamsUni: number;
+
+  /**
    * Max parse buffer size before RPC parser throws an parse error.
    */
   public readonly rpcParserBufferSize: number;
@@ -370,9 +380,12 @@ class NodeConnectionManager {
       .nodesConnectionKeepAliveIntervalTime,
     connectionHolePunchIntervalTime = config.defaultsSystem
       .nodesConnectionHolePunchIntervalTime,
+    connectionInitialMaxStreamsBidi = config.defaultsSystem
+      .nodesConnectionInitialMaxStreamsBidi,
+    connectionInitialMaxStreamsUni = config.defaultsSystem
+      .nodesConnectionInitialMaxStreamsUni,
     rpcParserBufferSize = config.defaultsSystem.rpcParserBufferSize,
     rpcCallTimeoutTime = config.defaultsSystem.rpcCallTimeoutTime,
-
     logger,
   }: {
     keyRing: KeyRing;
@@ -386,6 +399,8 @@ class NodeConnectionManager {
     connectionKeepAliveTimeoutTime?: number;
     connectionKeepAliveIntervalTime?: number;
     connectionHolePunchIntervalTime?: number;
+    connectionInitialMaxStreamsBidi?: number;
+    connectionInitialMaxStreamsUni?: number;
     rpcParserBufferSize?: number;
     rpcCallTimeoutTime?: number;
     logger?: Logger;
@@ -402,6 +417,8 @@ class NodeConnectionManager {
     this.connectionKeepAliveTimeoutTime = connectionKeepAliveTimeoutTime;
     this.connectionKeepAliveIntervalTime = connectionKeepAliveIntervalTime;
     this.connectionHolePunchIntervalTime = connectionHolePunchIntervalTime;
+    this.connectionInitialMaxStreamsBidi = connectionInitialMaxStreamsBidi;
+    this.connectionInitialMaxStreamsUni = connectionInitialMaxStreamsUni;
     this.rpcParserBufferSize = rpcParserBufferSize;
     this.rpcCallTimeoutTime = rpcCallTimeoutTime;
 
@@ -422,6 +439,8 @@ class NodeConnectionManager {
         cert: tlsConfig.certChainPem,
         verifyPeer: true,
         verifyCallback: nodesUtils.verifyClientCertificateChain,
+        initialMaxStreamsBidi: 1000,
+        initialMaxStreamsUni: 0,
       },
       socket: quicSocket,
       reasonToCode: nodesUtils.reasonToCode,
@@ -736,6 +755,8 @@ class NodeConnectionManager {
         tlsConfig: this.tlsConfig,
         connectionKeepAliveIntervalTime: this.connectionKeepAliveIntervalTime,
         connectionKeepAliveTimeoutTime: this.connectionKeepAliveTimeoutTime,
+        connectionInitialMaxStreamsBidi: this.connectionInitialMaxStreamsBidi,
+        connectionInitialMaxStreamsUni: this.connectionInitialMaxStreamsUni,
         quicSocket: this.quicSocket,
         logger: this.logger.getChild(
           `${NodeConnection.name}Forward [${host}:${port}]`,
