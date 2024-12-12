@@ -171,6 +171,10 @@ class NodeConnection {
       connectionKeepAliveIntervalTime,
       connectionKeepAliveTimeoutTime = config.defaultsSystem
         .nodesConnectionIdleTimeoutTimeMin,
+      connectionInitialMaxStreamsBidi = config.defaultsSystem
+        .nodesConnectionInitialMaxStreamsBidi,
+      connectionInitialMaxStreamsUni = config.defaultsSystem
+        .nodesConnectionInitialMaxStreamsUni,
       quicSocket,
       manifest,
       logger,
@@ -182,6 +186,8 @@ class NodeConnection {
       tlsConfig: TLSConfig;
       connectionKeepAliveIntervalTime?: number;
       connectionKeepAliveTimeoutTime?: number;
+      connectionInitialMaxStreamsBidi?: number;
+      connectionInitialMaxStreamsUni?: number;
       quicSocket?: QUICSocket;
       manifest: AgentClientManifest;
       logger?: Logger;
@@ -203,6 +209,10 @@ class NodeConnection {
       connectionKeepAliveIntervalTime,
       connectionKeepAliveTimeoutTime = config.defaultsSystem
         .nodesConnectionIdleTimeoutTimeMin,
+      connectionInitialMaxStreamsBidi = config.defaultsSystem
+        .nodesConnectionInitialMaxStreamsBidi,
+      connectionInitialMaxStreamsUni = config.defaultsSystem
+        .nodesConnectionInitialMaxStreamsUni,
       quicSocket,
       logger = new Logger(this.name),
     }: {
@@ -214,6 +224,8 @@ class NodeConnection {
       manifest: AgentClientManifest;
       connectionKeepAliveIntervalTime?: number;
       connectionKeepAliveTimeoutTime?: number;
+      connectionInitialMaxStreamsBidi?: number;
+      connectionInitialMaxStreamsUni?: number;
       quicSocket: QUICSocket;
       logger?: Logger;
     },
@@ -255,6 +267,8 @@ class NodeConnection {
             ca: undefined,
             key: tlsConfig.keyPrivatePem,
             cert: tlsConfig.certChainPem,
+            initialMaxStreamsBidi: connectionInitialMaxStreamsBidi,
+            initialMaxStreamsUni: connectionInitialMaxStreamsUni,
           },
           crypto: nodesUtils.quicClientCrypto,
           reasonToCode: nodesUtils.reasonToCode,

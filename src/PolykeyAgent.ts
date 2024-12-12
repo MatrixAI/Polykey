@@ -99,6 +99,8 @@ type PolykeyAgentOptions = {
     connectionKeepAliveTimeoutTime: number;
     connectionKeepAliveIntervalTime: number;
     connectionHolePunchIntervalTime: number;
+    connectionInitialMaxStreamsBidi: number;
+    connectionInitialMaxStreamsUni: number;
     rpcCallTimeoutTime: number;
     rpcParserBufferSize: number;
     dnsServers: Array<string> | undefined;
@@ -196,6 +198,10 @@ class PolykeyAgent {
           config.defaultsSystem.nodesConnectionKeepAliveIntervalTime,
         connectionHolePunchIntervalTime:
           config.defaultsSystem.nodesConnectionHolePunchIntervalTime,
+        connectionInitialMaxStreamsBidi:
+          config.defaultsSystem.nodesConnectionInitialMaxStreamsBidi,
+        connectionInitialMaxStreamsUni:
+          config.defaultsSystem.nodesConnectionInitialMaxStreamsUni,
       },
       mdns: {
         groups: config.defaultsSystem.mdnsGroups,
@@ -374,6 +380,10 @@ class PolykeyAgent {
           optionsDefaulted.nodes.connectionKeepAliveIntervalTime,
         connectionHolePunchIntervalTime:
           optionsDefaulted.nodes.connectionHolePunchIntervalTime,
+        connectionInitialMaxStreamsBidi:
+          optionsDefaulted.nodes.connectionInitialMaxStreamsBidi,
+        connectionInitialMaxStreamsUni:
+          optionsDefaulted.nodes.connectionInitialMaxStreamsBidi,
         rpcParserBufferSize: optionsDefaulted.nodes.rpcParserBufferSize,
         rpcCallTimeoutTime: optionsDefaulted.nodes.rpcCallTimeoutTime,
         logger: logger.getChild(NodeConnectionManager.name),
