@@ -31,6 +31,7 @@ import * as utils from '../utils';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
+const cancelTimerReason = Symbol('cancel timer reason');
 
 interface TaskManager extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -51,6 +52,7 @@ class TaskManager {
     handlers = {},
     lazy = false,
     activeLimit = Infinity,
+    stopWarningTimeout = 10000,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -58,6 +60,7 @@ class TaskManager {
     handlers?: Record<TaskHandlerId, TaskHandler>;
     lazy?: boolean;
     activeLimit?: number;
+    stopWarningTimeout?: number;
     logger?: Logger;
     fresh?: boolean;
   }) {
@@ -65,6 +68,7 @@ class TaskManager {
     const tasks = new this({
       db,
       activeLimit,
+      stopWarningTimeout,
       logger,
     });
     await tasks.start({
@@ -82,6 +86,7 @@ class TaskManager {
   protected db: DB;
   protected handlers: Map<TaskHandlerId, TaskHandler> = new Map();
   protected activeLimit: number;
+  protected stopWarningTimeout: number;
   protected generateTaskId: () => TaskId;
   protected taskPromises: Map<TaskIdEncoded, PromiseCancellable<any>> =
     new Map();
@@ -170,10 +175,12 @@ class TaskManager {
   public constructor({
     db,
     activeLimit,
+    stopWarningTimeout,
     logger,
   }: {
     db: DB;
     activeLimit: number;
+    stopWarningTimeout: number;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -181,6 +188,7 @@ class TaskManager {
     this.queueLogger = logger.getChild('queue');
     this.db = db;
     this.activeLimit = Math.max(1, activeLimit);
+    this.stopWarningTimeout = stopWarningTimeout;
   }
 
   public async start({
@@ -246,7 +254,9 @@ class TaskManager {
    * This call is idempotent
    */
   public async stopProcessing(): Promise<void> {
+    this.logger.info('Stopping Processing');
     await Promise.all([this.stopQueueing(), this.stopScheduling()]);
+    this.logger.info('Stopped Processing');
   }
 
   public isProcessing(): boolean {
@@ -258,10 +268,32 @@ class TaskManager {
    * This call is idempotent
    */
   public async stopTasks(): Promise<void> {
-    for (const [, activePromise] of this.activePromises) {
-      activePromise.cancel(new tasksErrors.ErrorTaskStop());
+    this.logger.info('Stopping Tasks');
+    const watchdogTimer = new Timer({
+      handler: async () => {
+        for (const [id] of this.activePromises) {
+          const task = await this.getTask(tasksUtils.decodeTaskId(id)!);
+          if (task == null) continue;
+          this.logger.warn(
+            `Failed to stop task (${task.handlerId}) after ${this.stopWarningTimeout}ms`,
+          );
+        }
+      },
+      delay: this.stopWarningTimeout,
+    });
+    try {
+      for (const [, activePromise] of this.activePromises) {
+        activePromise.cancel(new tasksErrors.ErrorTaskStop());
+      }
+      await Promise.allSettled(this.activePromises.values());
+    } finally {
+      watchdogTimer.cancel(cancelTimerReason);
+      await watchdogTimer.catch((e) => {
+        // Ignore cancellation reason
+        if (e !== cancelTimerReason) throw e;
+      });
     }
-    await Promise.allSettled(this.activePromises.values());
+    this.logger.info('Stopped Tasks');
   }
 
   public getHandler(handlerId: TaskHandlerId): TaskHandler | undefined {
