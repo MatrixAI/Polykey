@@ -314,8 +314,7 @@ function generateRandomNodeIdForBucket(
  * This is generally used to check the connection has failed
  * before cleaning it up.
  */
-// FIXME: need to include ErrorQUICConnectionIdleTimeout error in this list.
-function isConnectionError(e): boolean {
+function isConnectionError(e: unknown): boolean {
   return (
     e instanceof nodesErrors.ErrorNodeConnectionDestroyed ||
     e instanceof nodesErrors.ErrorNodeManagerConnectionFailed ||
@@ -325,7 +324,8 @@ function isConnectionError(e): boolean {
     e instanceof quicErrors.ErrorQUICConnectionLocal ||
     e instanceof quicErrors.ErrorQUICConnectionNotRunning ||
     e instanceof quicErrors.ErrorQUICConnectionStopping ||
-    e instanceof quicErrors.ErrorQUICConnectionIdleTimeout
+    e instanceof quicErrors.ErrorQUICConnectionIdleTimeout ||
+    e instanceof quicErrors.ErrorQUICStreamLimit
   );
 }
 
