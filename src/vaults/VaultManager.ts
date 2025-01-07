@@ -54,7 +54,6 @@ type VaultMetadata = {
 };
 
 interface VaultManager extends CreateDestroyStartStop {}
-
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),
   new vaultsErrors.ErrorVaultManagerDestroyed(),
@@ -344,19 +343,17 @@ class VaultManager {
       [vaultId.toString(), RWLockWriter, 'write'],
       async () => {
         // Creating vault
-        const vault = await VaultInternal.createVaultInternal(
-          {
-            vaultId: vaultId,
-            vaultName: vaultName,
-            keyRing: this.keyRing,
-            efs: this.efs,
-            logger: this.logger.getChild(VaultInternal.name),
-            db: this.db,
-            vaultsDbPath: this.vaultsDbPath,
-            fresh: true,
-          },
+        const vault = await VaultInternal.createVaultInternal({
+          vaultId,
+          vaultName,
+          keyRing: this.keyRing,
+          efs: this.efs,
+          logger: this.logger.getChild(VaultInternal.name),
+          db: this.db,
+          vaultsDbPath: this.vaultsDbPath,
+          fresh: true,
           tran,
-        );
+        });
         // Adding vault to object map
         this.vaultMap.set(vaultIdString, vault);
         return vault.vaultId;
@@ -987,17 +984,15 @@ class VaultManager {
       );
     }
     // 2. if the state exists then create, add to map and return that
-    const newVault = await VaultInternal.createVaultInternal(
-      {
-        vaultId: vaultId,
-        keyRing: this.keyRing,
-        efs: this.efs,
-        logger: this.logger.getChild(VaultInternal.name),
-        db: this.db,
-        vaultsDbPath: this.vaultsDbPath,
-      },
+    const newVault = await VaultInternal.createVaultInternal({
+      vaultId,
+      keyRing: this.keyRing,
+      efs: this.efs,
+      logger: this.logger.getChild(VaultInternal.name),
+      db: this.db,
+      vaultsDbPath: this.vaultsDbPath,
       tran,
-    );
+    });
     this.vaultMap.set(vaultIdString, newVault);
     return newVault;
   }

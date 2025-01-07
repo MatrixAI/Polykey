@@ -1,6 +1,4 @@
-import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
-import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -23,10 +21,7 @@ class VaultsSecretsList extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
-    _cancel: (reason?: any) => void,
-    _meta: Record<string, JSONValue>,
-    ctx: ContextTimed,
-  ): AsyncGenerator<ClientRPCResponseResult<SecretFilesMessage>> {
+  ): AsyncGenerator<ClientRPCResponseResult<SecretFilesMessage>, void, void> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     const vaultId = await db.withTransactionF(async (tran) => {
@@ -41,33 +36,34 @@ class VaultsSecretsList extends ServerHandler<
     });
 
     yield* vaultManager.withVaultsG([vaultId], (vault) => {
-      return vault.readG(
-        async function* (fs): AsyncGenerator<SecretFilesMessage> {
-          let files: Array<string | Buffer>;
-          try {
-            files = await fs.promises.readdir(input.secretName);
-          } catch (e) {
-            if (e.code === 'ENOENT') {
-              throw new vaultsErrors.ErrorSecretsDirectoryUndefined(e.message, {
-                cause: e,
-              });
-            }
-            if (e.code === 'ENOTDIR') {
-              throw new vaultsErrors.ErrorSecretsIsSecret(e.message, {
-                cause: e,
-              });
-            }
-            throw e;
+      return vault.readG(async function* (fs): AsyncGenerator<
+        SecretFilesMessage,
+        void,
+        void
+      > {
+        let files: Array<string | Buffer>;
+        try {
+          files = await fs.promises.readdir(input.secretName);
+        } catch (e) {
+          if (e.code === 'ENOENT') {
+            throw new vaultsErrors.ErrorSecretsDirectoryUndefined(e.message, {
+              cause: e,
+            });
           }
-          for await (const file of files) {
-            ctx.signal.throwIfAborted();
-            const filePath = path.join(input.secretName, file.toString());
-            const stat = await fs.promises.stat(filePath);
-            const type = stat.isFile() ? 'FILE' : 'DIRECTORY';
-            yield { path: filePath, type: type };
+          if (e.code === 'ENOTDIR') {
+            throw new vaultsErrors.ErrorSecretsIsSecret(e.message, {
+              cause: e,
+            });
           }
-        },
-      );
+          throw e;
+        }
+        for await (const file of files) {
+          const filePath = path.join(input.secretName, file.toString());
+          const stat = await fs.promises.stat(filePath);
+          const type = stat.isFile() ? 'FILE' : 'DIRECTORY';
+          yield { path: filePath, type: type };
+        }
+      });
     });
   };
 }

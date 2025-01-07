@@ -1,6 +1,4 @@
-import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
-import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -24,9 +22,6 @@ class VaultsSecretsMkdir extends DuplexHandler<
 > {
   public handle = async function* (
     input: AsyncIterableIterator<ClientRPCRequestParams<SecretDirMessage>>,
-    _cancel: (reason?: any) => void,
-    _meta: Record<string, JSONValue>,
-    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -34,7 +29,6 @@ class VaultsSecretsMkdir extends DuplexHandler<
     yield* db.withTransactionG(
       async function* (tran): AsyncGenerator<SuccessOrErrorMessage> {
         for await (const secretDirMessage of input) {
-          ctx.signal.throwIfAborted();
           // Unpack input
           if (metadata == null) metadata = secretDirMessage.metadata ?? {};
           const nameOrId = secretDirMessage.nameOrId;
@@ -47,7 +41,10 @@ class VaultsSecretsMkdir extends DuplexHandler<
             throw new vaultsErrors.ErrorVaultsVaultUndefined();
           }
           // Write directories. This doesn't need to be grouped by vault names,
-          // as no commit is created for empty directories anyway.
+          // as no commit is created for empty directories anyways. The
+          // vaultOps.mkdir() method also returns an object of type
+          // SuccessOrErrorMessage. As such, we can return the result without
+          // doing any type conversion or extra processing.
           yield await vaultManager.withVaults(
             [vaultId],
             async (vault) => {
