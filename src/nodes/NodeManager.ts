@@ -1056,6 +1056,7 @@ class NodeManager {
         await this.nodeConnectionManager.createConnectionMultiple(
           [nodeId],
           addresses,
+          ctx,
         );
       return [
         [nodeConnection.host, nodeConnection.port],
@@ -1109,9 +1110,12 @@ class NodeManager {
       })();
       const closestNodesRequestP = (async () => {
         const resultStream =
-          await conn.rpcClient.methods.nodesClosestLocalNodesGet({
-            nodeIdEncoded: nodeIdEncoded,
-          });
+          await conn.rpcClient.methods.nodesClosestLocalNodesGet(
+            {
+              nodeIdEncoded: nodeIdEncoded,
+            },
+            ctx,
+          );
         for await (const { nodeIdEncoded, nodeContact } of resultStream) {
           const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
           if (nodeId == null) {
@@ -1676,7 +1680,7 @@ class NodeManager {
     //  fails we delete the old node and add in the new one.
     const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     // To avoid conflict we want to lock on the bucket index
-    await this.nodeGraph.lockBucket(bucketIndex, tran);
+    await this.nodeGraph.lockBucket(bucketIndex, tran, ctx);
 
     const nodeContact = await this.nodeGraph.getNodeContact(nodeId, tran);
     // If this is a new entry, check the bucket limit
@@ -1816,7 +1820,7 @@ class NodeManager {
     if (pendingNodes == null || pendingNodes.size === 0) return;
     this.pendingNodes.set(bucketIndex, new Map());
     // Locking on bucket
-    await this.nodeGraph.lockBucket(bucketIndex, tran);
+    await this.nodeGraph.lockBucket(bucketIndex, tran, ctx);
     const semaphore = new Semaphore(this.concurrencyLimit);
     // Iterating over existing nodes
     const bucket = await this.nodeGraph.getBucket(
@@ -1832,9 +1836,9 @@ class NodeManager {
     const pendingPromises: Array<Promise<void>> = [];
     for (const [nodeId] of bucket) {
       if (removedNodes >= pendingNodes.size) break;
-      await semaphore.waitForUnlock();
+      await semaphore.waitForUnlock(ctx);
       if (ctx.signal?.aborted === true) break;
-      const [semaphoreReleaser] = await semaphore.lock()();
+      const [semaphoreReleaser] = await semaphore.lock(ctx)();
       pendingPromises.push(
         (async () => {
           // Ping and remove or update node in bucket
@@ -1853,7 +1857,7 @@ class NodeManager {
               false,
               false,
               undefined,
-              undefined,
+              ctx,
               tran,
             );
           } else {
@@ -1861,7 +1865,7 @@ class NodeManager {
             if (ctx.signal.aborted) return;
             // We need to lock this since it's concurrent
             //  and shares the transaction
-            await unsetLock.withF(async () => {
+            await unsetLock.withF(ctx, async () => {
               await this.unsetNode(nodeId, tran);
               removedNodes += 1;
             });
@@ -1887,7 +1891,7 @@ class NodeManager {
         false,
         false,
         undefined,
-        undefined,
+        ctx,
         tran,
       );
       removedNodes -= 1;

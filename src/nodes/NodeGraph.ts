@@ -1,4 +1,5 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   NodeId,
   NodeAddress,
@@ -221,15 +222,20 @@ class NodeGraph {
 
   /**
    * Locks the bucket index for exclusive operations.
-   * This allows you sequence operations for any bucket.
+   * This allows you to sequence operations for any bucket.
    */
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async lockBucket(bucketIndex: number, tran: DBTransaction) {
+  public async lockBucket(
+    bucketIndex: number,
+    tran: DBTransaction,
+    ctx?: ContextTimed,
+  ) {
     const keyPath = [
       ...this.nodeGraphMetaDbPath,
       nodesUtils.bucketKey(bucketIndex),
     ];
-    return await tran.lock(keyPath.join(''));
+    if (ctx != null) return await tran.lock(keyPath.join(''), ctx);
+    else return await tran.lock(keyPath.join(''));
   }
 
   /**
