@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -22,19 +24,18 @@ class VaultsSecretsEnv extends DuplexHandler<
     input: AsyncIterableIterator<
       ClientRPCRequestParams<SecretIdentifierMessage>
     >,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<SecretContentMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
 
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       ClientRPCResponseResult<SecretContentMessage>
     > {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       for await (const secretIdentifierMessage of input) {
+        ctx.signal.throwIfAborted();
         const { nameOrId, secretName } = secretIdentifierMessage;
         const vaultIdFromName = await vaultManager.getVaultId(nameOrId, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
@@ -75,6 +76,7 @@ class VaultsSecretsEnv extends DuplexHandler<
           tran,
         );
         for (const { filePath, value } of secrets) {
+          ctx.signal.throwIfAborted();
           yield {
             nameOrId: nameOrId,
             secretName: filePath,

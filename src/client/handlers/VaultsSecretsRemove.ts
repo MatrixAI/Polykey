@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type { ResourceAcquire } from '@matrixai/resources';
 import type {
   ClientRPCRequestParams,
@@ -31,6 +33,9 @@ class VaultsSecretsRemove extends DuplexHandler<
         SecretsRemoveHeaderMessage | SecretIdentifierMessageTagged
       >
     >,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -50,6 +55,7 @@ class VaultsSecretsRemove extends DuplexHandler<
     const vaultAcquires = await db.withTransactionF(async (tran) => {
       const vaultAcquires: Array<ResourceAcquire<FileSystemWritable>> = [];
       for (const vaultName of headerMessage.vaultNames) {
+        ctx.signal.throwIfAborted();
         const vaultIdFromName = await vaultManager.getVaultId(vaultName, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(vaultName);
         if (vaultId == null) {
@@ -76,6 +82,7 @@ class VaultsSecretsRemove extends DuplexHandler<
         }
         let loopRan = false;
         for await (const message of input) {
+          ctx.signal.throwIfAborted();
           loopRan = true;
           // Header messages should not be seen anymore
           if (message.type === 'VaultNamesHeaderMessage') {
@@ -108,8 +115,8 @@ class VaultsSecretsRemove extends DuplexHandler<
               e.code === 'ENOTEMPTY' ||
               e.code === 'EINVAL'
             ) {
-              // EINVAL can be triggered if removing the root of the
-              // vault is attempted.
+              // EINVAL can be triggered if removing the root of the vault is
+              // attempted.
               yield {
                 type: 'error',
                 code: e.code,

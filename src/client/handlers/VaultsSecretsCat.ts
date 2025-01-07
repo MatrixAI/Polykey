@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -26,6 +28,9 @@ class VaultsSecretsCat extends DuplexHandler<
     input: AsyncIterableIterator<
       ClientRPCRequestParams<SecretIdentifierMessage>
     >,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<ContentOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -33,9 +38,10 @@ class VaultsSecretsCat extends DuplexHandler<
       ClientRPCResponseResult<ContentOrErrorMessage>
     > {
       // As we need to preserve the order of parameters, we need to loop over
-      // them individually, as grouping them would make them go out of order.
-      for await (const secretIdentiferMessage of input) {
-        const { nameOrId, secretName } = secretIdentiferMessage;
+      // them individually. Grouping them would make them go out of order.
+      for await (const secretIdentifierMessage of input) {
+        ctx.signal.throwIfAborted();
+        const { nameOrId, secretName } = secretIdentifierMessage;
         const vaultIdFromName = await vaultManager.getVaultId(nameOrId, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
         if (vaultId == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();

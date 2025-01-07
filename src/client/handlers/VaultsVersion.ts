@@ -44,10 +44,8 @@ class VaultsVersion extends UnaryHandler<
         },
         tran,
       );
-      // Checking if latest version ID
-      const latestVersion = latestOid === currentVersionId;
       return {
-        latestVersion,
+        latestVersion: latestOid === currentVersionId,
       };
     });
   };

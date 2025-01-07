@@ -43,6 +43,7 @@ type RemoteInfo = {
 };
 
 interface VaultInternal extends CreateDestroyStartStop {}
+
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultRunning(),
   new vaultsErrors.ErrorVaultDestroyed(),
@@ -61,40 +62,43 @@ class VaultInternal {
    *  If no state already exists then state for the vault is initialized.
    *  If state already exists then this just creates the `VaultInternal` instance for managing that state.
    */
-  public static async createVaultInternal({
-    vaultId,
-    vaultName,
-    db,
-    vaultsDbPath,
-    keyRing,
-    efs,
-    logger = new Logger(this.name),
-    fresh = false,
-    tran,
-  }: {
-    vaultId: VaultId;
-    vaultName?: VaultName;
-    db: DB;
-    vaultsDbPath: LevelPath;
-    keyRing: KeyRing;
-    efs: EncryptedFS;
-    logger?: Logger;
-    fresh?: boolean;
-    tran?: DBTransaction;
-  }): Promise<VaultInternal> {
+  public static async createVaultInternal(
+    {
+      vaultId,
+      vaultName,
+      db,
+      vaultsDbPath,
+      keyRing,
+      efs,
+      logger = new Logger(this.name),
+      fresh = false,
+    }: {
+      vaultId: VaultId;
+      vaultName?: VaultName;
+      db: DB;
+      vaultsDbPath: LevelPath;
+      keyRing: KeyRing;
+      efs: EncryptedFS;
+      logger?: Logger;
+      fresh?: boolean;
+    },
+    tran?: DBTransaction,
+  ): Promise<VaultInternal> {
     if (tran == null) {
       return await db.withTransactionF((tran) =>
-        this.createVaultInternal({
-          vaultId,
-          vaultName,
-          db,
-          vaultsDbPath,
-          keyRing,
-          efs,
-          logger,
-          fresh,
+        this.createVaultInternal(
+          {
+            vaultId,
+            vaultName,
+            db,
+            vaultsDbPath,
+            keyRing,
+            efs,
+            logger,
+            fresh,
+          },
           tran,
-        }),
+        ),
       );
     }
 
