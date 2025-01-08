@@ -501,10 +501,10 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
     const nodePort = seedNodeUrl.port;
     try {
       ids.parseNodeId(nodeIdEncoded);
-      seedNodes[nodeIdEncoded] = {
-        host: networkUtils.parseHostOrHostname(nodeHostOrHostname),
-        port: networkUtils.parsePort(nodePort),
-      };
+      seedNodes[nodeIdEncoded] = [
+        networkUtils.parseHostOrHostname(nodeHostOrHostname),
+        networkUtils.parsePort(nodePort),
+      ];
     } catch (e) {
       if (e instanceof validationErrors.ErrorParse) {
         throw new validationErrors.ErrorParse(
