@@ -240,18 +240,12 @@ describe('nodes/utils', () => {
         `${nodeIdEncoded3}@${hostIPv6}:${port3};`;
       const parsed = nodesUtils.parseSeedNodes(rawSeedNodes);
       const seeds = parsed[0];
-      expect(seeds[nodeIdEncoded1]).toStrictEqual({
-        host: hostname,
-        port: port1,
-      });
-      expect(seeds[nodeIdEncoded2]).toStrictEqual({
-        host: hostIPv4,
-        port: port2,
-      });
-      expect(seeds[nodeIdEncoded3]).toStrictEqual({
-        host: hostIPv6.replace(/\[|\]/g, ''),
-        port: port3,
-      });
+      expect(seeds[nodeIdEncoded1]).toStrictEqual([hostname, port1]);
+      expect(seeds[nodeIdEncoded2]).toStrictEqual([hostIPv4, port2]);
+      expect(seeds[nodeIdEncoded3]).toStrictEqual([
+        hostIPv6.replace(/\[|\]/g, ''),
+        port3,
+      ]);
       expect(parsed[1]).toBeFalsy();
     });
     test('parseSeedNodes - valid nodes optionally have pk://', () => {
@@ -261,18 +255,12 @@ describe('nodes/utils', () => {
         `pk://${nodeIdEncoded3}@${hostIPv6}:${port3};`;
       const parsed = nodesUtils.parseSeedNodes(rawSeedNodes);
       const seeds = parsed[0];
-      expect(seeds[nodeIdEncoded1]).toStrictEqual({
-        host: hostname,
-        port: port1,
-      });
-      expect(seeds[nodeIdEncoded2]).toStrictEqual({
-        host: hostIPv4,
-        port: port2,
-      });
-      expect(seeds[nodeIdEncoded3]).toStrictEqual({
-        host: hostIPv6.replace(/\[|\]/g, ''),
-        port: port3,
-      });
+      expect(seeds[nodeIdEncoded1]).toStrictEqual([hostname, port1]);
+      expect(seeds[nodeIdEncoded2]).toStrictEqual([hostIPv4, port2]);
+      expect(seeds[nodeIdEncoded3]).toStrictEqual([
+        hostIPv6.replace(/\[|\]/g, ''),
+        port3,
+      ]);
       expect(parsed[1]).toBeFalsy();
     });
     test('parseSeedNodes - invalid node ID', () => {
