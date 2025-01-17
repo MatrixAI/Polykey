@@ -309,6 +309,7 @@ class Discovery {
       }
     }
     await Promise.all(taskPromises);
+    this.logger.info(`Stopped all tasks for ${this.constructor.name}`);
     this.taskManager.deregisterHandler(this.discoverVertexHandlerId);
     this.taskManager.deregisterHandler(this.checkRediscoveryHandlerId);
     this.logger.info(`Stopped ${this.constructor.name}`);

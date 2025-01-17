@@ -308,7 +308,7 @@ class NodeConnection {
       logger: logger.getChild(RPCClient.name),
     });
     if (validatedNodeId == null) {
-      never(`connection validated but no valid NodeId was returned`);
+      never('connection validated but no valid NodeId was returned');
     }
     // Obtaining remote node ID from certificate chain. It should always exist in the chain if validated.
     //  This may de different from the NodeId we validated it as if it renewed at some point.
