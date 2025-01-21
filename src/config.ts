@@ -251,7 +251,7 @@ const config = {
      * Interval for hole punching reverse node connections.
      */
     nodesConnectionHolePunchIntervalTime: 1_000, // 1 second
-    nodesConnectionInitialMaxStreamsBidi: 200,
+    nodesConnectionInitialMaxStreamsBidi: 100,
     nodesConnectionInitialMaxStreamsUni: 0, // We don't use unidirectional streams so we disable them
 
     /**
