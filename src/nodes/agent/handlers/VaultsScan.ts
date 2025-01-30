@@ -1,10 +1,12 @@
 import type { DB } from '@matrixai/db';
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   VaultsScanMessage,
 } from '../types';
 import type VaultManager from '../../../vaults/VaultManager';
+import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors';
 import * as agentUtils from '../utils';
@@ -22,11 +24,13 @@ class VaultsScan extends ServerHandler<
   AgentRPCResponseResult<VaultsScanMessage>
 > {
   public handle = async function* (
-    input: AgentRPCRequestParams,
-    _cancel,
-    meta,
+    _input: AgentRPCRequestParams,
+    _cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<VaultsScanMessage>> {
-    const { vaultManager, db } = this.container;
+    const { vaultManager, db }: { vaultManager: VaultManager; db: DB } =
+      this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
@@ -37,16 +41,18 @@ class VaultsScan extends ServerHandler<
       const listResponse = vaultManager.handleScanVaults(
         requestingNodeId,
         tran,
+        ctx,
       );
       for await (const {
         vaultId,
         vaultName,
         vaultPermissions,
       } of listResponse) {
+        ctx.signal.throwIfAborted();
         yield {
           vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
-          vaultName,
-          vaultPermissions,
+          vaultName: vaultName,
+          vaultPermissions: vaultPermissions,
         };
       }
     });

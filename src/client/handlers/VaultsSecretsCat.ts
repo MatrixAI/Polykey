@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -26,26 +28,34 @@ class VaultsSecretsCat extends DuplexHandler<
     input: AsyncIterableIterator<
       ClientRPCRequestParams<SecretIdentifierMessage>
     >,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<ContentOrErrorMessage>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       ClientRPCResponseResult<ContentOrErrorMessage>
     > {
-      // As we need to preserve the order of parameters, we need to loop over
-      // them individually, as grouping them would make them go out of order.
-      for await (const secretIdentiferMessage of input) {
-        const { nameOrId, secretName } = secretIdentiferMessage;
+      // To preserve the order of parameters, we need to loop over them
+      // individually, as grouping them would make them go out of order.
+      for await (const secretIdentifierMessage of input) {
+        ctx.signal.throwIfAborted();
+        const { nameOrId, secretName } = secretIdentifierMessage;
         const vaultIdFromName = await vaultManager.getVaultId(nameOrId, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
-        if (vaultId == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        if (vaultId == null) {
+          throw new vaultsErrors.ErrorVaultsVaultUndefined(
+            `Vault "${nameOrId}" does not exist`,
+          );
+        }
         yield await vaultManager.withVaults(
           [vaultId],
           async (vault) => {
             try {
               const content = await vaultOps.getSecret(vault, secretName);
               return {
-                type: 'success',
+                type: 'SuccessMessage',
                 success: true,
                 secretContent: content.toString('binary'),
               };
@@ -55,7 +65,7 @@ class VaultsSecretsCat extends DuplexHandler<
                 e instanceof vaultsErrors.ErrorSecretsIsDirectory
               ) {
                 return {
-                  type: 'error',
+                  type: 'ErrorMessage',
                   code: e.cause.code,
                   reason: secretName,
                 };
@@ -64,6 +74,7 @@ class VaultsSecretsCat extends DuplexHandler<
             }
           },
           tran,
+          ctx,
         );
       }
     });

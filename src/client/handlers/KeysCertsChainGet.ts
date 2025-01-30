@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   CertMessage,
   ClientRPCRequestParams,
@@ -14,17 +16,15 @@ class KeysCertsChainGet extends ServerHandler<
   ClientRPCResponseResult<CertMessage>
 > {
   public handle = async function* (
-    _input,
-    _cancel,
-    _meta,
-    ctx,
+    _input: ClientRPCRequestParams,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<CertMessage>> {
     const { certManager }: { certManager: CertManager } = this.container;
     for (const certPEM of await certManager.getCertPEMsChain()) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
-      yield {
-        cert: certPEM,
-      };
+      ctx.signal.throwIfAborted();
+      yield { cert: certPEM };
     }
   };
 }

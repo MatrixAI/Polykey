@@ -5,8 +5,8 @@ import type {
 } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as nodesUtils from '../../nodes/utils';
 import config from '../../config';
+import * as nodesUtils from '../../nodes/utils';
 
 class AgentStatus extends UnaryHandler<
   {

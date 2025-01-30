@@ -1,12 +1,16 @@
 import type Logger from '@matrixai/logger';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   HolePunchRequestMessage,
 } from '../types';
+import type { NodeId } from '../../../ids';
 import type NodeConnectionManager from '../../NodeConnectionManager';
 import type { Host, Port } from '../../../network/types';
 import { UnaryHandler } from '@matrixai/rpc';
+import { validateSync } from '../../../validation';
+import { matchSync } from '../../../utils';
 import * as keysUtils from '../../../keys/utils';
 import * as ids from '../../../ids';
 import * as agentErrors from '../errors';
@@ -22,13 +26,33 @@ class NodesConnectionSignalFinal extends UnaryHandler<
 > {
   public handle = async (
     input: AgentRPCRequestParams<HolePunchRequestMessage>,
-    _cancel,
-    meta,
+    _cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue> | undefined,
   ): Promise<AgentRPCResponseResult> => {
-    const { nodeConnectionManager, logger } = this.container;
+    const {
+      nodeConnectionManager,
+      logger,
+    }: {
+      nodeConnectionManager: NodeConnectionManager;
+      logger: Logger;
+    } = this.container;
     // Connections should always be validated
-    const sourceNodeId = ids.parseNodeId(input.sourceNodeIdEncoded);
-    const targetNodeId = ids.parseNodeId(input.targetNodeIdEncoded);
+    const {
+      sourceNodeId,
+      targetNodeId,
+    }: { sourceNodeId: NodeId; targetNodeId: NodeId } = validateSync(
+      (keyPath, value) => {
+        return matchSync(keyPath)(
+          [['sourceNodeId'], () => ids.parseNodeId(value)],
+          [['targetNodeId'], () => ids.parseNodeId(value)],
+          () => value,
+        );
+      },
+      {
+        sourceNodeId: input.sourceNodeIdEncoded,
+        targetNodeId: input.targetNodeIdEncoded,
+      },
+    );
     const relayingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (relayingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();

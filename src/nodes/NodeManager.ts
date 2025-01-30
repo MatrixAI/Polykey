@@ -494,22 +494,22 @@ class NodeManager {
    * Perform some function on another node over the network with a connection.
    * Will either retrieve an existing connection, or create a new one if it
    * doesn't exist.
-   * for use with normal arrow function
+   * For use with normal arrow function
    * @param nodeId Id of target node to communicate with
    * @param f Function to handle communication
    * @param ctx
    */
-  public withConnF<T>(
+  public async withConnF<T>(
     nodeId: NodeId,
+    ctx: Partial<ContextTimedInput> | undefined,
     f: (conn: NodeConnection) => Promise<T>,
-    ctx?: Partial<ContextTimedInput>,
-  ): PromiseCancellable<T>;
+  ): Promise<T>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async withConnF<T>(
     nodeId: NodeId,
-    f: (conn: NodeConnection) => Promise<T>,
     @context ctx: ContextTimed,
-  ) {
+    f: (conn: NodeConnection) => Promise<T>,
+  ): Promise<T> {
     return await withF(
       [this.acquireConnection(nodeId, ctx)],
       async ([conn]) => {
@@ -1220,52 +1220,45 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    return await this.withConnF(
-      targetNodeId,
-      async (connection) => {
-        const claims: Record<ClaimId, SignedClaim> = {};
-        const client = connection.getClient();
-        for await (const agentClaim of await client.methods.nodesClaimsGet({
-          claimIdEncoded:
-            claimId != null
-              ? claimsUtils.encodeClaimId(claimId)
-              : ('' as ClaimIdEncoded),
-        })) {
-          if (ctx.signal.aborted) throw ctx.signal.reason;
-          // Need to re-construct each claim
-          const claimId: ClaimId = claimsUtils.decodeClaimId(
-            agentClaim.claimIdEncoded,
-          )!;
-          const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
-          // Verifying the claim
-          const issPublicKey = keysUtils.publicKeyFromNodeId(
-            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-          );
-          const subPublicKey =
-            signedClaim.payload.typ === 'node'
-              ? keysUtils.publicKeyFromNodeId(
-                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-                )
-              : null;
-          const token = Token.fromSigned(signedClaim);
-          if (!token.verifyWithPublicKey(issPublicKey)) {
-            this.logger.warn('Failed to verify issuing node');
-            continue;
-          }
-          if (
-            subPublicKey != null &&
-            !token.verifyWithPublicKey(subPublicKey)
-          ) {
-            this.logger.warn('Failed to verify subject node');
-            continue;
-          }
-          claims[claimId] = signedClaim;
+    return await this.withConnF(targetNodeId, ctx, async (connection) => {
+      const claims: Record<ClaimId, SignedClaim> = {};
+      const client = connection.getClient();
+      for await (const agentClaim of await client.methods.nodesClaimsGet({
+        claimIdEncoded:
+          claimId != null
+            ? claimsUtils.encodeClaimId(claimId)
+            : ('' as ClaimIdEncoded),
+      })) {
+        if (ctx.signal.aborted) throw ctx.signal.reason;
+        // Need to re-construct each claim
+        const claimId: ClaimId = claimsUtils.decodeClaimId(
+          agentClaim.claimIdEncoded,
+        )!;
+        const signedClaimEncoded = agentClaim.signedTokenEncoded;
+        const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
+        // Verifying the claim
+        const issPublicKey = keysUtils.publicKeyFromNodeId(
+          nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+        );
+        const subPublicKey =
+          signedClaim.payload.typ === 'node'
+            ? keysUtils.publicKeyFromNodeId(
+                nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+              )
+            : null;
+        const token = Token.fromSigned(signedClaim);
+        if (!token.verifyWithPublicKey(issPublicKey)) {
+          this.logger.warn('Failed to verify issuing node');
+          continue;
         }
-        return claims;
-      },
-      ctx,
-    );
+        if (subPublicKey != null && !token.verifyWithPublicKey(subPublicKey)) {
+          this.logger.warn('Failed to verify subject node');
+          continue;
+        }
+        claims[claimId] = signedClaim;
+      }
+      return claims;
+    });
   }
 
   /**
@@ -1296,83 +1289,79 @@ class NodeManager {
       },
       undefined,
       async (token) => {
-        return this.withConnF(
-          targetNodeId,
-          async (conn) => {
-            // 2. create the agentClaim message to send
-            const halfSignedClaim = token.toSigned();
-            const halfSignedClaimEncoded =
-              claimsUtils.generateSignedClaim(halfSignedClaim);
-            const client = conn.getClient();
-            const stream = await client.methods.nodesCrossSignClaim();
-            const writer = stream.writable.getWriter();
-            const reader = stream.readable.getReader();
-            let fullySignedToken: Token<Claim>;
-            try {
-              await writer.write({
-                signedTokenEncoded: halfSignedClaimEncoded,
-              });
-              // 3. We expect to receive the doubly signed claim
-              const readStatus = await reader.read();
-              if (readStatus.done) {
-                throw new claimsErrors.ErrorEmptyStream();
-              }
-              const receivedClaim = readStatus.value;
-              // We need to re-construct the token from the message
-              const signedClaim = claimsUtils.parseSignedClaim(
-                receivedClaim.signedTokenEncoded,
-              );
-              fullySignedToken = Token.fromSigned(signedClaim);
-              // Check that the signatures are correct
-              const targetNodePublicKey =
-                keysUtils.publicKeyFromNodeId(targetNodeId);
-              if (
-                !fullySignedToken.verifyWithPublicKey(
-                  this.keyRing.keyPair.publicKey,
-                ) ||
-                !fullySignedToken.verifyWithPublicKey(targetNodePublicKey)
-              ) {
-                throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-              }
-
-              // Next stage is to process the claim for the other node
-              const readStatus2 = await reader.read();
-              if (readStatus2.done) {
-                throw new claimsErrors.ErrorEmptyStream();
-              }
-              const receivedClaimRemote = readStatus2.value;
-              // We need to re-construct the token from the message
-              const signedClaimRemote = claimsUtils.parseSignedClaim(
-                receivedClaimRemote.signedTokenEncoded,
-              );
-              // This is a singly signed claim,
-              // we want to verify it before signing and sending back
-              const signedTokenRemote = Token.fromSigned(signedClaimRemote);
-              if (!signedTokenRemote.verifyWithPublicKey(targetNodePublicKey)) {
-                throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
-              }
-              signedTokenRemote.signWithPrivateKey(this.keyRing.keyPair);
-              // 4. X <- responds with double signing the X signed claim <- Y
-              const agentClaimedMessageRemote = claimsUtils.generateSignedClaim(
-                signedTokenRemote.toSigned(),
-              );
-              await writer.write({
-                signedTokenEncoded: agentClaimedMessageRemote,
-              });
-
-              // Check the stream is closed (should be closed by other side)
-              const finalResponse = await reader.read();
-              if (finalResponse.done != null) {
-                await writer.close();
-              }
-            } catch (e) {
-              await writer.abort(e);
-              throw e;
+        return this.withConnF(targetNodeId, ctx, async (conn) => {
+          // 2. create the agentClaim message to send
+          const halfSignedClaim = token.toSigned();
+          const halfSignedClaimEncoded =
+            claimsUtils.generateSignedClaim(halfSignedClaim);
+          const client = conn.getClient();
+          const stream = await client.methods.nodesCrossSignClaim();
+          const writer = stream.writable.getWriter();
+          const reader = stream.readable.getReader();
+          let fullySignedToken: Token<Claim>;
+          try {
+            await writer.write({
+              signedTokenEncoded: halfSignedClaimEncoded,
+            });
+            // 3. We expect to receive the doubly signed claim
+            const readStatus = await reader.read();
+            if (readStatus.done) {
+              throw new claimsErrors.ErrorEmptyStream();
             }
-            return fullySignedToken;
-          },
-          ctx,
-        );
+            const receivedClaim = readStatus.value;
+            // We need to re-construct the token from the message
+            const signedClaim = claimsUtils.parseSignedClaim(
+              receivedClaim.signedTokenEncoded,
+            );
+            fullySignedToken = Token.fromSigned(signedClaim);
+            // Check that the signatures are correct
+            const targetNodePublicKey =
+              keysUtils.publicKeyFromNodeId(targetNodeId);
+            if (
+              !fullySignedToken.verifyWithPublicKey(
+                this.keyRing.keyPair.publicKey,
+              ) ||
+              !fullySignedToken.verifyWithPublicKey(targetNodePublicKey)
+            ) {
+              throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+            }
+
+            // Next stage is to process the claim for the other node
+            const readStatus2 = await reader.read();
+            if (readStatus2.done) {
+              throw new claimsErrors.ErrorEmptyStream();
+            }
+            const receivedClaimRemote = readStatus2.value;
+            // We need to re-construct the token from the message
+            const signedClaimRemote = claimsUtils.parseSignedClaim(
+              receivedClaimRemote.signedTokenEncoded,
+            );
+            // This is a singly signed claim,
+            // we want to verify it before signing and sending back
+            const signedTokenRemote = Token.fromSigned(signedClaimRemote);
+            if (!signedTokenRemote.verifyWithPublicKey(targetNodePublicKey)) {
+              throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+            }
+            signedTokenRemote.signWithPrivateKey(this.keyRing.keyPair);
+            // 4. X <- responds with double signing the X signed claim <- Y
+            const agentClaimedMessageRemote = claimsUtils.generateSignedClaim(
+              signedTokenRemote.toSigned(),
+            );
+            await writer.write({
+              signedTokenEncoded: agentClaimedMessageRemote,
+            });
+
+            // Check the stream is closed (should be closed by other side)
+            const finalResponse = await reader.read();
+            if (finalResponse.done != null) {
+              await writer.close();
+            }
+          } catch (e) {
+            await writer.abort(e);
+            throw e;
+          }
+          return fullySignedToken;
+        });
       },
       tran,
     );
@@ -1632,8 +1621,8 @@ class NodeManager {
     block?: boolean,
     force?: boolean,
     connectionConnectTimeoutTime?: number,
-    ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
+    ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
   @timedCancellable(true)
@@ -1644,8 +1633,8 @@ class NodeManager {
     block: boolean = false,
     force: boolean = false,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
+    tran: DBTransaction,
     @context ctx: ContextTimed,
-    tran?: DBTransaction,
   ): Promise<void> {
     // We don't want to add our own node
     if (nodeId.equals(this.keyRing.getNodeId())) {
@@ -1662,22 +1651,23 @@ class NodeManager {
           block,
           force,
           connectionConnectTimeoutTime,
-          ctx,
           tran,
+          ctx,
         ),
       );
     }
 
-    // Need to await node connection verification, if fail, need to reject connection.
+    // Need to await node connection verification. If failed, need to reject
+    // connection.
 
     // When adding a node we need to handle 3 cases
     // 1. The node already exists. We need to update it's last updated field
-    // 2. The node doesn't exist and bucket has room.
-    //  We need to add the node to the bucket
-    // 3. The node doesn't exist and the bucket is full.
-    //  We need to ping the oldest node. If the ping succeeds we need to update
-    //  the lastUpdated of the oldest node and drop the new one. If the ping
-    //  fails we delete the old node and add in the new one.
+    // 2. The node doesn't exist and bucket has room. We need to add the node
+    //    to the bucket
+    // 3. The node doesn't exist and the bucket is full. We need to ping the
+    //    oldest node. If the ping succeeds we need to update the lastUpdated of
+    //    the oldest node and drop the new one. If the ping fails we delete the
+    //    old node and add in the new one.
     const [bucketIndex] = this.nodeGraph.bucketIndex(nodeId);
     // To avoid conflict we want to lock on the bucket index
     await this.nodeGraph.lockBucket(bucketIndex, tran, ctx);
@@ -1857,8 +1847,8 @@ class NodeManager {
               false,
               false,
               undefined,
-              ctx,
               tran,
+              ctx,
             );
           } else {
             // We don't remove node the ping was aborted
@@ -1891,8 +1881,8 @@ class NodeManager {
         false,
         false,
         undefined,
-        ctx,
         tran,
+        ctx,
       );
       removedNodes -= 1;
     }
@@ -1930,7 +1920,7 @@ class NodeManager {
   }
 
   protected async setupGCTask(bucketIndex: number) {
-    // Check and start a 'garbageCollect` bucket task
+    // Check and start a `garbageCollect` bucket task
     let scheduled: boolean = false;
     for await (const task of this.taskManager.getTasks('asc', true, [
       this.tasksPath,

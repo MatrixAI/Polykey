@@ -35,7 +35,7 @@ class KeysVerify extends UnaryHandler<
       Buffer.from(input.data, 'binary'),
       Buffer.from(input.signature, 'binary') as Signature,
     );
-    return { type: 'success', success: success };
+    return { success: success };
   };
 }
 

@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -8,11 +10,11 @@ import type { NodeId } from '../../ids';
 import type { Host, Port } from '../../network/types';
 import type NodeManager from '../../nodes/NodeManager';
 import { UnaryHandler } from '@matrixai/rpc';
+import { matchSync } from '../../utils';
+import { validateSync } from '../../validation';
 import * as ids from '../../ids';
 import * as networkUtils from '../../network/utils';
 import * as nodeErrors from '../../nodes/errors';
-import { matchSync } from '../../utils';
-import { validateSync } from '../../validation';
 
 class NodesAdd extends UnaryHandler<
   {
@@ -24,6 +26,9 @@ class NodesAdd extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<NodesAddMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult> => {
     const { db, nodeManager }: { db: DB; nodeManager: NodeManager } =
       this.container;
@@ -72,8 +77,8 @@ class NodesAdd extends UnaryHandler<
         true,
         input.force ?? false,
         1500,
-        undefined,
         tran,
+        ctx,
       ),
     );
     return {};

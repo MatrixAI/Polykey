@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   Capability,
   CapabilityList,
@@ -67,23 +68,27 @@ const DUMMY_PROGRESS_BUFFER = Buffer.from('progress is at 50%', BUFFER_FORMAT);
  * This will generate references and the objects they point to as a tuple.
  * `HEAD` is always yielded first along with all branches.
  */
-async function* listReferencesGenerator({
-  efs,
-  dir,
-  gitDir,
-}: {
-  efs: EncryptedFS;
-  dir: string;
-  gitDir: string;
-}): AsyncGenerator<[Reference, ObjectId], void, void> {
+async function* listReferencesGenerator(
+  {
+    efs,
+    dir,
+    gitDir,
+  }: {
+    efs: EncryptedFS;
+    dir: string;
+    gitDir: string;
+  },
+  ctx: ContextTimed,
+): AsyncGenerator<[Reference, ObjectId], void, void> {
   const refs: Array<[string, Promise<string>]> = await git
     .listBranches({
       fs: efs,
-      dir,
+      dir: dir,
       gitdir: gitDir,
     })
     .then((refs) => {
       return refs.map((ref) => {
+        ctx.signal.throwIfAborted();
         return [
           `${REFERENCES_STRING}${ref}`,
           git.resolveRef({ fs: efs, dir, gitdir: gitDir, ref: ref }),
@@ -93,12 +98,13 @@ async function* listReferencesGenerator({
   // HEAD always comes first
   const resolvedHead = await git.resolveRef({
     fs: efs,
-    dir,
+    dir: dir,
     gitdir: gitDir,
     ref: HEAD_REFERENCE,
   });
   yield [HEAD_REFERENCE, resolvedHead];
   for (const [key, refP] of refs) {
+    ctx.signal.throwIfAborted();
     yield [key, await refP];
   }
 }
@@ -122,7 +128,7 @@ async function referenceCapability({
   try {
     const resolvedHead = await git.resolveRef({
       fs: efs,
-      dir,
+      dir: dir,
       gitdir: gitDir,
       ref: reference,
       depth: 2,
@@ -143,19 +149,22 @@ async function referenceCapability({
  * The walk is preformed recursively and concurrently using promises.
  * Inspecting the git data structure objects is done using `isomorphic-git`.
  */
-async function listObjects({
-  efs,
-  dir,
-  gitDir,
-  wants,
-  haves,
-}: {
-  efs: EncryptedFS;
-  dir: string;
-  gitDir: string;
-  wants: ObjectIdList;
-  haves: ObjectIdList;
-}): Promise<ObjectIdList> {
+async function listObjects(
+  {
+    efs,
+    dir,
+    gitDir,
+    wants,
+    haves,
+  }: {
+    efs: EncryptedFS;
+    dir: string;
+    gitDir: string;
+    wants: ObjectIdList;
+    haves: ObjectIdList;
+  },
+  ctx: ContextTimed,
+): Promise<ObjectIdList> {
   const commits = new Set<string>();
   const trees = new Set<string>();
   const blobs = new Set<string>();
@@ -163,6 +172,7 @@ async function listObjects({
   const havesSet: Set<string> = new Set(haves);
 
   async function walk(objectId: ObjectId, type: ObjectType): Promise<void> {
+    ctx.signal.throwIfAborted();
     // If object was listed as a have then we don't need to walk over it
     if (havesSet.has(objectId)) return;
     switch (type) {
@@ -171,7 +181,7 @@ async function listObjects({
           commits.add(objectId);
           const readCommitResult = await git.readCommit({
             fs: efs,
-            dir,
+            dir: dir,
             gitdir: gitDir,
             oid: objectId,
           });
@@ -188,7 +198,7 @@ async function listObjects({
           trees.add(objectId);
           const readTreeResult = await git.readTree({
             fs: efs,
-            dir,
+            dir: dir,
             gitdir: gitDir,
             oid: objectId,
           });
@@ -209,7 +219,7 @@ async function listObjects({
           tags.add(objectId);
           const readTagResult = await git.readTag({
             fs: efs,
-            dir,
+            dir: dir,
             gitdir: gitDir,
             oid: objectId,
           });
@@ -239,17 +249,21 @@ const excludedDirs = ['pack', 'info'];
 /**
  * Walks the filesystem to list out all git objects in the objects directory
  */
-async function listObjectsAll({
-  fs,
-  gitDir,
-}: {
-  fs: EncryptedFS;
-  gitDir: string;
-}) {
+async function listObjectsAll(
+  {
+    fs,
+    gitDir,
+  }: {
+    fs: EncryptedFS;
+    gitDir: string;
+  },
+  ctx: ContextTimed,
+): Promise<Array<string>> {
   const objectsDirPath = path.join(gitDir, objectsDirName);
   const objectSet: Set<string> = new Set();
   const objectDirs = await fs.promises.readdir(objectsDirPath);
   for (const objectDir of objectDirs) {
+    ctx.signal.throwIfAborted();
     if (typeof objectDir !== 'string') {
       utils.never('objectDir should be a string');
     }

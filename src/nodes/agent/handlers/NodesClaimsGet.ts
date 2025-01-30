@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type Sigchain from '../../../sigchain/Sigchain';
 import type {
   AgentRPCRequestParams,
@@ -22,15 +24,19 @@ class NodesClaimsGet extends ServerHandler<
 > {
   public handle = async function* (
     _input: ClaimIdMessage,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
-    const { sigchain, db } = this.container;
+    const { sigchain, db }: { sigchain: Sigchain; db: DB } = this.container;
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       AgentRPCResponseResult<AgentClaimMessage>
     > {
       for await (const [claimId, signedClaim] of sigchain.getSignedClaims(
-        { /* seek: seekClaimId,*/ order: 'asc' },
+        { order: 'asc' },
         tran,
       )) {
+        ctx.signal.throwIfAborted();
         const encodedClaim = claimsUtils.generateSignedClaim(signedClaim);
         const response: AgentClaimMessage = {
           claimIdEncoded: claimsUtils.encodeClaimId(claimId),

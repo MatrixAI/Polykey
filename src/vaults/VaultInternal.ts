@@ -1,5 +1,6 @@
-import type { ReadCommitResult } from 'isomorphic-git';
 import type { EncryptedFS } from 'encryptedfs';
+import type { ReadCommitResult } from 'isomorphic-git';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { RPCClient } from '@matrixai/rpc';
 import type { ResourceAcquire, ResourceRelease } from '@matrixai/resources';
@@ -14,11 +15,11 @@ import type {
   VaultName,
   VaultRef,
 } from './types';
-import type KeyRing from '../keys/KeyRing';
+import type { POJO } from '../types';
 import type { NodeId, NodeIdEncoded } from '../ids/types';
+import type KeyRing from '../keys/KeyRing';
 import type NodeManager from '../nodes/NodeManager';
 import type agentClientManifest from '../nodes/agent/callers';
-import type { POJO } from '../types';
 import path from 'path';
 import git from 'isomorphic-git';
 import Logger from '@matrixai/logger';
@@ -26,16 +27,21 @@ import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { withF, withG } from '@matrixai/resources';
 import { RWLockWriter } from '@matrixai/async-locks';
-import * as vaultsUtils from './utils';
+import {
+  context,
+  timed,
+  timedCancellable,
+} from '@matrixai/contexts/dist/decorators';
+import { withF, withG } from '@matrixai/resources';
+import { tagLast } from './types';
 import * as vaultsErrors from './errors';
 import * as vaultsEvents from './events';
-import { tagLast } from './types';
+import * as vaultsUtils from './utils';
 import * as ids from '../ids';
+import * as utils from '../utils';
 import * as nodesUtils from '../nodes/utils';
 import * as gitUtils from '../git/utils';
-import * as utils from '../utils';
 
 type RemoteInfo = {
   remoteNode: NodeIdEncoded;
@@ -43,6 +49,7 @@ type RemoteInfo = {
 };
 
 interface VaultInternal extends CreateDestroyStartStop {}
+
 @CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultRunning(),
   new vaultsErrors.ErrorVaultDestroyed(),
@@ -57,44 +64,74 @@ interface VaultInternal extends CreateDestroyStartStop {}
 )
 class VaultInternal {
   /**
-   *  Creates a VaultInternal.
-   *  If no state already exists then state for the vault is initialized.
-   *  If state already exists then this just creates the `VaultInternal` instance for managing that state.
+   * Creates a VaultInternal.
+   * If no state already exists then a new state for the vault is initialized.
+   * If state already exists then this just creates the `VaultInternal`
+   * instance for managing that state.
    */
-  public static async createVaultInternal({
-    vaultId,
-    vaultName,
-    db,
-    vaultsDbPath,
-    keyRing,
-    efs,
-    logger = new Logger(this.name),
-    fresh = false,
-    tran,
-  }: {
-    vaultId: VaultId;
-    vaultName?: VaultName;
-    db: DB;
-    vaultsDbPath: LevelPath;
-    keyRing: KeyRing;
-    efs: EncryptedFS;
-    logger?: Logger;
-    fresh?: boolean;
-    tran?: DBTransaction;
-  }): Promise<VaultInternal> {
+  public static async createVaultInternal(
+    {
+      vaultId,
+      vaultName,
+      db,
+      vaultsDbPath,
+      keyRing,
+      efs,
+      fresh = false,
+      logger = new Logger(this.name),
+    }: {
+      vaultId: VaultId;
+      vaultName?: VaultName;
+      db: DB;
+      vaultsDbPath: LevelPath;
+      keyRing: KeyRing;
+      efs: EncryptedFS;
+      fresh?: boolean;
+      logger?: Logger;
+    },
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<VaultInternal>;
+  @timedCancellable(true)
+  public static async createVaultInternal(
+    {
+      vaultId,
+      vaultName,
+      db,
+      vaultsDbPath,
+      keyRing,
+      efs,
+      fresh = false,
+      logger = new Logger(this.name),
+    }: {
+      vaultId: VaultId;
+      vaultName?: VaultName;
+      db: DB;
+      vaultsDbPath: LevelPath;
+      keyRing: KeyRing;
+      efs: EncryptedFS;
+      fresh?: boolean;
+      logger?: Logger;
+    },
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<VaultInternal> {
     if (tran == null) {
       return await db.withTransactionF((tran) =>
-        this.createVaultInternal({
-          vaultId,
-          vaultName,
-          db,
-          vaultsDbPath,
-          keyRing,
-          efs,
-          logger,
-          fresh,
+        this.createVaultInternal(
+          {
+            vaultId,
+            vaultName,
+            db,
+            vaultsDbPath,
+            keyRing,
+            efs,
+            fresh,
+            logger,
+          },
           tran,
-        }),
+          ctx,
+        ),
       );
     }
 
@@ -108,7 +145,7 @@ class VaultInternal {
       efs,
       logger,
     });
-    await vault.start({ fresh, vaultName, tran });
+    await vault.start({ fresh, vaultName }, tran, ctx);
     logger.info(`Created ${this.name} - ${vaultIdEncoded}`);
     return vault;
   }
@@ -116,45 +153,77 @@ class VaultInternal {
   /**
    * Will create a new vault by cloning the vault from a remote node.
    */
-  public static async cloneVaultInternal({
-    targetNodeId,
-    targetVaultNameOrId,
-    vaultId,
-    db,
-    vaultsDbPath,
-    keyRing,
-    nodeManager,
-    efs,
-    logger = new Logger(this.name),
-    tran,
-  }: {
-    targetNodeId: NodeId;
-    targetVaultNameOrId: VaultId | VaultName;
-    vaultId: VaultId;
-    db: DB;
-    vaultsDbPath: LevelPath;
-    efs: EncryptedFS;
-    keyRing: KeyRing;
-    nodeManager: NodeManager;
-    logger?: Logger;
-    tran?: DBTransaction;
-  }): Promise<VaultInternal> {
+  public static async cloneVaultInternal(
+    {
+      targetNodeId,
+      targetVaultNameOrId,
+      vaultId,
+      db,
+      vaultsDbPath,
+      efs,
+      keyRing,
+      nodeManager,
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetVaultNameOrId: VaultId | VaultName;
+      vaultId: VaultId;
+      db: DB;
+      vaultsDbPath: LevelPath;
+      efs: EncryptedFS;
+      keyRing: KeyRing;
+      nodeManager: NodeManager;
+      logger?: Logger;
+    },
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<VaultInternal>;
+  @timedCancellable(true)
+  public static async cloneVaultInternal(
+    {
+      targetNodeId,
+      targetVaultNameOrId,
+      vaultId,
+      db,
+      vaultsDbPath,
+      efs,
+      keyRing,
+      nodeManager,
+      logger = new Logger(this.name),
+    }: {
+      targetNodeId: NodeId;
+      targetVaultNameOrId: VaultId | VaultName;
+      vaultId: VaultId;
+      db: DB;
+      vaultsDbPath: LevelPath;
+      efs: EncryptedFS;
+      keyRing: KeyRing;
+      nodeManager: NodeManager;
+      logger?: Logger;
+    },
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<VaultInternal> {
     if (tran == null) {
       return await db.withTransactionF((tran) =>
-        this.cloneVaultInternal({
-          targetNodeId,
-          targetVaultNameOrId,
-          vaultId,
-          db,
-          vaultsDbPath,
-          keyRing,
-          nodeManager,
-          efs,
-          logger,
+        this.cloneVaultInternal(
+          {
+            targetNodeId,
+            targetVaultNameOrId,
+            vaultId,
+            db,
+            vaultsDbPath,
+            efs,
+            keyRing,
+            nodeManager,
+            logger,
+          },
           tran,
-        }),
+          ctx,
+        ),
       );
     }
+
     const vaultIdEncoded = vaultsUtils.encodeVaultId(vaultId);
     logger.info(`Cloning ${this.name} - ${vaultIdEncoded}`);
     const vault = new this({
@@ -165,13 +234,12 @@ class VaultInternal {
       efs,
       logger,
     });
-    // Make the directory where the .git files will be auto generated and
-    // where the contents will be cloned to ('contents' file)
+    // Make the directory where the .git files will be auto generated and where
+    // the contents will be cloned to ('contents' file)
     await efs.mkdir(vault.vaultDataDir, { recursive: true });
     const [vaultName, remoteVaultId]: [VaultName, VaultId] =
-      await nodeManager.withConnF(targetNodeId, async (connection) => {
+      await nodeManager.withConnF(targetNodeId, ctx, async (connection) => {
         const client = connection.getClient();
-
         const [request, vaultName, remoteVaultId] = await vault.request(
           client,
           targetVaultNameOrId,
@@ -193,7 +261,7 @@ class VaultInternal {
       remoteVault: vaultsUtils.encodeVaultId(remoteVaultId),
     };
 
-    await vault.start({ vaultName, tran });
+    await vault.start({ vaultName }, tran, ctx);
     // Setting the remote in the metadata
     await tran.put(
       [...vault.vaultMetadataDbPath, VaultInternal.remoteKey],
@@ -254,37 +322,57 @@ class VaultInternal {
   }
 
   /**
-   *
-   * @param fresh Clears all state before starting
-   * @param vaultName Name of the vault, Only used when creating a new vault
+   * @param fresh Should the state be cleared before starting?
+   * @param vaultName Name of the vault. Only used when creating a new vault.
    * @param tran
+   * @param ctx
    */
-  public async start({
-    fresh = false,
-    vaultName,
-    tran,
-  }: {
-    fresh?: boolean;
-    vaultName?: VaultName;
-    tran?: DBTransaction;
-  } = {}): Promise<void> {
+  public async start(
+    {
+      vaultName,
+      fresh = false,
+    }: {
+      vaultName?: VaultName;
+      fresh?: boolean;
+    } = {},
+    tran?: DBTransaction,
+    ctx?: ContextTimed,
+  ): Promise<void> {
     if (tran == null) {
       return await this.db.withTransactionF((tran) =>
-        this.start_(fresh, tran, vaultName),
+        this.start_({ vaultName, fresh }, tran, ctx),
       );
     }
-    return await this.start_(fresh, tran, vaultName);
+    return await this.start_({ vaultName, fresh }, tran, ctx);
   }
 
   /**
-   * We use a protected start method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
-   * create a DBTransaction.
+   * We use a protected start method to avoid the `async-init` lifecycle
+   * deadlocking when doing the recursive call to create a DBTransaction.
    */
   protected async start_(
-    fresh: boolean,
+    {
+      vaultName,
+      fresh,
+    }: {
+      vaultName?: VaultName;
+      fresh: boolean;
+    },
     tran: DBTransaction,
-    vaultName?: VaultName,
-  ) {
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<void>;
+  @timedCancellable(true)
+  protected async start_(
+    {
+      vaultName,
+      fresh,
+    }: {
+      vaultName?: VaultName;
+      fresh: boolean;
+    },
+    tran: DBTransaction,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     this.logger.info(
       `Starting ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
@@ -305,8 +393,8 @@ class VaultInternal {
     await vaultsUtils.mkdirExists(this.efs, this.vaultIdEncoded);
     await vaultsUtils.mkdirExists(this.efs, this.vaultDataDir);
     await vaultsUtils.mkdirExists(this.efs, this.vaultGitDir);
-    await this.setupMeta({ vaultName, tran });
-    await this.setupGit(tran);
+    await this.setupMeta({ vaultName }, tran);
+    await this.setupGit(tran, ctx);
     this.efsVault = await this.efs.chroot(this.vaultDataDir);
     this.logger.info(
       `Started ${this.constructor.name} - ${this.vaultIdEncoded}`,
@@ -330,10 +418,10 @@ class VaultInternal {
   }
 
   /**
-   * We use a protected destroy method to avoid the `async-init` lifecycle deadlocking when doing the recursive call to
-   * create a DBTransaction.
+   * We use a protected destroy method to avoid the `async-init` lifecycle
+   * deadlocking when doing the recursive call to create a DBTransaction.
    */
-  protected async destroy_(tran: DBTransaction) {
+  protected async destroy_(tran: DBTransaction): Promise<void> {
     this.logger.info(
       `Destroying ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
@@ -344,17 +432,20 @@ class VaultInternal {
       });
     } catch (e) {
       if (e.code !== 'ENOENT') throw e;
-      // Otherwise ignore
     }
     this.logger.info(
       `Destroyed ${this.constructor.name} - ${this.vaultIdEncoded}`,
     );
   }
 
+  public async log(
+    ref?: string | VaultRef,
+    limit?: number,
+  ): Promise<Array<CommitLog>>;
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async log(
     ref: string | VaultRef = 'HEAD',
-    limit?: number,
+    limit: number,
   ): Promise<Array<CommitLog>> {
     vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
@@ -364,7 +455,7 @@ class VaultInternal {
       fs: this.efs,
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
-      ref,
+      ref: ref,
       depth: limit,
     });
     return commits.map(({ oid, commit }: ReadCommitResult) => {
@@ -385,8 +476,8 @@ class VaultInternal {
   }
 
   /**
-   * Checks out the vault repository to specific commit ID or special tags
-   * This changes the working directory and updates the HEAD reference
+   * Checks out the vault repository to specific commit ID or special tags.
+   * This changes the working directory and updates the HEAD reference.
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async version(ref: string | VaultRef = tagLast): Promise<void> {
@@ -399,7 +490,7 @@ class VaultInternal {
         fs: this.efs,
         dir: this.vaultDataDir,
         gitdir: this.vaultGitDir,
-        ref,
+        ref: ref,
         force: true,
       });
     } catch (e) {
@@ -426,7 +517,8 @@ class VaultInternal {
   }
 
   /**
-   * With context handler for using a vault in a read-only context for a generator.
+   * With context handler for using a vault in a read-only context for a
+   * generator.
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public readG<T, TReturn, TNext>(
@@ -441,13 +533,20 @@ class VaultInternal {
   /**
    * With context handler for using a vault in a writable context.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
     tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<void>;
+  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @timedCancellable(true)
+  public async writeF(
+    f: (fs: FileSystemWritable) => Promise<void>,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.writeF(f, tran));
+      return this.db.withTransactionF((tran) => this.writeF(f, tran, ctx));
     }
 
     return withF([this.lock.write()], async () => {
@@ -455,10 +554,9 @@ class VaultInternal {
         [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
       );
 
-      // This should really be an internal property
-      // get whether this is remote, and the remote address
-      // if it is, we consider this repo an "attached repo"
-      // this vault is a "mirrored" vault
+      // This should really be an internal property. Check whether this is the
+      // remote address. If it is, we consider this repo an "attached repo".
+      // This vault is a "mirrored" vault.
       if (
         (await tran.get([
           ...this.vaultMetadataDbPath,
@@ -475,10 +573,10 @@ class VaultInternal {
       try {
         await f(this.efsVault);
         // After doing mutation we need to commit the new history
-        await this.createCommit();
+        await this.createCommit(ctx);
       } catch (e) {
         // Error implies dirty state
-        await this.cleanWorkingDirectory();
+        await this.cleanWorkingDirectory(ctx);
         throw e;
       }
       await tran.put(
@@ -491,19 +589,27 @@ class VaultInternal {
   /**
    * With context handler for using a vault in a writable context for a generator.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
     tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): AsyncGenerator<T, TReturn, TNext>;
+  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @timed()
+  public writeG<T, TReturn, TNext>(
+    g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): AsyncGenerator<T, TReturn, TNext> {
     if (tran == null) {
-      return this.db.withTransactionG((tran) => this.writeG(g, tran));
+      return this.db.withTransactionG((tran) => this.writeG(g, tran, ctx));
     }
 
     const efsVault = this.efsVault;
     const vaultMetadataDbPath = this.vaultMetadataDbPath;
-    const createCommit = () => this.createCommit();
-    const cleanWorkingDirectory = () => this.cleanWorkingDirectory();
+    // In AsyncGenerators, "this" refers to the generator itself, so we alias
+    // "this" and use the alias to access protected methods.
+    const parentThis = this;
     return withG([this.lock.write()], async function* () {
       if (
         (await tran.get([...vaultMetadataDbPath, VaultInternal.remoteKey])) !=
@@ -517,19 +623,16 @@ class VaultInternal {
       );
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], true);
 
+      // Create the commit
       let result: TReturn;
-      // Do what you need to do here, create the commit
       try {
         result = yield* g(efsVault);
-        // At the end of the generator
-        // you need to do this
-        // but just before
-        // you need to finish it up
-        // After doing mutation we need to commit the new history
-        await createCommit();
+        // After doing mutation we need to commit the new history. You need to
+        // do this at the end of the generator.
+        await parentThis.createCommit(ctx);
       } catch (e) {
         // Error implies dirty state
-        await cleanWorkingDirectory();
+        await parentThis.cleanWorkingDirectory(ctx);
         throw e;
       }
       await tran.put([...vaultMetadataDbPath, VaultInternal.dirtyKey], false);
@@ -538,7 +641,7 @@ class VaultInternal {
   }
 
   /**
-   * Acquire a read-only lock on this vault
+   * Acquire a read-only lock on this vault.
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public acquireRead(): ResourceAcquire<FileSystemReadable> {
@@ -555,23 +658,25 @@ class VaultInternal {
   }
 
   /**
-   * Acquire a read-write lock on this vault
+   * Acquire a read-write lock on this vault.
    */
   @ready(new vaultsErrors.ErrorVaultNotRunning())
   public acquireWrite(
-    tran?: DBTransaction,
+    tran: DBTransaction | undefined,
+    ctx: ContextTimed,
   ): ResourceAcquire<FileSystemWritable> {
     return async () => {
       let releaseTran: ResourceRelease | undefined = undefined;
       const acquire = this.lock.write();
       const [release] = await acquire();
+
       if (tran == null) {
         const acquireTran = this.db.transaction();
         [releaseTran, tran] = await acquireTran();
+        // The returned transaction should not be undefined in this case.
+        if (tran == null) utils.never('Acquired transactions cannot be null');
       }
-      // The returned transaction can be undefined, too. We won't handle those
-      // cases.
-      if (tran == null) utils.never('Acquired transactions cannot be null');
+
       await tran.lock(
         [...this.vaultMetadataDbPath, VaultInternal.dirtyKey].join(''),
       );
@@ -593,11 +698,11 @@ class VaultInternal {
           if (e == null) {
             try {
               // After doing mutation we need to commit the new history
-              await this.createCommit();
+              await this.createCommit(ctx);
             } catch (e_) {
               e = e_;
               // Error implies dirty state
-              await this.cleanWorkingDirectory();
+              await this.cleanWorkingDirectory(ctx);
             }
           }
           // For some reason, the transaction type doesn't properly waterfall
@@ -615,29 +720,48 @@ class VaultInternal {
   }
 
   /**
-   * Pulls changes to a vault from the vault's default remote.
-   * If `pullNodeId` and `pullVaultNameOrId` it uses that for the remote instead.
+   * Pulls changes to a vault from the vault's default remote. If `pullNodeId`
+   * and `pullVaultNameOrId` it uses that for the remote instead.
    */
+  public async pullVault(
+    {
+      nodeManager,
+      pullNodeId,
+      pullVaultNameOrId,
+    }: {
+      nodeManager: NodeManager;
+      pullNodeId?: NodeId;
+      pullVaultNameOrId?: VaultId | VaultName;
+    },
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<void>;
   @ready(new vaultsErrors.ErrorVaultNotRunning())
-  public async pullVault({
-    nodeManager,
-    pullNodeId,
-    pullVaultNameOrId,
-    tran,
-  }: {
-    nodeManager: NodeManager;
-    pullNodeId?: NodeId;
-    pullVaultNameOrId?: VaultId | VaultName;
-    tran?: DBTransaction;
-  }): Promise<void> {
+  @timedCancellable(true)
+  public async pullVault(
+    {
+      nodeManager,
+      pullNodeId,
+      pullVaultNameOrId,
+    }: {
+      nodeManager: NodeManager;
+      pullNodeId?: NodeId;
+      pullVaultNameOrId?: VaultId | VaultName;
+    },
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.pullVault({
-          nodeManager,
-          pullNodeId,
-          pullVaultNameOrId,
+        this.pullVault(
+          {
+            nodeManager,
+            pullNodeId,
+            pullVaultNameOrId,
+          },
           tran,
-        }),
+          ctx,
+        ),
       );
     }
 
@@ -675,6 +799,7 @@ class VaultInternal {
     try {
       remoteVaultId = await nodeManager.withConnF(
         pullNodeId!,
+        ctx,
         async (connection) => {
           const client = connection.getClient();
           const [request, , remoteVaultId] = await this.request(
@@ -693,17 +818,15 @@ class VaultInternal {
               singleBranch: true,
               fastForward: true,
               fastForwardOnly: true,
-              author: {
-                name: nodesUtils.encodeNodeId(pullNodeId!),
-              },
+              author: { name: nodesUtils.encodeNodeId(pullNodeId!) },
             });
           });
           return remoteVaultId;
         },
       );
     } catch (e) {
-      // If the error flag set, and we have the generalised SmartHttpError from
-      // isomorphic git then we need to throw the polykey error
+      // If the error flag is set, and we have the generalised SmartHttpError from
+      // isomorphic git, then we need to throw the Polykey error.
       if (e instanceof git.Errors.MergeNotSupportedError) {
         throw new vaultsErrors.ErrorVaultsMergeConflict(e.message, {
           cause: e,
@@ -732,13 +855,10 @@ class VaultInternal {
    * Creates a `dirty` boolean in the database to track dirty state of the vault.
    * Also adds the vault's name to the database.
    */
-  protected async setupMeta({
-    vaultName,
-    tran,
-  }: {
-    vaultName?: VaultName;
-    tran: DBTransaction;
-  }): Promise<void> {
+  protected async setupMeta(
+    { vaultName }: { vaultName?: VaultName },
+    tran: DBTransaction,
+  ): Promise<void> {
     // Set up dirty key defaulting to false
     if (
       (await tran.get<boolean>([
@@ -767,17 +887,20 @@ class VaultInternal {
     }
 
     // Dirty: boolean
-    // name: string | undefined
+    // Name: string | undefined
   }
 
   /**
    * Does an idempotent initialization of the git repository for the vault.
    * If the vault is in a dirty state then we clean up the working directory
-   * or any history not part of the canonicalBranch.
+   * or any history not part of the canonical branch.
    */
-  protected async setupGit(tran: DBTransaction): Promise<string> {
-    // Initialization is idempotent
-    // It works even with an existing git repository
+  protected async setupGit(
+    tran: DBTransaction,
+    ctx: ContextTimed,
+  ): Promise<string> {
+    // Initialization is idempotent. It works even with an existing git
+    // repository.
     await git.init({
       fs: this.efs,
       dir: this.vaultDataDir,
@@ -795,8 +918,8 @@ class VaultInternal {
       });
       commitIdLatest = commits[0]?.oid as CommitId | undefined;
     } catch (e) {
-      // Initialized repositories do not have any commits
-      // It complains that `refs/heads/master` file does not exist
+      // Initialized repositories do not have any commits. It complains that
+      // `refs/heads/master` file does not exist.
       if (!(e instanceof git.Errors.NotFoundError)) {
         throw e;
       }
@@ -821,18 +944,18 @@ class VaultInternal {
         force: true,
       });
     } else {
-      // Checking for dirty
+      // Checking for dirty state
       if (
         (await tran.get<boolean>([
           ...this.vaultMetadataDbPath,
           VaultInternal.dirtyKey,
         ])) === true
       ) {
-        // Force checkout out to the latest commit
-        // This ensures that any uncommitted state is dropped
-        await this.cleanWorkingDirectory();
-        // Do global GC operation
-        await this.garbageCollectGitObjectsGlobal();
+        // Force checkout out to the latest commit. This ensures that any
+        // uncommitted state is dropped. A global garbage collection is
+        // executed immediately after.
+        await this.cleanWorkingDirectory(ctx);
+        await this.garbageCollectGitObjectsGlobal(ctx);
 
         // Setting dirty back to false
         await tran.put(
@@ -845,19 +968,20 @@ class VaultInternal {
   }
 
   /**
-   * Creates a request arrow function that implements an api that `isomorphic-git` expects to use when making a http
-   * request. It makes RPC calls to `vaultsGitInfoGet` for the ref advertisement phase and `vaultsGitPackGet` for the
-   * git pack phase.
+   * Creates a request arrow function that implements an API that `isomorphic-git`
+   * expects to use when making a HTTP request. It makes RPC calls to
+   * `vaultsGitInfoGet` for the ref advertisement phase and `vaultsGitPackGet`
+   * for the git pack phase.
    *
-   * `vaultsGitInfoGet` wraps a call to `gitHttp.advertiseRefGenerator` and `vaultsGitPackGet` to
-   * `gitHttp.generatePackRequest`.
+   * `vaultsGitInfoGet` wraps a call to `gitHttp.advertiseRefGenerator` and
+   * `vaultsGitPackGet` to `gitHttp.generatePackRequest`.
    *
    * ```
    *                                  ┌─────────┐    ┌───────────────────────────┐
    *                                  │         │    │                           │
    *  ┌──────────────────────┐        │  RPC    │    │                           │
    *  │                      │        │         │    │ *advertiseRefGenerator()  │
-   *  │                      ├────────┼─────────┼────►                           │
+   *  │                      ├────────┼─────────┼────▶                           │
    *  │     vault.request()  │        │         │    │                           │
    *  │                      │        │         │    └────┬──────────────────────┘
    *  │                      ├──┐     │         │         │
@@ -913,7 +1037,7 @@ class VaultInternal {
 
     const vaultsGitPackGetStream = await client.methods.vaultsGitPackGet({
       nameOrId: result.vaultIdEncoded as string,
-      vaultAction,
+      vaultAction: vaultAction,
     });
 
     return [
@@ -964,11 +1088,12 @@ class VaultInternal {
 
   /**
    * Creates a commit while moving the canonicalBranch reference to that new commit.
-   * If the commit creates a branch from the canonical history. Then the new commit becomes the new canonical history
-   * and the old history is removed from the old canonical head to the branch point. This is to maintain the strict
+   * If the commit creates a branch from the canonical history. Then the new commit
+   * becomes the new canonical history and the old history is removed from the old
+   * canonical head to the branch point. This is to maintain the strict
    * non-branching linear history.
    */
-  protected async createCommit() {
+  protected async createCommit(ctx: ContextTimed): Promise<void> {
     // Forced wait for 1 ms to allow difference in mTime between file changes
     await utils.sleep(1);
     // Checking if commit is appending or branching
@@ -1006,27 +1131,30 @@ class VaultInternal {
       workingDirStatus,
       stageStatus,
     ] of statusMatrix) {
-      /*
-        Type StatusRow     = [Filename, HeadStatus, WorkdirStatus, StageStatus]
-        The HeadStatus status is either absent (0) or present (1).
-        The WorkdirStatus status is either absent (0), identical to HEAD (1), or different from HEAD (2).
-        The StageStatus status is either absent (0), identical to HEAD (1), identical to WORKDIR (2), or different from WORKDIR (3).
-
-        ```js
-        // example StatusMatrix
-        [
-          ["a.txt", 0, 2, 0], // new, untracked
-          ["b.txt", 0, 2, 2], // added, staged
-          ["c.txt", 0, 2, 3], // added, staged, with unstaged changes
-          ["d.txt", 1, 1, 1], // unmodified
-          ["e.txt", 1, 2, 1], // modified, unstaged
-          ["f.txt", 1, 2, 2], // modified, staged
-          ["g.txt", 1, 2, 3], // modified, staged, with unstaged changes
-          ["h.txt", 1, 0, 1], // deleted, unstaged
-          ["i.txt", 1, 0, 0], // deleted, staged
-        ]
-        ```
+      /**
+       * Type StatusRow = [Filename, HeadStatus, WorkdirStatus, StageStatus].
+       * The HeadStatus status is either absent (0) or present (1).
+       * The WorkdirStatus status is either absent (0), identical to HEAD (1),
+       * or different from HEAD (2).
+       * The StageStatus status is either absent (0), identical to HEAD (1),
+       * identical to WORKDIR (2), or different from WORKDIR (3).
+       *
+       * ```js
+       * // Example StatusMatrix
+       * [
+       *    ["a.txt", 0, 2, 0], // new, untracked
+       *    ["b.txt", 0, 2, 2], // added, staged
+       *    ["c.txt", 0, 2, 3], // added, staged, unstaged changes
+       *    ["d.txt", 1, 1, 1], // unmodified
+       *    ["e.txt", 1, 2, 1], // modified, unstaged
+       *    ["f.txt", 1, 2, 2], // modified, staged
+       *    ["g.txt", 1, 2, 3], // modified, unstaged, unstaged changes
+       *    ["h.txt", 1, 0, 1], // deleted, unstaged
+       *    ["i.txt", 1, 0, 0], // deleted, staged
+       * ]
+       * ```
        */
+      ctx.signal.throwIfAborted();
       const status = `${HEADStatus}${workingDirStatus}${stageStatus}`;
       switch (status) {
         case '022': // Added, staged
@@ -1037,20 +1165,21 @@ class VaultInternal {
         case '122': // Modified, staged
           message.push(`${filePath} modified`);
           break;
-        case '101': // Deleted, unStaged
-          // need to stage the deletion with remove
+        case '101': // Deleted, unstaged
+          // Need to stage the deletion with remove
           await git.remove({
             fs: this.efs,
             dir: this.vaultDataDir,
             gitdir: this.vaultGitDir,
             filepath: filePath,
           });
-        // Fall through
+        // Fallthrough
         case '100': // Deleted, staged
           message.push(`${filePath} deleted`);
           break;
         default:
-          // We don't handle untracked and partially staged files since we add all files to staging before processing
+          // We don't handle untracked and partially staged files since we add
+          // all files to staging before processing.
           utils.never(
             `Status ${status} is unhandled because it was unexpected state`,
           );
@@ -1063,9 +1192,7 @@ class VaultInternal {
         fs: this.efs,
         dir: this.vaultDataDir,
         gitdir: this.vaultGitDir,
-        author: {
-          name: nodeIdEncoded,
-        },
+        author: { name: nodeIdEncoded },
         message: message.toString(),
         ref: 'HEAD',
       });
@@ -1080,17 +1207,18 @@ class VaultInternal {
       });
       // We clean old history if a commit was made on previous version
       if (headRef !== masterRef) {
-        await this.garbageCollectGitObjectsLocal(masterRef, headRef);
+        await this.garbageCollectGitObjectsLocal(masterRef, headRef, ctx);
       }
     }
   }
 
   /**
-   * Cleans the git working directory by checking out the canonicalBranch.
-   * This will remove any un-committed changes since any untracked or modified files outside a commit is dirty state.
-   * Dirty state should only happen if the usual commit procedure was interrupted ungracefully.
+   * Cleans the git working directory by checking out the canonical branch.
+   * This will remove any un-committed changes since any untracked or modified
+   * files outside a commit is dirty state. Dirty state should only happen if
+   * the usual commit procedure was interrupted ungracefully.
    */
-  protected async cleanWorkingDirectory() {
+  protected async cleanWorkingDirectory(ctx: ContextTimed): Promise<void> {
     // Check the status matrix for any un-staged file changes
     // which are considered dirty commits
     const statusMatrix = await git.statusMatrix({
@@ -1099,8 +1227,9 @@ class VaultInternal {
       gitdir: this.vaultGitDir,
     });
     for await (const [filePath, , workingDirStatus] of statusMatrix) {
-      // For all files stage all changes, this is needed
-      // so that we can check out all untracked files as well
+      ctx.signal.throwIfAborted();
+      // Stage all changes across all files. This is needed so that we can
+      // checkout all untracked files as well.
       if (workingDirStatus === 0) {
         await git.remove({
           fs: this.efs,
@@ -1128,14 +1257,20 @@ class VaultInternal {
   }
 
   /**
-   * This will walk the current canonicalBranch history and delete any objects that are not a part of it.
-   * This is costly since it will compare the walked tree with all existing objects.
+   * This will walk the current canonical branch history and delete any objects
+   * that are not a part of it. This is costly since it will compare the walked
+   * tree with all existing objects.
    */
-  protected async garbageCollectGitObjectsGlobal() {
-    const objectIdsAll = await gitUtils.listObjectsAll({
-      fs: this.efs,
-      gitDir: this.vaultGitDir,
-    });
+  protected async garbageCollectGitObjectsGlobal(
+    ctx: ContextTimed,
+  ): Promise<void> {
+    const objectIdsAll = await gitUtils.listObjectsAll(
+      {
+        fs: this.efs,
+        gitDir: this.vaultGitDir,
+      },
+      ctx,
+    );
     const objects = new Set(objectIdsAll);
     const masterRef = await git.resolveRef({
       fs: this.efs,
@@ -1143,19 +1278,22 @@ class VaultInternal {
       gitdir: this.vaultGitDir,
       ref: vaultsUtils.canonicalBranch,
     });
-    const reachableObjects = await gitUtils.listObjects({
-      efs: this.efs,
-      dir: this.vaultDataDir,
-      gitDir: this.vaultGitDir,
-      wants: [masterRef],
-      haves: [],
-    });
+    const reachableObjects = await gitUtils.listObjects(
+      {
+        efs: this.efs,
+        dir: this.vaultDataDir,
+        gitDir: this.vaultGitDir,
+        wants: [masterRef],
+        haves: [],
+      },
+      ctx,
+    );
     // Walk from head to all reachable objects
     for (const objectReachable of reachableObjects) {
       objects.delete(objectReachable);
     }
-    // Any objects left in `objects` was unreachable, thus they are a part of orphaned branches
-    // So we want to delete them.
+    // Any objects left in `objects` was unreachable, thus they are a part of
+    // orphaned branches, so we want to delete them.
     const deletePs: Array<Promise<void>> = [];
     for (const objectId of objects) {
       deletePs.push(
@@ -1166,20 +1304,25 @@ class VaultInternal {
   }
 
   /**
-   * This will walk from the `startId` to the `StopId` deleting objects as it goes.
-   * This is smarter since it only walks over the old history and not everything.
+   * This will walk from the `startId` to the `StopId` deleting objects as it
+   * goes. This is smarter since it only walks over the old history and not
+   * everything.
    */
   protected async garbageCollectGitObjectsLocal(
     startId: string,
     stopId: string,
-  ) {
-    const objects = await gitUtils.listObjects({
-      efs: this.efs,
-      dir: this.vaultDataDir,
-      gitDir: this.vaultGitDir,
-      wants: [startId],
-      haves: [stopId],
-    });
+    ctx: ContextTimed,
+  ): Promise<void> {
+    const objects = await gitUtils.listObjects(
+      {
+        efs: this.efs,
+        dir: this.vaultDataDir,
+        gitDir: this.vaultGitDir,
+        wants: [startId],
+        haves: [stopId],
+      },
+      ctx,
+    );
     const deletePs: Array<Promise<void>> = [];
     for (const objectId of objects) {
       deletePs.push(

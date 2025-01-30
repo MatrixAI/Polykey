@@ -6,7 +6,7 @@ import type {
   SecretIdentifierMessage,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
-import { ServerHandler } from '@matrixai/rpc';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
@@ -14,7 +14,7 @@ import * as vaultOps from '../../vaults/VaultOps';
 // This method only returns the contents of a single secret, and throws an error
 // if the secret couldn't be read. To read multiple secrets, refer to
 // `VaultsSecretsCat`.
-class VaultsSecretsGet extends ServerHandler<
+class VaultsSecretsGet extends UnaryHandler<
   {
     db: DB;
     vaultManager: VaultManager;
@@ -22,19 +22,23 @@ class VaultsSecretsGet extends ServerHandler<
   ClientRPCRequestParams<SecretIdentifierMessage>,
   ClientRPCResponseResult<ContentMessage>
 > {
-  public handle = async function* (
+  public handle = async (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
-  ): AsyncGenerator<ClientRPCResponseResult<ContentMessage>> {
+  ): Promise<ClientRPCResponseResult<ContentMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
-    yield await db.withTransactionF(async (tran) => {
+    return db.withTransactionF(async (tran) => {
       const vaultIdFromName = await vaultManager.getVaultId(
         input.nameOrId,
         tran,
       );
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
-      if (vaultId == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      if (vaultId == null) {
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
+      }
       // Get the contents of the file
       return await vaultManager.withVaults([vaultId], async (vault) => {
         const content = await vaultOps.getSecret(vault, input.secretName);

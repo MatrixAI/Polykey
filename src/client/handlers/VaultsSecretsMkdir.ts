@@ -1,9 +1,11 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SecretDirMessage,
-  SuccessOrErrorMessage,
+  SuccessOrErrorMessageTagged,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { POJO } from '../../types';
@@ -18,17 +20,21 @@ class VaultsSecretsMkdir extends DuplexHandler<
     vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretDirMessage>,
-  ClientRPCResponseResult<SuccessOrErrorMessage>
+  ClientRPCResponseResult<SuccessOrErrorMessageTagged>
 > {
   public handle = async function* (
     input: AsyncIterableIterator<ClientRPCRequestParams<SecretDirMessage>>,
-  ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
+  ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessageTagged>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     let metadata: POJO;
     yield* db.withTransactionG(
-      async function* (tran): AsyncGenerator<SuccessOrErrorMessage> {
+      async function* (tran): AsyncGenerator<SuccessOrErrorMessageTagged> {
         for await (const secretDirMessage of input) {
+          ctx.signal.throwIfAborted();
           // Unpack input
           if (metadata == null) metadata = secretDirMessage.metadata ?? {};
           const nameOrId = secretDirMessage.nameOrId;
@@ -38,13 +44,13 @@ class VaultsSecretsMkdir extends DuplexHandler<
           const vaultId =
             vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
           if (vaultId == null) {
-            throw new vaultsErrors.ErrorVaultsVaultUndefined();
+            throw new vaultsErrors.ErrorVaultsVaultUndefined(
+              `Vault "${nameOrId}" does not exist`,
+            );
           }
+
           // Write directories. This doesn't need to be grouped by vault names,
-          // as no commit is created for empty directories anyways. The
-          // vaultOps.mkdir() method also returns an object of type
-          // SuccessOrErrorMessage. As such, we can return the result without
-          // doing any type conversion or extra processing.
+          // as no commit is created for empty directories anyway.
           yield await vaultManager.withVaults(
             [vaultId],
             async (vault) => {
@@ -52,14 +58,14 @@ class VaultsSecretsMkdir extends DuplexHandler<
                 await vaultOps.mkdir(vault, dirName, {
                   recursive: metadata?.options?.recursive,
                 });
-                return { type: 'success', success: true };
+                return { type: 'SuccessMessage', success: true };
               } catch (e) {
                 if (
                   e instanceof vaultsErrors.ErrorVaultsRecursive ||
                   e instanceof vaultsErrors.ErrorSecretsSecretDefined
                 ) {
                   return {
-                    type: 'error',
+                    type: 'ErrorMessage',
                     code: e.cause.code,
                     reason: dirName,
                   };
@@ -69,6 +75,7 @@ class VaultsSecretsMkdir extends DuplexHandler<
               }
             },
             tran,
+            ctx,
           );
         }
       },

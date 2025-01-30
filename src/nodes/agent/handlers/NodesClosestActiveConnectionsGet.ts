@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -24,10 +26,15 @@ class NodesClosestActiveConnectionsGet extends ServerHandler<
 > {
   public handle = async function* (
     input: AgentRPCRequestParams<NodeIdMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<ActiveConnectionDataMessage>> {
-    const { nodeConnectionManager } = this.container as {
+    const {
+      nodeConnectionManager,
+    }: {
       nodeConnectionManager: NodeConnectionManager;
-    };
+    } = this.container;
 
     const {
       nodeId,
@@ -47,6 +54,7 @@ class NodesClosestActiveConnectionsGet extends ServerHandler<
 
     const nodes = nodeConnectionManager.getClosestConnections(nodeId);
     for (const nodeInfo of nodes) {
+      ctx.signal.throwIfAborted();
       yield {
         nodeId: nodesUtils.encodeNodeId(nodeInfo.nodeId),
         connections: nodeInfo.connections,

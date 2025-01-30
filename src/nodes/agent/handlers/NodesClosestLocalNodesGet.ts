@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -31,8 +33,11 @@ class NodesClosestLocalNodesGet extends ServerHandler<
 > {
   public handle = async function* (
     input: AgentRPCRequestParams<NodeIdMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<NodeContactMessage>> {
-    const { nodeGraph, db } = this.container;
+    const { nodeGraph, db }: { nodeGraph: NodeGraph; db: DB } = this.container;
 
     const {
       nodeId,
@@ -49,6 +54,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
+
     // Get all local nodes that are closest to the target node from the request
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       AgentRPCResponseResult<NodeContactMessage>
@@ -59,6 +65,7 @@ class NodesClosestLocalNodesGet extends ServerHandler<
         tran,
       );
       for (const [nodeId, nodeContact] of closestNodes) {
+        ctx.signal.throwIfAborted();
         // Filter out local scoped addresses
         const nodeContactOutput: NodeContact = {};
         for (const key of Object.keys(nodeContact)) {

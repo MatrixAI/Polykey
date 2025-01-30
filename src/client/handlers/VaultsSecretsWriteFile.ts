@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -21,6 +23,9 @@ class VaultsSecretsWriteFile extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<SecretContentMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -32,18 +37,27 @@ class VaultsSecretsWriteFile extends UnaryHandler<
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
       if (vaultId == null) {
-        throw new vaultsErrors.ErrorVaultsVaultUndefined();
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
       }
       const secretContent = Buffer.from(input.secretContent, 'binary');
       await vaultManager.withVaults(
         [vaultId],
         async (vault) => {
-          await vaultOps.writeSecret(vault, input.secretName, secretContent);
+          await vaultOps.writeSecret(
+            vault,
+            input.secretName,
+            secretContent,
+            undefined,
+            ctx,
+          );
         },
         tran,
+        ctx,
       );
     });
-    return { type: 'success', success: true };
+    return { success: true };
   };
 }
 

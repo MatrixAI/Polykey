@@ -1,11 +1,13 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
 import type { ResourceAcquire } from '@matrixai/resources';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SecretsRemoveHeaderMessage,
   SecretIdentifierMessageTagged,
-  SuccessOrErrorMessage,
+  SuccessOrErrorMessageTagged,
 } from '../types';
 import type VaultManager from '../../vaults/VaultManager';
 import type { FileSystemWritable } from '../../vaults/types';
@@ -23,7 +25,7 @@ class VaultsSecretsRemove extends DuplexHandler<
   ClientRPCRequestParams<
     SecretsRemoveHeaderMessage | SecretIdentifierMessageTagged
   >,
-  ClientRPCResponseResult<SuccessOrErrorMessage>
+  ClientRPCResponseResult<SuccessOrErrorMessageTagged>
 > {
   public handle = async function* (
     input: AsyncIterableIterator<
@@ -31,7 +33,10 @@ class VaultsSecretsRemove extends DuplexHandler<
         SecretsRemoveHeaderMessage | SecretIdentifierMessageTagged
       >
     >,
-  ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessage>> {
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
+  ): AsyncGenerator<ClientRPCResponseResult<SuccessOrErrorMessageTagged>> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     // Extract the header message from the iterator
@@ -50,16 +55,19 @@ class VaultsSecretsRemove extends DuplexHandler<
     const vaultAcquires = await db.withTransactionF(async (tran) => {
       const vaultAcquires: Array<ResourceAcquire<FileSystemWritable>> = [];
       for (const vaultName of headerMessage.vaultNames) {
+        ctx.signal.throwIfAborted();
         const vaultIdFromName = await vaultManager.getVaultId(vaultName, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(vaultName);
         if (vaultId == null) {
           throw new vaultsErrors.ErrorVaultsVaultUndefined(
-            `Vault ${vaultName} does not exist`,
+            `Vault "${vaultName}" does not exist`,
           );
         }
+        // The resource acquisition will automatically create a transaction and
+        // release it when cleaning up.
         const acquire = await vaultManager.withVaults(
           [vaultId],
-          async (vault) => vault.acquireWrite(),
+          async (vault) => vault.acquireWrite(undefined, ctx),
         );
         vaultAcquires.push(acquire);
       }
@@ -68,7 +76,7 @@ class VaultsSecretsRemove extends DuplexHandler<
     // Acquire all locks in parallel and perform all operations at once
     yield* withG(
       vaultAcquires,
-      async function* (efses): AsyncGenerator<SuccessOrErrorMessage> {
+      async function* (efses): AsyncGenerator<SuccessOrErrorMessageTagged> {
         // Creating the vault name to efs map for easy access
         const vaultMap = new Map<string, FileSystemWritable>();
         for (let i = 0; i < efses.length; i++) {
@@ -76,6 +84,7 @@ class VaultsSecretsRemove extends DuplexHandler<
         }
         let loopRan = false;
         for await (const message of input) {
+          ctx.signal.throwIfAborted();
           loopRan = true;
           // Header messages should not be seen anymore
           if (message.type === 'VaultNamesHeaderMessage') {
@@ -99,7 +108,7 @@ class VaultsSecretsRemove extends DuplexHandler<
               await efs.unlink(message.secretName);
             }
             yield {
-              type: 'success',
+              type: 'SuccessMessage',
               success: true,
             };
           } catch (e) {
@@ -108,10 +117,10 @@ class VaultsSecretsRemove extends DuplexHandler<
               e.code === 'ENOTEMPTY' ||
               e.code === 'EINVAL'
             ) {
-              // EINVAL can be triggered if removing the root of the
-              // vault is attempted.
+              // EINVAL can be triggered if removing the root of the vault is
+              // attempted.
               yield {
-                type: 'error',
+                type: 'ErrorMessage',
                 code: e.code,
                 reason: message.secretName,
               };

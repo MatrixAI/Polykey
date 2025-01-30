@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type { DB } from '@matrixai/db';
 import type {
   ClientRPCRequestParams,
@@ -21,6 +23,9 @@ class VaultsSecretsList extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<SecretIdentifierMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<SecretFilesMessage>, void, void> {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
@@ -31,7 +36,11 @@ class VaultsSecretsList extends ServerHandler<
       );
       const vaultId =
         vaultIdFromName ?? vaultsUtils.decodeVaultId(input.nameOrId);
-      if (vaultId == null) throw new vaultsErrors.ErrorVaultsVaultUndefined();
+      if (vaultId == null) {
+        throw new vaultsErrors.ErrorVaultsVaultUndefined(
+          `Vault "${input.nameOrId}" does not exist`,
+        );
+      }
       return vaultId;
     });
 
@@ -58,6 +67,7 @@ class VaultsSecretsList extends ServerHandler<
           throw e;
         }
         for await (const file of files) {
+          ctx.signal.throwIfAborted();
           const filePath = path.join(input.secretName, file.toString());
           const stat = await fs.promises.stat(filePath);
           const type = stat.isFile() ? 'FILE' : 'DIRECTORY';

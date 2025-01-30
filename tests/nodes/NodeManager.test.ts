@@ -612,7 +612,7 @@ describe(`${NodeManager.name}`, () => {
           },
         );
 
-        await nodeManager.withConnF(nodeId, async (conn) => {
+        await nodeManager.withConnF(nodeId, undefined, async (conn) => {
           expect(conn).toBeInstanceOf(NodeConnection);
         });
       });

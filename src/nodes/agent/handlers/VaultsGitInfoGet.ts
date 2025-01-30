@@ -25,9 +25,9 @@ class VaultsGitInfoGet extends RawHandler<{
 }> {
   public handle = async (
     input: [JSONRPCRequest, ReadableStream<Uint8Array>],
-    _cancel,
-    meta: Record<string, JSONValue> | undefined,
-    _ctx: ContextTimed, // TODO: use
+    _cancel: (reason?: any) => void,
+    meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): Promise<[JSONObject, ReadableStream<Uint8Array>]> => {
     const { db, vaultManager, acl } = this.container;
     const [headerMessage, inputStream] = input;
@@ -91,7 +91,12 @@ class VaultsGitInfoGet extends RawHandler<{
     let handleInfoRequestGen: AsyncGenerator<Buffer>;
     const stream = new ReadableStream({
       start: async () => {
-        handleInfoRequestGen = vaultManager.handleInfoRequest(data.vaultId);
+        // Automatically handle the transaction lifetime
+        handleInfoRequestGen = vaultManager.handleInfoRequest(
+          data.vaultId,
+          undefined,
+          ctx,
+        );
       },
       pull: async (controller) => {
         const result = await handleInfoRequestGen.next();

@@ -1149,7 +1149,7 @@ class GestaltGraph {
         return;
       }
       default:
-        never(`type must be either "node" or "identity" got "${type}"`);
+        never(`type must be either "node" or "identity", got "${type}"`);
     }
   }
 

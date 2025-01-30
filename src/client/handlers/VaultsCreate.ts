@@ -1,4 +1,6 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -19,17 +21,16 @@ class VaultsCreate extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<VaultNameMessage>,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue> | undefined,
+    ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<VaultIdMessage>> => {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
-
     const vaultId = await db.withTransactionF((tran) =>
-      vaultManager.createVault(input.vaultName, tran),
+      vaultManager.createVault(input.vaultName, tran, ctx),
     );
-
-    return {
-      vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId),
-    };
+    return { vaultIdEncoded: vaultsUtils.encodeVaultId(vaultId) };
   };
 }
 

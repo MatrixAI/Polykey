@@ -17,11 +17,9 @@ class KeysKeyPairRenew extends UnaryHandler<
     input: ClientRPCRequestParams<PasswordMessage>,
   ): Promise<ClientRPCResponseResult> => {
     const { certManager }: { certManager: CertManager } = this.container;
-
     // Other domains will be updated accordingly via the `EventBus` so we
     // only need to modify the KeyManager
     await certManager.renewCertWithNewKeyPair(input.password);
-
     return {};
   };
 }

@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -15,24 +17,21 @@ class NodesGetAll extends ServerHandler<
   ClientRPCResponseResult<NodesGetMessage>
 > {
   public handle = async function* (
-    _input,
-    _cancel,
-    _meta,
-    ctx,
+    _input: ClientRPCRequestParams,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<NodesGetMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { nodeGraph } = this.container;
     for await (const [index, bucket] of nodeGraph.getBuckets()) {
       for (const [id, nodeContact] of bucket) {
         const encodedId = nodesUtils.encodeNodeId(id);
         // For every node in every bucket, add it to our message
-        if (ctx.signal.aborted) {
-          throw ctx.signal.reason;
-        }
+        ctx.signal.throwIfAborted();
         yield {
           bucketIndex: index,
           nodeIdEncoded: encodedId,
-          nodeContact,
+          nodeContact: nodeContact,
         };
       }
     }

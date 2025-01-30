@@ -72,8 +72,7 @@ function validateSync(
         e.value = value;
         e.context = context;
         errors.push(e);
-        // If lazy mode, short circuit evaluation
-        // And throw the error up
+        // If lazy mode, short circuit evaluation and throw the error up
         if (options.mode === 'lazy') {
           throw e;
         }

@@ -1,3 +1,5 @@
+import type { JSONValue } from '@matrixai/rpc';
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -6,12 +8,11 @@ import type {
 } from '../types';
 import type { NodeId } from '../../ids';
 import type NodeManager from '../../nodes/NodeManager';
-import type { ContextTimed } from '@matrixai/contexts';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import * as nodesErrors from '../../nodes/errors';
 import { validateSync } from '../../validation';
 import { matchSync } from '../../utils';
+import * as ids from '../../ids';
+import * as nodesErrors from '../../nodes/errors';
 
 class NodesFind extends UnaryHandler<
   {
@@ -22,8 +23,8 @@ class NodesFind extends UnaryHandler<
 > {
   public handle = async (
     input: ClientRPCRequestParams<NodeIdMessage>,
-    _cancel,
-    _meta,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
     ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<NodesFindMessage>> => {
     const { nodeManager }: { nodeManager: NodeManager } = this.container;
@@ -42,12 +43,7 @@ class NodesFind extends UnaryHandler<
         nodeId: input.nodeIdEncoded,
       },
     );
-    const result = await nodeManager.findNode(
-      {
-        nodeId: nodeId,
-      },
-      ctx,
-    );
+    const result = await nodeManager.findNode({ nodeId: nodeId }, ctx);
     if (result == null) {
       throw new nodesErrors.ErrorNodeGraphNodeIdNotFound();
     }

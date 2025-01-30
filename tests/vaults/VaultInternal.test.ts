@@ -1,20 +1,21 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { VaultId } from '@/vaults/types';
 import type { Vault } from '@/vaults/Vault';
-import type KeyRing from '@/keys/KeyRing';
 import type { LevelPath } from '@matrixai/db';
 import type { Key } from '@/keys/types';
+import type KeyRing from '@/keys/KeyRing';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import git from 'isomorphic-git';
+import { EncryptedFS } from 'encryptedfs';
 import { DB } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { EncryptedFS } from 'encryptedfs';
-import git from 'isomorphic-git';
 import { tagLast } from '@/vaults/types';
+import { sleep } from '@/utils';
 import VaultInternal from '@/vaults/VaultInternal';
 import * as vaultsErrors from '@/vaults/errors';
-import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as utils from '@/utils';
@@ -639,10 +640,16 @@ describe('VaultInternal', () => {
     await expect(vault.version(newRef2)).rejects.toThrow();
   });
   test('commit added if mutation in writeG', async () => {
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     const commit = (await vault.log())[0].commitId;
-    const gen = vault.writeG(async function* (efs): AsyncGenerator {
-      yield await efs.writeFile('secret-1', 'secret-content');
-    });
+    const gen = vault.writeG(
+      async function* (efs): AsyncGenerator {
+        yield await efs.writeFile('secret-1', 'secret-content');
+      },
+      undefined,
+      ctx,
+    );
     for await (const _ of gen) {
       // Do nothing
     }
@@ -651,8 +658,14 @@ describe('VaultInternal', () => {
     expect(log[0].commitId).not.toStrictEqual(commit);
   });
   test('no commit added if no mutation in writeG', async () => {
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     const commit = (await vault.log())[0].commitId;
-    const gen = vault.writeG(async function* (_efs): AsyncGenerator {});
+    const gen = vault.writeG(
+      async function* (_efs): AsyncGenerator {},
+      undefined,
+      ctx,
+    );
     for await (const _ of gen) {
       // Do nothing
     }
@@ -662,13 +675,18 @@ describe('VaultInternal', () => {
     expect(log[0].commitId).toStrictEqual(commit);
   });
   test('no mutation to vault when part of a commit operation fails in writeG', async () => {
-    const gen = vault.writeG(async function* (efs): AsyncGenerator {
-      yield await efs.writeFile(secret1.name, secret1.content);
-      yield await efs.rename('notValid', 'randomName'); // Throws
-    });
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const gen = vault.writeG(
+      async function* (efs): AsyncGenerator {
+        yield await efs.writeFile(secret1.name, secret1.content);
+        yield await efs.rename('notValid', 'randomName'); // Throws
+      },
+      undefined,
+      ctx,
+    );
     // Failing commit operation
     await expect(() => consumeGenerator(gen)).rejects.toThrow();
-
     // Make sure secret1 wasn't written when the above commit failed
     await vault.readF(async (efs) => {
       expect(await efs.readdir('.')).not.toContain(secret1.name);
@@ -734,8 +752,10 @@ describe('VaultInternal', () => {
       for (const logElement of log) {
         refs.push(await quickCommit(logElement.commitId, `secret-${num++}`));
       }
+      const abortController = new AbortController();
+      const ctx = { signal: abortController.signal } as ContextTimed;
       // @ts-ignore: protected method
-      await vault.garbageCollectGitObjectsGlobal();
+      await vault.garbageCollectGitObjectsGlobal(ctx);
 
       for (const ref of refs) {
         await expect(
@@ -778,16 +798,22 @@ describe('VaultInternal', () => {
     expect(finished).toBe(true);
   });
   test('writeG respects read and write locking', async () => {
-    const lock = vault.getLock();
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     // Hold a write lock
+    const lock = vault.getLock();
     const [releaseWrite] = await lock.write()();
 
     let finished = false;
-    const writeGen = vault.writeG(async function* () {
-      yield;
-      finished = true;
-      yield;
-    });
+    const writeGen = vault.writeG(
+      async function* () {
+        yield;
+        finished = true;
+        yield;
+      },
+      undefined,
+      ctx,
+    );
     const runP = consumeGenerator(writeGen);
     await sleep(waitDelay);
     expect(finished).toBe(false);
@@ -797,11 +823,15 @@ describe('VaultInternal', () => {
 
     const [releaseRead] = await lock.read()();
     finished = false;
-    const writeGen2 = vault.writeG(async function* () {
-      yield;
-      finished = true;
-      yield;
-    });
+    const writeGen2 = vault.writeG(
+      async function* () {
+        yield;
+        finished = true;
+        yield;
+      },
+      undefined,
+      ctx,
+    );
     const runP2 = consumeGenerator(writeGen2);
     await sleep(waitDelay);
     await releaseRead();
@@ -917,7 +947,9 @@ describe('VaultInternal', () => {
     await releaseRead();
   });
   test('can acquire a write resource', async () => {
-    const acquireWrite = vault.acquireWrite();
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
+    const acquireWrite = vault.acquireWrite(undefined, ctx);
     await withF([acquireWrite], async ([efs]) => {
       await efs.writeFile(secret1.name, secret1.content);
     });
@@ -927,10 +959,12 @@ describe('VaultInternal', () => {
     });
   });
   test('acquiring write resource respects write locking', async () => {
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     const lock = vault.getLock();
     const [releaseWrite] = await lock.write()();
     let finished = false;
-    const writeP = withF([vault.acquireWrite()], async () => {
+    const writeP = withF([vault.acquireWrite(undefined, ctx)], async () => {
       finished = true;
     });
     await sleep(waitDelay);
@@ -940,10 +974,12 @@ describe('VaultInternal', () => {
     expect(finished).toBe(true);
   });
   test('acquiring write resource respects read locking', async () => {
+    const abortController = new AbortController();
+    const ctx = { signal: abortController.signal } as ContextTimed;
     const lock = vault.getLock();
     const [releaseRead] = await lock.read()();
     let finished = false;
-    const writeP = withF([vault.acquireWrite()], async () => {
+    const writeP = withF([vault.acquireWrite(undefined, ctx)], async () => {
       finished = true;
     });
     await sleep(waitDelay);

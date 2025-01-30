@@ -18,17 +18,15 @@ class NodesClaimNetworkVerify extends UnaryHandler<
 > {
   public handle = async (
     input: AgentRPCRequestParams<AgentClaimMessage>,
-    _cancel,
+    _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
   ): Promise<AgentRPCResponseResult<{ success: true }>> => {
+    const { nodeManager }: { nodeManager: NodeManager } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
-    return this.container.nodeManager.handleVerifyClaimNetwork(
-      requestingNodeId,
-      input,
-    );
+    return nodeManager.handleVerifyClaimNetwork(requestingNodeId, input);
   };
 }
 

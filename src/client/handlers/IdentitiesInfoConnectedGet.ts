@@ -1,3 +1,5 @@
+import type { ContextTimed } from '@matrixai/contexts';
+import type { JSONValue } from '@matrixai/rpc';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
@@ -22,11 +24,10 @@ class IdentitiesInfoConnectedGet extends ServerHandler<
 > {
   public handle = async function* (
     input: ClientRPCRequestParams<ProviderSearchMessage>,
-    _cancel,
-    _meta,
-    ctx,
+    _cancel: (reason?: any) => void,
+    _meta: Record<string, JSONValue>,
+    ctx: ContextTimed,
   ): AsyncGenerator<ClientRPCResponseResult<IdentityInfoMessage>> {
-    if (ctx.signal.aborted) throw ctx.signal.reason;
     const { identitiesManager }: { identitiesManager: IdentitiesManager } =
       this.container;
     const {
@@ -71,6 +72,7 @@ class IdentitiesInfoConnectedGet extends ServerHandler<
     }
     const identities: Array<AsyncGenerator<IdentityData>> = [];
     for (const providerId of providerIds) {
+      ctx.signal.throwIfAborted();
       // Get provider from id
       const provider = identitiesManager.getProvider(providerId);
       if (provider === undefined) {
@@ -94,7 +96,7 @@ class IdentitiesInfoConnectedGet extends ServerHandler<
     let count = 0;
     for (const gen of identities) {
       for await (const identity of gen) {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
+        ctx.signal.throwIfAborted();
         if (input.limit !== undefined && count >= input.limit) break;
         yield {
           providerId: identity.providerId,
