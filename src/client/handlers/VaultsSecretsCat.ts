@@ -13,9 +13,6 @@ import * as vaultsUtils from '../../vaults/utils';
 import * as vaultsErrors from '../../vaults/errors';
 import * as vaultOps from '../../vaults/VaultOps';
 
-// This method takes in multiple secret paths, and either returns the file
-// contents, or an `ErrorMessage` signifying the error. To read a single secret
-// instead, refer to `VaultsSecretsGet`.
 class VaultsSecretsCat extends DuplexHandler<
   {
     db: DB;
