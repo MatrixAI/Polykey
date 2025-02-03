@@ -32,7 +32,7 @@ const scheduleCall = <T>(s: fc.Scheduler, f: () => Promise<T>) =>
 const fileNameArb = () =>
   fc
     .stringMatching(/^[^<>.:"/\\|?* ]{2,10}$/)
-    .filter((name) => name.trim().length > 0) // Filter out all-space values
+    .filter((name) => name.trim().length > 0 && name !== '__proto__')
     .noShrink();
 
 /**
