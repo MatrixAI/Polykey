@@ -8,6 +8,7 @@ import type NodeManager from '../../../nodes/NodeManager';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type NotificationsManager from '../../../notifications/NotificationsManager';
 import type VaultManager from '../../../vaults/VaultManager';
+import NodesAuthenticateConnection from './NodesAuthenticateConnection';
 import NodesClaimsGet from './NodesClaimsGet';
 import NodesClosestActiveConnectionsGet from './NodesClosestActiveConnectionsGet';
 import NodesClosestLocalNodesGet from './NodesClosestLocalNodesGet';
@@ -36,6 +37,7 @@ const manifestServer = (container: {
   vaultManager: VaultManager;
 }) => {
   return {
+    nodesAuthenticateConnection: new NodesAuthenticateConnection(container),
     nodesClaimsGet: new NodesClaimsGet(container),
     nodesClosestActiveConnectionsGet: new NodesClosestActiveConnectionsGet(
       container,
@@ -57,6 +59,7 @@ type AgentServerManifest = ReturnType<typeof manifestServer>;
 export default manifestServer;
 
 export {
+  NodesAuthenticateConnection,
   NodesClaimsGet,
   NodesClosestActiveConnectionsGet,
   NodesClosestLocalNodesGet,

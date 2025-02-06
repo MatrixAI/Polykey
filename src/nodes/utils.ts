@@ -13,6 +13,11 @@ import type {
   NodeId,
   SeedNodes,
 } from './types';
+import type {
+  NodesAuthenticateConnectionMessage,
+  NodesAuthenticateConnectionMessageBasicPublic,
+  NodesAuthenticateConnectionMessageNone,
+} from './agent/types';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -365,6 +370,9 @@ const reasonToCode = (_type: 'read' | 'write', reason?: any): number => {
   if (reason instanceof rpcErrors.ErrorRPCRemote) return 5;
   if (reason instanceof rpcErrors.ErrorRPCStreamEnded) return 6;
   if (reason instanceof rpcErrors.ErrorRPCTimedOut) return 7;
+  if (reason instanceof nodesErrors.ErrorNodeConnectionManagerRPCDenied) {
+    return 8;
+  }
   return 0;
 };
 
@@ -390,6 +398,8 @@ const codeToReason = (_type: 'read' | 'write', code: number): any => {
       return new rpcErrors.ErrorRPCStreamEnded();
     case 7:
       return new rpcErrors.ErrorRPCTimedOut();
+    case 8:
+      return new nodesErrors.ErrorNodeConnectionManagerRPCDenied();
     // Base cases
     case 0:
       return new nodesErrors.ErrorNodeConnectionTransportGenericError();
@@ -772,6 +782,51 @@ async function* collectNodeContacts(
   if (nodeId != null) yield [nodeId, nodeContact];
 }
 
+// Authentication utils
+async function nodesAuthenticateConnectionForwardDefault(): Promise<NodesAuthenticateConnectionMessageNone> {
+  return {
+    type: 'NodesAuthenticateConnectionMessageNone',
+  };
+}
+
+async function nodesAuthenticateConnectionReverseDefault(): Promise<void> {
+  return;
+}
+
+function nodesAuthenticateConnectionForwardBasicPublicFactory(
+  networkId: string,
+) {
+  return async (): Promise<NodesAuthenticateConnectionMessageBasicPublic> => {
+    return {
+      type: 'NodesAuthenticateConnectionMessageBasicPublic',
+      networkId,
+    };
+  };
+}
+
+function nodesAuthenticateConnectionReverseBasicPublicFactory(
+  networkId: string,
+) {
+  return async (message: NodesAuthenticateConnectionMessage): Promise<void> => {
+    if (message.type !== 'NodesAuthenticateConnectionMessageBasicPublic') {
+      throw new nodesErrors.ErrorNodeAuthenticationFailed(
+        'must be basic message',
+      );
+    }
+    if (message.networkId !== networkId) {
+      throw new nodesErrors.ErrorNodeAuthenticationFailed(
+        'network must be "${networkId}"',
+      );
+    }
+  };
+}
+
+async function nodesAuthenticateConnectionReverseDeny() {
+  throw new nodesErrors.ErrorNodeAuthenticationFailed(
+    'All connections are being denied',
+  );
+}
+
 export {
   sepBuffer,
   nodeContactAddress,
@@ -806,6 +861,11 @@ export {
   quicClientCrypto,
   quicServerCrypto,
   collectNodeContacts,
+  nodesAuthenticateConnectionForwardDefault,
+  nodesAuthenticateConnectionReverseDefault,
+  nodesAuthenticateConnectionForwardBasicPublicFactory,
+  nodesAuthenticateConnectionReverseBasicPublicFactory,
+  nodesAuthenticateConnectionReverseDeny,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids';

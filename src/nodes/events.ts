@@ -1,5 +1,6 @@
 import type { QUICStream } from '@matrixai/quic';
 import type { ConnectionData } from '../network/types';
+import type { NodeId } from '../ids/types';
 import EventPolykey from '../EventPolykey';
 
 abstract class EventNode<T> extends EventPolykey<T> {}
@@ -35,6 +36,10 @@ class EventNodeConnectionManagerConnection extends EventNodeConnectionManager<Co
 class EventNodeConnectionManagerConnectionForward extends EventNodeConnectionManagerConnection {}
 
 class EventNodeConnectionManagerConnectionReverse extends EventNodeConnectionManagerConnection {}
+
+class EventNodeConnectionManagerConnectionAuthenticated extends EventNodeConnectionManagerConnection {}
+
+class EventNodeConnectionManagerConnectionDestroyed extends EventNodeConnectionManager<NodeId> {}
 
 abstract class EventNodeGraph<T> extends EventPolykey<T> {}
 
@@ -78,6 +83,8 @@ export {
   EventNodeConnectionManagerConnection,
   EventNodeConnectionManagerConnectionForward,
   EventNodeConnectionManagerConnectionReverse,
+  EventNodeConnectionManagerConnectionAuthenticated,
+  EventNodeConnectionManagerConnectionDestroyed,
   EventNodeGraph,
   EventNodeGraphStart,
   EventNodeGraphStarted,

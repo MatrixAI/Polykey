@@ -35,6 +35,34 @@ class ErrorNodeManagerSyncNodeGraphFailed<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorNodeManagerAuthenticationCallbackNotProvided<
+  T,
+> extends ErrorNodeManager<T> {
+  static description = 'Authentication callback was not provided';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeManagerAuthenticationFailed<T> extends ErrorNodeManager<T> {
+  static description =
+    'Node connection failed to authenticate, authentication message or token was not valid';
+  exitCode = sysexits.NOPERM;
+}
+
+class ErrorNodeManagerAuthenticationFailedForward<T> extends ErrorNodes<T> {
+  static description = 'Failed to complete forward authentication';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeManagerAuthenticationFailedReverse<T> extends ErrorNodes<T> {
+  static description = 'Failed to complete reverse authentication';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeManagerAuthenticatonTimedOut<T> extends ErrorNodes<T> {
+  static description = 'Failed to complete authentication before timing out';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
 class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
@@ -200,6 +228,13 @@ class ErrorNodeConnectionManagerSignalFailed<
   exitCode = sysexits.TEMPFAIL;
 }
 
+class ErrorNodeConnectionManagerRPCDenied<
+  T,
+> extends ErrorNodeConnectionManager<T> {
+  static description = 'RPC call was denied due to being unauthenticated';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodePingFailed<T> extends ErrorNodes<T> {
   static description =
     'Failed to ping the node when attempting to authenticate';
@@ -216,6 +251,11 @@ class ErrorNodeLookupNotFound<T> extends ErrorNodes<T> {
   exitCode = sysexits.NOHOST;
 }
 
+class ErrorNodeAuthenticationFailed<T> extends ErrorNodes<T> {
+  static description = 'Node failed to authenticate';
+  exitCode = sysexits.NOPERM;
+}
+
 export {
   ErrorNodes,
   ErrorNodeManager,
@@ -225,6 +265,11 @@ export {
   ErrorNodeManagerFindNodeFailed,
   ErrorNodeManagerResolveNodeFailed,
   ErrorNodeManagerSyncNodeGraphFailed,
+  ErrorNodeManagerAuthenticationCallbackNotProvided,
+  ErrorNodeManagerAuthenticationFailed,
+  ErrorNodeManagerAuthenticationFailedForward,
+  ErrorNodeManagerAuthenticationFailedReverse,
+  ErrorNodeManagerAuthenticatonTimedOut,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
@@ -254,7 +299,9 @@ export {
   ErrorNodeConnectionManagerConnectionNotFound,
   ErrorNodeConnectionManagerRequestRateExceeded,
   ErrorNodeConnectionManagerSignalFailed,
+  ErrorNodeConnectionManagerRPCDenied,
   ErrorNodePingFailed,
   ErrorNodePermissionDenied,
   ErrorNodeLookupNotFound,
+  ErrorNodeAuthenticationFailed,
 };

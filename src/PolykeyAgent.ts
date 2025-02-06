@@ -386,6 +386,14 @@ class PolykeyAgent {
           optionsDefaulted.nodes.connectionInitialMaxStreamsBidi,
         rpcParserBufferSize: optionsDefaulted.nodes.rpcParserBufferSize,
         rpcCallTimeoutTime: optionsDefaulted.nodes.rpcCallTimeoutTime,
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            optionsDefaulted.network,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            optionsDefaulted.network,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
       });
       nodeManager = new NodeManager({

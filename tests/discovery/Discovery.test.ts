@@ -23,6 +23,7 @@ import IdentitiesManager from '@/identities/IdentitiesManager';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import KeyRing from '@/keys/KeyRing';
 import ACL from '@/acl/ACL';
 import Sigchain from '@/sigchain/Sigchain';
@@ -36,6 +37,7 @@ import * as testNodesUtils from '../nodes/utils';
 import TestProvider from '../identities/TestProvider';
 import 'ix/add/asynciterable-operators/toarray';
 import { createTLSConfig } from '../utils/tls';
+import * as testsUtils from '../utils';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -168,6 +170,14 @@ describe('Discovery', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -183,13 +193,18 @@ describe('Discovery', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
-      agentService: {} as AgentServerManifest,
+      agentService: {
+        nodesAuthenticateConnection: new NodesAuthenticateConnection({
+          nodeConnectionManager: nodeConnectionManager,
+        }),
+      } as AgentServerManifest,
     });
     // Set up other gestalt
     nodeA = await PolykeyAgent.createPolykeyAgent({
       password: password,
       options: {
         nodePath: path.join(dataDir, 'nodeA'),
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -204,6 +219,7 @@ describe('Discovery', () => {
       password: password,
       options: {
         nodePath: path.join(dataDir, 'nodeB'),
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {

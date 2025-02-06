@@ -6,6 +6,7 @@
 import type { Hostname } from '../src/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 // Import { trackTimers } from './utils';
+import * as testsUtils from './utils';
 import PolykeyAgent from '../src/PolykeyAgent';
 import { sleep } from '../src/utils';
 import { encodeNodeId } from '../src/ids';
@@ -25,6 +26,7 @@ async function main() {
     password,
     options: {
       nodePath,
+      network: testsUtils.testNetworkName,
       seedNodes,
     },
     fresh: true,

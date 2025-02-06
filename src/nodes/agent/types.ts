@@ -8,7 +8,7 @@ import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '../../network/types';
-import type { NodeContact } from '../../nodes/types';
+import type { NetworkId, NodeContact } from '../../nodes/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;
@@ -77,6 +77,23 @@ type VaultsScanMessage = VaultInfo & {
   vaultPermissions: Array<VaultAction>;
 };
 
+type SuccessMessage = {
+  type: 'success';
+  success: boolean;
+};
+
+type NodesAuthenticateConnectionMessage =
+  | NodesAuthenticateConnectionMessageBasicPublic
+  | NodesAuthenticateConnectionMessageNone;
+
+type NodesAuthenticateConnectionMessageBasicPublic = {
+  type: 'NodesAuthenticateConnectionMessageBasicPublic';
+  networkId: NetworkId;
+};
+type NodesAuthenticateConnectionMessageNone = {
+  type: 'NodesAuthenticateConnectionMessageNone';
+};
+
 export type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -91,4 +108,8 @@ export type {
   SignedNotificationEncoded,
   VaultInfo,
   VaultsScanMessage,
+  SuccessMessage,
+  NodesAuthenticateConnectionMessage,
+  NodesAuthenticateConnectionMessageBasicPublic,
+  NodesAuthenticateConnectionMessageNone,
 };

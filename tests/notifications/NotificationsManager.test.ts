@@ -20,6 +20,7 @@ import KeyRing from '@/keys/KeyRing';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import NodeGraph from '@/nodes/NodeGraph';
 import NodeManager from '@/nodes/NodeManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import NotificationsManager from '@/notifications/NotificationsManager';
 import * as nodesErrors from '@/nodes/errors';
 import * as notificationsErrors from '@/notifications/errors';
@@ -29,7 +30,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
-import * as testUtils from '../utils';
+import * as testsUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 import 'ix/add/asynciterable-operators/toarray';
 
@@ -120,6 +121,14 @@ describe('NotificationsManager', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger,
     });
     nodeManager = new NodeManager({
@@ -135,13 +144,18 @@ describe('NotificationsManager', () => {
     await nodeManager.start();
     await nodeConnectionManager.start({
       host: localhost as Host,
-      agentService: {} as AgentServerManifest,
+      agentService: {
+        nodesAuthenticateConnection: new NodesAuthenticateConnection({
+          nodeConnectionManager: nodeConnectionManager,
+        }),
+      } as AgentServerManifest,
     });
     // Set up node for receiving notifications
     receiver = await PolykeyAgent.createPolykeyAgent({
       password: password,
       options: {
         nodePath: path.join(dataDir, 'receiver'),
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -407,7 +421,7 @@ describe('NotificationsManager', () => {
       });
     await taskManager.startProcessing();
     const { sendP } = await notificationsManager.sendNotification({
-      nodeId: testUtils.generateRandomNodeId(),
+      nodeId: testsUtils.generateRandomNodeId(),
       data: {
         type: 'General',
         message: 'msg',

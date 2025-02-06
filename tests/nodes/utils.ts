@@ -298,6 +298,14 @@ async function nodeConnectionManagerFactory({
     connectionHolePunchIntervalTime,
     rpcParserBufferSize,
     rpcCallTimeoutTime,
+    authenticateNetworkForwardCallback:
+      nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+        testsUtils.testNetworkName,
+      ),
+    authenticateNetworkReverseCallback:
+      nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+        testsUtils.testNetworkName,
+      ),
   });
 
   await nodeConnectionManager.start({

@@ -3,6 +3,14 @@ import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type nodeGraph from '@/nodes/NodeGraph';
 import type { NCMState } from './utils';
 import type { NodeAddress, NodeContactAddressData } from '@/nodes/types';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  NodesAuthenticateConnectionMessage,
+  SuccessMessage,
+} from '@/nodes/agent/types';
+import type { JSONValue, ObjectEmpty } from '@';
+import type { ContextTimed } from '@matrixai/contexts';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -10,6 +18,8 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Semaphore } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
+import { UnaryHandler } from '@matrixai/rpc';
+import ACL from '@/acl/ACL';
 import NodeGraph from '@/nodes/NodeGraph';
 import {
   NodesClaimsGet,
@@ -18,9 +28,12 @@ import {
 } from '@/nodes/agent/handlers';
 import * as keysUtils from '@/keys/utils';
 import * as nodesErrors from '@/nodes/errors';
+import * as nodesEvents from '@/nodes/events';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodesCrossSignClaim from '@/nodes/agent/handlers/NodesCrossSignClaim';
 import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
 import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import * as nodesUtils from '@/nodes/utils';
 import { TaskManager } from '@/tasks';
 import { NodeConnection, NodeManager } from '@/nodes';
@@ -31,9 +44,25 @@ import NodeConnectionQueue from '@/nodes/NodeConnectionQueue';
 import * as utils from '@/utils';
 import { generateNodeIdForBucket } from './utils';
 import * as nodesTestUtils from './utils';
-import ACL from '../../src/acl/ACL';
 import * as testsUtils from '../utils';
-import NodesCrossSignClaim from '../../src/nodes/agent/handlers/NodesCrossSignClaim';
+
+class DummyNodesAuthenticateConnection extends UnaryHandler<
+  ObjectEmpty,
+  AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
+  AgentRPCResponseResult<SuccessMessage>
+> {
+  public handle = async (
+    _input: AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
+    _cancel,
+    _meta: Record<string, JSONValue> | undefined,
+    _ctx: ContextTimed,
+  ): Promise<AgentRPCResponseResult<SuccessMessage>> => {
+    return {
+      type: 'success',
+      success: true,
+    };
+  };
+}
 
 describe(`${NodeManager.name}`, () => {
   const logger = new Logger(`${NodeManager.name} test`, LogLevel.WARN, [
@@ -44,6 +73,9 @@ describe(`${NodeManager.name}`, () => {
   const password = 'password';
   const localHost = '127.0.0.1' as Host;
   const timeoutTime = 300;
+  const dummyAgentService = {
+    nodesAuthenticateConnection: new DummyNodesAuthenticateConnection({}),
+  } as AgentServerManifest;
 
   let dataDir: string;
 
@@ -163,11 +195,19 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
       await nodeConnectionManager.start({
-        agentService: {} as AgentServerManifest,
+        agentService: dummyAgentService,
         host: localHost,
       });
       taskManager = await TaskManager.createTaskManager({
@@ -443,18 +483,21 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
-        logger: logger.getChild(NodeConnectionManager.name),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        logger: logger.getChild(`${NodeConnectionManager.name}Local`),
         connectionConnectTimeoutTime: timeoutTime,
-      });
-      await nodeConnectionManager.start({
-        agentService: {} as AgentServerManifest,
-        host: localHost,
       });
       taskManager = await TaskManager.createTaskManager({
         db,
         logger: logger.getChild(TaskManager.name),
       });
-
       nodeManager = new NodeManager({
         db,
         keyRing,
@@ -466,6 +509,14 @@ describe(`${NodeManager.name}`, () => {
         logger: logger.getChild(NodeManager.name),
       });
       await nodeManager.start();
+      await nodeConnectionManager.start({
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManager,
+          }),
+        } as AgentServerManifest,
+        host: localHost,
+      });
 
       basePathPeer = path.join(dataDir, 'peer');
       const keysPathPeer = path.join(basePathPeer, 'keys');
@@ -504,7 +555,15 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
-        logger: logger.getChild(NodeConnectionManager.name),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
         connectionConnectTimeoutTime: timeoutTime,
       });
       taskManagerPeer = await TaskManager.createTaskManager({
@@ -531,6 +590,9 @@ describe(`${NodeManager.name}`, () => {
           nodesCrossSignClaim: new NodesCrossSignClaim({
             nodeManager: nodeManagerPeer,
             acl: aclPeer,
+          }),
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManagerPeer,
           }),
         } as AgentServerManifest,
         host: localHost,
@@ -834,16 +896,38 @@ describe(`${NodeManager.name}`, () => {
       expect(host).toBe(localHost);
       expect(port).toBe(nodeConnectionManagerPeer.port);
     });
-    test('adds node to NodeGraph after successful connection', async () => {
+    test('adds node to NodeGraph after successful  and authentication', async () => {
       await nodeConnectionManager.createConnection(
         [keyRingPeer.getNodeId()],
         localHost,
         nodeConnectionManagerPeer.port,
       );
       // Wait for handler to add nodes to the graph
-      await utils.sleep(100);
+      await testsUtils.promFromEvent(
+        nodeConnectionManager,
+        nodesEvents.EventNodeConnectionManagerConnectionAuthenticated,
+      );
+      // Give time for the node to be added
+      await utils.sleep(500);
       expect(await nodeGraph.nodesTotal()).toBe(1);
       expect(await nodeGraphPeer.nodesTotal()).toBe(1);
+    });
+    test('failure to authenticate will not add node to NodeGraph', async () => {
+      nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+      nodeConnectionManagerPeer.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+      await nodeConnectionManager.createConnection(
+        [keyRingPeer.getNodeId()],
+        localHost,
+        nodeConnectionManagerPeer.port,
+      );
+      // Give time for the node to be added
+      await utils.sleep(1000);
+      expect(await nodeGraph.nodesTotal()).toBe(0);
+      expect(await nodeGraphPeer.nodesTotal()).toBe(0);
     });
   });
   describe('with 1 peer and mdns', () => {
@@ -907,11 +991,19 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
       await nodeConnectionManager.start({
-        agentService: {} as AgentServerManifest,
+        agentService: dummyAgentService,
         host: localHost,
       });
       taskManager = await TaskManager.createTaskManager({
@@ -972,11 +1064,19 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
       await nodeConnectionManagerPeer.start({
-        agentService: {} as AgentServerManifest,
+        agentService: dummyAgentService,
         host: localHost,
       });
       taskManagerPeer = await TaskManager.createTaskManager({
@@ -1154,11 +1254,23 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
       await nodeConnectionManager.start({
-        agentService: {} as AgentServerManifest,
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManager,
+          }),
+        } as AgentServerManifest,
         host: localHost,
       });
       taskManager = await TaskManager.createTaskManager({
@@ -1224,6 +1336,9 @@ describe(`${NodeManager.name}`, () => {
                   nodesClosestLocalNodesGet: new NodesClosestLocalNodesGet({
                     db,
                     nodeGraph,
+                  }),
+                  nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                    nodeConnectionManager: nodeConnectionManager,
                   }),
                 }) as AgentServerManifest,
             },

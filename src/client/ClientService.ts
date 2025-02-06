@@ -34,8 +34,9 @@ class ClientService {
     const conn = evt.detail;
     const streamHandler = (evt: wsEvents.EventWebSocketConnectionStream) => {
       const stream = evt.detail;
+      // If the RPCServer is stopping or stopped then we want to reject new streams outright
       if (!this.rpcServer[running] || this.rpcServer[status] === 'stopping') {
-        stream.cancel(Error('TMP RPCServer not running'));
+        stream.cancel(new errors.ErrorClientServiceNotRunning());
         return;
       }
       this.rpcServer.handleStream(stream);

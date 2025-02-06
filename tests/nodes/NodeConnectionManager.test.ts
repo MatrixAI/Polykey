@@ -3,19 +3,48 @@ import type NodeConnection from '@/nodes/NodeConnection';
 import type { AgentServerManifest } from '@/nodes/agent/handlers';
 import type { KeyRing } from '@/keys';
 import type { NCMState } from './utils';
+import type { JSONValue, ObjectEmpty } from '@';
+import type {
+  AgentRPCRequestParams,
+  AgentRPCResponseResult,
+  NodesAuthenticateConnectionMessage,
+  SuccessMessage,
+} from '@/nodes/agent/types';
+import type { ContextTimed } from '@matrixai/contexts';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { destroyed } from '@matrixai/async-init';
+import { UnaryHandler } from '@matrixai/rpc';
 import * as keysUtils from '@/keys/utils';
 import * as nodesEvents from '@/nodes/events';
 import * as nodesErrors from '@/nodes/errors';
 import NodeConnectionManager from '@/nodes/NodeConnectionManager';
+import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
 import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
 import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
 import * as utils from '@/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as nodesTestUtils from './utils';
 import * as keysTestUtils from '../keys/utils';
 import * as testsUtils from '../utils';
+
+class DummyNodesAuthenticateConnection extends UnaryHandler<
+  ObjectEmpty,
+  AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
+  AgentRPCResponseResult<SuccessMessage>
+> {
+  public handle = async (
+    _input: AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
+    _cancel,
+    _meta: Record<string, JSONValue> | undefined,
+    _ctx: ContextTimed,
+  ): Promise<AgentRPCResponseResult<SuccessMessage>> => {
+    return {
+      type: 'success',
+      success: true,
+    };
+  };
+}
 
 describe(`${NodeConnectionManager.name}`, () => {
   const logger = new Logger(
@@ -91,11 +120,17 @@ describe(`${NodeConnectionManager.name}`, () => {
         },
         startOptions: {
           host: localHost,
-          agentService: () => dummyManifest,
+          agentService: (nodeConnectionManager) => {
+            return {
+              nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                nodeConnectionManager: nodeConnectionManager,
+              }),
+              dummyMethod: new DummyNodesAuthenticateConnection({}),
+            } as unknown as AgentServerManifest;
+          },
         },
         logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       });
-
       ncmPeer1 = await nodesTestUtils.nodeConnectionManagerFactory({
         keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
@@ -103,7 +138,14 @@ describe(`${NodeConnectionManager.name}`, () => {
         },
         startOptions: {
           host: localHost,
-          agentService: () => dummyManifest,
+          agentService: (nodeConnectionManager) => {
+            return {
+              nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                nodeConnectionManager: nodeConnectionManager,
+              }),
+              dummyMethod: new DummyNodesAuthenticateConnection({}),
+            } as unknown as AgentServerManifest;
+          },
         },
         logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       });
@@ -281,7 +323,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
       const connectionPeerDestroyed = testsUtils.promFromEvent(
         ncmPeer1.nodeConnectionManager,
-        nodesEvents.EventNodeConnectionDestroyed,
+        nodesEvents.EventNodeConnectionManagerConnectionDestroyed,
       );
 
       await ncmLocal.nodeConnectionManager.createConnection(
@@ -560,7 +602,6 @@ describe(`${NodeConnectionManager.name}`, () => {
         expect(connection.address.port).toBe(
           ncmPeer1.nodeConnectionManager.port,
         );
-        expect(connection.usageCount).toBe(0);
       }
     });
     test('stopping NodeConnectionManager should destroy all connections', async () => {
@@ -645,6 +686,292 @@ describe(`${NodeConnectionManager.name}`, () => {
         ncmLocal.nodeConnectionManager.hasConnection(ncmPeer1.nodeId),
       ).toBeFalse();
     });
+    test('can authenticate a connection', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      // Checking authentication result
+      await ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await ncmPeer1.nodeConnectionManager.withConnF(
+        ncmLocal.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+    });
+    test('forward authenticate fails on local', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        async () => {
+          throw Error('Failure to generate forward authentication message');
+        },
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      // Checking authentication result
+      const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(authenticationAttemptP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+
+      const authenticationAttemptP2 = ncmPeer1.nodeConnectionManager.withConnF(
+        ncmLocal.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(authenticationAttemptP2).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+    });
+    test('peer sends invalid authentication', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardDefault,
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+
+      const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(authenticationAttemptP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+      const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(forwardAuthenticateP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+      const reverseAuthenticateP = ncmPeer1.nodeConnectionManager.withConnF(
+        ncmLocal.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(reverseAuthenticateP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+    });
+    test('reverse authenticate fails on local', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+
+      const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(authenticationAttemptP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+    });
+    test('reverse authenticate fails on peer', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+
+      const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(authenticationAttemptP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+    });
+    test('non whitelisted RPC calls are prevented', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+
+      // Getting connection directly to avoid initiating authentication
+      const connection = ncmLocal.nodeConnectionManager.getConnection(
+        ncmPeer1.nodeId,
+      );
+      expect(connection).toBeDefined();
+      await expect(
+        connection?.connection.rpcClient.unaryCaller('dummyMethod', {}),
+      ).rejects.toThrow(nodesErrors.ErrorNodeConnectionManagerRPCDenied);
+
+      const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(forwardAuthenticateP).toResolve();
+      const reverseAuthenticateP = ncmPeer1.nodeConnectionManager.withConnF(
+        ncmLocal.nodeId,
+        async () => {
+          // Do nothing
+        },
+      );
+      await expect(reverseAuthenticateP).toResolve();
+
+      // Checking RPC again
+      await ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        async (conn) => {
+          await expect(
+            conn.rpcClient.unaryCaller('dummyMethod', {}),
+          ).resolves.toMatchObject({
+            type: 'success',
+            success: true,
+          });
+        },
+      );
+    });
   });
   describe('With 2 peers', () => {
     let ncmLocal: NCMState;
@@ -659,11 +986,16 @@ describe(`${NodeConnectionManager.name}`, () => {
         },
         startOptions: {
           host: localHost,
-          agentService: () => dummyManifest,
+          agentService: (nodeConnectionManager) => {
+            return {
+              nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                nodeConnectionManager: nodeConnectionManager,
+              }),
+            } as unknown as AgentServerManifest;
+          },
         },
         logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       });
-
       ncmPeer1 = await nodesTestUtils.nodeConnectionManagerFactory({
         keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
@@ -673,6 +1005,9 @@ describe(`${NodeConnectionManager.name}`, () => {
           host: localHost,
           agentService: (nodeConnectionManager) =>
             ({
+              nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                nodeConnectionManager: nodeConnectionManager,
+              }),
               nodesConnectionSignalFinal: new NodesConnectionSignalFinal({
                 nodeConnectionManager,
                 logger,
@@ -684,7 +1019,6 @@ describe(`${NodeConnectionManager.name}`, () => {
         },
         logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       });
-
       ncmPeer2 = await nodesTestUtils.nodeConnectionManagerFactory({
         keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
@@ -694,6 +1028,9 @@ describe(`${NodeConnectionManager.name}`, () => {
           host: localHost,
           agentService: (nodeConnectionManager) =>
             ({
+              nodesAuthenticateConnection: new NodesAuthenticateConnection({
+                nodeConnectionManager: nodeConnectionManager,
+              }),
               nodesConnectionSignalFinal: new NodesConnectionSignalFinal({
                 nodeConnectionManager,
                 logger,
