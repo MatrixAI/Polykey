@@ -195,6 +195,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
@@ -414,196 +422,6 @@ describe(`${NodeManager.name}`, () => {
       waitResolveP();
     });
   });
-  describe('with peer NodeManager', () => {
-    let basePathLocal: string;
-    let keyRingLocal: KeyRing;
-    let dbLocal: DB;
-    let aclLocal: ACL;
-    let sigchainLocal: Sigchain;
-    let gestaltGraphLocal: GestaltGraph;
-    let nodeGraphLocal: NodeGraph;
-    let nodeConnectionManagerLocal: NodeConnectionManager;
-    let taskManagerLocal: TaskManager;
-    let nodeManagerLocal: NodeManager;
-
-    let basePathPeer: string;
-    let keyRingPeer: KeyRing;
-    let dbPeer: DB;
-    let aclPeer: ACL;
-    let sigchainPeer: Sigchain;
-    let gestaltGraphPeer: GestaltGraph;
-    let nodeGraphPeer: NodeGraph;
-    let nodeConnectionManagerPeer: NodeConnectionManager;
-    let taskManagerPeer: TaskManager;
-    let nodeManagerPeer: NodeManager;
-
-    beforeEach(async () => {
-      const loggerLocal = logger.getChild('local');
-      basePathLocal = path.join(dataDir, 'local');
-      const keysPathLocal = path.join(basePathLocal, 'keys');
-      keyRingLocal = await KeyRing.createKeyRing({
-        password,
-        keysPath: keysPathLocal,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-        logger: loggerLocal.getChild(KeyRing.name),
-      });
-      const dbPathLocal = path.join(basePathLocal, 'db');
-      dbLocal = await DB.createDB({
-        dbPath: dbPathLocal,
-        logger: loggerLocal.getChild(DB.name),
-      });
-      aclLocal = await ACL.createACL({
-        db: dbLocal,
-        logger: loggerLocal.getChild(ACL.name),
-      });
-      sigchainLocal = await Sigchain.createSigchain({
-        db: dbLocal,
-        keyRing: keyRingLocal,
-        logger: loggerLocal.getChild(Sigchain.name),
-      });
-      gestaltGraphLocal = await GestaltGraph.createGestaltGraph({
-        db: dbLocal,
-        acl: aclLocal,
-        logger: loggerLocal.getChild(GestaltGraph.name),
-      });
-      nodeGraphLocal = await NodeGraph.createNodeGraph({
-        db: dbLocal,
-        keyRing: keyRingLocal,
-        logger: loggerLocal.getChild(NodeGraph.name),
-      });
-      nodeConnectionManagerLocal = new NodeConnectionManager({
-        keyRing: keyRingLocal,
-        tlsConfig: await testsUtils.createTLSConfig(keyRingLocal.keyPair),
-        logger: loggerLocal.getChild(NodeConnectionManager.name),
-        connectionConnectTimeoutTime: timeoutTime,
-      });
-      taskManagerLocal = await TaskManager.createTaskManager({
-        db: dbLocal,
-        logger: loggerLocal.getChild(TaskManager.name),
-      });
-      nodeManagerLocal = new NodeManager({
-        db: dbLocal,
-        keyRing: keyRingLocal,
-        gestaltGraph: gestaltGraphLocal,
-        nodeGraph: nodeGraphLocal,
-        nodeConnectionManager: nodeConnectionManagerLocal,
-        sigchain: sigchainLocal,
-        taskManager: taskManagerLocal,
-        logger: loggerLocal.getChild(NodeManager.name),
-      });
-      await nodeConnectionManagerLocal.start({
-        agentService: {
-          nodesAuthenticateConnection: new NodesAuthenticateConnection({
-            nodeConnectionManager: nodeConnectionManagerLocal,
-          }),
-        } as AgentServerManifest,
-        host: localHost,
-      });
-      await nodeManagerLocal.start();
-
-      const loggerPeer = logger.getChild('peer');
-      basePathPeer = path.join(dataDir, 'Peer');
-      const keysPathPeer = path.join(basePathPeer, 'keys');
-      keyRingPeer = await KeyRing.createKeyRing({
-        password,
-        keysPath: keysPathPeer,
-        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
-        passwordMemLimit: keysUtils.passwordMemLimits.min,
-        strictMemoryLock: false,
-        logger: loggerPeer.getChild(KeyRing.name),
-      });
-      const dbPathPeer = path.join(basePathPeer, 'db');
-      dbPeer = await DB.createDB({
-        dbPath: dbPathPeer,
-        logger: loggerPeer.getChild(DB.name),
-      });
-      aclPeer = await ACL.createACL({
-        db: dbPeer,
-        logger: loggerPeer.getChild(ACL.name),
-      });
-      sigchainPeer = await Sigchain.createSigchain({
-        db: dbPeer,
-        keyRing: keyRingPeer,
-        logger: loggerPeer.getChild(Sigchain.name),
-      });
-      gestaltGraphPeer = await GestaltGraph.createGestaltGraph({
-        db: dbPeer,
-        acl: aclPeer,
-        logger: loggerPeer.getChild(GestaltGraph.name),
-      });
-      nodeGraphPeer = await NodeGraph.createNodeGraph({
-        db: dbPeer,
-        keyRing: keyRingPeer,
-        logger: loggerPeer.getChild(NodeGraph.name),
-      });
-      nodeConnectionManagerPeer = new NodeConnectionManager({
-        keyRing: keyRingPeer,
-        tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
-        logger: loggerPeer.getChild(NodeConnectionManager.name),
-        connectionConnectTimeoutTime: timeoutTime,
-      });
-      taskManagerPeer = await TaskManager.createTaskManager({
-        db: dbPeer,
-        logger: loggerPeer.getChild(TaskManager.name),
-      });
-      nodeManagerPeer = new NodeManager({
-        db: dbPeer,
-        keyRing: keyRingPeer,
-        gestaltGraph: gestaltGraphPeer,
-        nodeGraph: nodeGraphPeer,
-        nodeConnectionManager: nodeConnectionManagerPeer,
-        sigchain: sigchainPeer,
-        taskManager: taskManagerPeer,
-        logger: loggerPeer.getChild(NodeManager.name),
-      });
-      await nodeConnectionManagerPeer.start({
-        agentService: {
-          nodesAuthenticateConnection: new NodesAuthenticateConnection({
-            nodeConnectionManager: nodeConnectionManagerPeer,
-          }),
-          dummyMethod: new DummyNodesAuthenticateConnection({}),
-        } as unknown as AgentServerManifest,
-        host: localHost,
-      });
-      await nodeManagerPeer.start();
-    });
-    afterEach(async () => {
-      await taskManagerLocal.stopProcessing();
-      await taskManagerLocal.stopTasks();
-      await nodeManagerLocal.stop();
-      await nodeConnectionManagerLocal.stop();
-      await nodeGraphLocal.stop();
-      await gestaltGraphLocal.stop();
-      await sigchainLocal.stop();
-      await aclLocal.stop();
-      await dbLocal.stop();
-      await keyRingLocal.stop();
-      await taskManagerLocal.stop();
-
-      await taskManagerPeer.stopProcessing();
-      await taskManagerPeer.stopTasks();
-      await nodeManagerPeer.stop();
-      await nodeConnectionManagerPeer.stop();
-      await nodeGraphPeer.stop();
-      await gestaltGraphPeer.stop();
-      await sigchainPeer.stop();
-      await aclPeer.stop();
-      await dbPeer.stop();
-      await keyRingPeer.stop();
-      await taskManagerPeer.stop();
-
-      await fs.promises.rm(basePathLocal, {
-        force: true,
-        recursive: true,
-      });
-      await fs.promises.rm(basePathPeer, {
-        force: true,
-        recursive: true,
-      });
-    });
-  });
   describe('with 1 peer', () => {
     let basePath: string;
     let keyRing: KeyRing;
@@ -665,6 +483,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(`${NodeConnectionManager.name}Local`),
         connectionConnectTimeoutTime: timeoutTime,
       });
@@ -729,6 +555,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(`${NodeConnectionManager.name}Peer`),
         connectionConnectTimeoutTime: timeoutTime,
       });
@@ -1157,6 +991,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
@@ -1222,6 +1064,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });
@@ -1404,6 +1254,14 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger: logger.getChild(NodeConnectionManager.name),
         connectionConnectTimeoutTime: timeoutTime,
       });

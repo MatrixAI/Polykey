@@ -12,6 +12,7 @@ import config from '@/config';
 import { promise } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as keysEvents from '@/keys/events';
+import * as testsUtils from './utils';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -37,6 +38,7 @@ describe('PolykeyAgent', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -64,6 +66,7 @@ describe('PolykeyAgent', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         workers: 0,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
@@ -108,6 +111,7 @@ describe('PolykeyAgent', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -147,6 +151,7 @@ describe('PolykeyAgent', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -178,6 +183,7 @@ describe('PolykeyAgent', () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -203,6 +209,7 @@ describe('PolykeyAgent', () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -223,6 +230,7 @@ describe('PolykeyAgent', () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -258,6 +266,7 @@ describe('PolykeyAgent', () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -293,6 +302,7 @@ describe('PolykeyAgent', () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {

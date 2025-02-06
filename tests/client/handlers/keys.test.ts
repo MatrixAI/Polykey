@@ -500,6 +500,7 @@ describe('keysKeyPairRenew', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -628,6 +629,7 @@ describe('keysKeyPairReset', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {

@@ -122,6 +122,14 @@ describe('notificationsInboxClear', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -282,6 +290,14 @@ describe('notificationsInboxRead', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -681,6 +697,14 @@ describe('notificationsInboxRemove', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -844,6 +868,14 @@ describe('notificationsOutboxClear', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1004,6 +1036,14 @@ describe('notificationsOutboxRead', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1346,6 +1386,14 @@ describe('notificationsOutboxRemove', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1506,6 +1554,14 @@ describe('notificationsSend', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

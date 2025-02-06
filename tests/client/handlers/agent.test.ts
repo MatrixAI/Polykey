@@ -150,6 +150,7 @@ describe('agentStatus', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         keys: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,
@@ -268,6 +269,7 @@ describe('agentStop', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         keys: {
           passwordOpsLimit: keysUtils.passwordOpsLimits.min,
           passwordMemLimit: keysUtils.passwordMemLimits.min,

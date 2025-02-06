@@ -146,6 +146,8 @@ function promFromEvents<
   return p;
 }
 
+const testNetworkName = 'testNetwork';
+
 export {
   generateRandomNodeId,
   expectRemoteError,
@@ -154,4 +156,5 @@ export {
   trackTimers,
   promFromEvent,
   promFromEvents,
+  testNetworkName,
 };

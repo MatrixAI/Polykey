@@ -19,7 +19,7 @@ import * as keysUtils from '@/keys/utils';
 import * as errors from '@/errors';
 import * as events from '@/events';
 import * as utils from '@/utils';
-import * as testUtils from './utils';
+import * as testsUtils from './utils';
 
 describe(PolykeyClient.name, () => {
   const logger = new Logger(`${PolykeyClient.name} Test`, LogLevel.WARN, [
@@ -96,6 +96,7 @@ describe(PolykeyClient.name, () => {
         password,
         options: {
           nodePath,
+          network: testsUtils.testNetworkName,
           agentServiceHost: localHost,
           clientServiceHost: localHost,
           keys: {
@@ -201,7 +202,7 @@ describe(PolykeyClient.name, () => {
       const callP = pkClient.rpcClient.methods.agentStatus({});
       // Authentication error
       await expect(callP).rejects.toThrow(errors.ErrorPolykeyRemote);
-      await testUtils.expectRemoteError(callP, errors.ErrorClientAuthMissing);
+      await testsUtils.expectRemoteError(callP, errors.ErrorClientAuthMissing);
       // Correct auth runs without error
       await pkClient.rpcClient.methods.agentStatus({
         metadata: {

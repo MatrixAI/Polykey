@@ -452,6 +452,14 @@ describe('gestaltsDiscoveryByIdentity', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -631,6 +639,14 @@ describe('gestaltsDiscoveryByNode', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -807,6 +823,14 @@ describe('gestaltsDiscoveryQueue', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1433,6 +1457,14 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -1740,6 +1772,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       password,
       options: {
         nodePath,
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -1842,6 +1875,14 @@ describe('gestaltsGestaltTrustByNode', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({

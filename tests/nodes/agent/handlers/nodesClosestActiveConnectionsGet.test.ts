@@ -44,6 +44,14 @@ describe('nodesClosestLocalNode', () => {
       connectionIdleTimeoutTimeMin: 1000,
       connectionIdleTimeoutTimeScale: 0,
       connectionConnectTimeoutTime: timeoutTime,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
     });
 
     const keyPairPeer1 = keysUtils.generateKeyPair();
@@ -58,6 +66,14 @@ describe('nodesClosestLocalNode', () => {
       logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       tlsConfig: tlsConfigPeer1,
       connectionConnectTimeoutTime: timeoutTime,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
     });
 
     await Promise.all([

@@ -28,7 +28,7 @@ import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import Sigchain from '@/sigchain/Sigchain';
 import TaskManager from '@/tasks/TaskManager';
-import * as testUtils from '../../../utils/utils';
+import * as testsUtils from '../../../utils/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 import 'ix/add/asynciterable-operators/toarray';
 
@@ -127,6 +127,14 @@ describe('notificationsSend', () => {
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger: logger.getChild('NodeConnectionManager'),
     });
     nodeManager = new NodeManager({
@@ -331,7 +339,7 @@ describe('notificationsSend', () => {
       isRead: false,
     };
     const token = Token.fromPayload(notification1);
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.notificationsSend({
         signedNotificationEncoded: JSON.stringify(
           token.toJSON(),
@@ -357,7 +365,7 @@ describe('notificationsSend', () => {
       notification2,
       senderKeyRing.keyPair,
     );
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.notificationsSend({
         signedNotificationEncoded: signedNotification,
       }),
@@ -392,7 +400,7 @@ describe('notificationsSend', () => {
       notification,
       senderKeyRing.keyPair,
     );
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.notificationsSend({
         signedNotificationEncoded: signedNotification,
       }),

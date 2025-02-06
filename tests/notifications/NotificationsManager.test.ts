@@ -30,7 +30,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as nodesUtils from '@/nodes/utils';
 import * as keysUtils from '@/keys/utils';
 import * as utils from '@/utils';
-import * as testUtils from '../utils';
+import * as testsUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
 import 'ix/add/asynciterable-operators/toarray';
 
@@ -121,6 +121,14 @@ describe('NotificationsManager', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig,
+      authenticateNetworkForwardCallback:
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
+      authenticateNetworkReverseCallback:
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          testsUtils.testNetworkName,
+        ),
       logger,
     });
     nodeManager = new NodeManager({
@@ -147,6 +155,7 @@ describe('NotificationsManager', () => {
       password: password,
       options: {
         nodePath: path.join(dataDir, 'receiver'),
+        network: testsUtils.testNetworkName,
         agentServiceHost: localhost,
         clientServiceHost: localhost,
         keys: {
@@ -412,7 +421,7 @@ describe('NotificationsManager', () => {
       });
     await taskManager.startProcessing();
     const { sendP } = await notificationsManager.sendNotification({
-      nodeId: testUtils.generateRandomNodeId(),
+      nodeId: testsUtils.generateRandomNodeId(),
       data: {
         type: 'General',
         message: 'msg',

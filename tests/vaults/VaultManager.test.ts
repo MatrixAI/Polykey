@@ -34,9 +34,11 @@ import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import * as vaultsUtils from '@/vaults/utils';
+import * as nodesUtils from '@/nodes/utils';
 import * as nodeTestUtils from '../nodes/utils';
 import * as testUtils from '../utils';
 import * as tlsTestsUtils from '../utils/tls';
+import * as testsUtils from '../utils';
 
 describe('VaultManager', () => {
   const localhost = '127.0.0.1';
@@ -611,6 +613,7 @@ describe('VaultManager', () => {
         password,
         options: {
           nodePath: path.join(allDataDir, 'remoteKeynode1'),
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -626,6 +629,7 @@ describe('VaultManager', () => {
         password,
         options: {
           nodePath: path.join(allDataDir, 'remoteKeynode2'),
+          network: testsUtils.testNetworkName,
           agentServiceHost: localhost,
           clientServiceHost: localhost,
           keys: {
@@ -705,6 +709,14 @@ describe('VaultManager', () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig,
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+            testsUtils.testNetworkName,
+          ),
         logger,
       });
       nodeManager = new NodeManager({
