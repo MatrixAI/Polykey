@@ -4,7 +4,7 @@ import type {
   JSONRPCResponseResult,
 } from '@matrixai/rpc';
 import type { SignedTokenEncoded } from '../../tokens/types';
-import type { AuditEventIdEncoded, ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
+import type { AuditEventId, AuditEventIdEncoded, ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '../../network/types';
@@ -18,6 +18,10 @@ type AgentRPCResponseResult<T extends JSONObject = JSONObject> =
 
 type AuditIdMessage = {
   auditIdEncoded: AuditEventIdEncoded
+  seek?: AuditEventId | number;
+  seekEnd?: AuditEventId | number;
+  order?: 'asc' | 'desc';
+  limit?: number;
 }
 
 type AgentAuditMessage = Partial<AuditIdMessage> & {
