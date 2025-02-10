@@ -1206,7 +1206,9 @@ class NodeConnectionManager {
    */
   protected getStickyTimeoutValue(nodeId: NodeId, primary: boolean): number {
     const min = this.connectionIdleTimeoutTimeMin;
+    // Non-primary and unauthenticated connections should time out quickly
     if (!primary) return min;
+    if (!this.isAuthenticated(nodeId)) return min;
     const max = this.connectionIdleTimeoutTimeScale;
     // Determine the bucket
     const bucketIndex = nodesUtils.bucketIndex(
@@ -1644,23 +1646,7 @@ class NodeConnectionManager {
     switch (connectionsEntry.authenticatedReverse) {
       case AuthenticatingState.SUCCESS:
         // Authentication succeeded
-        connectionsEntry.authenticatedResolveP();
-        connectionsEntry.authenticateComplete = true;
-        // Dispatching authenticated events for every active connection
-        for (const connAndTimer of Object.values(
-          connectionsEntry.connections,
-        )) {
-          const connectionData: ConnectionData = {
-            remoteNodeId: connAndTimer.connection.nodeId,
-            remoteHost: connAndTimer.connection.host,
-            remotePort: connAndTimer.connection.port,
-          };
-          this.dispatchEvent(
-            new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
-              detail: connectionData,
-            }),
-          );
-        }
+        this.authenticateSuccess(targetNodeIdString);
         return;
       case AuthenticatingState.FAIL:
         // Authenticating failed
@@ -1712,23 +1698,7 @@ class NodeConnectionManager {
     switch (connectionsEntry.authenticatedForward) {
       case AuthenticatingState.SUCCESS:
         // Authentication succeeded
-        connectionsEntry.authenticatedResolveP();
-        connectionsEntry.authenticateComplete = true;
-        // Dispatching authenticated events for every active connection
-        for (const connAndTimer of Object.values(
-          connectionsEntry.connections,
-        )) {
-          const connectionData: ConnectionData = {
-            remoteNodeId: connAndTimer.connection.nodeId,
-            remoteHost: connAndTimer.connection.host,
-            remotePort: connAndTimer.connection.port,
-          };
-          this.dispatchEvent(
-            new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
-              detail: connectionData,
-            }),
-          );
-        }
+        this.authenticateSuccess(targetNodeIdString);
         return;
       case AuthenticatingState.FAIL:
         // Authenticating failed
@@ -1872,6 +1842,35 @@ class NodeConnectionManager {
         cause: reason,
       }),
     );
+  }
+
+  protected authenticateSuccess(targetNodeIdString: NodeIdString) {
+    const connectionsEntry = this.connections.get(targetNodeIdString);
+    if (connectionsEntry == null) {
+      utils.never('Target node was missing in the connections map');
+    }
+    connectionsEntry.authenticatedResolveP();
+    connectionsEntry.authenticateComplete = true;
+    // Resetting timeout delay for the active connection. The non-active connections would already have the min timeout.
+    const connection =
+      connectionsEntry.connections[connectionsEntry.activeConnection];
+    const nodeId = IdInternal.fromString<NodeId>(targetNodeIdString);
+    const delay = this.getStickyTimeoutValue(nodeId, true);
+    if (connection.timer != null) connection.timer.reset(delay);
+
+    // Dispatching authenticated events for every active connection
+    for (const connAndTimer of Object.values(connectionsEntry.connections)) {
+      const connectionData: ConnectionData = {
+        remoteNodeId: connAndTimer.connection.nodeId,
+        remoteHost: connAndTimer.connection.host,
+        remotePort: connAndTimer.connection.port,
+      };
+      this.dispatchEvent(
+        new nodesEvents.EventNodeConnectionManagerConnectionAuthenticated({
+          detail: connectionData,
+        }),
+      );
+    }
   }
 
   protected async authenticateCancel(
