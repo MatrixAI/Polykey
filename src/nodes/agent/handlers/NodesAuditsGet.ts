@@ -9,8 +9,8 @@ import type {
   AgentAuditMessage,
 } from '../types';
 import type Audit from '../../../audit/Audit';
-import type { AuditEventIdEncoded, AuditEventId} from '../../../ids/types';
 import { ServerHandler } from '@matrixai/rpc';
+import * as auditUtils from '../../../audit/utils' 
 
 /**
  * Gets audit events from a node
@@ -46,7 +46,7 @@ class NodesAuditEventsGet extends ServerHandler<
       )) {
         ctx.signal.throwIfAborted();
         yield {
-          auditIdEncoded: auditEvent.id.toString() as AuditEventIdEncoded,
+          auditIdEncoded: auditUtils.encodeAuditEventId(auditEvent.id)
         };
       }
     });

@@ -189,9 +189,7 @@ describe('nodesClaimsGet', () => {
       await sigchain.addClaim(identityLink);
     }
 
-    const response = await rpcClient.methods.nodesClaimsGet({
-      claimIdEncoded: '' as ClaimIdEncoded,
-    });
+    const response = await rpcClient.methods.nodesClaimsGet({});
     const chainIds: Array<string> = [];
     for await (const claim of response) {
       chainIds.push(claim.claimIdEncoded ?? '');

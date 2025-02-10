@@ -32,9 +32,16 @@ type AuditIdMessage = {
 
 type AgentAuditMessage = Partial<AuditIdMessage> & {};
 
+type NodesClaimsGetMessage = {
+  seek?: ClaimIdEncoded | number;
+  order?: 'asc' | 'desc';
+  limit?: number;    
+}
+
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
 };
+
 
 type AgentClaimMessage = Partial<ClaimIdMessage> & {
   signedTokenEncoded: SignedTokenEncoded;
@@ -115,6 +122,7 @@ export type {
   AgentRPCResponseResult,
   AuditIdMessage,
   AgentAuditMessage,
+  NodesClaimsGetMessage,
   ClaimIdMessage,
   AgentClaimMessage,
   NodeIdMessage,
