@@ -1,5 +1,5 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
-import type { ContextTimed } from '@matrixai/contexts';
+import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type {
   NodeId,
   NodeAddress,
@@ -23,10 +23,12 @@ import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as utils from '../utils';
 import config from '../config';
+import { timedCancellable } from '@matrixai/contexts/dist/decorators';
+import { context } from "@matrixai/contexts/dist/decorators";
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer
- * information about Polkey nodes.
+ * information about Polykey nodes.
  *
  * It is a database of fixed-size buckets, where each bucket
  * contains NodeId -> NodeData. The bucket index is a prefix key.
@@ -241,14 +243,21 @@ class NodeGraph {
   /**
    * Get a single `NodeContact`
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNodeContact(
     nodeId: NodeId,
     tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<NodeContact | undefined>;
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @timedCancellable(true)
+  public async getNodeContact(
+    nodeId: NodeId,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed
   ): Promise<NodeContact | undefined> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getNodeContact(nodeId, tran),
+      return await this.db.withTransactionF(async (tran) =>
+        await this.getNodeContact(nodeId, tran, ctx),
       );
     }
     const [bucketIndex] = this.bucketIndex(nodeId);
@@ -266,6 +275,7 @@ class NodeGraph {
         valueAsBuffer: false,
       },
     )) {
+      ctx.signal.throwIfAborted();
       const nodeContactAddress = keyPath[0].toString();
       contact[nodeContactAddress] = nodeContactAddressData;
     }
@@ -615,18 +625,29 @@ class NodeGraph {
    * @param limit Limit the number of nodes returned, note that `-1` means
    *              no limit, but `Infinity` means `0`.
    * @param tran
+   * @param ctx
    */
+  public async getBucket(
+    bucketIndex: NodeBucketIndex,
+    sort?: 'nodeId' | 'distance' | 'connected',
+    order?: 'asc' | 'desc',
+    limit?: number,
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<NodeBucket>;
+  @timedCancellable(true)
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
     bucketIndex: NodeBucketIndex,
     sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
-    limit?: number,
-    tran?: DBTransaction,
+    limit: number | undefined,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed
   ): Promise<NodeBucket> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getBucket(bucketIndex, sort, order, limit, tran),
+      return await this.db.withTransactionF(async (tran) =>
+        await this.getBucket(bucketIndex, sort, order, limit, tran, ctx),
       );
     }
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
@@ -647,6 +668,7 @@ class NodeGraph {
           pathAdjust: [''],
         },
       )) {
+        ctx.signal.throwIfAborted();
         bucket.push(result);
       }
       if (sort === 'distance') {
@@ -660,6 +682,7 @@ class NodeGraph {
           limit,
         },
       )) {
+        ctx.signal.throwIfAborted();
         const nodeId = IdInternal.fromBuffer<NodeId>(nodeIdBuffer);
         const nodeContact = await this.getNodeContact(
           IdInternal.fromBuffer<NodeId>(nodeIdBuffer),
@@ -883,15 +906,23 @@ class NodeGraph {
    * @returns The `NodeBucket` which could have less than `limit` nodes if the
    *          node graph has less than the requested limit.
    */
+  public async getClosestNodes(
+    nodeId: NodeId,
+    limit?: number,
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<NodeBucket>;
+  @timedCancellable(true)
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestNodes(
     nodeId: NodeId,
     limit: number = this.nodeBucketLimit,
-    tran?: DBTransaction,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<NodeBucket> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.getClosestNodes(nodeId, limit, tran),
+      return await this.db.withTransactionF(async (tran) =>
+        await this.getClosestNodes(nodeId, limit, tran),
       );
     }
     // Buckets map to the target node in the following way;
@@ -915,6 +946,7 @@ class NodeGraph {
       undefined,
       undefined,
       tran,
+      ctx,
     );
     // We need to iterate over the key stream
     // When streaming we want all nodes in the starting bucket
@@ -937,6 +969,7 @@ class NodeGraph {
           limit: remainingLimit,
         },
       )) {
+        ctx.signal.throwIfAborted();
         nodes.push(nodeEntry);
       }
     }
@@ -953,6 +986,7 @@ class NodeGraph {
           limit: remainingLimit,
         },
       )) {
+        ctx.signal.throwIfAborted();
         nodes.push(nodeEntry);
       }
     }
@@ -969,6 +1003,7 @@ class NodeGraph {
       undefined,
       undefined,
       tran,
+      ctx,
     );
     // Pop off elements of the same bucket to avoid duplicates
     let element = nodes.pop();

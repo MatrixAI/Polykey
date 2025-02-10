@@ -43,7 +43,11 @@ import {
   status,
 } from '@matrixai/async-init/dist/StartStop';
 import { AbstractEvent, EventAll } from '@matrixai/events';
-import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
+import {
+  context,
+  timed,
+  timedCancellable
+} from "@matrixai/contexts/dist/decorators";
 import { Semaphore } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeConnection from './NodeConnection';
@@ -768,13 +772,15 @@ class NodeConnectionManager {
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
    * @param targetNodeId Id of target node to communicate with
+   * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
    */
   public acquireConnection(
     targetNodeId: NodeId,
+    ctx: ContextTimed,
   ): ResourceAcquire<NodeConnection> {
     return async () => {
-      await this.isAuthenticatedP(targetNodeId);
+      await this.isAuthenticatedP(targetNodeId, ctx);
       return await this.acquireConnectionInternal(targetNodeId)();
     };
   }
@@ -785,14 +791,22 @@ class NodeConnectionManager {
    * doesn't exist.
    * for use with normal arrow function
    * @param targetNodeId Id of target node to communicate with
+   * @param ctx
    * @param f Function to handle communication
    */
   public async withConnF<T>(
     targetNodeId: NodeId,
+    ctx: Partial<ContextTimedInput> | undefined,
+    f: (conn: NodeConnection) => Promise<T>,
+  ): Promise<T>;
+  @timedCancellable(true)
+  public async withConnF<T>(
+    targetNodeId: NodeId,
+    @context ctx: ContextTimed,
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T> {
     return await withF(
-      [this.acquireConnection(targetNodeId)],
+      [this.acquireConnection(targetNodeId, ctx)],
       async ([conn]) => {
         return await f(conn);
       },
@@ -805,14 +819,22 @@ class NodeConnectionManager {
    * doesn't exist.
    * for use with a generator function
    * @param targetNodeId Id of target node to communicate with
+   * @param ctx
    * @param g Generator function to handle communication
    */
+  public withConnG<T, TReturn, TNext>(
+    targetNodeId: NodeId,
+    ctx: Partial<ContextTimedInput> | undefined,
+    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+  ): AsyncGenerator<T, TReturn, TNext>;
   @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @timed()
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
+    @context ctx: ContextTimed,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
-    const acquire = this.acquireConnection(targetNodeId);
+    const acquire = this.acquireConnection(targetNodeId, ctx);
     const [release, conn] = await acquire();
     let caughtError: Error | undefined;
     try {
@@ -975,6 +997,7 @@ class NodeConnectionManager {
     }
     const { host, port } = await this.withConnF(
       nodeIdSignaller,
+      ctx,
       async (conn) => {
         const client = conn.getClient();
         const nodeIdSource = this.keyRing.getNodeId();
@@ -1440,8 +1463,8 @@ class NodeConnectionManager {
    * @param targetNodeId - NodeId of the node that needs to initiate hole punching.
    * @param address - Address the target needs to punch to.
    * @param requestSignature - `base64url` encoded signature
+   * @param ctx
    */
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async handleNodesConnectionSignalInitial(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
@@ -1450,6 +1473,22 @@ class NodeConnectionManager {
       port: Port;
     },
     requestSignature: string,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<{
+    host: Host;
+    port: Port;
+  }>;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timedCancellable(true)
+  public async handleNodesConnectionSignalInitial(
+    sourceNodeId: NodeId,
+    targetNodeId: NodeId,
+    address: {
+      host: Host;
+      port: Port;
+    },
+    requestSignature: string,
+    @context ctx: ContextTimed,
   ): Promise<{
     host: Host;
     port: Port;
@@ -1479,12 +1518,12 @@ class NodeConnectionManager {
       this.keyRing.keyPair,
       data,
     );
-    const connectionSignalP = this.withConnF(targetNodeId, async (conn) => {
+    const connectionSignalP = this.withConnF(targetNodeId, ctx, async (conn) => {
       const client = conn.getClient();
       await client.methods.nodesConnectionSignalFinal({
         sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
         targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-        address,
+        address: address,
         requestSignature: requestSignature,
         relaySignature: relaySignature.toString('base64url'),
       });
@@ -1745,19 +1784,39 @@ class NodeConnectionManager {
    * Returns a promise that resolves once the connection has authenticated,
    * otherwise it rejects with the authentication failure
    * @param nodeId
+   * @param ctx
    */
-  public async isAuthenticatedP(nodeId: NodeId): Promise<void> {
+  public async isAuthenticatedP(
+    nodeId: NodeId,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<void>;
+  @timedCancellable(true)
+  public async isAuthenticatedP(
+    nodeId: NodeId,
+    @context ctx: ContextTimed,
+  ): Promise<void> {
     const targetNodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
     if (connectionsEntry == null) {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
+    const { p: abortP, rejectP: triggerAbort } = utils.promise<void>();
+    const abortHandler = () => {
+      triggerAbort(ctx.signal.reason);
+    };
+    if (ctx.signal.aborted) {
+      triggerAbort(ctx.signal.reason);
+    } else {
+      ctx.signal.addEventListener('abort', abortHandler, { once: true });
+    }
     try {
-      return await connectionsEntry.authenticatedP;
+      return await Promise.race([connectionsEntry.authenticatedP, abortP]);
     } catch (e) {
       // Capture the stacktrace here since knowing where we're waiting for authentication is more useful
       Error.captureStackTrace(e);
       throw e;
+    } finally {
+      ctx.signal.removeEventListener('abort', abortHandler);
     }
   }
 

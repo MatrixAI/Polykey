@@ -978,6 +978,7 @@ class VaultManager {
     // Create a connection to another node
     return yield* this.nodeManager.withConnG(
       targetNodeId,
+      ctx,
       async function* (connection): AsyncGenerator<{
         vaultName: VaultName;
         vaultIdEncoded: VaultIdEncoded;
@@ -994,7 +995,6 @@ class VaultManager {
           };
         }
       },
-      ctx,
     );
   }
 
