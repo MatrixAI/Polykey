@@ -44,7 +44,11 @@ import Logger from '@matrixai/logger';
 import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
 import { Lock, LockBox, Semaphore } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
-import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
+import {
+  context,
+  timed,
+  timedCancellable,
+} from '@matrixai/contexts/dist/decorators';
 import * as nodesUtils from './utils';
 import * as nodesEvents from './events';
 import * as nodesErrors from './errors';
@@ -195,7 +199,7 @@ class NodeManager {
     }
     if (connectionCount > 0) {
       this.logger.debug('triggering bucket refresh for bucket 255');
-      await this.updateRefreshBucketDelay(255, 0);
+      await this.updateRefreshBucketDelay(255, 0, undefined, undefined, ctx);
     }
     try {
       this.logger.debug(
@@ -285,6 +289,7 @@ class NodeManager {
     // Getting the closest node from the `NodeGraph`
     let bucketIndex: number | undefined;
     for await (const bucket of this.nodeGraph.getBuckets('distance', 'asc')) {
+      if (ctx.signal.aborted) return;
       bucketIndex = bucket[0];
     }
     // If no buckets then end here
@@ -471,7 +476,7 @@ class NodeManager {
    */
   public acquireConnection(
     nodeId: NodeId,
-    ctx?: Partial<ContextTimedInput>,
+    ctx: ContextTimed,
   ): ResourceAcquire<NodeConnection> {
     if (this.keyRing.getNodeId().equals(nodeId)) {
       throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
@@ -483,18 +488,16 @@ class NodeManager {
           // Checking if connection already exists
           if (!this.nodeConnectionManager.hasConnection(nodeId)) {
             // Establish the connection
-            const result = await this.findNode(
-              {
-                nodeId: nodeId,
-              },
-              ctx,
-            );
+            const result = await this.findNode({ nodeId: nodeId }, ctx);
             if (result == null) {
               throw new nodesErrors.ErrorNodeManagerConnectionFailed();
             }
           }
           // Initiate authentication and await
-          return await this.nodeConnectionManager.acquireConnection(nodeId)();
+          return await this.nodeConnectionManager.acquireConnection(
+            nodeId,
+            ctx,
+          )();
         },
       );
     };
@@ -537,11 +540,17 @@ class NodeManager {
    * @param g Generator function to handle communication
    * @param ctx
    */
+  public withConnG<T, TReturn, TNext>(
+    nodeId: NodeId,
+    ctx: Partial<ContextTimedInput> | undefined,
+    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+  ): AsyncGenerator<T, TReturn, TNext>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @timed()
   public async *withConnG<T, TReturn, TNext>(
     nodeId: NodeId,
+    @context ctx: ContextTimed,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
-    ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(nodeId, ctx);
     const [release, conn] = await acquire();
@@ -847,6 +856,8 @@ class NodeManager {
     ] of await this.nodeGraph.getClosestNodes(
       nodeId,
       this.nodeGraph.nodeBucketLimit,
+      undefined,
+      ctx,
     )) {
       nodeConnectionsQueue.queueNodeDirect(nodeIdTarget, nodeContact);
     }
@@ -975,13 +986,17 @@ class NodeManager {
     if (service == null) {
       // Setup promises
       const { p: endedP, resolveP: resolveEndedP } = utils.promise<void>();
+      const {
+        p: serviceP,
+        resolveP: resolveServiceP,
+        rejectP: rejectServiceP,
+      } = utils.promise<ServicePOJO>();
       const abortHandler = () => {
         resolveEndedP();
+        rejectServiceP();
       };
       ctx.signal.addEventListener('abort', abortHandler, { once: true });
       ctx.timer.catch(() => {}).finally(() => abortHandler());
-      const { p: serviceP, resolveP: resolveServiceP } =
-        utils.promise<ServicePOJO>();
       const handleEventMDNSService = (evt: mdnsEvents.EventMDNSService) => {
         if (evt.detail.name === encodedNodeId) {
           resolveServiceP(evt.detail);
@@ -1108,7 +1123,7 @@ class NodeManager {
     nodeConnectionsQueue: NodeConnectionQueue,
     ctx: ContextTimed,
   ) {
-    await this.nodeConnectionManager.withConnF(nodeId, async (conn) => {
+    await this.nodeConnectionManager.withConnF(nodeId, ctx, async (conn) => {
       const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
       const closestConnectionsRequestP = (async () => {
         const resultStream =
@@ -1242,13 +1257,16 @@ class NodeManager {
     return await this.withConnF(targetNodeId, ctx, async (connection) => {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
-      for await (const agentClaim of await client.methods.nodesClaimsGet({
-        claimIdEncoded:
-          claimId != null
-            ? claimsUtils.encodeClaimId(claimId)
-            : ('' as ClaimIdEncoded),
-      })) {
-        if (ctx.signal.aborted) throw ctx.signal.reason;
+      for await (const agentClaim of await client.methods.nodesClaimsGet(
+        {
+          claimIdEncoded:
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
+        },
+        ctx,
+      )) {
+        ctx.signal.throwIfAborted();
         // Need to re-construct each claim
         const claimId: ClaimId = claimsUtils.decodeClaimId(
           agentClaim.claimIdEncoded,
@@ -2112,16 +2130,25 @@ class NodeManager {
     await Promise.allSettled(taskPs);
   }
 
+  public async updateRefreshBucketDelay(
+    bucketIndex: number,
+    delay?: number,
+    lazy?: boolean,
+    tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<Task>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
+  @timedCancellable(true)
   public async updateRefreshBucketDelay(
     bucketIndex: number,
     delay: number = this.refreshBucketDelayTime,
     lazy: boolean = true,
-    tran?: DBTransaction,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.updateRefreshBucketDelay(bucketIndex, delay, lazy, tran),
+        this.updateRefreshBucketDelay(bucketIndex, delay, lazy, tran, ctx),
       );
     }
 
@@ -2137,6 +2164,7 @@ class NodeManager {
       [this.tasksPath, this.refreshBucketHandlerId, `${bucketIndex}`],
       tran,
     )) {
+      ctx.signal.throwIfAborted();
       if (!existingTask) {
         foundTask = task;
         // Update the first one

@@ -363,6 +363,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
       await ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           expect(connectionAndTimer?.usageCount).toBe(1);
           expect(connectionAndTimer?.timer).toBeNull();
@@ -391,6 +392,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       await ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async (connection) => {
           expect(connection.connectionId).toBe(connectionIds[0]);
         },
@@ -401,6 +403,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       // Lowest connection is deterministically the same for the peer too
       await ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
+        undefined,
         async (connection) => {
           expect(connection.connectionId).toBe(connectionIds[0]);
         },
@@ -421,6 +424,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       for (const connectionId of connectionIds) {
         await ncmLocal.nodeConnectionManager.withConnF(
           ncmPeer1.nodeId,
+          undefined,
           async (connection) => {
             // Should always be the lowest alive connectionId
             expect(connection.connectionId).toBe(connectionId);
@@ -437,6 +441,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       await expect(
         ncmLocal.nodeConnectionManager.withConnF(
           ncmPeer1.nodeId,
+          undefined,
           async () => {},
         ),
       ).rejects.toThrow(
@@ -569,6 +574,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       // Wait for timeout.
       await ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           expect(ncmLocal.nodeConnectionManager.connectionsActive()).toBe(3);
           await connectionDestroyProm1;
@@ -717,12 +723,14 @@ describe(`${NodeConnectionManager.name}`, () => {
       // Checking authentication result
       await ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
       );
       await ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -759,6 +767,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       // Checking authentication result
       const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -769,6 +778,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       const authenticationAttemptP2 = ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -806,6 +816,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -815,6 +826,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
       const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -824,6 +836,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
       const reverseAuthenticateP = ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -861,6 +874,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -898,6 +912,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -946,6 +961,7 @@ describe(`${NodeConnectionManager.name}`, () => {
 
       const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -953,6 +969,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       await expect(forwardAuthenticateP).toResolve();
       const reverseAuthenticateP = ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
+        undefined,
         async () => {
           // Do nothing
         },
@@ -962,6 +979,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       // Checking RPC again
       await ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
+        undefined,
         async (conn) => {
           await expect(
             conn.rpcClient.unaryCaller('dummyMethod', {}),

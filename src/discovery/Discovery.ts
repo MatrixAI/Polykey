@@ -161,7 +161,7 @@ class Discovery {
       this.dispatchEvent(
         new discoveryEvents.EventDiscoveryVertexProcessed({
           detail: {
-            vertex,
+            vertex: vertex,
             parent: parent ?? undefined,
           },
         }),
@@ -190,7 +190,7 @@ class Discovery {
       this.dispatchEvent(
         new discoveryEvents.EventDiscoveryVertexFailed({
           detail: {
-            vertex,
+            vertex: vertex,
             parent: parent ?? undefined,
             message: e.message,
             code: e.code,
@@ -206,9 +206,13 @@ class Discovery {
   /**
    * This handler is run periodically to check if nodes are ready to be rediscovered
    */
-  protected checkRediscoveryHandler: TaskHandler = async () => {
+  protected checkRediscoveryHandler: TaskHandler = async (
+    ctx: ContextTimed,
+  ) => {
     await this.checkRediscovery(
       Date.now() - this.rediscoverVertexThresholdTime,
+      undefined,
+      ctx,
     );
     await this.taskManager.scheduleTask({
       handlerId: this.checkRediscoveryHandlerId,
@@ -407,9 +411,9 @@ class Discovery {
     const [type, id] = vertexId;
     switch (type) {
       case 'node':
-        return await this.processNode(id, ctx, lastProcessedCutoffTime);
+        return await this.processNode(id, lastProcessedCutoffTime, ctx);
       case 'identity':
-        return await this.processIdentity(id, ctx, lastProcessedCutoffTime);
+        return await this.processIdentity(id, lastProcessedCutoffTime, ctx);
       default:
         never(`type must be either "node" or "identity" got "${type}"`);
     }
@@ -417,8 +421,8 @@ class Discovery {
 
   protected async processNode(
     nodeId: NodeId,
+    lastProcessedCutoffTime: number | undefined,
     ctx: ContextTimed,
-    lastProcessedCutoffTime?: number,
   ) {
     // If the vertex we've found is our own node, we simply get our own chain
     const processedTime = Date.now();
@@ -456,7 +460,6 @@ class Discovery {
     }
     // Iterate over each of the claims in the chain (already verified).
     for (const signedClaim of Object.values(vertexChainData)) {
-      if (ctx.signal.aborted) throw ctx.signal.reason;
       switch (signedClaim.payload.typ) {
         case 'ClaimLinkNode':
           await this.processClaimLinkNode(
@@ -469,8 +472,8 @@ class Discovery {
           await this.processClaimLinkIdentity(
             signedClaim as SignedClaim<ClaimLinkIdentity>,
             nodeId,
-            ctx,
             lastProcessedCutoffTime,
+            ctx,
           );
           break;
         default:
@@ -553,8 +556,8 @@ class Discovery {
   protected async processClaimLinkIdentity(
     signedClaim: SignedClaim<ClaimLinkIdentity>,
     nodeId: NodeId,
-    ctx: ContextTimed,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
+    ctx: ContextTimed,
   ): Promise<void> {
     // Checking the claim is valid
     const publicKey = keysUtils.publicKeyFromNodeId(nodeId);
@@ -655,8 +658,8 @@ class Discovery {
 
   protected async processIdentity(
     id: ProviderIdentityId,
-    ctx: ContextTimed,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
+    ctx: ContextTimed,
   ) {
     // If the next vertex is an identity, perform a social discovery
     // Firstly get the identity info of this identity
@@ -789,7 +792,7 @@ class Discovery {
     parent?: GestaltId,
     ignoreActive: boolean = false,
     tran?: DBTransaction,
-  ) {
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.scheduleDiscoveryForVertex(
@@ -852,7 +855,7 @@ class Discovery {
         ],
         lazy: true,
         deadline: this.discoverVertexTimeoutTime,
-        delay,
+        delay: delay,
       },
       tran,
     );
@@ -1034,10 +1037,17 @@ class Discovery {
   public async checkRediscovery(
     lastProcessedCutoffTime: number,
     tran?: DBTransaction,
+    ctx?: Partial<ContextTimedInput>,
+  ): Promise<void>;
+  @timedCancellable(true)
+  public async checkRediscovery(
+    lastProcessedCutoffTime: number,
+    tran: DBTransaction | undefined,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
-        this.checkRediscovery(lastProcessedCutoffTime, tran),
+        this.checkRediscovery(lastProcessedCutoffTime, tran, ctx),
       );
     }
 
@@ -1055,6 +1065,7 @@ class Discovery {
       },
       tran,
     )) {
+      ctx.signal.throwIfAborted();
       gestaltIds.push([
         gestaltsUtils.encodeGestaltId(gestaltId),
         lastProcessedTime,
@@ -1091,6 +1102,7 @@ class Discovery {
         [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded],
         tran,
       )) {
+        ctx.signal.throwIfAborted();
         if (taskExisting == null) {
           taskExisting = task;
           continue;

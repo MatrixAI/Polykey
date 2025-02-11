@@ -382,8 +382,8 @@ class TaskManager {
     return {
       id: taskId,
       status: taskStatus!,
-      promise,
-      cancel,
+      promise: promise,
+      cancel: cancel,
       handlerId: taskData.handlerId,
       parameters: taskData.parameters,
       delay: tasksUtils.fromDelay(taskData.delay),

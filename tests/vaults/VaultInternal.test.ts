@@ -117,13 +117,13 @@ describe('VaultInternal', () => {
 
   test('VaultInternal readiness', async () => {
     await vault.stop();
-    await expect(async () => {
-      await vault.log();
-    }).rejects.toThrow(vaultsErrors.ErrorVaultNotRunning);
+    await expect(async () => await vault.log()).rejects.toThrow(
+      vaultsErrors.ErrorVaultNotRunning,
+    );
     await vault.destroy();
-    await expect(async () => {
-      await vault.start();
-    }).rejects.toThrow(vaultsErrors.ErrorVaultDestroyed);
+    await expect(async () => await vault.start()).rejects.toThrow(
+      vaultsErrors.ErrorVaultDestroyed,
+    );
   });
   test('is type correct', async () => {
     expect(vault).toBeInstanceOf(VaultInternal);
