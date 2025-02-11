@@ -1193,6 +1193,8 @@ class NodeConnectionManager {
         ),
       );
       this.connections.delete(targetNodeIdString);
+      // Wait for promise to complete and clean up
+      await Promise.allSettled([connectionsEntry.authenticatedP]);
       this.dispatchEvent(
         new nodesEvents.EventNodeConnectionManagerConnectionDestroyed({
           detail: targetNodeId,
