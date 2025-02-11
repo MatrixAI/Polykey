@@ -293,10 +293,17 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
     await expect(
-      discovery.queueDiscoveryByIdentity('' as ProviderId, '' as IdentityId),
+      async () =>
+        await discovery.queueDiscoveryByIdentity(
+          '' as ProviderId,
+          '' as IdentityId,
+        ),
     ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
     await expect(
-      discovery.queueDiscoveryByNode(testNodesUtils.generateRandomNodeId()),
+      async () =>
+        await discovery.queueDiscoveryByNode(
+          testNodesUtils.generateRandomNodeId(),
+        ),
     ).rejects.toThrow(discoveryErrors.ErrorDiscoveryNotRunning);
   });
   test('discovery by node', async () => {

@@ -153,13 +153,11 @@ class Discovery {
     parent: GestaltIdEncoded | null,
   ) => {
     try {
-      this.logger.error('out here 1')
       await this.processVertex(
         vertex,
         lastProcessedCutoffTime ?? undefined,
         ctx,
       );
-      this.logger.error('out here 2')
       this.dispatchEvent(
         new discoveryEvents.EventDiscoveryVertexProcessed({
           detail: {
@@ -171,23 +169,18 @@ class Discovery {
     } catch (e) {
       // We need to reschedule if the task was cancelled due to discovery domain stopping
       if (e === discoveryStoppingTaskReason) {
-        this.logger.error('out here 3')
         // We need to recreate the task for the vertex
         const vertexId = gestaltsUtils.decodeGestaltId(vertex);
         if (vertexId == null) {
           never(`failed to decode vertex GestaltId "${vertex}"`);
         }
-        this.logger.error('out here 4')
         await this.scheduleDiscoveryForVertex(
           vertexId,
           undefined,
           undefined,
           gestaltsUtils.decodeGestaltId(parent ?? undefined),
           true,
-          undefined,
-          ctx,
         );
-        this.logger.error('out here 5')
         return;
       }
       // Aborting a duplicate task is not an error
@@ -213,7 +206,9 @@ class Discovery {
   /**
    * This handler is run periodically to check if nodes are ready to be rediscovered
    */
-  protected checkRediscoveryHandler: TaskHandler = async (ctx: ContextTimed) => {
+  protected checkRediscoveryHandler: TaskHandler = async (
+    ctx: ContextTimed,
+  ) => {
     await this.checkRediscovery(
       Date.now() - this.rediscoverVertexThresholdTime,
       undefined,
@@ -337,26 +332,15 @@ class Discovery {
   /**
    * Queues a node for discovery. Internally calls `pushKeyToDiscoveryQueue`.
    */
+  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
   public async queueDiscoveryByNode(
     nodeId: NodeId,
     lastProcessedCutoffTime?: number,
-    ctx?: Partial<ContextTimedInput>,
-  ): Promise<void>;
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
-  @timedCancellable(true)
-  public async queueDiscoveryByNode(
-    nodeId: NodeId,
-    lastProcessedCutoffTime: number | undefined,
-    @context ctx: ContextTimed,
   ): Promise<void> {
     await this.scheduleDiscoveryForVertex(
       ['node', nodeId],
       undefined,
       lastProcessedCutoffTime,
-      undefined,
-      undefined,
-      undefined,
-      ctx,
     );
   }
 
@@ -364,28 +348,16 @@ class Discovery {
    * Queues an identity for discovery. Internally calls
    * `pushKeyToDiscoveryQueue`.
    */
+  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
   public async queueDiscoveryByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
     lastProcessedCutoffTime?: number,
-    ctx?: Partial<ContextTimedInput>
-  ): Promise<void>;
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
-  @timedCancellable(true)
-  public async queueDiscoveryByIdentity(
-    providerId: ProviderId,
-    identityId: IdentityId,
-    lastProcessedCutoffTime: number | undefined,
-    @context ctx: ContextTimed,
   ): Promise<void> {
     await this.scheduleDiscoveryForVertex(
       ['identity', [providerId, identityId]],
       undefined,
       lastProcessedCutoffTime,
-      undefined,
-      undefined,
-      undefined,
-      ctx,
     );
   }
 
@@ -439,17 +411,9 @@ class Discovery {
     const [type, id] = vertexId;
     switch (type) {
       case 'node':
-        this.logger.error('processnode before')
-        // return await this.processNode(id, lastProcessedCutoffTime, ctx);
-        const val1 = await this.processNode(id, lastProcessedCutoffTime, ctx);
-        this.logger.error('processnode after')
-        return val1
+        return await this.processNode(id, lastProcessedCutoffTime, ctx);
       case 'identity':
-        this.logger.error('processidentity before')
-        // return await this.processIdentity(id, lastProcessedCutoffTime, ctx);
-        const val2 = await this.processIdentity(id, lastProcessedCutoffTime, ctx);
-        this.logger.error('processidentity after')
-        return val2
+        return await this.processIdentity(id, lastProcessedCutoffTime, ctx);
       default:
         never(`type must be either "node" or "identity" got "${type}"`);
     }
@@ -466,34 +430,26 @@ class Discovery {
     if (nodeId.equals(this.keyRing.getNodeId())) {
       // Skip our own nodeId, we actively add this information when it changes,
       // so there is no need to scan it.
-      this.logger.error('before processed tiem')
       await this.gestaltGraph.setVertexProcessedTime(
         gestaltNodeId,
         processedTime,
       );
-      this.logger.error('after processed tiem')
       return;
     }
-    this.logger.error('before claim')
     const newestClaimId = await this.gestaltGraph.getClaimIdNewest(nodeId);
-    this.logger.error('after claim')
     // The sigChain data of the vertex (containing all cryptolinks)
     let vertexChainData: Record<ClaimIdEncoded, SignedClaim> = {};
     try {
-      this.logger.error('before chain')
       vertexChainData = await this.nodeManager.requestChainData(
         nodeId,
         newestClaimId,
         ctx,
       );
-      this.logger.error('after chain')
     } catch (e) {
-      this.logger.error('before chain time error')
       await this.gestaltGraph.setVertexProcessedTime(
         gestaltNodeId,
         processedTime,
       );
-      this.logger.error('after chain time error')
       // Not strictly an error in this case, we can fail to connect
       this.logger.info(
         `Failed to discover ${nodesUtils.encodeNodeId(
@@ -504,27 +460,21 @@ class Discovery {
     }
     // Iterate over each of the claims in the chain (already verified).
     for (const signedClaim of Object.values(vertexChainData)) {
-      ctx.signal.throwIfAborted();
       switch (signedClaim.payload.typ) {
         case 'ClaimLinkNode':
-          this.logger.error('claimlinknode before')
           await this.processClaimLinkNode(
             signedClaim as SignedClaim<ClaimLinkNode>,
             nodeId,
             lastProcessedCutoffTime,
-            ctx,
           );
-          this.logger.error('claimlinknode after')
           break;
         case 'ClaimLinkIdentity':
-          this.logger.error('claimlinkidentity before')
           await this.processClaimLinkIdentity(
             signedClaim as SignedClaim<ClaimLinkIdentity>,
             nodeId,
             lastProcessedCutoffTime,
             ctx,
           );
-          this.logger.error('claimlinkidentity after')
           break;
         default:
           never(
@@ -532,24 +482,20 @@ class Discovery {
           );
       }
     }
-    this.logger.error('setvertex time before')
     await this.gestaltGraph.setVertexProcessedTime(
       gestaltNodeId,
       processedTime,
     );
-    this.logger.error('setvertex time after')
   }
 
   protected async processClaimLinkNode(
     signedClaim: SignedClaim<ClaimLinkNode>,
     nodeId: NodeId,
     lastProcessedCutoffTime = Date.now() - this.rediscoverSkipTime,
-    ctx: ContextTimed,
   ): Promise<void> {
     // Get the chain data of the linked node
     // Could be node1 or node2 in the claim so get the one that's
     // not equal to nodeId from above
-    this.logger.error('processClaimLinkNode 1')
     const node1Id = nodesUtils.decodeNodeId(signedClaim.payload.iss);
     if (node1Id == null) {
       never(`failed to decode issuer NodeId "${signedClaim.payload.iss}"`);
@@ -558,7 +504,6 @@ class Discovery {
     if (node2Id == null) {
       never(`failed to decode subject NodeId "${signedClaim.payload.sub}"`);
     }
-    this.logger.error('processClaimLinkNode 2')
     // Verify the claim
     const node1PublicKey = keysUtils.publicKeyFromNodeId(node1Id);
     const node2PublicKey = keysUtils.publicKeyFromNodeId(node2Id);
@@ -572,12 +517,10 @@ class Discovery {
       );
       return;
     }
-    this.logger.error('processClaimLinkNode 3')
     const linkedNodeId = node1Id.equals(nodeId) ? node2Id : node1Id;
     const linkedVertexNodeInfo: GestaltNodeInfo = {
       nodeId: linkedNodeId,
     };
-    this.logger.error('processClaimLinkNode 4')
     await this.gestaltGraph.linkNodeAndNode(
       {
         nodeId,
@@ -588,7 +531,6 @@ class Discovery {
         meta: {},
       },
     );
-    this.logger.error('processClaimLinkNode 5')
     const claimId = decodeClaimId(signedClaim.payload.jti);
     if (claimId == null) {
       never(`failed to decode claimId "${signedClaim.payload.jti}"`);
@@ -602,15 +544,11 @@ class Discovery {
         lastProcessedCutoffTime,
       ))
     ) {
-      this.logger.error('processClaimLinkNode 7')
       await this.scheduleDiscoveryForVertex(
         linkedGestaltId,
         undefined,
         lastProcessedCutoffTime,
         ['node', nodeId],
-        undefined,
-        undefined,
-        ctx,
       );
     }
   }
@@ -714,9 +652,6 @@ class Discovery {
         undefined,
         lastProcessedCutoffTime,
         ['node', nodeId],
-        undefined,
-        undefined,
-        ctx,
       );
     }
   }
@@ -793,9 +728,6 @@ class Discovery {
           undefined,
           lastProcessedCutoffTime,
           ['identity', providerIdentityId],
-          undefined,
-          undefined,
-          ctx,
         );
       }
     }
@@ -855,13 +787,12 @@ class Discovery {
    */
   protected async scheduleDiscoveryForVertex(
     vertex: GestaltId,
-    delay: number | undefined,
-    lastProcessedCutoffTime: number | undefined,
-    parent: GestaltId | undefined,
+    delay?: number,
+    lastProcessedCutoffTime?: number,
+    parent?: GestaltId,
     ignoreActive: boolean = false,
-    tran: DBTransaction | undefined,
-    ctx: ContextTimed,
-  ) {
+    tran?: DBTransaction,
+  ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
         this.scheduleDiscoveryForVertex(
@@ -871,7 +802,6 @@ class Discovery {
           parent,
           ignoreActive,
           tran,
-          ctx,
         ),
       );
     }
@@ -884,7 +814,6 @@ class Discovery {
         gestaltIdEncoded,
       ].join(''),
     );
-    this.logger.error('here1')
     // Check if task exists
     let taskExisting: Task | null = null;
     for await (const task of this.taskManager.getTasks(
@@ -892,17 +821,13 @@ class Discovery {
       true,
       [this.constructor.name, this.discoverVertexHandlerId, gestaltIdEncoded],
       tran,
-      ctx,
     )) {
-      ctx.signal.throwIfAborted();
-      this.logger.error('here2')
       // Ignore active tasks
       if (ignoreActive && task.status === 'active') continue;
       if (taskExisting == null) {
         taskExisting = task;
         continue;
       }
-      this.logger.error('here3')
       // Any extra tasks should be cancelled, this shouldn't normally happen
       task.cancel(abortSingletonTaskReason);
       this.dispatchEvent(
@@ -914,13 +839,11 @@ class Discovery {
         }),
       );
     }
-    this.logger.error('here4')
     // Only create if it doesn't exist
     if (taskExisting != null) return;
     this.logger.info(
       `Scheduling new discovery for vertex with gestaltId ${gestaltIdEncoded}`,
     );
-    this.logger.error('here5')
     await this.taskManager.scheduleTask(
       {
         handlerId: this.discoverVertexHandlerId,
@@ -936,7 +859,6 @@ class Discovery {
       },
       tran,
     );
-    this.logger.error('here6')
     this.dispatchEvent(
       new discoveryEvents.EventDiscoveryVertexQueued({
         detail: {
@@ -1087,12 +1009,10 @@ class Discovery {
           }
           // Refresh timer in preparation for request
           ctx.timer.refresh();
-          this.logger.error('verifyIdentityClaim before getClaim')
           const identitySignedClaim = await provider.getClaim(
             authIdentityId,
             claimId,
           );
-          this.logger.error('verifyIdentityClaim after getClaim')
           if (identitySignedClaim == null) {
             continue;
           }
@@ -1119,10 +1039,11 @@ class Discovery {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
+  @timedCancellable(true)
   public async checkRediscovery(
     lastProcessedCutoffTime: number,
     tran: DBTransaction | undefined,
-    ctx: ContextTimed,
+    @context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>

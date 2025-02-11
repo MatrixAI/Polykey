@@ -46,8 +46,8 @@ import { AbstractEvent, EventAll } from '@matrixai/events';
 import {
   context,
   timed,
-  timedCancellable
-} from "@matrixai/contexts/dist/decorators";
+  timedCancellable,
+} from '@matrixai/contexts/dist/decorators';
 import { Semaphore } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import NodeConnection from './NodeConnection';
@@ -1479,7 +1479,11 @@ class NodeConnectionManager {
     port: Port;
   }>;
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(true)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
   public async handleNodesConnectionSignalInitial(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
@@ -1518,16 +1522,20 @@ class NodeConnectionManager {
       this.keyRing.keyPair,
       data,
     );
-    const connectionSignalP = this.withConnF(targetNodeId, ctx, async (conn) => {
-      const client = conn.getClient();
-      await client.methods.nodesConnectionSignalFinal({
-        sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
-        targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
-        address: address,
-        requestSignature: requestSignature,
-        relaySignature: relaySignature.toString('base64url'),
-      });
-    })
+    const connectionSignalP = this.withConnF(
+      targetNodeId,
+      ctx,
+      async (conn) => {
+        const client = conn.getClient();
+        await client.methods.nodesConnectionSignalFinal({
+          sourceNodeIdEncoded: nodesUtils.encodeNodeId(sourceNodeId),
+          targetNodeIdEncoded: nodesUtils.encodeNodeId(targetNodeId),
+          address: address,
+          requestSignature: requestSignature,
+          relaySignature: relaySignature.toString('base64url'),
+        });
+      },
+    )
       // Ignore results and failures, then are expected to happen and are allowed
       .then(
         () => {},
@@ -1790,25 +1798,26 @@ class NodeConnectionManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @timedCancellable(true)
+  @timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
   public async isAuthenticatedP(
     nodeId: NodeId,
     @context ctx: ContextTimed,
   ): Promise<void> {
+    ctx.signal.throwIfAborted();
     const targetNodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
     if (connectionsEntry == null) {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
-    const { p: abortP, rejectP: triggerAbort } = utils.promise<void>();
+    const { p: abortP, rejectP: rejectAbortP } = utils.promise<never>();
     const abortHandler = () => {
-      triggerAbort(ctx.signal.reason);
+      rejectAbortP(ctx.signal.reason);
     };
-    if (ctx.signal.aborted) {
-      triggerAbort(ctx.signal.reason);
-    } else {
-      ctx.signal.addEventListener('abort', abortHandler, { once: true });
-    }
+    ctx.signal.addEventListener('abort', abortHandler, { once: true });
     try {
       return await Promise.race([connectionsEntry.authenticatedP, abortP]);
     } catch (e) {

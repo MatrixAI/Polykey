@@ -1,4 +1,3 @@
-import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
 import type { ResourceRelease } from '@matrixai/resources';
 import type {
@@ -23,11 +22,6 @@ import {
 import { Lock } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { extractTs } from '@matrixai/id/dist/IdSortable';
-import {
-  context,
-  timed,
-  timedCancellable
-} from "@matrixai/contexts/dist/decorators";
 import { Timer } from '@matrixai/timer';
 import TaskEvent from './TaskEvent';
 import * as tasksUtils from './utils';
@@ -401,25 +395,16 @@ class TaskManager {
     };
   }
 
-  public getTasks(
-    order?: 'asc' | 'desc',
-    lazy?: boolean,
-    path?: TaskPath,
-    tran?: DBTransaction,
-    ctx?: Partial<ContextTimedInput>,
-  ): AsyncGenerator<Task>;
   @ready(new tasksErrors.ErrorTaskManagerNotRunning())
-  @timed()
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
-    path: TaskPath | undefined,
-    tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    path?: TaskPath,
+    tran?: DBTransaction,
   ): AsyncGenerator<Task> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>
-        this.getTasks(order, lazy, path, tran, ctx),
+        this.getTasks(order, lazy, path, tran),
       );
     }
     if (path == null) {
@@ -427,7 +412,6 @@ class TaskManager {
         [...this.tasksTaskDbPath],
         { values: false, reverse: order !== 'asc' },
       )) {
-        ctx.signal.throwIfAborted();
         const taskId = IdInternal.fromBuffer<TaskId>(taskIdBuffer as Buffer);
         const task = (await this.getTask(taskId, lazy, tran))!;
         yield task;

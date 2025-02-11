@@ -647,17 +647,21 @@ describe(`${NodeManager.name}`, () => {
             scopes: ['global'],
           },
         );
+        const abortController = new AbortController();
+        const ctx = { signal: abortController.signal } as ContextTimed;
         const [resourceReleaser, nodeConnection] =
-          await nodeManager.acquireConnection(nodeId)();
+          await nodeManager.acquireConnection(nodeId, ctx)();
         expect(nodeConnection).toBeInstanceOf(NodeConnection);
         expect(nodeConnectionManager.hasConnection(nodeId)).toBeTrue();
         await resourceReleaser();
       });
       test('acquire Connection fails', async () => {
+        const abortController = new AbortController();
+        const ctx = { signal: abortController.signal } as ContextTimed;
         const nodeId = keyRingPeer.getNodeId();
-        await expect(nodeManager.acquireConnection(nodeId)()).rejects.toThrow(
-          nodesErrors.ErrorNodeManagerConnectionFailed,
-        );
+        await expect(
+          nodeManager.acquireConnection(nodeId, ctx)(),
+        ).rejects.toThrow(nodesErrors.ErrorNodeManagerConnectionFailed);
       });
       test('withConnF', async () => {
         const nodeId = keyRingPeer.getNodeId();
@@ -695,6 +699,7 @@ describe(`${NodeManager.name}`, () => {
 
         const gen = nodeManager.withConnG(
           nodeId,
+          undefined,
           async function* (
             conn,
           ): AsyncGenerator<undefined, undefined, undefined> {

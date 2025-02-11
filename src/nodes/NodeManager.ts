@@ -1254,60 +1254,48 @@ class NodeManager {
     @context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
-    this.logger.error('DATA about to get connection');
-    try {
-      return await this.withConnF(targetNodeId, ctx, async (connection) => {
-        const claims: Record<ClaimId, SignedClaim> = {};
-        const client = connection.getClient();
-        this.logger.error('DATA before rpc');
-        for await (const agentClaim of await client.methods.nodesClaimsGet(
-          {
-            claimIdEncoded:
-              claimId != null
-                ? claimsUtils.encodeClaimId(claimId)
-                : ('' as ClaimIdEncoded),
-          },
-          ctx,
-        )) {
-          this.logger.error('DATA in rpc');
-          ctx.signal.throwIfAborted();
-          // Need to re-construct each claim
-          const claimId: ClaimId = claimsUtils.decodeClaimId(
-            agentClaim.claimIdEncoded,
-          )!;
-          const signedClaimEncoded = agentClaim.signedTokenEncoded;
-          const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
-          // Verifying the claim
-          const issPublicKey = keysUtils.publicKeyFromNodeId(
-            nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-          );
-          const subPublicKey =
-            signedClaim.payload.typ === 'node'
-              ? keysUtils.publicKeyFromNodeId(
-                  nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
-                )
-              : null;
-          const token = Token.fromSigned(signedClaim);
-          if (!token.verifyWithPublicKey(issPublicKey)) {
-            this.logger.warn('Failed to verify issuing node');
-            continue;
-          }
-          if (
-            subPublicKey != null &&
-            !token.verifyWithPublicKey(subPublicKey)
-          ) {
-            this.logger.warn('Failed to verify subject node');
-            continue;
-          }
-          claims[claimId] = signedClaim;
+    return await this.withConnF(targetNodeId, ctx, async (connection) => {
+      const claims: Record<ClaimId, SignedClaim> = {};
+      const client = connection.getClient();
+      for await (const agentClaim of await client.methods.nodesClaimsGet(
+        {
+          claimIdEncoded:
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
+        },
+        ctx,
+      )) {
+        ctx.signal.throwIfAborted();
+        // Need to re-construct each claim
+        const claimId: ClaimId = claimsUtils.decodeClaimId(
+          agentClaim.claimIdEncoded,
+        )!;
+        const signedClaimEncoded = agentClaim.signedTokenEncoded;
+        const signedClaim = claimsUtils.parseSignedClaim(signedClaimEncoded);
+        // Verifying the claim
+        const issPublicKey = keysUtils.publicKeyFromNodeId(
+          nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+        );
+        const subPublicKey =
+          signedClaim.payload.typ === 'node'
+            ? keysUtils.publicKeyFromNodeId(
+                nodesUtils.decodeNodeId(signedClaim.payload.iss)!,
+              )
+            : null;
+        const token = Token.fromSigned(signedClaim);
+        if (!token.verifyWithPublicKey(issPublicKey)) {
+          this.logger.warn('Failed to verify issuing node');
+          continue;
         }
-        this.logger.error('DATA after logger');
-        return claims;
-      });
-    } catch (e) {
-      this.logger.error('DATA FAIL:', e);
-      throw e;
-    }
+        if (subPublicKey != null && !token.verifyWithPublicKey(subPublicKey)) {
+          this.logger.warn('Failed to verify subject node');
+          continue;
+        }
+        claims[claimId] = signedClaim;
+      }
+      return claims;
+    });
   }
 
   /**

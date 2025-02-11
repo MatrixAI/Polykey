@@ -18,13 +18,13 @@ import {
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { IdInternal } from '@matrixai/id';
+import { timedCancellable } from '@matrixai/contexts/dist/decorators';
+import { context } from '@matrixai/contexts/dist/decorators';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as nodesEvents from './events';
 import * as utils from '../utils';
 import config from '../config';
-import { timedCancellable } from '@matrixai/contexts/dist/decorators';
-import { context } from "@matrixai/contexts/dist/decorators";
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer
@@ -253,11 +253,11 @@ class NodeGraph {
   public async getNodeContact(
     nodeId: NodeId,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed
+    @context ctx: ContextTimed,
   ): Promise<NodeContact | undefined> {
     if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        await this.getNodeContact(nodeId, tran, ctx),
+      return await this.db.withTransactionF(
+        async (tran) => await this.getNodeContact(nodeId, tran, ctx),
       );
     }
     const [bucketIndex] = this.bucketIndex(nodeId);
@@ -643,11 +643,12 @@ class NodeGraph {
     order: 'asc' | 'desc' = 'asc',
     limit: number | undefined,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed
+    @context ctx: ContextTimed,
   ): Promise<NodeBucket> {
     if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        await this.getBucket(bucketIndex, sort, order, limit, tran, ctx),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.getBucket(bucketIndex, sort, order, limit, tran, ctx),
       );
     }
     if (bucketIndex < 0 || bucketIndex >= this.nodeIdBits) {
@@ -921,8 +922,8 @@ class NodeGraph {
     @context ctx: ContextTimed,
   ): Promise<NodeBucket> {
     if (tran == null) {
-      return await this.db.withTransactionF(async (tran) =>
-        await this.getClosestNodes(nodeId, limit, tran),
+      return await this.db.withTransactionF(
+        async (tran) => await this.getClosestNodes(nodeId, limit, tran),
       );
     }
     // Buckets map to the target node in the following way;

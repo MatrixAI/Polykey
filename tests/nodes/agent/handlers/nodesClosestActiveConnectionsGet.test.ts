@@ -161,6 +161,7 @@ describe('nodesClosestLocalNode', () => {
 
     const results = await nodeConnectionManagerLocal.withConnF(
       nodeIdPeer1,
+      undefined,
       async () => {
         const resultStream =
           await connection.rpcClient.methods.nodesClosestActiveConnectionsGet({

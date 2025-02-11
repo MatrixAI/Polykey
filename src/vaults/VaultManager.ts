@@ -540,7 +540,7 @@ class VaultManager {
   public async renameVault(
     vaultId: VaultId,
     newVaultName: VaultName,
-    tran: DBTransaction,
+    tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
