@@ -1104,6 +1104,7 @@ class NodeConnectionManager {
       this.connections.set(nodeIdString, entry);
       this.initiateForwardAuthenticate(nodeId);
     } else {
+      // Adding connection to existing entry
       newConnAndTimer.timer = new Timer({
         handler: async () =>
           await this.destroyConnection(nodeId, false, connectionId),
@@ -1118,6 +1119,16 @@ class NodeConnectionManager {
       entry.connections[connectionId] = newConnAndTimer;
       // If the new connection ID is less than the old then replace it
       if (entry.activeConnection > connectionId) {
+        const existingConnAndTimer = entry.connections[entry.activeConnection];
+        const newDelay = this.getStickyTimeoutValue(nodeId, false);
+        // If the old primary connection has an existing timeout timer then we need to reset it to the
+        // non-primary timeout time.
+        if (
+          existingConnAndTimer.timer != null &&
+          existingConnAndTimer.timer.getTimeout() > newDelay
+        ) {
+          existingConnAndTimer.timer.reset(newDelay);
+        }
         entry.activeConnection = connectionId;
       }
     }
@@ -1154,6 +1165,9 @@ class NodeConnectionManager {
     if (connectionsEntry == null) return;
     const destroyPs: Array<Promise<void>> = [];
     const connections = connectionsEntry.connections;
+    const activeConnectionOldTimeout =
+      connections[connectionsEntry.activeConnection].timer?.getTimeout() ??
+      this.getStickyTimeoutValue(targetNodeId, true);
     for (const connectionId of Object.keys(connections)) {
       // Destroy if target or no target set
       if (connectionIdTarget == null || connectionIdTarget === connectionId) {
@@ -1191,6 +1205,9 @@ class NodeConnectionManager {
       if (connections[connectionsEntry.activeConnection] == null) {
         // Find the new lowest
         connectionsEntry.activeConnection = remainingKeys.sort()[0];
+        // And reset its timer to the time left in the old active connection
+        const activeConnection = connections[connectionsEntry.activeConnection];
+        activeConnection.timer?.reset(activeConnectionOldTimeout);
       }
     }
     // Now that all the mutations are done we await destruction
@@ -1816,6 +1833,10 @@ class NodeConnectionManager {
       return;
     }
     connectionsEntry.authenticateComplete = true;
+    const nodeId = IdInternal.fromString<NodeId>(targetNodeIdString);
+    connectionsEntry.connections[
+      connectionsEntry.activeConnection
+    ]?.timer?.reset(this.getStickyTimeoutValue(nodeId, false));
     const authenticatedRejectP = connectionsEntry.authenticatedRejectP;
     let reason: Error;
     if (
