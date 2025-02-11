@@ -79,9 +79,7 @@ type ConnectionsEntry = {
   connections: Record<string, ConnectionAndTimer>;
   // This tracks the authentication state machine
   authenticatedForward: AuthenticatingState;
-  reasonForward?: Error;
   authenticatedReverse: AuthenticatingState;
-  reasonReverse?: Error;
   authenticateComplete: boolean;
   authenticatedP: Promise<void>;
   authenticatedResolveP: (value: void) => void;
@@ -1655,8 +1653,7 @@ class NodeConnectionManager {
         { cause: e },
       );
       connectionsEntry.authenticatedForward = AuthenticatingState.FAIL;
-      connectionsEntry.reasonForward = err;
-      this.authenticateFail(targetNodeIdString);
+      this.authenticateFail(targetNodeIdString, err);
       return;
     }
     // Check the reverse result
@@ -1666,9 +1663,6 @@ class NodeConnectionManager {
         this.authenticateSuccess(targetNodeIdString);
         return;
       case AuthenticatingState.FAIL:
-        // Authenticating failed
-        this.authenticateFail(targetNodeIdString);
-        return;
       case AuthenticatingState.PENDING:
         return;
       default:
@@ -1706,8 +1700,7 @@ class NodeConnectionManager {
         { cause: e },
       );
       connectionsEntry.authenticatedReverse = AuthenticatingState.FAIL;
-      connectionsEntry.reasonReverse = err;
-      this.authenticateFail(targetNodeIdString);
+      this.authenticateFail(targetNodeIdString, err);
       // Throw back up the RPC
       throw err;
     }
@@ -1718,9 +1711,6 @@ class NodeConnectionManager {
         this.authenticateSuccess(targetNodeIdString);
         return;
       case AuthenticatingState.FAIL:
-        // Authenticating failed
-        this.authenticateFail(targetNodeIdString);
-        return;
       case AuthenticatingState.PENDING:
         return;
       default:
@@ -1816,16 +1806,9 @@ class NodeConnectionManager {
     }
   }
 
-  protected authenticateFail(targetNodeIdString: NodeIdString) {
+  protected authenticateFail(targetNodeIdString: NodeIdString, reason: Error) {
     const connectionsEntry = this.connections.get(targetNodeIdString);
     if (connectionsEntry == null) {
-      return;
-    }
-    // Wait for both directions of authentication to complete first
-    if (
-      connectionsEntry.authenticatedForward === AuthenticatingState.PENDING ||
-      connectionsEntry.authenticatedReverse === AuthenticatingState.PENDING
-    ) {
       return;
     }
     // Skip if already completed
@@ -1837,28 +1820,8 @@ class NodeConnectionManager {
     connectionsEntry.connections[
       connectionsEntry.activeConnection
     ]?.timer?.reset(this.getStickyTimeoutValue(nodeId, false));
-    const authenticatedRejectP = connectionsEntry.authenticatedRejectP;
-    let reason: Error;
-    if (
-      connectionsEntry.reasonForward != null &&
-      connectionsEntry.reasonReverse != null
-    ) {
-      // Both errors
-      reason = new AggregateError([
-        connectionsEntry.reasonForward,
-        connectionsEntry.reasonReverse,
-      ]);
-    } else if (connectionsEntry.reasonForward != null) {
-      // Just the forward error
-      reason = connectionsEntry.reasonForward;
-    } else if (connectionsEntry.reasonReverse != null) {
-      // Just the reverse error
-      reason = connectionsEntry.reasonReverse;
-    } else {
-      utils.never('No reason was provided');
-    }
     // Removing authentication entry
-    authenticatedRejectP(
+    connectionsEntry.authenticatedRejectP(
       new nodesErrors.ErrorNodeManagerAuthenticationFailed(undefined, {
         cause: reason,
       }),
@@ -1899,30 +1862,23 @@ class NodeConnectionManager {
     reason: Error,
   ) {
     const authenticationEntry = this.connections.get(targetNodeIdString);
-    if (authenticationEntry == null) {
-      return;
-    }
-    if (authenticationEntry.authenticateComplete) {
+    if (
+      authenticationEntry == null ||
+      authenticationEntry.authenticateComplete
+    ) {
       return;
     }
     if (
       authenticationEntry!.authenticatedForward === AuthenticatingState.PENDING
     ) {
       authenticationEntry!.authenticatedForward = AuthenticatingState.FAIL;
-      authenticationEntry!.reasonForward = reason;
     }
     if (
       authenticationEntry!.authenticatedReverse === AuthenticatingState.PENDING
     ) {
       authenticationEntry!.authenticatedReverse = AuthenticatingState.FAIL;
-      authenticationEntry!.reasonReverse = reason;
     }
-    if (
-      authenticationEntry!.authenticatedForward === AuthenticatingState.FAIL ||
-      authenticationEntry!.authenticatedReverse === AuthenticatingState.FAIL
-    ) {
-      this.authenticateFail(targetNodeIdString);
-    }
+    this.authenticateFail(targetNodeIdString, reason);
   }
 
   public setAuthenticateNetworkForwardCallback(

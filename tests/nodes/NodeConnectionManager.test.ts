@@ -764,6 +764,10 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      const peerReverseConnectionP = testsUtils.promFromEvent(
+        ncmPeer1.nodeConnectionManager,
+        nodesEvents.EventNodeConnectionManagerConnectionReverse,
+      );
       // Checking authentication result
       const authenticationAttemptP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
@@ -775,6 +779,8 @@ describe(`${NodeConnectionManager.name}`, () => {
       await expect(authenticationAttemptP).rejects.toThrow(
         nodesErrors.ErrorNodeManagerAuthenticationFailed,
       );
+      // Wait for reverse connection before proceeding
+      await peerReverseConnectionP;
 
       const authenticationAttemptP2 = ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
