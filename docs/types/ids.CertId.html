@@ -18,7 +18,7 @@
 <h1>Type alias CertId</h1></div>
 <div class="tsd-signature"><span class="tsd-kind-type-alias">Cert<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="Opaque.html" class="tsd-signature-type tsd-kind-type-alias">Opaque</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">&quot;CertId&quot;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Id</span><span class="tsd-signature-symbol">&gt;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/ids/types.ts#L11">src/ids/types.ts:11</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/ids/types.ts#L17">src/ids/types.ts:17</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -79,7 +79,10 @@
 <li><a href="../modules/ids.html#encodeGestaltIdentityId"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-8388608"></use></svg><span>encode<wbr/>Gestalt<wbr/>Identity<wbr/>Id</span></a></li>
 <li><a href="../modules/ids.html#encodeGestaltNodeId"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-8388608"></use></svg><span>encode<wbr/>Gestalt<wbr/>Node<wbr/>Id</span></a></li>
 <li><a href="../modules/ids.html#encodeProviderIdentityId"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-8388608"></use></svg><span>encode<wbr/>Provider<wbr/>Identity<wbr/>Id</span></a></li>
-<li><a href="ids.CertId.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4194304"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-type-alias)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.31 16V8.224H8.91V7.24H14.79V8.224H12.39V16H11.31Z" fill="var(--color-text)"></path></g></svg><span>Cert<wbr/>Id</span></a></li>
+<li><a href="ids.AuditEventId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4194304"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-type-alias)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.31 16V8.224H8.91V7.24H14.79V8.224H12.39V16H11.31Z" fill="var(--color-text)"></path></g></svg><span>Audit<wbr/>Event<wbr/>Id</span></a></li>
+<li><a href="ids.AuditEventIdEncoded.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Audit<wbr/>Event<wbr/>Id<wbr/>Encoded</span></a></li>
+<li><a href="ids.AuditEventIdString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Audit<wbr/>Event<wbr/>Id<wbr/>String</span></a></li>
+<li><a href="ids.CertId.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Cert<wbr/>Id</span></a></li>
 <li><a href="ids.CertIdEncoded.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Cert<wbr/>Id<wbr/>Encoded</span></a></li>
 <li><a href="ids.CertIdString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Cert<wbr/>Id<wbr/>String</span></a></li>
 <li><a href="ids.NodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Node<wbr/>Id</span></a></li>
@@ -95,27 +98,38 @@
 <li><a href="ids.VaultId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Vault<wbr/>Id</span></a></li>
 <li><a href="ids.VaultIdEncoded.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Vault<wbr/>Id<wbr/>Encoded</span></a></li>
 <li><a href="ids.VaultIdString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Vault<wbr/>Id<wbr/>String</span></a></li>
-<li><a href="../functions/ids.createCertIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-64"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-function)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.39 16V7.24H14.55V8.224H10.446V11.128H14.238V12.112H10.47V16H9.39Z" fill="var(--color-text)"></path></g></svg><span>create<wbr/>Cert<wbr/>Id<wbr/>Generator</span></a></li>
+<li><a href="../functions/ids.assertNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-64"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-function)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.39 16V7.24H14.55V8.224H10.446V11.128H14.238V12.112H10.47V16H9.39Z" fill="var(--color-text)"></path></g></svg><span>assert<wbr/>Node<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.createAuditEventIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Audit<wbr/>Event<wbr/>Id<wbr/>Generator</span></a></li>
+<li><a href="../functions/ids.createCertIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Cert<wbr/>Id<wbr/>Generator</span></a></li>
 <li><a href="../functions/ids.createNodeIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Node<wbr/>Id<wbr/>Generator</span></a></li>
 <li><a href="../functions/ids.createNotificationIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Notification<wbr/>Id<wbr/>Generator</span></a></li>
 <li><a href="../functions/ids.createTaskIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Task<wbr/>Id<wbr/>Generator</span></a></li>
 <li><a href="../functions/ids.createVaultIdGenerator.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>create<wbr/>Vault<wbr/>Id<wbr/>Generator</span></a></li>
+<li><a href="../functions/ids.decodeAuditEventId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Audit<wbr/>Event<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.decodeCertId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Cert<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.decodeNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Node<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.decodeNodeIdString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Node<wbr/>Id<wbr/>String</span></a></li>
 <li><a href="../functions/ids.decodeNotificationId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Notification<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.decodeTaskId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Task<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.decodeVaultId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>decode<wbr/>Vault<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.encodeAuditEventId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Audit<wbr/>Event<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.encodeCertId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Cert<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.encodeNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Node<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.encodeNodeIdString.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Node<wbr/>Id<wbr/>String</span></a></li>
 <li><a href="../functions/ids.encodeNotificationId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Notification<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.encodeTaskId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Task<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.encodeVaultId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>encode<wbr/>Vault<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.generateAuditEventIdFromTimestamp.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Audit<wbr/>Event<wbr/>Id<wbr/>From<wbr/>Timestamp</span></a></li>
+<li><a href="../functions/ids.generateNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Node<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.generateNotificationId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Notification<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.generateNotificationIdFromTimestamp.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Notification<wbr/>Id<wbr/>From<wbr/>Timestamp</span></a></li>
+<li><a href="../functions/ids.isNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>is<wbr/>Node<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseClaimId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Claim<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseGestaltId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Gestalt<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.parseGestaltIdentityId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Gestalt<wbr/>Identity<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseIdentityId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Identity<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseNodeId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Node<wbr/>Id</span></a></li>
+<li><a href="../functions/ids.parseNotificationId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Notification<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseProviderId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Provider<wbr/>Id</span></a></li>
 <li><a href="../functions/ids.parseVaultId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>parse<wbr/>Vault<wbr/>Id</span></a></li></ul></div></details></li>
 <li><a href="../modules/keys.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>keys</span></a></li>

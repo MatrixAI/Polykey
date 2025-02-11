@@ -23,8 +23,8 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">TaskManager</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L35">src/tasks/TaskManager.ts:35</a></li>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L48">src/tasks/TaskManager.ts:48</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L36">src/tasks/TaskManager.ts:36</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L49">src/tasks/TaskManager.ts:49</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -52,6 +52,7 @@
 <a href="tasks.TaskManager.html#schedulingLockReleaser" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Lock<wbr/>Releaser?</span></a>
 <a href="tasks.TaskManager.html#schedulingLoop" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Loop</span></a>
 <a href="tasks.TaskManager.html#schedulingTimer" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Timer</span></a>
+<a href="tasks.TaskManager.html#stopWarningTimeout" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>stop<wbr/>Warning<wbr/>Timeout</span></a>
 <a href="tasks.TaskManager.html#taskEvents" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Events</span></a>
 <a href="tasks.TaskManager.html#taskPromises" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Promises</span></a>
 <a href="tasks.TaskManager.html#tasksActiveDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>tasks<wbr/>Active<wbr/>Db<wbr/>Path</span></a>
@@ -123,18 +124,20 @@
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">activeLimit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">activeLimit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">stopWarningTimeout</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">active<wbr/>Limit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
 <li class="tsd-parameter">
-<h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li></ul></li></ul></div>
+<h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">stop<wbr/>Warning<wbr/>Timeout</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.constructor</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L170">src/tasks/TaskManager.ts:170</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L175">src/tasks/TaskManager.ts:175</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
@@ -147,17 +150,17 @@
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>active<wbr/>Limit</span><a href="#activeLimit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">active<wbr/>Limit</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L84">src/tasks/TaskManager.ts:84</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L88">src/tasks/TaskManager.ts:88</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="activePromises" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>active<wbr/>Promises</span><a href="#activePromises" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">active<wbr/>Promises</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Map</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskIdEncoded.html" class="tsd-signature-type tsd-kind-type-alias">TaskIdEncoded</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L88">src/tasks/TaskManager.ts:88</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L93">src/tasks/TaskManager.ts:93</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="db" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L82">src/tasks/TaskManager.ts:82</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L86">src/tasks/TaskManager.ts:86</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="generateTaskId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>generate<wbr/>Task<wbr/>Id</span><a href="#generateTaskId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">generate<wbr/>Task<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><a href="../types/ids.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">)</span></div>
@@ -170,22 +173,22 @@
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <a href="../types/ids.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a></h4></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L85">src/tasks/TaskManager.ts:85</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L90">src/tasks/TaskManager.ts:90</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="handlers" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>handlers</span><a href="#handlers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">handlers</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Map</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol">, </span><a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L83">src/tasks/TaskManager.ts:83</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L87">src/tasks/TaskManager.ts:87</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L79">src/tasks/TaskManager.ts:79</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L83">src/tasks/TaskManager.ts:83</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="queueLogger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>queue<wbr/>Logger</span><a href="#queueLogger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">queue<wbr/>Logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L81">src/tasks/TaskManager.ts:81</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L85">src/tasks/TaskManager.ts:85</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="queuingLock" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>queuing<wbr/>Lock</span><a href="#queuingLock" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">queuing<wbr/>Lock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Lock</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -193,7 +196,7 @@
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L158">src/tasks/TaskManager.ts:158</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L163">src/tasks/TaskManager.ts:163</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="queuingLockReleaser" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>queuing<wbr/>Lock<wbr/>Releaser</span><a href="#queuingLockReleaser" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">queuing<wbr/>Lock<wbr/>Releaser</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type ">ResourceRelease</span></div>
@@ -203,7 +206,7 @@ the lock may not be acquired yet, and therefore releaser is not set</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L164">src/tasks/TaskManager.ts:164</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L169">src/tasks/TaskManager.ts:169</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="queuingLoop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>queuing<wbr/>Loop</span><a href="#queuingLoop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">queuing<wbr/>Loop</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = null</span></div>
@@ -213,12 +216,12 @@ The <code>null</code> indicates that the queuing loop isn&#39;t running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L154">src/tasks/TaskManager.ts:154</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L159">src/tasks/TaskManager.ts:159</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="schedulerLogger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>scheduler<wbr/>Logger</span><a href="#schedulerLogger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheduler<wbr/>Logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L80">src/tasks/TaskManager.ts:80</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L84">src/tasks/TaskManager.ts:84</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="schedulingLock" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>scheduling<wbr/>Lock</span><a href="#schedulingLock" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheduling<wbr/>Lock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Lock</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -226,7 +229,7 @@ The <code>null</code> indicates that the queuing loop isn&#39;t running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L142">src/tasks/TaskManager.ts:142</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L147">src/tasks/TaskManager.ts:147</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="schedulingLockReleaser" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>scheduling<wbr/>Lock<wbr/>Releaser</span><a href="#schedulingLockReleaser" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheduling<wbr/>Lock<wbr/>Releaser</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type ">ResourceRelease</span></div>
@@ -236,7 +239,7 @@ the lock may not be acquired yet, and therefore releaser is not set</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L148">src/tasks/TaskManager.ts:148</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L153">src/tasks/TaskManager.ts:153</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="schedulingLoop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>scheduling<wbr/>Loop</span><a href="#schedulingLoop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheduling<wbr/>Loop</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = null</span></div>
@@ -246,7 +249,7 @@ The <code>null</code> indicates that the scheduling loop isn&#39;t running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L132">src/tasks/TaskManager.ts:132</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L137">src/tasks/TaskManager.ts:137</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="schedulingTimer" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>scheduling<wbr/>Timer</span><a href="#schedulingTimer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheduling<wbr/>Timer</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Timer</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = null</span></div>
@@ -256,17 +259,22 @@ The <code>null</code> indicates there is no timer running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L138">src/tasks/TaskManager.ts:138</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L143">src/tasks/TaskManager.ts:143</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="stopWarningTimeout" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>stop<wbr/>Warning<wbr/>Timeout</span><a href="#stopWarningTimeout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">stop<wbr/>Warning<wbr/>Timeout</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L89">src/tasks/TaskManager.ts:89</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="taskEvents" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>task<wbr/>Events</span><a href="#taskEvents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">task<wbr/>Events</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">EventTarget</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L90">src/tasks/TaskManager.ts:90</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L95">src/tasks/TaskManager.ts:95</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="taskPromises" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>task<wbr/>Promises</span><a href="#taskPromises" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">task<wbr/>Promises</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Map</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskIdEncoded.html" class="tsd-signature-type tsd-kind-type-alias">TaskIdEncoded</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L86">src/tasks/TaskManager.ts:86</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L91">src/tasks/TaskManager.ts:91</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksActiveDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Active<wbr/>Db<wbr/>Path</span><a href="#tasksActiveDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Active<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -275,12 +283,12 @@ The <code>null</code> indicates there is no timer running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L116">src/tasks/TaskManager.ts:116</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L121">src/tasks/TaskManager.ts:121</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Db<wbr/>Path</span><a href="#tasksDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L91">src/tasks/TaskManager.ts:91</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L96">src/tasks/TaskManager.ts:96</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksLastTaskIdPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Last<wbr/>Task<wbr/>Id<wbr/>Path</span><a href="#tasksLastTaskIdPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Last<wbr/>Task<wbr/>Id<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -289,7 +297,7 @@ The <code>null</code> indicates there is no timer running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L126">src/tasks/TaskManager.ts:126</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L131">src/tasks/TaskManager.ts:131</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksPathDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Path<wbr/>Db<wbr/>Path</span><a href="#tasksPathDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Path<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -298,7 +306,7 @@ The <code>null</code> indicates there is no timer running</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L121">src/tasks/TaskManager.ts:121</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L126">src/tasks/TaskManager.ts:126</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksQueuedDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Queued<wbr/>Db<wbr/>Path</span><a href="#tasksQueuedDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Queued<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -308,7 +316,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L111">src/tasks/TaskManager.ts:111</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L116">src/tasks/TaskManager.ts:116</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksScheduledDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Scheduled<wbr/>Db<wbr/>Path</span><a href="#tasksScheduledDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Scheduled<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -318,7 +326,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L102">src/tasks/TaskManager.ts:102</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L107">src/tasks/TaskManager.ts:107</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksTaskDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Task<wbr/>Db<wbr/>Path</span><a href="#tasksTaskDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Task<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -327,7 +335,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L96">src/tasks/TaskManager.ts:96</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L101">src/tasks/TaskManager.ts:101</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Accessors</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_destroyed_" class="tsd-anchor"></a>
@@ -420,7 +428,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L166">src/tasks/TaskManager.ts:166</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L171">src/tasks/TaskManager.ts:171</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Methods</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="addEventListener" class="tsd-anchor"></a>
@@ -455,7 +463,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 <h5><span class="tsd-kind-parameter">cancelReason</span>: <span class="tsd-signature-type">any</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1156">src/tasks/TaskManager.ts:1156</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1211">src/tasks/TaskManager.ts:1211</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="deregisterHandler" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>deregister<wbr/>Handler</span><a href="#deregisterHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -468,7 +476,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 <h5><span class="tsd-kind-parameter">handlerId</span>: <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L279">src/tasks/TaskManager.ts:279</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L311">src/tasks/TaskManager.ts:311</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="destroy" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>destroy</span><a href="#destroy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -477,7 +485,7 @@ This is indexed by <code>TaskId</code> at the end to avoid conflicts
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.destroy</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L227">src/tasks/TaskManager.ts:227</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L235">src/tasks/TaskManager.ts:235</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -510,7 +518,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1087">src/tasks/TaskManager.ts:1087</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1134">src/tasks/TaskManager.ts:1134</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getHandler" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Handler</span><a href="#getHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -523,7 +531,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h5><span class="tsd-kind-parameter">handlerId</span>: <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L267">src/tasks/TaskManager.ts:267</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L299">src/tasks/TaskManager.ts:299</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getHandlers" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Handlers</span><a href="#getHandlers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -531,7 +539,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol">, </span><a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L271">src/tasks/TaskManager.ts:271</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L303">src/tasks/TaskManager.ts:303</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getLastTaskId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Last<wbr/>Task<wbr/>Id</span><a href="#getLastTaskId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -544,7 +552,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L283">src/tasks/TaskManager.ts:283</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L315">src/tasks/TaskManager.ts:315</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Task</span><a href="#getTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -561,7 +569,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/tasks.types.Task.html" class="tsd-signature-type tsd-kind-type-alias">Task</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L295">src/tasks/TaskManager.ts:295</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L327">src/tasks/TaskManager.ts:327</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getTaskPromise" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Task<wbr/>Promise</span><a href="#getTaskPromise" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -576,7 +584,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">PromiseCancellable</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L400">src/tasks/TaskManager.ts:400</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L432">src/tasks/TaskManager.ts:432</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getTasks" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Tasks</span><a href="#getTasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -595,7 +603,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/tasks.types.Task.html" class="tsd-signature-type tsd-kind-type-alias">Task</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L366">src/tasks/TaskManager.ts:366</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L398">src/tasks/TaskManager.ts:398</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="isProcessing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>is<wbr/>Processing</span><a href="#isProcessing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -603,7 +611,7 @@ Explicit removal of tasks can only be done through task cancellation</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L252">src/tasks/TaskManager.ts:252</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L262">src/tasks/TaskManager.ts:262</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="lockLastTaskId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>lock<wbr/>Last<wbr/>Task<wbr/>Id</span><a href="#lockLastTaskId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -620,7 +628,7 @@ Prevents &quot;counter racing&quot; for the last task ID</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1192">src/tasks/TaskManager.ts:1192</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1247">src/tasks/TaskManager.ts:1247</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="lockTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>lock<wbr/>Task</span><a href="#lockTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -646,7 +654,7 @@ Used to lock:</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1205">src/tasks/TaskManager.ts:1205</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1260">src/tasks/TaskManager.ts:1260</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="queueTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>queue<wbr/>Task</span><a href="#queueTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -663,7 +671,7 @@ If the task is cancelled, then this does nothing</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L881">src/tasks/TaskManager.ts:881</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L913">src/tasks/TaskManager.ts:913</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="registerHandler" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>register<wbr/>Handler</span><a href="#registerHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -678,7 +686,7 @@ If the task is cancelled, then this does nothing</p>
 <h5><span class="tsd-kind-parameter">handler</span>: <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L275">src/tasks/TaskManager.ts:275</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L307">src/tasks/TaskManager.ts:307</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -708,7 +716,7 @@ repair active dangling tasks by moving them back to the queued index</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1213">src/tasks/TaskManager.ts:1213</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1268">src/tasks/TaskManager.ts:1268</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="requeueTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>requeue<wbr/>Task</span><a href="#requeueTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -723,7 +731,7 @@ repair active dangling tasks by moving them back to the queued index</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1122">src/tasks/TaskManager.ts:1122</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L1173">src/tasks/TaskManager.ts:1173</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="scheduleTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>schedule<wbr/>Task</span><a href="#scheduleTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -758,7 +766,7 @@ attempt to reset the <code>this.schedulingTimer</code></p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/tasks.types.Task.html" class="tsd-signature-type tsd-kind-type-alias">Task</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L471">src/tasks/TaskManager.ts:471</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L503">src/tasks/TaskManager.ts:503</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -779,7 +787,7 @@ attempt to reset the <code>this.schedulingTimer</code></p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.start</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L186">src/tasks/TaskManager.ts:186</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L194">src/tasks/TaskManager.ts:194</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="startProcessing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start<wbr/>Processing</span><a href="#startProcessing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -792,7 +800,7 @@ Use this when <code>Tasks</code> is started in lazy mode</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L239">src/tasks/TaskManager.ts:239</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L247">src/tasks/TaskManager.ts:247</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="startQueueing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>start<wbr/>Queueing</span><a href="#startQueueing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -800,7 +808,7 @@ Use this when <code>Tasks</code> is started in lazy mode</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L770">src/tasks/TaskManager.ts:770</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L802">src/tasks/TaskManager.ts:802</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="startScheduling" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>start<wbr/>Scheduling</span><a href="#startScheduling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -811,7 +819,7 @@ Use this when <code>Tasks</code> is started in lazy mode</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L676">src/tasks/TaskManager.ts:676</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L708">src/tasks/TaskManager.ts:708</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="startTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>start<wbr/>Task</span><a href="#startTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -828,7 +836,7 @@ If the task is cancelled, then this does nothing</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L927">src/tasks/TaskManager.ts:927</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L961">src/tasks/TaskManager.ts:961</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -837,7 +845,7 @@ If the task is cancelled, then this does nothing</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.stop</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L220">src/tasks/TaskManager.ts:220</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L228">src/tasks/TaskManager.ts:228</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="stopProcessing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop<wbr/>Processing</span><a href="#stopProcessing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -849,7 +857,7 @@ This call is idempotent</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L248">src/tasks/TaskManager.ts:248</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L256">src/tasks/TaskManager.ts:256</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="stopQueueing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>stop<wbr/>Queueing</span><a href="#stopQueueing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -857,7 +865,7 @@ This call is idempotent</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L815">src/tasks/TaskManager.ts:815</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L847">src/tasks/TaskManager.ts:847</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="stopScheduling" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>stop<wbr/>Scheduling</span><a href="#stopScheduling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -865,7 +873,7 @@ This call is idempotent</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L755">src/tasks/TaskManager.ts:755</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L787">src/tasks/TaskManager.ts:787</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="stopTasks" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop<wbr/>Tasks</span><a href="#stopTasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -877,7 +885,7 @@ This call is idempotent</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L260">src/tasks/TaskManager.ts:260</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L270">src/tasks/TaskManager.ts:270</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="triggerQueuing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>trigger<wbr/>Queuing</span><a href="#triggerQueuing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -893,7 +901,7 @@ Remember the queuing just keeps running until finished</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L870">src/tasks/TaskManager.ts:870</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L902">src/tasks/TaskManager.ts:902</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="triggerScheduling" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>trigger<wbr/>Scheduling</span><a href="#triggerScheduling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -913,7 +921,7 @@ This ensures that the timer is set to the earliest scheduled task</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L831">src/tasks/TaskManager.ts:831</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L863">src/tasks/TaskManager.ts:863</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="updateTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>update<wbr/>Task</span><a href="#updateTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -930,7 +938,7 @@ This ensures that the timer is set to the earliest scheduled task</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L585">src/tasks/TaskManager.ts:585</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L617">src/tasks/TaskManager.ts:617</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="createTaskManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create<wbr/>Task<wbr/>Manager</span><a href="#createTaskManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -940,7 +948,7 @@ This ensures that the timer is set to the earliest scheduled task</p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">activeLimit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">handlers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol">, </span><a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">lazy</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">activeLimit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">handlers</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol">, </span><a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">lazy</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">stopWarningTimeout</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">active<wbr/>Limit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
@@ -953,10 +961,12 @@ This ensures that the timer is set to the earliest scheduled task</p>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">lazy</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span></h5></li>
 <li class="tsd-parameter">
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li></ul></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">stop<wbr/>Warning<wbr/>Timeout</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L49">src/tasks/TaskManager.ts:49</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/tasks/TaskManager.ts#L50">src/tasks/TaskManager.ts:50</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -993,6 +1003,7 @@ This ensures that the timer is set to the earliest scheduled task</p>
 <li><a href="#schedulingLockReleaser" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Lock<wbr/>Releaser</span></a></li>
 <li><a href="#schedulingLoop" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Loop</span></a></li>
 <li><a href="#schedulingTimer" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scheduling<wbr/>Timer</span></a></li>
+<li><a href="#stopWarningTimeout" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>stop<wbr/>Warning<wbr/>Timeout</span></a></li>
 <li><a href="#taskEvents" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Events</span></a></li>
 <li><a href="#taskPromises" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>task<wbr/>Promises</span></a></li>
 <li><a href="#tasksActiveDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>tasks<wbr/>Active<wbr/>Db<wbr/>Path</span></a></li>

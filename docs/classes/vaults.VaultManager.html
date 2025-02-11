@@ -23,8 +23,8 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">VaultManager</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L58">src/vaults/VaultManager.ts:58</a></li>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L71">src/vaults/VaultManager.ts:71</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L62">src/vaults/VaultManager.ts:62</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L76">src/vaults/VaultManager.ts:76</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -46,7 +46,7 @@
 <a href="vaults.VaultManager.html#gestaltGraph" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a>
 <a href="vaults.VaultManager.html#keyRing" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a>
 <a href="vaults.VaultManager.html#logger" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a>
-<a href="vaults.VaultManager.html#nodeConnectionManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a>
+<a href="vaults.VaultManager.html#nodeManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Manager</span></a>
 <a href="vaults.VaultManager.html#notificationsManager" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>notifications<wbr/>Manager</span></a>
 <a href="vaults.VaultManager.html#vaultIdGenerator" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Id<wbr/>Generator</span></a>
 <a href="vaults.VaultManager.html#vaultKey" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Key</span></a>
@@ -99,6 +99,7 @@
 <a href="vaults.VaultManager.html#unsetWorkerManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Worker<wbr/>Manager</span></a>
 <a href="vaults.VaultManager.html#unshareVault" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unshare<wbr/>Vault</span></a>
 <a href="vaults.VaultManager.html#withVaults" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>with<wbr/>Vaults</span></a>
+<a href="vaults.VaultManager.html#withVaultsG" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>with<wbr/>VaultsG</span></a>
 <a href="vaults.VaultManager.html#createVaultManager" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Vault<wbr/>Manager</span></a>
 </div></section></div></details></section></section>
 <section class="tsd-panel-group tsd-member-group">
@@ -112,7 +113,7 @@
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeConnectionManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">notificationsManager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultsPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">notificationsManager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultsPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a></h5></li>
@@ -127,7 +128,7 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
-<h5><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></h5></li>
+<h5><span class="tsd-kind-property">node<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">notifications<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a></h5></li>
 <li class="tsd-parameter">
@@ -135,7 +136,7 @@
 <h4 class="tsd-returns-title">Returns <a href="vaults.VaultManager.html" class="tsd-signature-type tsd-kind-class">VaultManager</a></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.constructor</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L134">src/vaults/VaultManager.ts:134</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L139">src/vaults/VaultManager.ts:139</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
@@ -148,57 +149,57 @@
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>acl</span><a href="#acl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">:</span> <a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L119">src/vaults/VaultManager.ts:119</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L124">src/vaults/VaultManager.ts:124</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="db" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L118">src/vaults/VaultManager.ts:118</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L123">src/vaults/VaultManager.ts:123</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="efs" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>efs</span><a href="#efs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">efs</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">EncryptedFS</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L131">src/vaults/VaultManager.ts:131</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L136">src/vaults/VaultManager.ts:136</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="efsDb" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>efs<wbr/>Db</span><a href="#efsDb" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">efs<wbr/>Db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L130">src/vaults/VaultManager.ts:130</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L135">src/vaults/VaultManager.ts:135</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="efsPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>efs<wbr/>Path</span><a href="#efsPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">efs<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L114">src/vaults/VaultManager.ts:114</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L119">src/vaults/VaultManager.ts:119</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="fs" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>fs</span><a href="#fs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L116">src/vaults/VaultManager.ts:116</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L121">src/vaults/VaultManager.ts:121</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="gestaltGraph" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>gestalt<wbr/>Graph</span><a href="#gestaltGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">gestalt<wbr/>Graph</span><span class="tsd-signature-symbol">:</span> <a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L122">src/vaults/VaultManager.ts:122</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L127">src/vaults/VaultManager.ts:127</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="keyRing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>key<wbr/>Ring</span><a href="#keyRing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">:</span> <a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L120">src/vaults/VaultManager.ts:120</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L125">src/vaults/VaultManager.ts:125</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L117">src/vaults/VaultManager.ts:117</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeConnectionManager" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Connection<wbr/>Manager</span><a href="#nodeConnectionManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></div><aside class="tsd-sources">
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L122">src/vaults/VaultManager.ts:122</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeManager" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Manager</span><a href="#nodeManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L121">src/vaults/VaultManager.ts:121</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L126">src/vaults/VaultManager.ts:126</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="notificationsManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>notifications<wbr/>Manager</span><a href="#notificationsManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">notifications<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L123">src/vaults/VaultManager.ts:123</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L128">src/vaults/VaultManager.ts:128</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultIdGenerator" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vault<wbr/>Id<wbr/>Generator</span><a href="#vaultIdGenerator" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vault<wbr/>Id<wbr/>Generator</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -211,37 +212,37 @@
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h4></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L132">src/vaults/VaultManager.ts:132</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L137">src/vaults/VaultManager.ts:137</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultKey" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vault<wbr/>Key</span><a href="#vaultKey" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vault<wbr/>Key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Buffer</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L129">src/vaults/VaultManager.ts:129</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L134">src/vaults/VaultManager.ts:134</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultLocks" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vault<wbr/>Locks</span><a href="#vaultLocks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vault<wbr/>Locks</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">LockBox</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">RWLockWriter</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L128">src/vaults/VaultManager.ts:128</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L133">src/vaults/VaultManager.ts:133</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultMap" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vault<wbr/>Map</span><a href="#vaultMap" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vault<wbr/>Map</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">VaultMap</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L127">src/vaults/VaultManager.ts:127</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L132">src/vaults/VaultManager.ts:132</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultsDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vaults<wbr/>Db<wbr/>Path</span><a href="#vaultsDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vaults<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L124">src/vaults/VaultManager.ts:124</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L129">src/vaults/VaultManager.ts:129</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="vaultsNamesDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>vaults<wbr/>Names<wbr/>Db<wbr/>Path</span><a href="#vaultsNamesDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vaults<wbr/>Names<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L125">src/vaults/VaultManager.ts:125</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L130">src/vaults/VaultManager.ts:130</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="vaultsPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>vaults<wbr/>Path</span><a href="#vaultsPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">vaults<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L113">src/vaults/VaultManager.ts:113</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L118">src/vaults/VaultManager.ts:118</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Accessors</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_destroyed_" class="tsd-anchor"></a>
@@ -350,7 +351,7 @@
 <section class="tsd-panel tsd-member"><a id="cloneVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>clone<wbr/>Vault</span><a href="#cloneVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="cloneVault.cloneVault-1"><span class="tsd-kind-call-signature">clone<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">vaultNameOrId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span><a href="#cloneVault.cloneVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="cloneVault.cloneVault-1"><span class="tsd-kind-call-signature">clone<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">vaultNameOrId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span><a href="#cloneVault.cloneVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Clones the contents of a remote vault into a new local
 vault instance</p>
@@ -363,17 +364,19 @@ vault instance</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultNameOrId</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L684">src/vaults/VaultManager.ts:684</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L721">src/vaults/VaultManager.ts:721</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="closeVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>close<wbr/>Vault</span><a href="#closeVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="closeVault.closeVault-1"><span class="tsd-kind-call-signature">close<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#closeVault.closeVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="closeVault.closeVault-1"><span class="tsd-kind-call-signature">close<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#closeVault.closeVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Removes vault from the vault map</p>
+<div class="tsd-comment tsd-typography"><p>Removes a vault from the vault map.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -381,18 +384,19 @@ vault instance</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultId</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L454">src/vaults/VaultManager.ts:454</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L473">src/vaults/VaultManager.ts:473</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="createVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>create<wbr/>Vault</span><a href="#createVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="createVault.createVault-1"><span class="tsd-kind-call-signature">create<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultName</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span><a href="#createVault.createVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="createVault.createVault-1"><span class="tsd-kind-call-signature">create<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultName</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span><a href="#createVault.createVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Constructs a new vault instance with a given name and
-stores it in memory</p>
+<div class="tsd-comment tsd-typography"><p>Constructs a new Vault instance with a given name and stores it in memory.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -400,11 +404,13 @@ stores it in memory</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultName</span>: <span class="tsd-signature-type">string</span></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L317">src/vaults/VaultManager.ts:317</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L320">src/vaults/VaultManager.ts:320</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="destroy" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>destroy</span><a href="#destroy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -413,14 +419,13 @@ stores it in memory</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.destroy</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L270">src/vaults/VaultManager.ts:270</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L274">src/vaults/VaultManager.ts:274</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="destroyVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>destroy<wbr/>Vault</span><a href="#destroyVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="destroyVault.destroyVault-1"><span class="tsd-kind-call-signature">destroy<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#destroyVault.destroyVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="destroyVault.destroyVault-1"><span class="tsd-kind-call-signature">destroy<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#destroyVault.destroyVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Removes the metadata and EFS state of a vault using a
-given VaultId</p>
+<div class="tsd-comment tsd-typography"><p>Removes the metadata and EFS state of a vault using a given VaultId.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -428,11 +433,13 @@ given VaultId</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultId</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L410">src/vaults/VaultManager.ts:410</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L422">src/vaults/VaultManager.ts:422</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -454,7 +461,7 @@ given VaultId</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1074">src/vaults/VaultManager.ts:1074</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1234">src/vaults/VaultManager.ts:1234</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="generateVaultId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>generate<wbr/>Vault<wbr/>Id</span><a href="#generateVaultId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -462,11 +469,11 @@ given VaultId</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L974">src/vaults/VaultManager.ts:974</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1067">src/vaults/VaultManager.ts:1067</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="getVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>get<wbr/>Vault</span><a href="#getVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
-<li class="tsd-signature tsd-anchor-link" id="getVault.getVault-1"><span class="tsd-kind-call-signature">get<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="vaults.VaultInternal.html" class="tsd-signature-type tsd-kind-class">VaultInternal</a><span class="tsd-signature-symbol">&gt;</span><a href="#getVault.getVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="getVault.getVault-1"><span class="tsd-kind-call-signature">get<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="vaults.VaultInternal.html" class="tsd-signature-type tsd-kind-class">VaultInternal</a><span class="tsd-signature-symbol">&gt;</span><a href="#getVault.getVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -474,16 +481,18 @@ given VaultId</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultId</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">ContextTimed</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="vaults.VaultInternal.html" class="tsd-signature-type tsd-kind-class">VaultInternal</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L990">src/vaults/VaultManager.ts:990</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1083">src/vaults/VaultManager.ts:1083</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getVaultId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Vault<wbr/>Id</span><a href="#getVaultId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="getVaultId.getVaultId-1"><span class="tsd-kind-call-signature">get<wbr/>Vault<wbr/>Id</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultName</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span><a href="#getVaultId.getVaultId-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Retrieves the VaultId associated with a vault name</p>
+<div class="tsd-comment tsd-typography"><p>Retrieves the VaultId associated with a vault name.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -495,14 +504,14 @@ given VaultId</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L563">src/vaults/VaultManager.ts:563</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L599">src/vaults/VaultManager.ts:599</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getVaultMeta" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Vault<wbr/>Meta</span><a href="#getVaultMeta" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="getVaultMeta.getVaultMeta-1"><span class="tsd-kind-call-signature">get<wbr/>Vault<wbr/>Meta</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">VaultMetadata</span><span class="tsd-signature-symbol">&gt;</span><a href="#getVaultMeta.getVaultMeta-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Retrieves the vault metadata using the VaultId
-and parses it to return the associated vault name</p>
+<div class="tsd-comment tsd-typography"><p>Retrieves the vault metadata using the VaultId and parses it to return the
+associated vault name.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -514,13 +523,13 @@ and parses it to return the associated vault name</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">VaultMetadata</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L370">src/vaults/VaultManager.ts:370</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L383">src/vaults/VaultManager.ts:383</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getVaultName" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Vault<wbr/>Name</span><a href="#getVaultName" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="getVaultName.getVaultName-1"><span class="tsd-kind-call-signature">get<wbr/>Vault<wbr/>Name</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><a href="#getVaultName.getVaultName-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Retrieves the vault name associated with a VaultId</p>
+<div class="tsd-comment tsd-typography"><p>Retrieves the vault name associated with a VaultId.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -532,7 +541,7 @@ and parses it to return the associated vault name</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L586">src/vaults/VaultManager.ts:586</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L622">src/vaults/VaultManager.ts:622</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getVaultPermission" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Vault<wbr/>Permission</span><a href="#getVaultPermission" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -550,14 +559,13 @@ and parses it to return the associated vault name</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L603">src/vaults/VaultManager.ts:603</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L639">src/vaults/VaultManager.ts:639</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="handleInfoRequest" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>handle<wbr/>Info<wbr/>Request</span><a href="#handleInfoRequest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="handleInfoRequest.handleInfoRequest-1"><span class="tsd-kind-call-signature">handle<wbr/>Info<wbr/>Request</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleInfoRequest.handleInfoRequest-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="handleInfoRequest.handleInfoRequest-1"><span class="tsd-kind-call-signature">handle<wbr/>Info<wbr/>Request</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleInfoRequest.handleInfoRequest-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Handler for receiving http GET requests when being
-cloned or pulled from</p>
+<div class="tsd-comment tsd-typography"><p>Handler for receiving http GET requests when being cloned or pulled from.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -565,18 +573,19 @@ cloned or pulled from</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultId</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L802">src/vaults/VaultManager.ts:802</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L868">src/vaults/VaultManager.ts:868</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="handlePackRequest" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>handle<wbr/>Pack<wbr/>Request</span><a href="#handlePackRequest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="handlePackRequest.handlePackRequest-1"><span class="tsd-kind-call-signature">handle<wbr/>Pack<wbr/>Request</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">body</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type ">PassThrough</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">PassThrough</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><a href="#handlePackRequest.handlePackRequest-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="handlePackRequest.handlePackRequest-1"><span class="tsd-kind-call-signature">handle<wbr/>Pack<wbr/>Request</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">body</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#handlePackRequest.handlePackRequest-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Handler for receiving http POST requests when being
-cloned or pulled from</p>
+<div class="tsd-comment tsd-typography"><p>Handler for receiving http POST requests when being cloned or pulled from.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -584,17 +593,19 @@ cloned or pulled from</p>
 <li>
 <h5><span class="tsd-kind-parameter">vaultId</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">body</span>: <span class="tsd-signature-type ">Buffer</span></h5></li>
+<h5><span class="tsd-kind-parameter">body</span>: <span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">[]</span></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type ">PassThrough</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">PassThrough</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L844">src/vaults/VaultManager.ts:844</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L913">src/vaults/VaultManager.ts:913</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="handleScanVaults" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>handle<wbr/>Scan<wbr/>Vaults</span><a href="#handleScanVaults" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="handleScanVaults.handleScanVaults-1"><span class="tsd-kind-call-signature">handle<wbr/>Scan<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultId</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleScanVaults.handleScanVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="handleScanVaults.handleScanVaults-1"><span class="tsd-kind-call-signature">handle<wbr/>Scan<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultId</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#handleScanVaults.handleScanVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Returns all the shared vaults for a NodeId.</p>
 </div>
@@ -604,54 +615,58 @@ cloned or pulled from</p>
 <li>
 <h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultId</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L924">src/vaults/VaultManager.ts:924</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1004">src/vaults/VaultManager.ts:1004</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="listVaults" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>list<wbr/>Vaults</span><a href="#listVaults" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="listVaults.listVaults-1"><span class="tsd-kind-call-signature">list<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">VaultList</span><span class="tsd-signature-symbol">&gt;</span><a href="#listVaults.listVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="listVaults.listVaults-1"><span class="tsd-kind-call-signature">list<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">VaultList</span><span class="tsd-signature-symbol">&gt;</span><a href="#listVaults.listVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Lists the vault name and associated VaultId of all
-the vaults stored</p>
+<div class="tsd-comment tsd-typography"><p>Lists the vault name and associated VaultId of all the stored vaults.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">VaultList</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L482">src/vaults/VaultManager.ts:482</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L509">src/vaults/VaultManager.ts:509</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="pullVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>pull<wbr/>Vault</span><a href="#pullVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="pullVault.pullVault-1"><span class="tsd-kind-call-signature">pull<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#pullVault.pullVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="pullVault.pullVault-1"><span class="tsd-kind-call-signature">pull<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">__namedParameters</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#pullVault.pullVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Pulls the contents of a remote vault into an existing vault
-instance</p>
+<div class="tsd-comment tsd-typography"><p>Pulls the contents of a remote vault into an existing vault instance.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">pullNodeId</span><span class="tsd-signature-symbol">?: </span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">pullVaultNameOrId</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">tran</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">DBTransaction</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultId</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">pullNodeId</span><span class="tsd-signature-symbol">?: </span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">pullVaultNameOrId</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultId</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">pull<wbr/>Node<wbr/>Id</span><span class="tsd-signature-symbol">?: </span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">pull<wbr/>Vault<wbr/>Name<wbr/>Or<wbr/>Id</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li>
 <li class="tsd-parameter">
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">tran</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">DBTransaction</span></h5></li>
-<li class="tsd-parameter">
-<h5><span class="tsd-kind-property">vault<wbr/>Id</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li></ul></li></ul></div>
+<h5><span class="tsd-kind-property">vault<wbr/>Id</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a></h5></li></ul></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimed</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L765">src/vaults/VaultManager.ts:765</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L813">src/vaults/VaultManager.ts:813</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -675,7 +690,7 @@ instance</p>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="renameVault.renameVault-1"><span class="tsd-kind-call-signature">rename<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">newVaultName</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#renameVault.renameVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Changes the vault name metadata of a VaultId</p>
+<div class="tsd-comment tsd-typography"><p>Changes the vault name metadata of a VaultId.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -689,23 +704,25 @@ instance</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L503">src/vaults/VaultManager.ts:503</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L539">src/vaults/VaultManager.ts:539</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="scanVaults" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>scan<wbr/>Vaults</span><a href="#scanVaults" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="scanVaults.scanVaults-1"><span class="tsd-kind-call-signature">scan<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">targetNodeId</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultIdEncoded</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultIdEncoded.html" class="tsd-signature-type tsd-kind-type-alias">VaultIdEncoded</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#scanVaults.scanVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="scanVaults.scanVaults-1"><span class="tsd-kind-call-signature">scan<wbr/>Vaults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">targetNodeId</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultIdEncoded</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultIdEncoded.html" class="tsd-signature-type tsd-kind-type-alias">VaultIdEncoded</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#scanVaults.scanVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Retrieves all the vaults for a peers node</p>
+<div class="tsd-comment tsd-typography"><p>Retrieves all the vaults for a peer&#39;s node.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">targetNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li></ul></div>
+<h5><span class="tsd-kind-parameter">targetNodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">vaultIdEncoded</span><span class="tsd-signature-symbol">: </span><a href="../types/ids.VaultIdEncoded.html" class="tsd-signature-type tsd-kind-type-alias">VaultIdEncoded</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultName</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultPermissions</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">&quot;clone&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;pull&quot;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L896">src/vaults/VaultManager.ts:896</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L961">src/vaults/VaultManager.ts:961</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="setWorkerManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>set<wbr/>Worker<wbr/>Manager</span><a href="#setWorkerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -718,7 +735,7 @@ instance</p>
 <h5><span class="tsd-kind-parameter">workerManager</span>: <a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L305">src/vaults/VaultManager.ts:305</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L309">src/vaults/VaultManager.ts:309</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="setupKey" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setup<wbr/>Key</span><a href="#setupKey" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -731,14 +748,14 @@ instance</p>
 <h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1058">src/vaults/VaultManager.ts:1058</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1218">src/vaults/VaultManager.ts:1218</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="shareVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>share<wbr/>Vault</span><a href="#shareVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="shareVault.shareVault-1"><span class="tsd-kind-call-signature">share<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#shareVault.shareVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Sets clone, pull and scan permissions of a vault for a
-gestalt and send a notification to this gestalt</p>
+<div class="tsd-comment tsd-typography"><p>Sets clone, pull and scan permissions of a vault for a gestalt and send a
+notification to this gestalt.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -752,7 +769,7 @@ gestalt and send a notification to this gestalt</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L627">src/vaults/VaultManager.ts:627</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L663">src/vaults/VaultManager.ts:663</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -769,7 +786,7 @@ gestalt and send a notification to this gestalt</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.start</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L167">src/vaults/VaultManager.ts:167</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L172">src/vaults/VaultManager.ts:172</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -778,7 +795,7 @@ gestalt and send a notification to this gestalt</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.stop</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L243">src/vaults/VaultManager.ts:243</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L248">src/vaults/VaultManager.ts:248</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="unsetWorkerManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>unset<wbr/>Worker<wbr/>Manager</span><a href="#unsetWorkerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -786,14 +803,13 @@ gestalt and send a notification to this gestalt</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L309">src/vaults/VaultManager.ts:309</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L313">src/vaults/VaultManager.ts:313</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="unshareVault" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>unshare<wbr/>Vault</span><a href="#unshareVault" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="unshareVault.unshareVault-1"><span class="tsd-kind-call-signature">unshare<wbr/>Vault</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultId</span>, <span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#unshareVault.unshareVault-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Unsets clone, pull and scan permissions of a vault for a
-gestalt</p>
+<div class="tsd-comment tsd-typography"><p>Unsets clone, pull and scan permissions of a vault for a gestalt.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -807,13 +823,14 @@ gestalt</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L661">src/vaults/VaultManager.ts:661</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L698">src/vaults/VaultManager.ts:698</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="withVaults" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>with<wbr/>Vaults</span><a href="#withVaults" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="withVaults.withVaults-1"><span class="tsd-kind-call-signature">with<wbr/>Vaults</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultIds</span>, <span class="tsd-kind-parameter">f</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span><a href="#withVaults.withVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="withVaults.withVaults-1"><span class="tsd-kind-call-signature">with<wbr/>Vaults</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultIds</span>, <span class="tsd-kind-parameter">f</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span><a href="#withVaults.withVaults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Takes a function and runs it with the listed vaults. locking is handled automatically</p>
+<div class="tsd-comment tsd-typography"><p>Takes a function and runs it with the listed vaults. Locking is handled
+automatically.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>
@@ -846,11 +863,65 @@ gestalt</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span></h4></li></ul></li></ul></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5>
 <div class="tsd-comment tsd-typography"></div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1028">src/vaults/VaultManager.ts:1028</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1130">src/vaults/VaultManager.ts:1130</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="withVaultsG" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>with<wbr/>VaultsG</span><a href="#withVaultsG" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="withVaultsG.withVaultsG-1"><span class="tsd-kind-call-signature">with<wbr/>VaultsG</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">vaultIds</span>, <span class="tsd-kind-parameter">g</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span><a href="#withVaultsG.withVaultsG-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Takes a generator and runs it with the listed vaults. Locking is handled
+automatically.</p>
+</div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li>
+<h4><span class="tsd-kind-type-parameter">T</span></h4></li>
+<li>
+<h4><span class="tsd-kind-type-parameter">TReturn</span></h4></li>
+<li>
+<h4><span class="tsd-kind-type-parameter">TNext</span></h4></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">vaultIds</span>: <a href="../types/ids.VaultId.html" class="tsd-signature-type tsd-kind-type-alias">VaultId</a><span class="tsd-signature-symbol">[]</span></h5>
+<div class="tsd-comment tsd-typography"><p>List of vault ID for vaults you wish to use</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><span class="tsd-kind-parameter">g</span>: <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span></h5>
+<div class="tsd-comment tsd-typography"><p>Generator you wish to run with the provided vaults</p>
+</div>
+<div class="tsd-comment tsd-typography"></div>
+<ul class="tsd-parameters">
+<li class="tsd-parameter-signature">
+<ul class="tsd-signatures">
+<li class="tsd-signature"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><code class="tsd-tag ts-flagRest">Rest</code> <span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">args</span>: <a href="../interfaces/vaults.Vault.html" class="tsd-signature-type tsd-kind-interface">Vault</a><span class="tsd-signature-symbol">[]</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span></h4></li></ul></li></ul></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">T</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TReturn</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type tsd-kind-type-parameter">TNext</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L1176">src/vaults/VaultManager.ts:1176</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="createVaultManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create<wbr/>Vault<wbr/>Manager</span><a href="#createVaultManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -860,7 +931,7 @@ gestalt</p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeConnectionManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">notificationsManager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultsPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">gestaltGraph</span><span class="tsd-signature-symbol">: </span><a href="gestalts.GestaltGraph.html" class="tsd-signature-type tsd-kind-class">GestaltGraph</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeManager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">notificationsManager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">vaultsPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">acl</span><span class="tsd-signature-symbol">: </span><a href="acl.ACL.html" class="tsd-signature-type tsd-kind-class">ACL</a></h5></li>
@@ -877,14 +948,14 @@ gestalt</p>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
-<h5><span class="tsd-kind-property">node<wbr/>Connection<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeConnectionManager.html" class="tsd-signature-type tsd-kind-class">NodeConnectionManager</a></h5></li>
+<h5><span class="tsd-kind-property">node<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="nodes.NodeManager.html" class="tsd-signature-type tsd-kind-class">NodeManager</a></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">notifications<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="notifications.NotificationsManager.html" class="tsd-signature-type tsd-kind-class">NotificationsManager</a></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">vaults<wbr/>Path</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="vaults.VaultManager.html" class="tsd-signature-type tsd-kind-class">VaultManager</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L72">src/vaults/VaultManager.ts:72</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/vaults/VaultManager.ts#L77">src/vaults/VaultManager.ts:77</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -915,7 +986,7 @@ gestalt</p>
 <li><a href="#gestaltGraph" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gestalt<wbr/>Graph</span></a></li>
 <li><a href="#keyRing" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a></li>
 <li><a href="#logger" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a></li>
-<li><a href="#nodeConnectionManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Connection<wbr/>Manager</span></a></li>
+<li><a href="#nodeManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Manager</span></a></li>
 <li><a href="#notificationsManager" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>notifications<wbr/>Manager</span></a></li>
 <li><a href="#vaultIdGenerator" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Id<wbr/>Generator</span></a></li>
 <li><a href="#vaultKey" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>vault<wbr/>Key</span></a></li>
@@ -962,6 +1033,7 @@ gestalt</p>
 <li><a href="#unsetWorkerManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Worker<wbr/>Manager</span></a></li>
 <li><a href="#unshareVault" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unshare<wbr/>Vault</span></a></li>
 <li><a href="#withVaults" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>with<wbr/>Vaults</span></a></li>
+<li><a href="#withVaultsG" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>with<wbr/>VaultsG</span></a></li>
 <li><a href="#createVaultManager" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Vault<wbr/>Manager</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>
@@ -996,6 +1068,7 @@ gestalt</p>
 <ul class="tsd-nested-navigation">
 <li><a href="../modules/vaults.errors.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>errors</span></a></li>
 <li><a href="../modules/vaults.events.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>events</span></a></li>
+<li><a href="../modules/vaults.fileTree.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>file<wbr/>Tree</span></a></li>
 <li><a href="../modules/vaults.types.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>types</span></a></li>
 <li><a href="../modules/vaults.utils.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>utils</span></a></li>
 <li><a href="../modules/vaults.vaultOps.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>vault<wbr/>Ops</span></a></li>

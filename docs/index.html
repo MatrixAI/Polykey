@@ -12,54 +12,58 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <h2>polykey</h2></div>
-<div class="tsd-panel tsd-typography"><a id="md:polykey" class="tsd-anchor"></a><h1><a href="#md:polykey">Polykey</a></h1><p>staging:<a href="https://gitlab.com/MatrixAI/open-source/Polykey/commits/staging"><img src="https://gitlab.com/MatrixAI/open-source/Polykey/badges/staging/pipeline.svg" alt="pipeline status"></a>
-master:<a href="https://gitlab.com/MatrixAI/open-source/Polykey/commits/master"><img src="https://gitlab.com/MatrixAI/open-source/Polykey/badges/master/pipeline.svg" alt="pipeline status"></a></p>
-<p>Polykey is an open-source, peer-to-peer system that addresses the critical challenge in cybersecurity: the secure sharing and delegation of authority, in the form of secrets like keys, tokens, certificates, and passwords.</p>
-<p>It allows users including developers, organizations, and machines—to store these secrets in encrypted vaults on their own devices, and share them directly with trusted parties.</p>
-<p>All data is end-to-end encrypted, both in transit and at rest, eliminating the risk associated with third-party storage.</p>
-<p>Polykey provides a command line interface, desktop and mobile GUI, and a web-based control plane for organizational management.</p>
-<p>By treating secrets as tokenized authority, it offers a fresh approach to managing and delegating authority in zero-trust architectures without adding burdensome policy complexity - a pervasive issue in existing zero-trust systems.</p>
-<p>Unlike complex self-hosted secrets management systems that require specialized skills and infrastructure, Polykey is installed and running directly from the end-user device.</p>
-<p>It is built to automatically navigate network complexities like NAT traversal, connecting securely to other nodes without manual configuration.</p>
-<p>Key features:</p>
+<div class="tsd-panel tsd-typography"><div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://polykey.com/images/polykey-logotype-light-light.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://polykey.com/images/polykey-logotype-dark-dark.svg">
+    <img width="512" alt="Polykey Logo" src="https://polykey.com/images/polykey-logotype-light-light.svg">
+  </picture>
+  <br />
+  <br />
+  <img src="https://img.shields.io/github/v/tag/MatrixAI/Polykey?style=for-the-badge">
+  <img src="https://img.shields.io/github/actions/workflow/status/MatrixAI/Polykey/release.yml?style=for-the-badge">
+  <img src="https://img.shields.io/npm/d18m/polykey?style=for-the-badge&label=npm%20downloads&color=d02b1d">
+  <br />
+  <img src="https://img.shields.io/github/downloads/MatrixAI/Polykey/total?style=for-the-badge">
+  <img src="https://img.shields.io/github/license/MatrixAI/Polykey?style=for-the-badge">
+</div>
+
+<a id="md:what-is-polykey" class="tsd-anchor"></a><h2><a href="#md:what-is-polykey">What is Polykey?</a></h2><p><strong>Polykey is an open-source, peer-to-peer system</strong> that addresses the critical challenge in cybersecurity: <strong>the secure sharing and delegation of authority</strong>, in the form of secrets like keys, tokens, certificates, and passwords.</p>
+<p>It allows users including developers, organizations, and machines—to <strong>store these secrets in encrypted vaults on their own devices, and share them directly with trusted parties.</strong></p>
 <ul>
-<li>Decentralized Encrypted Storage - No storage of secrets on third parties, secrets are stored on your device and synchronised point-to-point between Polykey nodes.</li>
-<li>Secure Peer-to-Peer Communication - Polykey bootstraps TLS keys by federating trusted social identities (e.g. GitHub).</li>
-<li>Secure Computational Workflows - Share static secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure. Create dynamic (short-lived) smart-tokens with embedded policy for more sophisticated zero-trust authority verification.</li>
+<li><strong>All data is end-to-end encrypted</strong>, both in transit and at rest, eliminating the risk associated with third-party storage.</li>
+<li><strong>Polykey provides a command line interface</strong>, desktop and mobile GUI, and a web-based control plane for organizational management.</li>
+<li>By treating secrets as tokenized authority, it offers a fresh approach to <strong>managing and delegating authority in zero-trust architectures</strong> without adding burdensome policy complexity - a pervasive issue in existing zero-trust systems.</li>
+<li>Unlike complex self-hosted secrets management systems that require specialized skills and infrastructure, Polykey is <strong>installed and running directly from the end-user device</strong>.</li>
+<li>It is built to <strong>automatically navigate network complexities</strong> like NAT traversal, connecting securely to other nodes without manual configuration.</li>
+</ul>
+<p><strong>Key features:</strong></p>
+<ul>
+<li><strong>Decentralized Encrypted Storage</strong> - No storage of secrets on third parties, secrets are stored on your device and synchronised point-to-point between Polykey nodes.</li>
+<li><strong>Secure Peer-to-Peer Communication</strong> - Polykey bootstraps TLS keys by federating trusted social identities (e.g. GitHub).</li>
+<li><strong>Secure Computational Workflows</strong> - Share static secrets (passwords, keys, tokens and certificates) with people, between teams, and across machine infrastructure. Create dynamic (short-lived) smart-tokens with embedded policy for more sophisticated zero-trust authority verification.</li>
 <li>With Polykey Enterprise, you can create private networks of Polykey nodes and apply mandatory policy governing node behaviour.</li>
 </ul>
-<p align="center">
-  <img src="./images/cli_demo.gif" alt="Polykey CLI Demo"/>
-</p>
-
-<p>This repository is the core library for Polykey.</p>
-<p>The Polykey project is split up into these main repositories:</p>
-<ul>
-<li><a href="https://github.com/MatrixAI/Polykey">Polykey</a> - Polykey Core Library</li>
-<li><a href="https://github.com/MatrixAI/Polykey-CLI">Polykey-CLI</a> - CLI of Polykey</li>
-<li><a href="https://github.com/MatrixAI/Polykey-Desktop">Polykey-Desktop</a> - Polykey Desktop (Windows, Mac, Linux) application</li>
-<li><a href="https://github.com/MatrixAI/Polykey-Mobile">Polykey-Mobile</a> - Polykey Mobile (iOS &amp; Android) Application</li>
-<li><a href="https://polykey.com">Polykey Enterprise</a> - Web Control Plane SaaS</li>
+<a id="md:table-of-contents" class="tsd-anchor"></a><h2><a href="#md:table-of-contents">Table of Contents</a></h2><ul>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#development">Development</a><ul>
+<li><a href="#docs-generation">Docs Generation</a></li>
+<li><a href="#publishing">Publishing</a></li>
 </ul>
-<p>Have a bug or a feature-request? Please submit it the issues of the relevant subproject above.</p>
-<p>For tutorials, how-to guides, reference and theory, see the <a href="https://polykey.com/docs">docs</a>.</p>
-<p>Have a question? Join our <a href="https://github.com/MatrixAI/Polykey/discussions">discussion board</a>.</p>
-<p>Have a security issue you want to let us know? You can contact us on our website.</p>
-<p>Our main website is <a href="https://polykey.com">https://polykey.com</a></p>
+</li>
+<li><a href="#license">License</a></li>
+</ul>
 <a id="md:installation" class="tsd-anchor"></a><h2><a href="#md:installation">Installation</a></h2><a id="md:npm" class="tsd-anchor"></a><h3><a href="#md:npm">NPM</a></h3><pre><code class="language-sh"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-3">--save</span><span class="hl-1"> </span><span class="hl-2">polykey</span>
 </code><button>Copy</button></pre>
-<a id="md:development" class="tsd-anchor"></a><h2><a href="#md:development">Development</a></h2><p>Run <code>nix-shell</code>, and once you&#39;re inside, you can use:</p>
+<a id="md:development" class="tsd-anchor"></a><h2><a href="#md:development">Development</a></h2><p>Run <code>nix develop</code>, and once you&#39;re inside, you can use:</p>
 <pre><code class="language-sh"><span class="hl-4"># install (or reinstall packages from package.json)</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><br/><span class="hl-4"># build the dist</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span><br/><span class="hl-4"># run the repl (this allows you to import from ./src)</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">ts-node</span><br/><span class="hl-4"># run the tests</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">test</span><br/><span class="hl-4"># lint the source code</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">lint</span><br/><span class="hl-4"># automatically fix the source</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">lintfix</span>
 </code><button>Copy</button></pre>
-<a id="md:calling-commands" class="tsd-anchor"></a><h3><a href="#md:calling-commands">Calling Commands</a></h3><p>When calling commands in development, use this style:</p>
-<pre><code class="language-sh"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">polykey</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-2">p1</span><span class="hl-1"> </span><span class="hl-2">p2</span><span class="hl-1"> </span><span class="hl-2">p3</span>
-</code><button>Copy</button></pre>
-<p>The <code>--</code> is necessary to make <code>npm</code> understand that the parameters are for your own executable, and not parameters to <code>npm</code>.</p>
 <a id="md:docs-generation" class="tsd-anchor"></a><h3><a href="#md:docs-generation">Docs Generation</a></h3><pre><code class="language-sh"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">docs</span>
 </code><button>Copy</button></pre>
 <p>See the docs at: <a href="https://matrixai.github.io/Polykey/">https://matrixai.github.io/Polykey/</a></p>
-<a id="md:publishing-to-npm" class="tsd-anchor"></a><h3><a href="#md:publishing-to-npm">Publishing to NPM</a></h3><pre><code class="language-sh"><span class="hl-4"># npm login</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">version</span><span class="hl-1"> </span><span class="hl-2">patch</span><span class="hl-1"> </span><span class="hl-4"># major/minor/patch</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">publish</span><span class="hl-1"> </span><span class="hl-3">--access</span><span class="hl-1"> </span><span class="hl-2">public</span><br/><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">push</span><br/><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">push</span><span class="hl-1"> </span><span class="hl-3">--tags</span>
+<a id="md:publishing" class="tsd-anchor"></a><h3><a href="#md:publishing">Publishing</a></h3><pre><code class="language-sh"><span class="hl-4"># npm login</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">version</span><span class="hl-1"> </span><span class="hl-2">patch</span><span class="hl-1"> </span><span class="hl-4"># major/minor/patch</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">publish</span><span class="hl-1"> </span><span class="hl-3">--access</span><span class="hl-1"> </span><span class="hl-2">public</span><br/><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">push</span><br/><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">push</span><span class="hl-1"> </span><span class="hl-3">--tags</span>
 </code><button>Copy</button></pre>
+<a id="md:license" class="tsd-anchor"></a><h2><a href="#md:license">License</a></h2><p>Polykey is licensed under the GPLv3, you may read the terms of the license <a href="LICENSE">here</a>.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -82,9 +86,10 @@ master:<a href="https://gitlab.com/MatrixAI/open-source/Polykey/commits/master">
 <ul>
 <li>
 <ul>
-<li><a href="#md:polykey"><span>Polykey</span></a></li>
+<li><a href="#md:what-is-polykey"><span>What is <wbr/>Polykey?</span></a></li>
 <li>
 <ul>
+<li><a href="#md:table-of-contents"><span>Table of <wbr/>Contents</span></a></li>
 <li><a href="#md:installation"><span>Installation</span></a></li>
 <li>
 <ul>
@@ -92,9 +97,9 @@ master:<a href="https://gitlab.com/MatrixAI/open-source/Polykey/commits/master">
 <li><a href="#md:development"><span>Development</span></a></li>
 <li>
 <ul>
-<li><a href="#md:calling-commands"><span>Calling <wbr/>Commands</span></a></li>
 <li><a href="#md:docs-generation"><span>Docs <wbr/>Generation</span></a></li>
-<li><a href="#md:publishing-to-npm"><span>Publishing to NPM</span></a></li></ul></li></ul></li></ul></li></ul></div></details></div>
+<li><a href="#md:publishing"><span>Publishing</span></a></li></ul></li>
+<li><a href="#md:license"><span>License</span></a></li></ul></li></ul></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="modules.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>
 <ul class="tsd-small-nested-navigation">

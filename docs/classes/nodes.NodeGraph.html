@@ -23,8 +23,8 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">NodeGraph</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L27">src/nodes/NodeGraph.ts:27</a></li>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L40">src/nodes/NodeGraph.ts:40</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L44">src/nodes/NodeGraph.ts:44</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L57">src/nodes/NodeGraph.ts:57</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -41,9 +41,10 @@
 <a href="nodes.NodeGraph.html#keyRing" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a>
 <a href="nodes.NodeGraph.html#logger" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a>
 <a href="nodes.NodeGraph.html#nodeBucketLimit" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Bucket<wbr/>Limit</span></a>
+<a href="nodes.NodeGraph.html#nodeContactAddressLimit" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Contact<wbr/>Address<wbr/>Limit</span></a>
 <a href="nodes.NodeGraph.html#nodeGraphBucketsDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Buckets<wbr/>Db<wbr/>Path</span></a>
+<a href="nodes.NodeGraph.html#nodeGraphConnectedDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Connected<wbr/>Db<wbr/>Path</span></a>
 <a href="nodes.NodeGraph.html#nodeGraphDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Db<wbr/>Path</span></a>
-<a href="nodes.NodeGraph.html#nodeGraphLastUpdatedDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Last<wbr/>Updated<wbr/>Db<wbr/>Path</span></a>
 <a href="nodes.NodeGraph.html#nodeGraphMetaDbPath" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Meta<wbr/>Db<wbr/>Path</span></a>
 <a href="nodes.NodeGraph.html#nodeIdBits" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Id<wbr/>Bits</span></a>
 <a href="nodes.NodeGraph.html#space" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>space</span></a>
@@ -63,6 +64,7 @@
 <h3 class="tsd-index-heading">Methods</h3>
 <div class="tsd-index-list"><a href="nodes.NodeGraph.html#addEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-2048"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)"></path></g></svg><span>add<wbr/>Event<wbr/>Listener</span></a>
 <a href="nodes.NodeGraph.html#bucketIndex" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>bucket<wbr/>Index</span></a>
+<a href="nodes.NodeGraph.html#delConnectedTime" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>del<wbr/>Connected<wbr/>Time</span></a>
 <a href="nodes.NodeGraph.html#destroy" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>destroy</span></a>
 <a href="nodes.NodeGraph.html#dispatchEvent" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a>
 <a href="nodes.NodeGraph.html#getBucket" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket</span></a>
@@ -70,18 +72,24 @@
 <a href="nodes.NodeGraph.html#getBucketMetaProp" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span></a>
 <a href="nodes.NodeGraph.html#getBuckets" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Buckets</span></a>
 <a href="nodes.NodeGraph.html#getClosestNodes" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Closest<wbr/>Nodes</span></a>
-<a href="nodes.NodeGraph.html#getNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node</span></a>
-<a href="nodes.NodeGraph.html#getNodes" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Nodes</span></a>
-<a href="nodes.NodeGraph.html#getOldestNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Oldest<wbr/>Node</span></a>
+<a href="nodes.NodeGraph.html#getConnectedTime" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Time</span></a>
+<a href="nodes.NodeGraph.html#getNodeContact" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contact</span></a>
+<a href="nodes.NodeGraph.html#getNodeContactAddressData" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span></a>
+<a href="nodes.NodeGraph.html#getNodeContacts" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contacts</span></a>
 <a href="nodes.NodeGraph.html#lockBucket" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>lock<wbr/>Bucket</span></a>
+<a href="nodes.NodeGraph.html#nodesTotal" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>nodes<wbr/>Total</span></a>
+<a href="nodes.NodeGraph.html#purgeAddresses" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>purge<wbr/>Addresses</span></a>
 <a href="nodes.NodeGraph.html#removeEventListener" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a>
 <a href="nodes.NodeGraph.html#resetBuckets" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>reset<wbr/>Buckets</span></a>
 <a href="nodes.NodeGraph.html#setBucketMetaProp" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span></a>
-<a href="nodes.NodeGraph.html#setNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node</span></a>
+<a href="nodes.NodeGraph.html#setConnectedTime" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Connected<wbr/>Time</span></a>
+<a href="nodes.NodeGraph.html#setNodeContact" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node<wbr/>Contact</span></a>
+<a href="nodes.NodeGraph.html#setNodeContactAddressData" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span></a>
 <a href="nodes.NodeGraph.html#setupSpace" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setup<wbr/>Space</span></a>
 <a href="nodes.NodeGraph.html#start" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a>
 <a href="nodes.NodeGraph.html#stop" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a>
-<a href="nodes.NodeGraph.html#unsetNode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node</span></a>
+<a href="nodes.NodeGraph.html#unsetNodeContact" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node<wbr/>Contact</span></a>
+<a href="nodes.NodeGraph.html#unsetNodeContactAddress" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node<wbr/>Contact<wbr/>Address</span></a>
 <a href="nodes.NodeGraph.html#createNodeGraph" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Node<wbr/>Graph</span></a>
 </div></section></div></details></section></section>
 <section class="tsd-panel-group tsd-member-group">
@@ -95,7 +103,7 @@
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeIdBits</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeBucketLimit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeContactAddressLimit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeIdBits</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
@@ -104,11 +112,15 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Bucket<wbr/>Limit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">node<wbr/>Contact<wbr/>Address<wbr/>Limit</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
 <h5><span class="tsd-kind-property">node<wbr/>Id<wbr/>Bits</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.constructor</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L85">src/nodes/NodeGraph.ts:85</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L128">src/nodes/NodeGraph.ts:128</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
@@ -121,59 +133,79 @@
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L77">src/nodes/NodeGraph.ts:77</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L106">src/nodes/NodeGraph.ts:106</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="keyRing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>key<wbr/>Ring</span><a href="#keyRing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">:</span> <a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L78">src/nodes/NodeGraph.ts:78</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L107">src/nodes/NodeGraph.ts:107</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L76">src/nodes/NodeGraph.ts:76</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L105">src/nodes/NodeGraph.ts:105</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="nodeBucketLimit" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Bucket<wbr/>Limit</span><a href="#nodeBucketLimit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Bucket<wbr/>Limit</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 20</span></div>
-<div class="tsd-comment tsd-typography"><p>Max number of nodes in each k-bucket</p>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Bucket<wbr/>Limit</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+<div class="tsd-comment tsd-typography"><p>Max number of nodes in each bucket.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L74">src/nodes/NodeGraph.ts:74</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L99">src/nodes/NodeGraph.ts:99</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodeContactAddressLimit" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Contact<wbr/>Address<wbr/>Limit</span><a href="#nodeContactAddressLimit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Contact<wbr/>Address<wbr/>Limit</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+<div class="tsd-comment tsd-typography"><p>Max number of nodeContactAddresses for each node.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L103">src/nodes/NodeGraph.ts:103</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraphBucketsDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph<wbr/>Buckets<wbr/>Db<wbr/>Path</span><a href="#nodeGraphBucketsDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Buckets<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Buckets<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>Buckets stores <code>lexi(NodeBucketIndex)/NodeId/nodeContactAddress</code> -&gt; <code>NodeContactAddressData</code>.</p>
+<p>nodeContactAddress are canoncialized to be consistent.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L82">src/nodes/NodeGraph.ts:82</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L120">src/nodes/NodeGraph.ts:120</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraphConnectedDbPath" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph<wbr/>Connected<wbr/>Db<wbr/>Path</span><a href="#nodeGraphConnectedDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Connected<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>Last updated stores
+<code>lexi(NodeBucketIndex)/&quot;time&quot;/lexi(connectedTime)/nodeId</code> -&gt; <code>nodeId</code>.
+<code>lexi(NodeBucketIndex)/&quot;nodeId&quot;/nodeId</code> -&gt; <code>lexi(connectedTime)</code>.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L126">src/nodes/NodeGraph.ts:126</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraphDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph<wbr/>Db<wbr/>Path</span><a href="#nodeGraphDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L80">src/nodes/NodeGraph.ts:80</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraphLastUpdatedDbPath" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph<wbr/>Last<wbr/>Updated<wbr/>Db<wbr/>Path</span><a href="#nodeGraphLastUpdatedDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Last<wbr/>Updated<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
-<ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L83">src/nodes/NodeGraph.ts:83</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L110">src/nodes/NodeGraph.ts:110</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="nodeGraphMetaDbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>node<wbr/>Graph<wbr/>Meta<wbr/>Db<wbr/>Path</span><a href="#nodeGraphMetaDbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Meta<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
-<ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L81">src/nodes/NodeGraph.ts:81</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member"><a id="nodeIdBits" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Id<wbr/>Bits</span><a href="#nodeIdBits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Id<wbr/>Bits</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
-<div class="tsd-comment tsd-typography"><p>Bit size of the NodeIds
-This equals the number of buckets</p>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Graph<wbr/>Meta<wbr/>Db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>Meta stores the <code>keyof NodeBucketMeta</code> -&gt; <code>NodeBucketMeta[keyof NodeBucketMeta]</code>.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L70">src/nodes/NodeGraph.ts:70</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L114">src/nodes/NodeGraph.ts:114</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="nodeIdBits" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>node<wbr/>Id<wbr/>Bits</span><a href="#nodeIdBits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">node<wbr/>Id<wbr/>Bits</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+<div class="tsd-comment tsd-typography"><p>Bit size of the node IDs.
+This is also the total number of buckets.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L94">src/nodes/NodeGraph.ts:94</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="space" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>space</span><a href="#space" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">space</span><span class="tsd-signature-symbol">:</span> <a href="../types/nodes.types.NodeGraphSpace.html" class="tsd-signature-type tsd-kind-type-alias">NodeGraphSpace</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L79">src/nodes/NodeGraph.ts:79</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L108">src/nodes/NodeGraph.ts:108</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Accessors</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_destroyed_" class="tsd-anchor"></a>
@@ -296,7 +328,25 @@ that preserves lexicographic order</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L814">src/nodes/NodeGraph.ts:814</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L215">src/nodes/NodeGraph.ts:215</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="delConnectedTime" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>del<wbr/>Connected<wbr/>Time</span><a href="#delConnectedTime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="delConnectedTime.delConnectedTime-1"><span class="tsd-kind-call-signature">del<wbr/>Connected<wbr/>Time</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#delConnectedTime.delConnectedTime-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Deletes the <code>connectedTime</code> for a NodeId</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L574">src/nodes/NodeGraph.ts:574</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="destroy" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>destroy</span><a href="#destroy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -305,7 +355,7 @@ that preserves lexicographic order</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.destroy</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L136">src/nodes/NodeGraph.ts:136</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L185">src/nodes/NodeGraph.ts:185</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -323,12 +373,48 @@ that preserves lexicographic order</p>
 <section class="tsd-panel tsd-member"><a id="getBucket" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Bucket</span><a href="#getBucket" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getBucket.getBucket-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">sort</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span><a href="#getBucket.getBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="getBucket.getBucket-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">sort</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">limit</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span><a href="#getBucket.getBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Gets a bucket
-The bucket&#39;s node IDs is sorted lexicographically by default
-Alternatively you can acquire them sorted by lastUpdated timestamp
-or by distance to the own NodeId</p>
+<div class="tsd-comment tsd-typography"><p>Gets a bucket.</p>
+<p>The bucket&#39;s node IDs is sorted lexicographically by default
+Alternatively you can acquire them sorted by connected timestamp
+or by distance to the own NodeId.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">sort</span>: <span class="tsd-signature-type">&quot;nodeId&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;connected&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;distance&quot;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-type">&quot;asc&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;desc&quot;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">limit</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"><p>Limit the number of nodes returned, note that <code>-1</code> means
+             no limit, but <code>Infinity</code> means <code>0</code>.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L630">src/nodes/NodeGraph.ts:630</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getBucketMeta" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Bucket<wbr/>Meta</span><a href="#getBucketMeta" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getBucketMeta.getBucketMeta-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket<wbr/>Meta</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">&gt;</span><a href="#getBucketMeta.getBucketMeta-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get a bucket meta POJO.
+This will provide default values for missing properties.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -336,35 +422,19 @@ or by distance to the own NodeId</p>
 <li>
 <h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">sort</span>: <span class="tsd-signature-type">&quot;nodeId&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;lastUpdated&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;distance&quot;</span><span class="tsd-signature-symbol"> = &#39;nodeId&#39;</span></h5></li>
-<li>
-<h5><span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-type">&quot;asc&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;desc&quot;</span><span class="tsd-signature-symbol"> = &#39;asc&#39;</span></h5></li>
-<li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L331">src/nodes/NodeGraph.ts:331</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="getBucketMeta" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>get<wbr/>Bucket<wbr/>Meta</span><a href="#getBucketMeta" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getBucketMeta.getBucketMeta-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket<wbr/>Meta</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">&gt;</span><a href="#getBucketMeta.getBucketMeta-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
-<li class="tsd-description">
-<div class="tsd-parameters">
-<h4 class="tsd-parameters-title">Parameters</h4>
-<ul class="tsd-parameter-list">
-<li>
-<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
-<li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L607">src/nodes/NodeGraph.ts:607</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L836">src/nodes/NodeGraph.ts:836</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getBucketMetaProp" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span><a href="#getBucketMetaProp" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="getBucketMetaProp.getBucketMetaProp-1"><span class="tsd-kind-call-signature">get<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">Key</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">key</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type tsd-kind-type-parameter">Key</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><a href="#getBucketMetaProp.getBucketMetaProp-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get a single bucket meta property.
+This will provide default values for missing properties.</p>
+</div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>
 <ul class="tsd-type-parameter-list">
@@ -379,9 +449,10 @@ or by distance to the own NodeId</p>
 <h5><span class="tsd-kind-parameter">key</span>: <span class="tsd-signature-type tsd-kind-type-parameter">Key</span></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type tsd-kind-type-parameter">Key</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucketMeta.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucketMeta</a><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type tsd-kind-type-parameter">Key</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L637">src/nodes/NodeGraph.ts:637</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L870">src/nodes/NodeGraph.ts:870</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getBuckets" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Buckets</span><a href="#getBuckets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -395,14 +466,14 @@ The <code>order</code> parameter applies to both, for example possible sorts:
   NodeBucketIndex desc, NodeId desc
   NodeBucketIndex asc, distance asc
   NodeBucketIndex desc, distance desc
-  NodeBucketIndex asc, lastUpdated asc
-  NodeBucketIndex desc, lastUpdated desc</p>
+  NodeBucketIndex asc, connected asc
+  NodeBucketIndex desc, connected desc</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">sort</span>: <span class="tsd-signature-type">&quot;nodeId&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;lastUpdated&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;distance&quot;</span><span class="tsd-signature-symbol"> = &#39;nodeId&#39;</span></h5></li>
+<h5><span class="tsd-kind-parameter">sort</span>: <span class="tsd-signature-type">&quot;nodeId&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;connected&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;distance&quot;</span><span class="tsd-signature-symbol"> = &#39;nodeId&#39;</span></h5></li>
 <li>
 <h5><span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-type">&quot;asc&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;desc&quot;</span><span class="tsd-signature-symbol"> = &#39;asc&#39;</span></h5></li>
 <li>
@@ -410,47 +481,44 @@ The <code>order</code> parameter applies to both, for example possible sorts:
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L408">src/nodes/NodeGraph.ts:408</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L713">src/nodes/NodeGraph.ts:713</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getClosestNodes" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Closest<wbr/>Nodes</span><a href="#getClosestNodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getClosestNodes.getClosestNodes-1"><span class="tsd-kind-call-signature">get<wbr/>Closest<wbr/>Nodes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">limit</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span><a href="#getClosestNodes.getClosestNodes-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="getClosestNodes.getClosestNodes-1"><span class="tsd-kind-call-signature">get<wbr/>Closest<wbr/>Nodes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">limit</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span><a href="#getClosestNodes.getClosestNodes-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Finds the set of nodes (of size k) known by the current node (i.e. in its
-buckets&#39; database) that have the smallest distance to the target node (i.e.
-are closest to the target node).
-i.e. FIND_NODE RPC from Kademlia spec</p>
-<p>Used by the RPC service.</p>
+<div class="tsd-comment tsd-typography"><p>Gets the closest nodes (closest based on Kademlia XOR operator) to a
+given node ID. The returned results will be sorted by distance in
+ascending order. If the given node ID already exists in the node graph,
+then it will be the first result.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
-<div class="tsd-comment tsd-typography"><p>the node ID to find other nodes closest to it</p>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">limit</span>: <span class="tsd-signature-type">number</span></h5>
+<div class="tsd-comment tsd-typography"><p>Defaults to the bucket limit.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div></li>
 <li>
-<h5><span class="tsd-kind-parameter">limit</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = ...</span></h5>
-<div class="tsd-comment tsd-typography"><p>the number of the closest nodes to return (by default, returns
-according to the maximum number of nodes per bucket)</p>
-</div>
-<div class="tsd-comment tsd-typography"></div></li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
-<div class="tsd-comment tsd-typography"></div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span></h4><p>a mapping containing exactly k nodeIds -&gt; nodeAddresses (unless the
-current node has less than k nodes in all of its buckets, in which case it
-returns all nodes it has knowledge of)</p>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeBucket.html" class="tsd-signature-type tsd-kind-type-alias">NodeBucket</a><span class="tsd-signature-symbol">&gt;</span></h4><p>The <code>NodeBucket</code> which could have less than <code>limit</code> nodes if the
+         node graph has less than the requested limit.</p>
 
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L684">src/nodes/NodeGraph.ts:684</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="getNode" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>get<wbr/>Node</span><a href="#getNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L910">src/nodes/NodeGraph.ts:910</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getConnectedTime" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Connected<wbr/>Time</span><a href="#getConnectedTime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getNode.getNode-1"><span class="tsd-kind-call-signature">get<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeData.html" class="tsd-signature-type tsd-kind-type-alias">NodeData</a><span class="tsd-signature-symbol">&gt;</span><a href="#getNode.getNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="getConnectedTime.getConnectedTime-1"><span class="tsd-kind-call-signature">get<wbr/>Connected<wbr/>Time</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><a href="#getConnectedTime.getConnectedTime-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the <code>connectedTime</code> for a node</p>
+</div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
@@ -458,20 +526,61 @@ returns all nodes it has knowledge of)</p>
 <h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeData.html" class="tsd-signature-type tsd-kind-type-alias">NodeData</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L172">src/nodes/NodeGraph.ts:172</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="getNodes" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>get<wbr/>Nodes</span><a href="#getNodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L593">src/nodes/NodeGraph.ts:593</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getNodeContact" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Node<wbr/>Contact</span><a href="#getNodeContact" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getNodes.getNodes-1"><span class="tsd-kind-call-signature">get<wbr/>Nodes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeData.html" class="tsd-signature-type tsd-kind-type-alias">NodeData</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getNodes.getNodes-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="getNodeContact.getNodeContact-1"><span class="tsd-kind-call-signature">get<wbr/>Node<wbr/>Contact</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeContact.html" class="tsd-signature-type tsd-kind-type-alias">NodeContact</a><span class="tsd-signature-symbol">&gt;</span><a href="#getNodeContact.getNodeContact-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Get all nodes.
-Nodes are always sorted by <code>NodeBucketIndex</code> first
-Then secondly by the node IDs
-The <code>order</code> parameter applies to both, for example possible sorts:
-  NodeBucketIndex asc, NodeID asc
-  NodeBucketIndex desc, NodeId desc</p>
+<div class="tsd-comment tsd-typography"><p>Get a single <code>NodeContact</code></p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">ContextTimedInput</span><span class="tsd-signature-symbol">&gt;</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeContact.html" class="tsd-signature-type tsd-kind-type-alias">NodeContact</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L246">src/nodes/NodeGraph.ts:246</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getNodeContactAddressData" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span><a href="#getNodeContactAddressData" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getNodeContactAddressData.getNodeContactAddressData-1"><span class="tsd-kind-call-signature">get<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeContactAddressData.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddressData</a><span class="tsd-signature-symbol">&gt;</span><a href="#getNodeContactAddressData.getNodeContactAddressData-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get a single <code>NodeContactAddressData</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeContactAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddress</a><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeContactAddressData.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddressData</a><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L317">src/nodes/NodeGraph.ts:317</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getNodeContacts" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Node<wbr/>Contacts</span><a href="#getNodeContacts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getNodeContacts.getNodeContacts-1"><span class="tsd-kind-call-signature">get<wbr/>Node<wbr/>Contacts</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeContact.html" class="tsd-signature-type tsd-kind-type-alias">NodeContact</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getNodeContacts.getNodeContacts-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get all <code>NodeContact</code>.</p>
+<p>Results are sorted by <code>NodeBucketIndex</code> then <code>NodeId</code> then
+<code>NodeContactAddress</code>.
+The <code>order</code> parameter applies to both, for example:
+  NodeBucketIndex asc, NodeID asc, NodeContactAddress asc
+  NodeBucketIndex desc, NodeId desc, NodeContactAddress desc</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -480,42 +589,67 @@ The <code>order</code> parameter applies to both, for example possible sorts:
 <h5><span class="tsd-kind-parameter">order</span>: <span class="tsd-signature-type">&quot;asc&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;desc&quot;</span><span class="tsd-signature-symbol"> = &#39;asc&#39;</span></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeData.html" class="tsd-signature-type tsd-kind-type-alias">NodeData</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">, </span><a href="../types/nodes.types.NodeContact.html" class="tsd-signature-type tsd-kind-type-alias">NodeContact</a><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L196">src/nodes/NodeGraph.ts:196</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="getOldestNode" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>get<wbr/>Oldest<wbr/>Node</span><a href="#getOldestNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="getOldestNode.getOldestNode-1"><span class="tsd-kind-call-signature">get<wbr/>Oldest<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">limit</span><span class="tsd-signature-symbol">?</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#getOldestNode.getOldestNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
-<li class="tsd-description">
-<div class="tsd-parameters">
-<h4 class="tsd-parameters-title">Parameters</h4>
-<ul class="tsd-parameter-list">
-<li>
-<h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
-<li>
-<h5><span class="tsd-kind-parameter">limit</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 1</span></h5></li>
-<li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L276">src/nodes/NodeGraph.ts:276</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L295">src/nodes/NodeGraph.ts:295</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="lockBucket" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>lock<wbr/>Bucket</span><a href="#lockBucket" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="lockBucket.lockBucket-1"><span class="tsd-kind-call-signature">lock<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#lockBucket.lockBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="lockBucket.lockBucket-1"><span class="tsd-kind-call-signature">lock<wbr/>Bucket</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">tran</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#lockBucket.lockBucket-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Locks the bucket index for exclusive operations.
+This allows you to sequence operations for any bucket.</p>
+</div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
 <h5><span class="tsd-kind-parameter">bucketIndex</span>: <span class="tsd-signature-type">number</span></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">ContextTimed</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L163">src/nodes/NodeGraph.ts:163</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L229">src/nodes/NodeGraph.ts:229</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="nodesTotal" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>nodes<wbr/>Total</span><a href="#nodesTotal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="nodesTotal.nodesTotal-1"><span class="tsd-kind-call-signature">nodes<wbr/>Total</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">&gt;</span><a href="#nodesTotal.nodesTotal-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns to total number of nodes in the <code>NodeGraph</code></p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L1046">src/nodes/NodeGraph.ts:1046</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="purgeAddresses" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>purge<wbr/>Addresses</span><a href="#purgeAddresses" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="purgeAddresses.purgeAddresses-1"><span class="tsd-kind-call-signature">purge<wbr/>Addresses</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">num</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#purgeAddresses.purgeAddresses-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>This utility will clean out the oldest addresses until a set amount remain</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">num</span>: <span class="tsd-signature-type">number</span></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L1057">src/nodes/NodeGraph.ts:1057</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -537,25 +671,27 @@ The <code>order</code> parameter applies to both, for example possible sorts:
 <section class="tsd-panel tsd-member"><a id="resetBuckets" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>reset<wbr/>Buckets</span><a href="#resetBuckets" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="resetBuckets.resetBuckets-1"><span class="tsd-kind-call-signature">reset<wbr/>Buckets</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeIdOwn</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#resetBuckets.resetBuckets-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="resetBuckets.resetBuckets-1"><span class="tsd-kind-call-signature">reset<wbr/>Buckets</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#resetBuckets.resetBuckets-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Resets the bucket according to the new node ID.
+Run this after new node ID is generated via renewal or reset.</p>
+</div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">nodeIdOwn</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
-<li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L508">src/nodes/NodeGraph.ts:508</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L743">src/nodes/NodeGraph.ts:743</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="setBucketMetaProp" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>set<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span><a href="#setBucketMetaProp" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
 <li class="tsd-signature tsd-anchor-link" id="setBucketMetaProp.setBucketMetaProp-1"><span class="tsd-kind-call-signature">set<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">Key</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">bucketIndex</span>, <span class="tsd-kind-parameter">key</span>, <span class="tsd-kind-parameter">value</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setBucketMetaProp.setBucketMetaProp-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Sets a bucket meta property
-This is protected because users cannot directly manipulate bucket meta</p>
+<div class="tsd-comment tsd-typography"><p>Sets a single bucket meta property.
+Bucket meta properties cannot be mutated outside.</p>
 </div>
 <section class="tsd-panel">
 <h4>Type Parameters</h4>
@@ -576,35 +712,78 @@ This is protected because users cannot directly manipulate bucket meta</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L794">src/nodes/NodeGraph.ts:794</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="setNode" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>set<wbr/>Node</span><a href="#setNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="setNode.setNode-1"><span class="tsd-kind-call-signature">set<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setNode.setNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L1028">src/nodes/NodeGraph.ts:1028</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="setConnectedTime" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>set<wbr/>Connected<wbr/>Time</span><a href="#setConnectedTime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="setConnectedTime.setConnectedTime-1"><span class="tsd-kind-call-signature">set<wbr/>Connected<wbr/>Time</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">connectedTime</span>, <span class="tsd-kind-parameter">tran</span>, <span class="tsd-kind-parameter">path</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setConnectedTime.setConnectedTime-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Will add a node to the node graph and increment the bucket count.
-If the node already existed it will be updated.</p>
+<div class="tsd-comment tsd-typography"><p>Sets the <code>connectedTime</code> for a NodeId, replaces the old value if it exists</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5>
-<div class="tsd-comment tsd-typography"><p>NodeId to add to the NodeGraph</p>
-</div>
-<div class="tsd-comment tsd-typography"></div></li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5>
-<div class="tsd-comment tsd-typography"><p>Address information to add</p>
-</div>
-<div class="tsd-comment tsd-typography"></div></li>
+<h5><span class="tsd-kind-parameter">connectedTime</span>: <span class="tsd-signature-type">number</span></h5></li>
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5>
-<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h5><span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">path</span>: <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L227">src/nodes/NodeGraph.ts:227</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L539">src/nodes/NodeGraph.ts:539</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="setNodeContact" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>set<wbr/>Node<wbr/>Contact</span><a href="#setNodeContact" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="setNodeContact.setNodeContact-1"><span class="tsd-kind-call-signature">set<wbr/>Node<wbr/>Contact</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeContact</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setNodeContact.setNodeContact-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Sets a single <code>NodeContact</code> for a <code>NodeId</code>.
+This replaces the entire <code>NodeContact</code> for the <code>NodeId</code>.
+This will increment the bucket count if it is a new <code>NodeID</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeContact</span>: <a href="../types/nodes.types.NodeContact.html" class="tsd-signature-type tsd-kind-type-alias">NodeContact</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography">
+<h4>Throws</h4><p>If the bucket is full.</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L350">src/nodes/NodeGraph.ts:350</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="setNodeContactAddressData" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>set<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span><a href="#setNodeContactAddressData" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="setNodeContactAddressData.setNodeContactAddressData-1"><span class="tsd-kind-call-signature">set<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">nodeContactAddressData</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#setNodeContactAddressData.setNodeContactAddressData-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Sets a single <code>NodeContactAddressData</code> for a <code>NodeId</code>.
+This will increment the bucket count if it is a new <code>NodeID</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeContactAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddress</a><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeContactAddressData</span>: <a href="../types/nodes.types.NodeContactAddressData.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddressData</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography">
+<h4>Throws</h4><p>If the bucket is full.</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L400">src/nodes/NodeGraph.ts:400</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="setupSpace" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setup<wbr/>Space</span><a href="#setupSpace" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -613,7 +792,7 @@ If the node already existed it will be updated.</p>
 <div class="tsd-comment tsd-typography"><p>Sets up the space key
 The space string is suffixed to the <code>buckets</code> and <code>meta</code> sublevels
 This is used to allow swapping of sublevels when remapping buckets
-during <code>this.refreshBuckets</code></p>
+during <code>this.resetBuckets</code></p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -623,7 +802,7 @@ during <code>this.refreshBuckets</code></p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/nodes.types.NodeGraphSpace.html" class="tsd-signature-type tsd-kind-type-alias">NodeGraphSpace</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L150">src/nodes/NodeGraph.ts:150</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L197">src/nodes/NodeGraph.ts:197</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -640,7 +819,7 @@ during <code>this.refreshBuckets</code></p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.start</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L102">src/nodes/NodeGraph.ts:102</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L151">src/nodes/NodeGraph.ts:151</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -649,12 +828,15 @@ during <code>this.refreshBuckets</code></p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.stop</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L131">src/nodes/NodeGraph.ts:131</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="unsetNode" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>unset<wbr/>Node</span><a href="#unsetNode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L180">src/nodes/NodeGraph.ts:180</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="unsetNodeContact" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>unset<wbr/>Node<wbr/>Contact</span><a href="#unsetNodeContact" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="unsetNode.unsetNode-1"><span class="tsd-kind-call-signature">unset<wbr/>Node</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#unsetNode.unsetNode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="unsetNodeContact.unsetNodeContact-1"><span class="tsd-kind-call-signature">unset<wbr/>Node<wbr/>Contact</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#unsetNodeContact.unsetNodeContact-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Unsets a <code>NodeId</code> record.
+It will decrement the bucket count if it existed.</p>
+</div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
@@ -662,9 +844,27 @@ during <code>this.refreshBuckets</code></p>
 <h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L454">src/nodes/NodeGraph.ts:454</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="unsetNodeContactAddress" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>unset<wbr/>Node<wbr/>Contact<wbr/>Address</span><a href="#unsetNodeContactAddress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="unsetNodeContactAddress.unsetNodeContactAddress-1"><span class="tsd-kind-call-signature">unset<wbr/>Node<wbr/>Contact<wbr/>Address</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">nodeId</span>, <span class="tsd-kind-parameter">nodeAddress</span>, <span class="tsd-kind-parameter">tran</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#unsetNodeContactAddress.unsetNodeContactAddress-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">nodeId</span>: <a href="../types/ids.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">nodeAddress</span>: <a href="../types/nodes.types.NodeContactAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeContactAddress</a><span class="tsd-signature-symbol"> | </span><a href="../types/nodes.types.NodeAddress.html" class="tsd-signature-type tsd-kind-type-alias">NodeAddress</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L300">src/nodes/NodeGraph.ts:300</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L481">src/nodes/NodeGraph.ts:481</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="createNodeGraph" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create<wbr/>Node<wbr/>Graph</span><a href="#createNodeGraph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -674,7 +874,7 @@ during <code>this.refreshBuckets</code></p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeIdBits</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeBucketLimit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeContactAddressLimit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nodeIdBits</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
@@ -685,10 +885,14 @@ during <code>this.refreshBuckets</code></p>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">node<wbr/>Bucket<wbr/>Limit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">node<wbr/>Contact<wbr/>Address<wbr/>Limit</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">node<wbr/>Id<wbr/>Bits</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="nodes.NodeGraph.html" class="tsd-signature-type tsd-kind-class">NodeGraph</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L41">src/nodes/NodeGraph.ts:41</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/nodes/NodeGraph.ts#L58">src/nodes/NodeGraph.ts:58</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -714,9 +918,10 @@ during <code>this.refreshBuckets</code></p>
 <li><a href="#keyRing" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>key<wbr/>Ring</span></a></li>
 <li><a href="#logger" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a></li>
 <li><a href="#nodeBucketLimit" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Bucket<wbr/>Limit</span></a></li>
+<li><a href="#nodeContactAddressLimit" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Contact<wbr/>Address<wbr/>Limit</span></a></li>
 <li><a href="#nodeGraphBucketsDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Buckets<wbr/>Db<wbr/>Path</span></a></li>
+<li><a href="#nodeGraphConnectedDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Connected<wbr/>Db<wbr/>Path</span></a></li>
 <li><a href="#nodeGraphDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Db<wbr/>Path</span></a></li>
-<li><a href="#nodeGraphLastUpdatedDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Last<wbr/>Updated<wbr/>Db<wbr/>Path</span></a></li>
 <li><a href="#nodeGraphMetaDbPath" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Graph<wbr/>Meta<wbr/>Db<wbr/>Path</span></a></li>
 <li><a href="#nodeIdBits" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>node<wbr/>Id<wbr/>Bits</span></a></li>
 <li><a href="#space" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>space</span></a></li>
@@ -730,6 +935,7 @@ during <code>this.refreshBuckets</code></p>
 <li><a href="#_status_" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>[status]</span></a></li>
 <li><a href="#addEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>add<wbr/>Event<wbr/>Listener</span></a></li>
 <li><a href="#bucketIndex" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>bucket<wbr/>Index</span></a></li>
+<li><a href="#delConnectedTime" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>del<wbr/>Connected<wbr/>Time</span></a></li>
 <li><a href="#destroy" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>destroy</span></a></li>
 <li><a href="#dispatchEvent" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>dispatch<wbr/>Event</span></a></li>
 <li><a href="#getBucket" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket</span></a></li>
@@ -737,18 +943,24 @@ during <code>this.refreshBuckets</code></p>
 <li><a href="#getBucketMetaProp" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span></a></li>
 <li><a href="#getBuckets" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Buckets</span></a></li>
 <li><a href="#getClosestNodes" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Closest<wbr/>Nodes</span></a></li>
-<li><a href="#getNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node</span></a></li>
-<li><a href="#getNodes" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Nodes</span></a></li>
-<li><a href="#getOldestNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Oldest<wbr/>Node</span></a></li>
+<li><a href="#getConnectedTime" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Time</span></a></li>
+<li><a href="#getNodeContact" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contact</span></a></li>
+<li><a href="#getNodeContactAddressData" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span></a></li>
+<li><a href="#getNodeContacts" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Node<wbr/>Contacts</span></a></li>
 <li><a href="#lockBucket" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>lock<wbr/>Bucket</span></a></li>
+<li><a href="#nodesTotal" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>nodes<wbr/>Total</span></a></li>
+<li><a href="#purgeAddresses" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>purge<wbr/>Addresses</span></a></li>
 <li><a href="#removeEventListener" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>remove<wbr/>Event<wbr/>Listener</span></a></li>
 <li><a href="#resetBuckets" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>reset<wbr/>Buckets</span></a></li>
 <li><a href="#setBucketMetaProp" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Bucket<wbr/>Meta<wbr/>Prop</span></a></li>
-<li><a href="#setNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node</span></a></li>
+<li><a href="#setConnectedTime" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Connected<wbr/>Time</span></a></li>
+<li><a href="#setNodeContact" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node<wbr/>Contact</span></a></li>
+<li><a href="#setNodeContactAddressData" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>set<wbr/>Node<wbr/>Contact<wbr/>Address<wbr/>Data</span></a></li>
 <li><a href="#setupSpace" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>setup<wbr/>Space</span></a></li>
 <li><a href="#start" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>start</span></a></li>
 <li><a href="#stop" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>stop</span></a></li>
-<li><a href="#unsetNode" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node</span></a></li>
+<li><a href="#unsetNodeContact" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node<wbr/>Contact</span></a></li>
+<li><a href="#unsetNodeContactAddress" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>unset<wbr/>Node<wbr/>Contact<wbr/>Address</span></a></li>
 <li><a href="#createNodeGraph" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Node<wbr/>Graph</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>

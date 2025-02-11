@@ -24,7 +24,7 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">GithubProvider</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L21">src/identities/providers/github/GitHubProvider.ts:21</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L22">src/identities/providers/github/GitHubProvider.ts:22</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -45,6 +45,8 @@
 <a href="identities.providers.GithubProvider.html#gistFilename" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gist<wbr/>Filename</span></a>
 <a href="identities.providers.GithubProvider.html#id" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>id</span></a>
 <a href="identities.providers.GithubProvider.html#logger" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a>
+<a href="identities.providers.GithubProvider.html#pageSize" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>page<wbr/>Size</span></a>
+<a href="identities.providers.GithubProvider.html#preferGetClaimsPage" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>prefer<wbr/>Get<wbr/>Claims<wbr/>Page</span></a>
 <a href="identities.providers.GithubProvider.html#putToken" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>put<wbr/>Token</span></a>
 <a href="identities.providers.GithubProvider.html#scope" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scope</span></a>
 </div></section>
@@ -54,10 +56,16 @@
 <a href="identities.providers.GithubProvider.html#checkToken" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>check<wbr/>Token</span></a>
 <a href="identities.providers.GithubProvider.html#createRequest" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Request</span></a>
 <a href="identities.providers.GithubProvider.html#extractClaimIds" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Claim<wbr/>Ids</span></a>
+<a href="identities.providers.GithubProvider.html#extractClaims" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Claims</span></a>
+<a href="identities.providers.GithubProvider.html#extractPaginationToken" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Pagination<wbr/>Token</span></a>
 <a href="identities.providers.GithubProvider.html#getAuthIdentityIds" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Auth<wbr/>Identity<wbr/>Ids</span></a>
 <a href="identities.providers.GithubProvider.html#getClaim" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim</span></a>
-<a href="identities.providers.GithubProvider.html#getClaims" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims</span></a>
+<a href="identities.providers.GithubProvider.html#getClaimIds" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim<wbr/>Ids</span></a>
+<a href="identities.providers.GithubProvider.html#getClaimIdsPage" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim<wbr/>Ids<wbr/>Page</span></a>
+<a href="identities.providers.GithubProvider.html#getClaims" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims</span></a>
+<a href="identities.providers.GithubProvider.html#getClaimsPage" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims<wbr/>Page</span></a>
 <a href="identities.providers.GithubProvider.html#getConnectedIdentityDatas" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas</span></a>
+<a href="identities.providers.GithubProvider.html#getConnectedIdentityDatasGraphQLBody" class="tsd-index-link tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas<wbr/>GraphQLBody</span></a>
 <a href="identities.providers.GithubProvider.html#getIdentityData" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Identity<wbr/>Data</span></a>
 <a href="identities.providers.GithubProvider.html#getIdentityId" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Identity<wbr/>Id</span></a>
 <a href="identities.providers.GithubProvider.html#parseClaim" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>parse<wbr/>Claim</span></a>
@@ -85,47 +93,47 @@
 <h4 class="tsd-returns-title">Returns <a href="identities.providers.GithubProvider.html" class="tsd-signature-type tsd-kind-class">GithubProvider</a></h4><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#constructor">constructor</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L32">src/identities/providers/github/GitHubProvider.ts:32</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L35">src/identities/providers/github/GitHubProvider.ts:35</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="apiUrl" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagReadonly">Readonly</code> <span>api<wbr/>Url</span><a href="#apiUrl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">api<wbr/>Url</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &#39;https://api.github.com&#39;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L25">src/identities/providers/github/GitHubProvider.ts:25</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L27">src/identities/providers/github/GitHubProvider.ts:27</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="clientId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>client<wbr/>Id</span><a href="#clientId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">client<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L23">src/identities/providers/github/GitHubProvider.ts:23</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L24">src/identities/providers/github/GitHubProvider.ts:24</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="delToken" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>del<wbr/>Token</span><a href="#delToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">del<wbr/>Token</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DelToken</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#delToken">delToken</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L34">src/identities/Provider.ts:34</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L43">src/identities/Provider.ts:43</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="getToken" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Token</span><a href="#getToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">get<wbr/>Token</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">GetToken</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getToken">getToken</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L32">src/identities/Provider.ts:32</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L41">src/identities/Provider.ts:41</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="getTokens" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Tokens</span><a href="#getTokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">get<wbr/>Tokens</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">GetTokens</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getTokens">getTokens</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L31">src/identities/Provider.ts:31</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L40">src/identities/Provider.ts:40</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="gistDescription" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagReadonly">Readonly</code> <span>gist<wbr/>Description</span><a href="#gistDescription" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">gist<wbr/>Description</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &#39;Cryptolink between Polykey Keynode and Github Identity&#39;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L27">src/identities/providers/github/GitHubProvider.ts:27</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L29">src/identities/providers/github/GitHubProvider.ts:29</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="gistFilename" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagReadonly">Readonly</code> <span>gist<wbr/>Filename</span><a href="#gistFilename" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">gist<wbr/>Filename</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &#39;cryptolink.txt&#39;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L26">src/identities/providers/github/GitHubProvider.ts:26</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L28">src/identities/providers/github/GitHubProvider.ts:28</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="id" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>id</span><a href="#id" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/identities.types.ProviderId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderId</a><span class="tsd-signature-symbol"> = ...</span></div>
@@ -134,23 +142,40 @@
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#id">id</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L22">src/identities/providers/github/GitHubProvider.ts:22</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L23">src/identities/providers/github/GitHubProvider.ts:23</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L30">src/identities/providers/github/GitHubProvider.ts:30</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L33">src/identities/providers/github/GitHubProvider.ts:33</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="pageSize" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagReadonly">Readonly</code> <span>page<wbr/>Size</span><a href="#pageSize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">page<wbr/>Size</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 10</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L32">src/identities/providers/github/GitHubProvider.ts:32</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="preferGetClaimsPage" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>prefer<wbr/>Get<wbr/>Claims<wbr/>Page</span><a href="#preferGetClaimsPage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">prefer<wbr/>Get<wbr/>Claims<wbr/>Page</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = true</span></div>
+<div class="tsd-comment tsd-typography"><p>Set to true if getClaimsPage method should be preferred instead claim iteration operations.
+This could be useful if the Provider subclass has a getClaimsPage implentation that is able to
+obtain both Claims and ClaimsIds with a single HTTP request. For example, if the Provider were to
+supply a GraphQL API, or if the webscraped page were to contain the contents of both.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#preferGetClaimsPage">preferGetClaimsPage</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L25">src/identities/providers/github/GitHubProvider.ts:25</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="putToken" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>put<wbr/>Token</span><a href="#putToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">put<wbr/>Token</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">PutToken</span></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#putToken">putToken</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L33">src/identities/Provider.ts:33</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L42">src/identities/Provider.ts:42</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="scope" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagReadonly">Readonly</code> <span>scope</span><a href="#scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scope</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &#39;gist user:email read:user&#39;</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L29">src/identities/providers/github/GitHubProvider.ts:29</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L31">src/identities/providers/github/GitHubProvider.ts:31</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Methods</h2>
 <section class="tsd-panel tsd-member"><a id="authenticate" class="tsd-anchor"></a>
@@ -173,7 +198,7 @@ The final return value is the identity ID.</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#authenticate">authenticate</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L44">src/identities/providers/github/GitHubProvider.ts:44</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L47">src/identities/providers/github/GitHubProvider.ts:47</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="checkToken" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>check<wbr/>Token</span><a href="#checkToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -186,7 +211,9 @@ If the refresh token exists but has expired then this will throw the
 ErrorProviderUnauthenticated exception
 If the refresh token exists, and is still valid, then it will attempt to
 refresh the token.
-If you pass in identityId, expect that the new token will be persisted.</p>
+If you pass in identityId, expect that the new token will be persisted.
+If either <code>providerToken.accessTokenExpiresIn</code> or <code>providerToken.refreshTokenExpiresIn</code> is set to 0,
+their related tokens will be treated as never-expiring.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -199,7 +226,7 @@ If you pass in identityId, expect that the new token will be persisted.</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#checkToken">checkToken</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L62">src/identities/Provider.ts:62</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L73">src/identities/Provider.ts:73</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="createRequest" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>create<wbr/>Request</span><a href="#createRequest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -216,7 +243,7 @@ If you pass in identityId, expect that the new token will be persisted.</p>
 <h5><span class="tsd-kind-parameter">providerToken</span>: <a href="../types/identities.types.ProviderToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderToken</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Request</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L541">src/identities/providers/github/GitHubProvider.ts:541</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L609">src/identities/providers/github/GitHubProvider.ts:609</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="extractClaimIds" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>extract<wbr/>Claim<wbr/>Ids</span><a href="#extractClaimIds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -229,7 +256,33 @@ If you pass in identityId, expect that the new token will be persisted.</p>
 <h5><span class="tsd-kind-parameter">html</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/identities.types.ProviderIdentityClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderIdentityClaimId</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L558">src/identities/providers/github/GitHubProvider.ts:558</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L635">src/identities/providers/github/GitHubProvider.ts:635</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="extractClaims" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>extract<wbr/>Claims</span><a href="#extractClaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="extractClaims.extractClaims-1"><span class="tsd-kind-call-signature">extract<wbr/>Claims</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">html</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">[]</span><a href="#extractClaims.extractClaims-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">html</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L653">src/identities/providers/github/GitHubProvider.ts:653</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="extractPaginationToken" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>extract<wbr/>Pagination<wbr/>Token</span><a href="#extractPaginationToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="extractPaginationToken.extractPaginationToken-1"><span class="tsd-kind-call-signature">extract<wbr/>Pagination<wbr/>Token</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">html</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a><a href="#extractPaginationToken.extractPaginationToken-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">html</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L626">src/identities/providers/github/GitHubProvider.ts:626</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getAuthIdentityIds" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Auth<wbr/>Identity<wbr/>Ids</span><a href="#getAuthIdentityIds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -241,7 +294,7 @@ If you pass in identityId, expect that the new token will be persisted.</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getAuthIdentityIds">getAuthIdentityIds</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L170">src/identities/providers/github/GitHubProvider.ts:170</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L173">src/identities/providers/github/GitHubProvider.ts:173</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getClaim" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Claim</span><a href="#getClaim" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -262,13 +315,54 @@ The claimId is the gist id</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaim">getClaim</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L446">src/identities/providers/github/GitHubProvider.ts:446</a></li></ul></aside></li></ul></section>
-<section class="tsd-panel tsd-member"><a id="getClaims" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>get<wbr/>Claims</span><a href="#getClaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L467">src/identities/providers/github/GitHubProvider.ts:467</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="getClaimIds" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Claim<wbr/>Ids</span><a href="#getClaimIds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-signature tsd-anchor-link" id="getClaimIds.getClaimIds-1"><span class="tsd-kind-call-signature">get<wbr/>Claim<wbr/>Ids</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">authIdentityId</span>, <span class="tsd-kind-parameter">identityId</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/identities.types.ProviderIdentityClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderIdentityClaimId</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getClaimIds.getClaimIds-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Stream identity claimIds from an identity</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">authIdentityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">identityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/identities.types.ProviderIdentityClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderIdentityClaimId</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaimIds">getClaimIds</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L214">src/identities/Provider.ts:214</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getClaimIdsPage" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Claim<wbr/>Ids<wbr/>Page</span><a href="#getClaimIdsPage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getClaimIdsPage.getClaimIdsPage-1"><span class="tsd-kind-call-signature">get<wbr/>Claim<wbr/>Ids<wbr/>Page</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">_authIdentityId</span>, <span class="tsd-kind-parameter">identityId</span>, <span class="tsd-kind-parameter">paginationToken</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">claimId</span><span class="tsd-signature-symbol">: </span><a href="../types/identities.types.ProviderIdentityClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderIdentityClaimId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nextPaginationToken</span><span class="tsd-signature-symbol">?: </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getClaimIdsPage.getClaimIdsPage-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets a page of ProviderIdentityClaimIds from a given identity
+sorted by latest.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">_authIdentityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">identityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">paginationToken</span>: <a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">claimId</span><span class="tsd-signature-symbol">: </span><a href="../types/identities.types.ProviderIdentityClaimId.html" class="tsd-signature-type tsd-kind-type-alias">ProviderIdentityClaimId</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nextPaginationToken</span><span class="tsd-signature-symbol">?: </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaimIdsPage">getClaimIdsPage</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L527">src/identities/providers/github/GitHubProvider.ts:527</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited"><a id="getClaims" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Claims</span><a href="#getClaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
 <li class="tsd-signature tsd-anchor-link" id="getClaims.getClaims-1"><span class="tsd-kind-call-signature">get<wbr/>Claims</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">authIdentityId</span>, <span class="tsd-kind-parameter">identityId</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getClaims.getClaims-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Gets all IdentitySignedClaims from a given identity.</p>
+<div class="tsd-comment tsd-typography"><p>Stream identity claims from an identity</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -279,9 +373,31 @@ The claimId is the gist id</p>
 <h5><span class="tsd-kind-parameter">identityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
-<p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaims">getClaims</a></p>
+<p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaims">getClaims</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L505">src/identities/providers/github/GitHubProvider.ts:505</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L267">src/identities/Provider.ts:267</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="getClaimsPage" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>get<wbr/>Claims<wbr/>Page</span><a href="#getClaimsPage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="getClaimsPage.getClaimsPage-1"><span class="tsd-kind-call-signature">get<wbr/>Claims<wbr/>Page</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">_authIdentityId</span>, <span class="tsd-kind-parameter">identityId</span>, <span class="tsd-kind-parameter">paginationToken</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">claim</span><span class="tsd-signature-symbol">: </span><a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nextPaginationToken</span><span class="tsd-signature-symbol">?: </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><a href="#getClaimsPage.getClaimsPage-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets all IdentitySignedClaims from a given identity
+sorted by latest.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">_authIdentityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li>
+<li>
+<h5><span class="tsd-kind-parameter">identityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">paginationToken</span>: <a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a></h5></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">claim</span><span class="tsd-signature-symbol">: </span><a href="../types/identities.types.IdentitySignedClaim.html" class="tsd-signature-type tsd-kind-type-alias">IdentitySignedClaim</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">nextPaginationToken</span><span class="tsd-signature-symbol">?: </span><a href="../types/identities.types.ProviderPaginationToken.html" class="tsd-signature-type tsd-kind-type-alias">ProviderPaginationToken</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getClaimsPage">getClaimsPage</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L570">src/identities/providers/github/GitHubProvider.ts:570</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getConnectedIdentityDatas" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas</span><a href="#getConnectedIdentityDatas" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -300,7 +416,45 @@ The claimId is the gist id</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getConnectedIdentityDatas">getConnectedIdentityDatas</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L272">src/identities/providers/github/GitHubProvider.ts:272</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L275">src/identities/providers/github/GitHubProvider.ts:275</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected"><a id="getConnectedIdentityDatasGraphQLBody" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas<wbr/>GraphQLBody</span><a href="#getConnectedIdentityDatasGraphQLBody" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected">
+<li class="tsd-signature tsd-anchor-link" id="getConnectedIdentityDatasGraphQLBody.getConnectedIdentityDatasGraphQLBody-1"><span class="tsd-kind-call-signature">get<wbr/>Connected<wbr/>Identity<wbr/>Datas<wbr/>GraphQLBody</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">authIdentityId</span>, <span class="tsd-kind-parameter">identityGroup</span>, <span class="tsd-kind-parameter">cursor</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><a href="#getConnectedIdentityDatasGraphQLBody.getConnectedIdentityDatasGraphQLBody-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns a string suitable for use as the request body to the GitHub GraphQL endpoint.
+This is used to construct a query that returns either the <code>followers</code> or the <code>following</code> of a user.</p>
+<p>Schemas Used:</p>
+<ul>
+<li><a href="https://docs.github.com/en/graphql/reference/queries#user">https://docs.github.com/en/graphql/reference/queries#user</a></li>
+<li><a href="https://docs.github.com/en/graphql/reference/objects#user">https://docs.github.com/en/graphql/reference/objects#user</a></li>
+<li><a href="https://docs.github.com/en/graphql/reference/objects#followerconnection">https://docs.github.com/en/graphql/reference/objects#followerconnection</a></li>
+</ul>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li>
+<h5><span class="tsd-kind-parameter">authIdentityId</span>: <a href="../types/identities.types.IdentityId.html" class="tsd-signature-type tsd-kind-type-alias">IdentityId</a></h5>
+<div class="tsd-comment tsd-typography"><p>The GitHub authentication token to use when getting user data</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><span class="tsd-kind-parameter">identityGroup</span>: <span class="tsd-signature-type">&quot;following&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;followers&quot;</span></h5>
+<div class="tsd-comment tsd-typography"><p>Specify whether the GraphQL query requests the <code>followers</code> or the <code>following</code> of a user</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li>
+<li>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">cursor</span>: <span class="tsd-signature-type">string</span></h5>
+<div class="tsd-comment tsd-typography"><p>cursor for pagination,
+this can be retrieved from <code>.data.user[identityGroup].pageinfo.endCursor</code>
+of the JSON body on a response for a request made with the return value of this method as the body.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L373">src/identities/providers/github/GitHubProvider.ts:373</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getIdentityData" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Identity<wbr/>Data</span><a href="#getIdentityData" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -324,7 +478,7 @@ The claimId is the gist id</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getIdentityData">getIdentityData</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L217">src/identities/providers/github/GitHubProvider.ts:217</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L220">src/identities/providers/github/GitHubProvider.ts:220</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getIdentityId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Identity<wbr/>Id</span><a href="#getIdentityId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -343,7 +497,7 @@ Usernames on GitHub are changeable.</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#getIdentityId">getIdentityId</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L180">src/identities/providers/github/GitHubProvider.ts:180</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L183">src/identities/providers/github/GitHubProvider.ts:183</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="parseClaim" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>parse<wbr/>Claim</span><a href="#parseClaim" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -361,7 +515,7 @@ This does not verify whether the signature is correct</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#parseClaim">parseClaim</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L93">src/identities/Provider.ts:93</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L106">src/identities/Provider.ts:106</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="publishClaim" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>publish<wbr/>Claim</span><a href="#publishClaim" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -381,7 +535,7 @@ These are published as gists.</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#publishClaim">publishClaim</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L383">src/identities/providers/github/GitHubProvider.ts:383</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L404">src/identities/providers/github/GitHubProvider.ts:404</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="refreshToken" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>refresh<wbr/>Token</span><a href="#refreshToken" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -394,7 +548,7 @@ If identity is passed in, this function should update the token db</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Overrides <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#refreshToken">refreshToken</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L166">src/identities/providers/github/GitHubProvider.ts:166</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/providers/github/GitHubProvider.ts#L169">src/identities/providers/github/GitHubProvider.ts:169</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="setTokenDb" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>set<wbr/>Token<wbr/>Db</span><a href="#setTokenDb" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -418,7 +572,7 @@ This must be called before the provider starts to be used</p>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <p>Inherited from <a href="identities.Provider.html">Provider</a>.<a href="identities.Provider.html#setTokenDb">setTokenDb</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L40">src/identities/Provider.ts:40</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/identities/Provider.ts#L49">src/identities/Provider.ts:49</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -448,16 +602,24 @@ This must be called before the provider starts to be used</p>
 <li><a href="#gistFilename" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>gist<wbr/>Filename</span></a></li>
 <li><a href="#id" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>id</span></a></li>
 <li><a href="#logger" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>logger</span></a></li>
+<li><a href="#pageSize" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>page<wbr/>Size</span></a></li>
+<li><a href="#preferGetClaimsPage" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>prefer<wbr/>Get<wbr/>Claims<wbr/>Page</span></a></li>
 <li><a href="#putToken" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>put<wbr/>Token</span></a></li>
 <li><a href="#scope" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>scope</span></a></li>
 <li><a href="#authenticate" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>authenticate</span></a></li>
 <li><a href="#checkToken" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>check<wbr/>Token</span></a></li>
 <li><a href="#createRequest" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>create<wbr/>Request</span></a></li>
 <li><a href="#extractClaimIds" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Claim<wbr/>Ids</span></a></li>
+<li><a href="#extractClaims" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Claims</span></a></li>
+<li><a href="#extractPaginationToken" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>extract<wbr/>Pagination<wbr/>Token</span></a></li>
 <li><a href="#getAuthIdentityIds" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Auth<wbr/>Identity<wbr/>Ids</span></a></li>
 <li><a href="#getClaim" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim</span></a></li>
-<li><a href="#getClaims" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims</span></a></li>
+<li><a href="#getClaimIds" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim<wbr/>Ids</span></a></li>
+<li><a href="#getClaimIdsPage" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claim<wbr/>Ids<wbr/>Page</span></a></li>
+<li><a href="#getClaims" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims</span></a></li>
+<li><a href="#getClaimsPage" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Claims<wbr/>Page</span></a></li>
 <li><a href="#getConnectedIdentityDatas" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas</span></a></li>
+<li><a href="#getConnectedIdentityDatasGraphQLBody" class="tsd-is-protected"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Connected<wbr/>Identity<wbr/>Datas<wbr/>GraphQLBody</span></a></li>
 <li><a href="#getIdentityData" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Identity<wbr/>Data</span></a></li>
 <li><a href="#getIdentityId" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>get<wbr/>Identity<wbr/>Id</span></a></li>
 <li><a href="#parseClaim" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>parse<wbr/>Claim</span></a></li>

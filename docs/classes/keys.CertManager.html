@@ -23,8 +23,8 @@
 <ul class="tsd-hierarchy">
 <li><span class="target">CertManager</span></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L39">src/keys/CertManager.ts:39</a></li>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L52">src/keys/CertManager.ts:52</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L37">src/keys/CertManager.ts:37</a></li>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L50">src/keys/CertManager.ts:50</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -110,8 +110,12 @@
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">: </span><a href="../types/keys.types.CertManagerOptions.html" class="tsd-signature-type tsd-kind-type-alias">CertManagerOptions</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workerManager</span><span class="tsd-signature-symbol">?: </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">certDuration</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">certRenewLeadTime</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workerManager</span><span class="tsd-signature-symbol">?: </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">cert<wbr/>Duration</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><span class="tsd-kind-property">cert<wbr/>Renew<wbr/>Lead<wbr/>Time</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
 <li class="tsd-parameter">
@@ -119,15 +123,13 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
-<h5><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">: </span><a href="../types/keys.types.CertManagerOptions.html" class="tsd-signature-type tsd-kind-type-alias">CertManagerOptions</a></h5></li>
-<li class="tsd-parameter">
 <h5><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></h5></li>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">worker<wbr/>Manager</span><span class="tsd-signature-symbol">?: </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="keys.CertManager.html" class="tsd-signature-type tsd-kind-class">CertManager</a></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.constructor</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L152">src/keys/CertManager.ts:152</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L149">src/keys/CertManager.ts:149</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
@@ -143,17 +145,17 @@
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L117">src/keys/CertManager.ts:117</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L114">src/keys/CertManager.ts:114</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="certRenewLeadTime" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>cert<wbr/>Renew<wbr/>Lead<wbr/>Time</span><a href="#certRenewLeadTime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">cert<wbr/>Renew<wbr/>Lead<wbr/>Time</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L118">src/keys/CertManager.ts:118</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L115">src/keys/CertManager.ts:115</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="db" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db</span><a href="#db" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">DB</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L121">src/keys/CertManager.ts:121</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L118">src/keys/CertManager.ts:118</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="dbCertsPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db<wbr/>Certs<wbr/>Path</span><a href="#dbCertsPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db<wbr/>Certs<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -162,7 +164,7 @@
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L131">src/keys/CertManager.ts:131</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L128">src/keys/CertManager.ts:128</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="dbLastCertIdPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db<wbr/>Last<wbr/>Cert<wbr/>Id<wbr/>Path</span><a href="#dbLastCertIdPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db<wbr/>Last<wbr/>Cert<wbr/>Id<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -171,12 +173,12 @@
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L136">src/keys/CertManager.ts:136</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L133">src/keys/CertManager.ts:133</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="dbPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>db<wbr/>Path</span><a href="#dbPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">db<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">readonly </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L126">src/keys/CertManager.ts:126</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L123">src/keys/CertManager.ts:123</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="generateCertId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>generate<wbr/>Cert<wbr/>Id</span><a href="#generateCertId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">generate<wbr/>Cert<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><a href="../types/ids.CertId.html" class="tsd-signature-type tsd-kind-type-alias">CertId</a><span class="tsd-signature-symbol">)</span></div>
@@ -189,37 +191,37 @@
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <a href="../types/ids.CertId.html" class="tsd-signature-type tsd-kind-type-alias">CertId</a></h4></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L125">src/keys/CertManager.ts:125</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L122">src/keys/CertManager.ts:122</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="keyRing" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>key<wbr/>Ring</span><a href="#keyRing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">key<wbr/>Ring</span><span class="tsd-signature-symbol">:</span> <a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L122">src/keys/CertManager.ts:122</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L119">src/keys/CertManager.ts:119</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="logger" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>logger</span><a href="#logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Logger</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L120">src/keys/CertManager.ts:120</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L117">src/keys/CertManager.ts:117</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="renewCurrentCertHandler" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>renew<wbr/>Current<wbr/>Cert<wbr/>Handler</span><a href="#renewCurrentCertHandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">renew<wbr/>Current<wbr/>Cert<wbr/>Handler</span><span class="tsd-signature-symbol">:</span> <a href="../types/tasks.types.TaskHandler.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandler</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L138">src/keys/CertManager.ts:138</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L135">src/keys/CertManager.ts:135</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="renewCurrentCertHandlerId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>renew<wbr/>Current<wbr/>Cert<wbr/>Handler<wbr/>Id</span><a href="#renewCurrentCertHandlerId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">renew<wbr/>Current<wbr/>Cert<wbr/>Handler<wbr/>Id</span><span class="tsd-signature-symbol">:</span> <a href="../types/ids.TaskHandlerId.html" class="tsd-signature-type tsd-kind-type-alias">TaskHandlerId</a><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L146">src/keys/CertManager.ts:146</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L143">src/keys/CertManager.ts:143</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="renewCurrentCertTaskId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>renew<wbr/>Current<wbr/>Cert<wbr/>Task<wbr/>Id</span><a href="#renewCurrentCertTaskId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">renew<wbr/>Current<wbr/>Cert<wbr/>Task<wbr/>Id</span><span class="tsd-signature-symbol">?:</span> <a href="../types/ids.TaskId.html" class="tsd-signature-type tsd-kind-type-alias">TaskId</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L148">src/keys/CertManager.ts:148</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L145">src/keys/CertManager.ts:145</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="renewResetLock" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>renew<wbr/>Reset<wbr/>Lock</span><a href="#renewResetLock" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">renew<wbr/>Reset<wbr/>Lock</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Lock</span><span class="tsd-signature-symbol"> = ...</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L137">src/keys/CertManager.ts:137</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L134">src/keys/CertManager.ts:134</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="subjectAttrsExtra" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>subject<wbr/>Attrs<wbr/>Extra</span><a href="#subjectAttrsExtra" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">subject<wbr/>Attrs<wbr/>Extra</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{ </span><br/><span>    </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span></div>
@@ -229,22 +231,22 @@
 <li class="tsd-parameter-index-signature">
 <h5><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">key</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h5></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L149">src/keys/CertManager.ts:149</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L146">src/keys/CertManager.ts:146</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="taskManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>task<wbr/>Manager</span><a href="#taskManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">:</span> <a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L123">src/keys/CertManager.ts:123</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L120">src/keys/CertManager.ts:120</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="tasksRunning" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>tasks<wbr/>Running</span><a href="#tasksRunning" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">tasks<wbr/>Running</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L150">src/keys/CertManager.ts:150</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L147">src/keys/CertManager.ts:147</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="workerManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <code class="tsd-tag ts-flagOptional">Optional</code> <span>worker<wbr/>Manager</span><a href="#workerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">worker<wbr/>Manager</span><span class="tsd-signature-symbol">?:</span> <a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L124">src/keys/CertManager.ts:124</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L121">src/keys/CertManager.ts:121</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Accessors</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_destroyed_" class="tsd-anchor"></a>
@@ -364,7 +366,7 @@
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L687">src/keys/CertManager.ts:687</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L686">src/keys/CertManager.ts:686</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="destroy" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>destroy</span><a href="#destroy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -373,7 +375,7 @@
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.destroy</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L223">src/keys/CertManager.ts:223</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L222">src/keys/CertManager.ts:222</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="dispatchEvent" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>dispatch<wbr/>Event</span><a href="#dispatchEvent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -418,7 +420,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L840">src/keys/CertManager.ts:840</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L841">src/keys/CertManager.ts:841</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="generateCertificate" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>generate<wbr/>Certificate</span><a href="#generateCertificate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -449,7 +451,7 @@ collection of a 0-duration current certificate.</p>
 <h5><span class="tsd-kind-property">public<wbr/>Key</span><span class="tsd-signature-symbol">: </span><a href="../types/keys.types.PublicKey.html" class="tsd-signature-type tsd-kind-type-alias">PublicKey</a></h5></li></ul></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L773">src/keys/CertManager.ts:773</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L774">src/keys/CertManager.ts:774</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCert" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Cert</span><a href="#getCert" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -467,7 +469,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L284">src/keys/CertManager.ts:284</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L283">src/keys/CertManager.ts:283</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCertPEMs" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>CertPEMs</span><a href="#getCertPEMs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -483,7 +485,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertificatePEM.html" class="tsd-signature-type tsd-kind-type-alias">CertificatePEM</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L332">src/keys/CertManager.ts:332</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L331">src/keys/CertManager.ts:331</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCertPEMsChain" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>CertPEMs<wbr/>Chain</span><a href="#getCertPEMsChain" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -499,7 +501,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertificatePEM.html" class="tsd-signature-type tsd-kind-type-alias">CertificatePEM</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L344">src/keys/CertManager.ts:344</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L343">src/keys/CertManager.ts:343</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCertPEMsChainPEM" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>CertPEMs<wbr/>ChainPEM</span><a href="#getCertPEMsChainPEM" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -515,7 +517,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertificatePEMChain.html" class="tsd-signature-type tsd-kind-type-alias">CertificatePEMChain</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L358">src/keys/CertManager.ts:358</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L357">src/keys/CertManager.ts:357</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCerts" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Certs</span><a href="#getCerts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -531,7 +533,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">AsyncGenerator</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L302">src/keys/CertManager.ts:302</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L301">src/keys/CertManager.ts:301</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCertsChain" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Certs<wbr/>Chain</span><a href="#getCertsChain" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -547,7 +549,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L318">src/keys/CertManager.ts:318</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L317">src/keys/CertManager.ts:317</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCurrentCert" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Current<wbr/>Cert</span><a href="#getCurrentCert" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -563,7 +565,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L372">src/keys/CertManager.ts:372</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L371">src/keys/CertManager.ts:371</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getCurrentCertPEM" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Current<wbr/>CertPEM</span><a href="#getCurrentCertPEM" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -579,7 +581,7 @@ collection of a 0-duration current certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertificatePEM.html" class="tsd-signature-type tsd-kind-type-alias">CertificatePEM</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L385">src/keys/CertManager.ts:385</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L384">src/keys/CertManager.ts:384</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="getLastCertId" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>get<wbr/>Last<wbr/>Cert<wbr/>Id</span><a href="#getLastCertId" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -592,7 +594,7 @@ collection of a 0-duration current certificate.</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="../types/ids.CertId.html" class="tsd-signature-type tsd-kind-type-alias">CertId</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L269">src/keys/CertManager.ts:269</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L268">src/keys/CertManager.ts:268</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="putCert" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>put<wbr/>Cert</span><a href="#putCert" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -607,7 +609,7 @@ collection of a 0-duration current certificate.</p>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">tran</span>: <span class="tsd-signature-type ">DBTransaction</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L673">src/keys/CertManager.ts:673</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L672">src/keys/CertManager.ts:672</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="removeEventListener" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>remove<wbr/>Event<wbr/>Listener</span><a href="#removeEventListener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -654,7 +656,7 @@ certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L490">src/keys/CertManager.ts:490</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L489">src/keys/CertManager.ts:489</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="renewCertWithNewKeyPair" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>renew<wbr/>Cert<wbr/>With<wbr/>New<wbr/>Key<wbr/>Pair</span><a href="#renewCertWithNewKeyPair" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -683,7 +685,7 @@ certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L408">src/keys/CertManager.ts:408</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L407">src/keys/CertManager.ts:407</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="resetCertWithCurrentKeyPair" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>reset<wbr/>Cert<wbr/>With<wbr/>Current<wbr/>Key<wbr/>Pair</span><a href="#resetCertWithCurrentKeyPair" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -708,7 +710,7 @@ certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L624">src/keys/CertManager.ts:624</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L623">src/keys/CertManager.ts:623</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="resetCertWithNewKeyPair" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>reset<wbr/>Cert<wbr/>With<wbr/>New<wbr/>Key<wbr/>Pair</span><a href="#resetCertWithNewKeyPair" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -735,7 +737,7 @@ certificate.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">X509Certificate</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L551">src/keys/CertManager.ts:551</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L550">src/keys/CertManager.ts:550</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="setWorkerManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>set<wbr/>Worker<wbr/>Manager</span><a href="#setWorkerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -748,7 +750,7 @@ certificate.</p>
 <h5><span class="tsd-kind-parameter">workerManager</span>: <a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L176">src/keys/CertManager.ts:176</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L175">src/keys/CertManager.ts:175</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="setupCurrentCert" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setup<wbr/>Current<wbr/>Cert</span><a href="#setupCurrentCert" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -761,7 +763,7 @@ certificate.</p>
 <h5><span class="tsd-kind-parameter">now</span>: <span class="tsd-signature-type ">Date</span><span class="tsd-signature-symbol"> = ...</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L691">src/keys/CertManager.ts:691</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L690">src/keys/CertManager.ts:690</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="setupRenewCurrentCertTask" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>setup<wbr/>Renew<wbr/>Current<wbr/>Cert<wbr/>Task</span><a href="#setupRenewCurrentCertTask" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-protected">
@@ -781,7 +783,7 @@ is renewed.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L737">src/keys/CertManager.ts:737</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L736">src/keys/CertManager.ts:736</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start</span><a href="#start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -804,7 +806,7 @@ is renewed.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.start</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L184">src/keys/CertManager.ts:184</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L183">src/keys/CertManager.ts:183</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="startTasks" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>start<wbr/>Tasks</span><a href="#startTasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -821,7 +823,7 @@ This is idempotent.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L233">src/keys/CertManager.ts:233</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L232">src/keys/CertManager.ts:232</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop</span><a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited">
@@ -830,7 +832,7 @@ This is idempotent.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <p>Inherited from CreateDestroyStartStop.stop</p>
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L215">src/keys/CertManager.ts:215</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L214">src/keys/CertManager.ts:214</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="stopTasks" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>stop<wbr/>Tasks</span><a href="#stopTasks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -842,7 +844,7 @@ This is idempotent.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L243">src/keys/CertManager.ts:243</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L242">src/keys/CertManager.ts:242</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="unsetWorkerManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>unset<wbr/>Worker<wbr/>Manager</span><a href="#unsetWorkerManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -850,7 +852,7 @@ This is idempotent.</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L180">src/keys/CertManager.ts:180</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L179">src/keys/CertManager.ts:179</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="createCertManager" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create<wbr/>Cert<wbr/>Manager</span><a href="#createCertManager" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -871,8 +873,12 @@ propagation across the gestalt graph.</p>
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">issuerAttrsExtra</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>        </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">lazy</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">now</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Date</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertManagerOptions.html" class="tsd-signature-type tsd-kind-type-alias">CertManagerOptions</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">subjectAttrsExtra</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>        </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workerManager</span><span class="tsd-signature-symbol">?: </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">certDuration</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">certRenewLeadTime</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">fresh</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">issuerAttrsExtra</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>        </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">keyRing</span><span class="tsd-signature-symbol">: </span><a href="keys.KeyRing.html" class="tsd-signature-type tsd-kind-class">KeyRing</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">lazy</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">now</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Date</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">subjectAttrsExtra</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>        </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">taskManager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">workerManager</span><span class="tsd-signature-symbol">?: </span><a href="../types/workers.PolykeyWorkerManagerInterface.html" class="tsd-signature-type tsd-kind-type-alias">PolykeyWorkerManagerInterface</a><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">cert<wbr/>Duration</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
+<li class="tsd-parameter">
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">cert<wbr/>Renew<wbr/>Lead<wbr/>Time</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">db</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">DB</span></h5></li>
 <li class="tsd-parameter">
@@ -888,8 +894,6 @@ propagation across the gestalt graph.</p>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">now</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Date</span></h5></li>
 <li class="tsd-parameter">
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">options</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/keys.types.CertManagerOptions.html" class="tsd-signature-type tsd-kind-type-alias">CertManagerOptions</a><span class="tsd-signature-symbol">&gt;</span></h5></li>
-<li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">subject<wbr/>Attrs<wbr/>Extra</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span><br/><span>    </span>[<span class="tsd-kind-index-signature">key</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span></h5></li>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">task<wbr/>Manager</span><span class="tsd-signature-symbol">: </span><a href="tasks.TaskManager.html" class="tsd-signature-type tsd-kind-class">TaskManager</a></h5></li>
@@ -898,7 +902,7 @@ propagation across the gestalt graph.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="keys.CertManager.html" class="tsd-signature-type tsd-kind-class">CertManager</a><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L67">src/keys/CertManager.ts:67</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/keys/CertManager.ts#L65">src/keys/CertManager.ts:65</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

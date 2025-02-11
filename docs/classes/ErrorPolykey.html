@@ -28,15 +28,19 @@
 <li><span class="target">ErrorPolykey</span>
 <ul class="tsd-hierarchy">
 <li><a href="utils.errors.ErrorUtils.html" class="tsd-signature-type tsd-kind-class">ErrorUtils</a></li>
+<li><a href="utils.errors.ErrorRateLimiter.html" class="tsd-signature-type tsd-kind-class">ErrorRateLimiter</a></li>
 <li><a href="errors.ErrorPolykeyUnimplemented.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyUnimplemented</a></li>
 <li><a href="errors.ErrorPolykeyUnknown.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyUnknown</a></li>
+<li><a href="errors.ErrorPolykeyUnexpected.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyUnexpected</a></li>
 <li><a href="errors.ErrorPolykeyAgentRunning.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyAgentRunning</a></li>
 <li><a href="errors.ErrorPolykeyAgentNotRunning.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyAgentNotRunning</a></li>
 <li><a href="errors.ErrorPolykeyAgentDestroyed.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyAgentDestroyed</a></li>
 <li><a href="errors.ErrorPolykeyClientRunning.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyClientRunning</a></li>
 <li><a href="errors.ErrorPolykeyClientNotRunning.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyClientNotRunning</a></li>
 <li><a href="errors.ErrorPolykeyClientDestroyed.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyClientDestroyed</a></li>
-<li><a href="errors.ErrorACL.html" class="tsd-signature-type tsd-kind-class">ErrorACL</a></li>
+<li><a href="errors.ErrorPolykeyClientCreateTimeout.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyClientCreateTimeout</a></li>
+<li><a href="errors.ErrorPolykeyClientNodeIdInvalid.html" class="tsd-signature-type tsd-kind-class">ErrorPolykeyClientNodeIdInvalid</a></li>
+<li><a href="errors.ErrorAudit.html" class="tsd-signature-type tsd-kind-class">ErrorAudit</a></li>
 <li><a href="errors.ErrorSessions.html" class="tsd-signature-type tsd-kind-class">ErrorSessions</a></li>
 <li><a href="errors.ErrorKeys.html" class="tsd-signature-type tsd-kind-class">ErrorKeys</a></li>
 <li><a href="errors.ErrorVaults.html" class="tsd-signature-type tsd-kind-class">ErrorVaults</a></li>
@@ -56,7 +60,8 @@
 <li><a href="errors.ErrorStatus.html" class="tsd-signature-type tsd-kind-class">ErrorStatus</a></li>
 <li><a href="errors.ErrorTasks.html" class="tsd-signature-type tsd-kind-class">ErrorTasks</a></li>
 <li><a href="errors.ErrorTokens.html" class="tsd-signature-type tsd-kind-class">ErrorTokens</a></li>
-<li><a href="errors.ErrorValidation.html" class="tsd-signature-type tsd-kind-class">ErrorValidation</a></li></ul></li></ul></li></ul></section><aside class="tsd-sources">
+<li><a href="errors.ErrorValidation.html" class="tsd-signature-type tsd-kind-class">ErrorValidation</a></li>
+<li><a href="acl.errors.ErrorACL.html" class="tsd-signature-type tsd-kind-class">ErrorACL</a></li></ul></li></ul></li></ul></section><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/ErrorPolykey.ts#L5">src/ErrorPolykey.ts:5</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
@@ -88,6 +93,7 @@
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Methods</h3>
 <div class="tsd-index-list"><a href="ErrorPolykey.html#toJSON" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-2048"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)"></path></g></svg><span>toJSON</span></a>
+<a href="ErrorPolykey.html#toString" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>to<wbr/>String</span></a>
 <a href="ErrorPolykey.html#captureStackTrace" class="tsd-index-link tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>capture<wbr/>Stack<wbr/>Trace</span></a>
 <a href="ErrorPolykey.html#fromJSON" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>fromJSON</span></a>
 </div></section></div></details></section></section>
@@ -235,6 +241,14 @@ Guaranteed to be weakly monotonic</p>
 <p>Overrides AbstractError.toJSON</p>
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/ErrorPolykey.ts#L36">src/ErrorPolykey.ts:36</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="toString" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>to<wbr/>String</span><a href="#toString" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="toString.toString-1"><span class="tsd-kind-call-signature">to<wbr/>String</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><a href="#toString.toString-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/ErrorPolykey.ts#L43">src/ErrorPolykey.ts:43</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="captureStackTrace" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>capture<wbr/>Stack<wbr/>Trace</span><a href="#captureStackTrace" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures tsd-is-inherited tsd-is-external">
@@ -307,6 +321,7 @@ Guaranteed to be weakly monotonic</p>
 <li><a href="#stackTraceLimit" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>stack<wbr/>Trace<wbr/>Limit</span></a></li>
 <li><a href="#description-1" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-262144"></use></svg><span>description</span></a></li>
 <li><a href="#toJSON" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>toJSON</span></a></li>
+<li><a href="#toString" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>to<wbr/>String</span></a></li>
 <li><a href="#captureStackTrace" class="tsd-is-inherited tsd-is-external"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>capture<wbr/>Stack<wbr/>Trace</span></a></li>
 <li><a href="#fromJSON" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>fromJSON</span></a></li></ul></div></details></div>
 <div class="site-menu">
