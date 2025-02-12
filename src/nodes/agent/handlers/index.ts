@@ -9,6 +9,7 @@ import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
 import type NotificationsManager from '../../../notifications/NotificationsManager';
 import type VaultManager from '../../../vaults/VaultManager';
 import NodesAuthenticateConnection from './NodesAuthenticateConnection';
+import NodesAuditEventsGet from './NodesAuditEventsGet';
 import NodesClaimsGet from './NodesClaimsGet';
 import NodesClosestActiveConnectionsGet from './NodesClosestActiveConnectionsGet';
 import NodesClosestLocalNodesGet from './NodesClosestLocalNodesGet';
@@ -38,6 +39,7 @@ const manifestServer = (container: {
 }) => {
   return {
     nodesAuthenticateConnection: new NodesAuthenticateConnection(container),
+    nodesAuditEventsGet: new NodesAuditEventsGet(container),
     nodesClaimsGet: new NodesClaimsGet(container),
     nodesClosestActiveConnectionsGet: new NodesClosestActiveConnectionsGet(
       container,
@@ -60,6 +62,7 @@ export default manifestServer;
 
 export {
   NodesAuthenticateConnection,
+  NodesAuditEventsGet,
   NodesClaimsGet,
   NodesClosestActiveConnectionsGet,
   NodesClosestLocalNodesGet,
