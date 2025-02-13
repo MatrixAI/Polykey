@@ -1735,7 +1735,9 @@ class NodeConnectionManager {
     // If it exists in the map then we don't need to start one and can just return
     if (existingAuthenticate != null) return;
     if (
-      authenticationEntry.authenticatedForward !== AuthenticatingState.PENDING
+      authenticationEntry.authenticatedForward !==
+        AuthenticatingState.PENDING ||
+      authenticationEntry.authenticateComplete
     ) {
       return;
     }
