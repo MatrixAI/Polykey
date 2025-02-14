@@ -15,7 +15,7 @@ import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NetworkId, NodeContact } from '../../nodes/types';
-import { AuditEvent } from '@/audit/types';
+import type { AuditEvent } from '@/audit/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;
@@ -30,20 +30,19 @@ type AuditIdMessage = {
   limit?: number;
 };
 
-type AgentAuditMessage<T extends AuditEvent> = Omit<T, 'id'> &  {
-  id: AuditEventIdEncoded
+type AgentAuditMessage<T extends AuditEvent> = Omit<T, 'id'> & {
+  id: AuditEventIdEncoded;
 };
 
 type NodesClaimsGetMessage = {
   seek?: ClaimIdEncoded | number;
   order?: 'asc' | 'desc';
-  limit?: number;    
-}
+  limit?: number;
+};
 
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
 };
-
 
 type AgentClaimMessage = Partial<ClaimIdMessage> & {
   signedTokenEncoded: SignedTokenEncoded;

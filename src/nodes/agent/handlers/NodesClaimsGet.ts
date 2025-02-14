@@ -12,7 +12,6 @@ import { ServerHandler } from '@matrixai/rpc';
 import * as claimsUtils from '../../../claims/utils';
 import * as ids from '../../../ids';
 
-
 /**
  * Gets the sigchain claims of a node
  */
@@ -39,11 +38,11 @@ class NodesClaimsGet extends ServerHandler<
       AgentRPCResponseResult<AgentClaimMessage>
     > {
       for await (const [claimId, signedClaim] of sigchain.getSignedClaims(
-        { 
+        {
           seek: decodedClaimId,
           order: order,
           limit: limit,
-         },
+        },
         tran,
       )) {
         ctx.signal.throwIfAborted();
