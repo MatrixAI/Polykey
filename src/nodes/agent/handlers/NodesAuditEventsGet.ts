@@ -1,7 +1,6 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
 import type { JSONValue } from '@matrixai/rpc';
-import type Sigchain from '../../../sigchain/Sigchain';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -11,29 +10,30 @@ import type {
 import type Audit from '../../../audit/Audit';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils' 
+import { AuditEvent } from '@/audit/types';
 
 /**
  * Gets audit events from a node
  */
 class NodesAuditEventsGet extends ServerHandler<
   {
-    sigchain: Sigchain;
+    audit: Audit;
     db: DB;
   },
   AgentRPCRequestParams<AuditIdMessage>,
-  AgentRPCResponseResult<AgentAuditMessage>
+  AgentRPCResponseResult<AgentAuditMessage<AuditEvent>>
 > {
   public handle = async function* (
     input: AgentRPCRequestParams<AuditIdMessage>,
     _cancel: (reason?: any) => void,
     _meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): AsyncGenerator<AgentRPCResponseResult<AgentAuditMessage>> {
+  ): AsyncGenerator<AgentRPCResponseResult<AgentAuditMessage<AuditEvent>>> {
     const { seek, seekEnd, limit } = input;
     const { audit, db }: { audit: Audit; db: DB } = this.container;
 
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
-      AgentRPCResponseResult<AgentAuditMessage>
+      AgentRPCResponseResult<AgentAuditMessage<AuditEvent>>
     > {
       for await (const auditEvent of audit.getAuditEvents(
         [],
@@ -46,7 +46,9 @@ class NodesAuditEventsGet extends ServerHandler<
       )) {
         ctx.signal.throwIfAborted();
         yield {
-          auditIdEncoded: auditUtils.encodeAuditEventId(auditEvent.id)
+          id: auditUtils.encodeAuditEventId(auditEvent.id),
+          path: auditEvent.path,
+          data: auditEvent.data
         };
       }
     });
