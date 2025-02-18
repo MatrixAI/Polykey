@@ -1525,9 +1525,21 @@ class NodeConnectionManager {
   }> {
     // Need to get the connection details of the requester and add it to the message.
     // Then send the message to the target.
-    // This would only function with existing connections
-    const existingConnection = this.getConnection(targetNodeId);
+    // This would only function with existing connections that are authenticated
+    const nodeIdString = targetNodeId.toString() as NodeIdString;
+    const connectionsEntry = this.connections.get(nodeIdString);
+    if (connectionsEntry == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    const existingConnection =
+      connectionsEntry.connections[connectionsEntry.activeConnection];
     if (existingConnection == null) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    if (connectionsEntry.authenticatedForward !== AuthenticatingState.SUCCESS) {
+      throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
+    }
+    if (connectionsEntry.authenticatedReverse !== AuthenticatingState.SUCCESS) {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
     const host = existingConnection.connection.host;
@@ -1598,7 +1610,17 @@ class NodeConnectionManager {
     limit: number = this.connectionGetClosestLimit,
   ): Array<ActiveConnectionsInfo> {
     const nodeIds: Array<NodeId> = [];
-    for (const nodeIdString of this.connections.keys()) {
+    for (const [nodeIdString, connectionsEntry] of this.connections.entries()) {
+      if (
+        connectionsEntry.authenticatedForward !== AuthenticatingState.SUCCESS
+      ) {
+        continue;
+      }
+      if (
+        connectionsEntry.authenticatedReverse !== AuthenticatingState.SUCCESS
+      ) {
+        continue;
+      }
       nodeIds.push(IdInternal.fromString<NodeId>(nodeIdString));
     }
     // Sort and draw limit

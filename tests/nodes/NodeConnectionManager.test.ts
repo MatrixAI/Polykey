@@ -58,7 +58,7 @@ describe(`${NodeConnectionManager.name}`, () => {
   );
   const localHost = '127.0.0.1' as Host;
   const dummyManifest = {} as AgentServerManifest;
-  const timeoutTime = 2000;
+  const timeoutTime = 5000;
 
   test('NodeConnectionManager readiness', async () => {
     const keyPair = keysUtils.generateKeyPair();
@@ -1080,11 +1080,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmPeer1.nodeConnectionManager.createConnection(
         [ncmPeer2.nodeId],
         localHost,
         ncmPeer2.port,
       );
+      await ncmPeer1.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
 
       // Should be able to create connection from local to peer2 using peer1 as signaller
       await ncmLocal.nodeConnectionManager.createConnectionPunch(
@@ -1113,6 +1115,7 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       // Can't signal without signaler connected
       await testsUtils.expectRemoteError(
         ncmLocal.nodeConnectionManager.createConnectionPunch(
@@ -1129,11 +1132,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmPeer1.nodeConnectionManager.createConnection(
         [ncmPeer2.nodeId],
         localHost,
         ncmPeer2.port,
       );
+      await ncmPeer1.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
       const holePunchSpy = jest.spyOn(
         ncmPeer2.nodeConnectionManager,
         'holePunch',
@@ -1168,16 +1173,19 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmLocal.nodeConnectionManager.createConnection(
         [ncmPeer1.nodeId],
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmLocal.nodeConnectionManager.createConnection(
         [ncmPeer2.nodeId],
         localHost,
         ncmPeer2.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
 
       const result = ncmLocal.nodeConnectionManager.getClosestConnections(
         ncmPeer2.nodeId,
@@ -1193,11 +1201,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmPeer1.nodeConnectionManager.createConnection(
         [ncmPeer2.nodeId],
         localHost,
         ncmPeer2.port,
       );
+      await ncmPeer1.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
 
       // Mock and block `handleNodesConnectionSignalFinal`
       const mockedHandleNodesConnectionSignalFinal = jest.spyOn(
@@ -1227,11 +1237,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         localHost,
         ncmPeer1.port,
       );
+      await ncmLocal.nodeConnectionManager.isAuthenticatedP(ncmPeer1.nodeId);
       await ncmPeer1.nodeConnectionManager.createConnection(
         [ncmPeer2.nodeId],
         localHost,
         ncmPeer2.port,
       );
+      await ncmPeer1.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
       // Excessive connections will fail due to rate limit
       const connectionsP = (async () => {
         const connectionPs: Array<Promise<NodeConnection>> = [];

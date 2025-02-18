@@ -14,7 +14,7 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testsUtils from '../../../utils';
 
 describe('nodesClosestLocalNode', () => {
-  const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
+  const logger = new Logger('nodesClosestLocalNode test', LogLevel.INFO, [
     new StreamHandler(),
   ]);
   const localHost = '127.0.0.1' as Host;
@@ -143,6 +143,8 @@ describe('nodesClosestLocalNode', () => {
       const connectionId = `connectionId-${i}`;
       const entry = {
         activeConnection: connectionId,
+        authenticatedForward: 2,
+        authenticatedReverse: 2,
         connections: {
           [connectionId]: {
             connection: {

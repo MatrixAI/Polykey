@@ -72,7 +72,7 @@ describe(`${NodeManager.name}`, () => {
   ]);
   const password = 'password';
   const localHost = '127.0.0.1' as Host;
-  const timeoutTime = 300;
+  const timeoutTime = 1000;
   const dummyAgentService = {
     nodesAuthenticateConnection: new DummyNodesAuthenticateConnection({}),
   } as AgentServerManifest;
@@ -1185,6 +1185,7 @@ describe(`${NodeManager.name}`, () => {
         localHost,
         ncmB.port,
       );
+      await ncmA.nodeConnectionManager.isAuthenticatedP(ncmB.nodeId);
     }
     async function quickLinkConnection(structure: Array<Array<number>>) {
       const linkPs: Array<Promise<void>> = [];
@@ -1411,6 +1412,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const result = await nodeManager.findNodeBySignal(
@@ -1442,6 +1444,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const result = await nodeManager.findNodeBySignal(
@@ -1473,6 +1476,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const result = await nodeManager.findNodeBySignal(
@@ -1504,6 +1508,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const resultP = nodeManager.findNodeBySignal(
@@ -1532,6 +1537,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const resultP = nodeManager.findNodeBySignal(
@@ -1573,6 +1579,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const rateLimiter = new Semaphore(3);
         const resultP = nodeManager.findNodeBySignal(
@@ -1847,6 +1854,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const result = await nodeManager.findNode({
           nodeId: ncmPeers[4].nodeId,
@@ -1874,6 +1882,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const result = await nodeManager.findNode({
           nodeId: ncmPeers[4].nodeId,
@@ -1901,6 +1910,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const result = await nodeManager.findNode({
           nodeId: keyRing.getNodeId(),
@@ -1936,6 +1946,7 @@ describe(`${NodeManager.name}`, () => {
           localHost,
           ncmPeers[0].port,
         );
+        await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
         const start = Date.now();
         const result = await nodeManager.findNode({
@@ -2024,6 +2035,7 @@ describe(`${NodeManager.name}`, () => {
         localHost,
         ncmPeers[0].port,
       );
+      await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
       await Promise.all([
         await ncmPeers[3].nodeConnectionManager.stop({ force: true }),
@@ -2101,6 +2113,7 @@ describe(`${NodeManager.name}`, () => {
         localHost,
         ncmPeers[0].port,
       );
+      await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
       await nodeManager.refreshBucket(100, 1000);
       // Small networks less than 20 nodes will contact all nodes
@@ -2133,6 +2146,7 @@ describe(`${NodeManager.name}`, () => {
         localHost,
         ncmPeers[0].port,
       );
+      await nodeConnectionManager.isAuthenticatedP(ncmPeers[0].nodeId);
 
       expect(await nodeGraph.nodesTotal()).toBe(0);
 
