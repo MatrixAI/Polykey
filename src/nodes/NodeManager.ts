@@ -192,7 +192,7 @@ class NodeManager {
     this.logger.debug('Checking connections');
     let connectionCount = 0;
     for (const connection of this.nodeConnectionManager.listConnections()) {
-      if (connection.primary) {
+      if (connection.primary && connection.authenticated) {
         const [bucketId] = this.nodeGraph.bucketIndex(connection.nodeId);
         if (bucketId === 255) connectionCount++;
       }

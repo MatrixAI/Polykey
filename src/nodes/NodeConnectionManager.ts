@@ -1370,6 +1370,7 @@ class NodeConnectionManager {
     address: { host: Host; port: Port; hostname: Hostname | undefined };
     usageCount: number;
     timeout: number | undefined;
+    authenticated: boolean;
   }> {
     const results: Array<{
       nodeId: NodeId;
@@ -1378,6 +1379,7 @@ class NodeConnectionManager {
       address: { host: Host; port: Port; hostname: Hostname | undefined };
       usageCount: number;
       timeout: number | undefined;
+      authenticated: boolean;
     }> = [];
     for (const [nodeIdString, connectionsEntry] of this.connections.entries()) {
       const nodeId = IdInternal.fromString<NodeId>(nodeIdString);
@@ -1385,6 +1387,10 @@ class NodeConnectionManager {
       for (const connectionId of Object.keys(connections)) {
         const connectionAndTimer = connections[connectionId];
         const connection = connectionAndTimer.connection;
+        const forwardAuthenticated =
+          connectionsEntry.authenticatedForward === AuthenticatingState.SUCCESS;
+        const reverseAuthenticated =
+          connectionsEntry.authenticatedReverse === AuthenticatingState.SUCCESS;
         results.push({
           nodeId,
           connectionId: connection.connectionId,
@@ -1397,6 +1403,7 @@ class NodeConnectionManager {
           },
           usageCount: connectionAndTimer.usageCount,
           timeout: connectionAndTimer.timer?.getTimeout(),
+          authenticated: forwardAuthenticated && reverseAuthenticated,
         });
       }
     }

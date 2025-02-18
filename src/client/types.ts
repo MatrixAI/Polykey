@@ -135,6 +135,7 @@ type NodeConnectionMessage = NodeAddressMessage & {
   hostname: string;
   usageCount: number;
   timeout: number;
+  authenticated: boolean;
 };
 
 // Gestalts messages

@@ -37,6 +37,7 @@ class NodesListConnections extends ServerHandler<
         port: connection.address.port,
         timeout: connection.timeout ?? -1,
         usageCount: connection.usageCount,
+        authenticated: connection.authenticated,
       };
     }
   };
