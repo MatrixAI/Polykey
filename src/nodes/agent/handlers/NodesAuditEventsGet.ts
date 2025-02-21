@@ -29,7 +29,14 @@ class NodesAuditEventsGet extends ServerHandler<
     _meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<AgentAuditMessage<AuditEvent>>> {
-    const { seek, seekEnd, limit } = input;
+    let { seek, seekEnd, limit } = input;
+    if (typeof seek !== 'number') {
+      seek = auditUtils.decodeAuditEventId(seek);
+    }
+    if (typeof seekEnd !== 'number') {
+      seekEnd = auditUtils.decodeAuditEventId(seekEnd);
+    }
+
     const { audit, db }: { audit: Audit; db: DB } = this.container;
 
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
@@ -45,6 +52,13 @@ class NodesAuditEventsGet extends ServerHandler<
         tran,
       )) {
         ctx.signal.throwIfAborted();
+        // Skip the seek event to ensure exclusivity if given an AuditEventId
+        // This assumes that ids are unique
+        if (seek !== undefined) {
+          if (typeof seek !== 'number' && auditEvent.id.equals(seek)) {
+            continue;
+          }
+        }
         yield {
           id: auditUtils.encodeAuditEventId(auditEvent.id),
           path: auditEvent.path,

@@ -1,6 +1,7 @@
 import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
 import type KeyRing from '../../../keys/KeyRing';
+import type Audit from '../../../audit/Audit';
 import type Sigchain from '../../../sigchain/Sigchain';
 import type ACL from '../../../acl/ACL';
 import type NodeGraph from '../../../nodes/NodeGraph';
@@ -26,6 +27,7 @@ import VaultsScan from './VaultsScan';
  * Server manifest factory.
  */
 const manifestServer = (container: {
+  audit: Audit;
   db: DB;
   sigchain: Sigchain;
   nodeGraph: NodeGraph;

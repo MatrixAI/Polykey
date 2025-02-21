@@ -24,8 +24,8 @@ type AgentRPCResponseResult<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<T>;
 
 type AuditIdMessage = {
-  seek?: AuditEventId | number;
-  seekEnd?: AuditEventId | number;
+  seek?: AuditEventIdEncoded | number;
+  seekEnd?: AuditEventIdEncoded | number;
   order?: 'asc' | 'desc';
   limit?: number;
 };
