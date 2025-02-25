@@ -11,6 +11,7 @@ import type Audit from '../../../audit/Audit';
 import type { AuditEvent } from '../../../audit/types';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils';
+import { AuditEventId } from '@/ids';
 
 /**
  * Gets audit events from a node
@@ -29,12 +30,16 @@ class NodesAuditEventsGet extends ServerHandler<
     _meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
   ): AsyncGenerator<AgentRPCResponseResult<AgentAuditMessage<AuditEvent>>> {
-    let { seek, seekEnd, limit } = input;
+    let seek_: AuditEventId | number | undefined;
+    let seekEnd_: AuditEventId | number | undefined;
+
+    const { seek, seekEnd, limit } = input;
+    
     if (typeof seek !== 'number') {
-      seek = auditUtils.decodeAuditEventId(seek);
+      seek_ = auditUtils.decodeAuditEventId(seek);
     }
     if (typeof seekEnd !== 'number') {
-      seekEnd = auditUtils.decodeAuditEventId(seekEnd);
+      seekEnd_ = auditUtils.decodeAuditEventId(seekEnd);
     }
 
     const { audit, db }: { audit: Audit; db: DB } = this.container;
@@ -45,8 +50,8 @@ class NodesAuditEventsGet extends ServerHandler<
       for await (const auditEvent of audit.getAuditEvents(
         [],
         {
-          seek,
-          seekEnd,
+          seek : seek_,
+          seekEnd : seekEnd_,
           limit,
         },
         tran,
@@ -54,8 +59,8 @@ class NodesAuditEventsGet extends ServerHandler<
         ctx.signal.throwIfAborted();
         // Skip the seek event to ensure exclusivity if given an AuditEventId
         // This assumes that ids are unique
-        if (seek !== undefined) {
-          if (typeof seek !== 'number' && auditEvent.id.equals(seek)) {
+        if (seek_ !== undefined) {
+          if (typeof seek_ !== 'number' && auditEvent.id.equals(seek_)) {
             continue;
           }
         }
