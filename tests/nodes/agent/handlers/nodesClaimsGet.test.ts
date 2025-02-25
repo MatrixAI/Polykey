@@ -329,5 +329,21 @@ describe('nodesClaimsGet', () => {
     expect(isSorted).toBe(true);
   });
 
+  test('Should return no results when the DB is empty', async () => {
+    // We do not add any claims to the DB here, leaving it empty
+  
+    // Make the RPC call without any parameters
+    const response = await rpcClient.methods.nodesClaimsGet({});
+  
+    // Collect all results into an array
+    const claimIds: Array<string> = [];
+    for await (const claim of response) {
+      claimIds.push(claim.claimIdEncoded ?? '');
+    }
+  
+    // Verify the array is empty
+    expect(claimIds).toHaveLength(0);
+  });
+
 
 });
