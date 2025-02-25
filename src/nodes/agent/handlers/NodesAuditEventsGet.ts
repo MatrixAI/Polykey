@@ -8,7 +8,7 @@ import type {
   AgentAuditMessage,
 } from '../types';
 import type Audit from '../../../audit/Audit';
-import type { AuditEvent } from '@/audit/types';
+import type { AuditEvent } from '../../../audit/types';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils';
 

@@ -5,7 +5,6 @@ import type {
 } from '@matrixai/rpc';
 import type { SignedTokenEncoded } from '../../tokens/types';
 import type {
-  AuditEventId,
   AuditEventIdEncoded,
   ClaimIdEncoded,
   NodeIdEncoded,
@@ -15,7 +14,7 @@ import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NetworkId, NodeContact } from '../../nodes/types';
-import type { AuditEvent } from '@/audit/types';
+import type { AuditEvent } from '../../audit/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;

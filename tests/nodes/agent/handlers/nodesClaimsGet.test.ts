@@ -1,5 +1,4 @@
 import type { IdentityId, ProviderId } from '@/identities/types';
-import type { ClaimIdEncoded } from '@/ids';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -198,7 +197,6 @@ describe('nodesClaimsGet', () => {
   });
 
   test('Should get chain data with limit', async () => {
-
     const srcNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {
@@ -224,8 +222,7 @@ describe('nodesClaimsGet', () => {
       await sigchain.addClaim(identityLink);
     }
 
-
-    let limitVal = 5;
+    const limitVal = 5;
 
     const response = await rpcClient.methods.nodesClaimsGet({
       limit: limitVal,
@@ -270,9 +267,8 @@ describe('nodesClaimsGet', () => {
     for await (const claim of response) {
       chainIds.push(claim.claimIdEncoded ?? '');
     }
-    
 
-    //Verify that chainIds are in descending order
+    // Verify that chainIds are in descending order
     let isSorted = true;
     for (let i = 0; i < chainIds.length - 1; i++) {
       if (chainIds[i] < chainIds[i + 1]) {
@@ -281,7 +277,6 @@ describe('nodesClaimsGet', () => {
       }
     }
     expect(isSorted).toBe(true);
-
   });
 
   test('Should get chain data with order asc', async () => {
@@ -318,7 +313,7 @@ describe('nodesClaimsGet', () => {
       chainIds.push(claim.claimIdEncoded ?? '');
     }
 
-    //Verify that chainIds are in ascending order
+    // Verify that chainIds are in ascending order
     let isSorted = true;
     for (let i = 0; i < chainIds.length - 1; i++) {
       if (chainIds[i] > chainIds[i + 1]) {
@@ -331,19 +326,17 @@ describe('nodesClaimsGet', () => {
 
   test('Should return no results when the DB is empty', async () => {
     // We do not add any claims to the DB here, leaving it empty
-  
+
     // Make the RPC call without any parameters
     const response = await rpcClient.methods.nodesClaimsGet({});
-  
+
     // Collect all results into an array
     const claimIds: Array<string> = [];
     for await (const claim of response) {
       claimIds.push(claim.claimIdEncoded ?? '');
     }
-  
+
     // Verify the array is empty
     expect(claimIds).toHaveLength(0);
   });
-
-
 });
