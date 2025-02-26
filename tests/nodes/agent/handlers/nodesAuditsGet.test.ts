@@ -1,10 +1,10 @@
 import type { AuditEventId } from '@/ids';
-import fc from 'fast-check';
 import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
 import type Discovery from '@/discovery/Discovery';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import fc from 'fast-check';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
@@ -322,8 +322,7 @@ function generateMockAuditEvents(
 
     //Pick some value to seek from the mockAuditEvents selected from the mockAuditEvents
     let seekIndex = 50;
-    let seekValueEncoded = auditUtils.encodeAuditEventId(mockAuditEvents[seekIndex].id);
-  
+    let seekValueEncoded = auditUtils.encodeAuditEventId(mockAuditEvents[seekIndex].id);  
 
     try {
       const response = await rpcClient.methods.nodesAuditEventsGet({

@@ -11,7 +11,7 @@ import type Audit from '../../../audit/Audit';
 import type { AuditEvent } from '../../../audit/types';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils';
-import { AuditEventId } from '@/ids';
+import { AuditEventId } from '../../../ids';
 
 /**
  * Gets audit events from a node
