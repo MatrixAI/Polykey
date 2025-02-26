@@ -9,9 +9,9 @@ import type {
 } from '../types';
 import type Audit from '../../../audit/Audit';
 import type { AuditEvent } from '../../../audit/types';
+import type { AuditEventId } from '../../../ids';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils';
-import { AuditEventId } from '../../../ids';
 
 /**
  * Gets audit events from a node
@@ -34,7 +34,7 @@ class NodesAuditEventsGet extends ServerHandler<
     let seekEnd_: AuditEventId | number | undefined;
 
     const { seek, seekEnd, limit } = input;
-    
+
     if (typeof seek !== 'number') {
       seek_ = auditUtils.decodeAuditEventId(seek);
     }
@@ -50,8 +50,8 @@ class NodesAuditEventsGet extends ServerHandler<
       for await (const auditEvent of audit.getAuditEvents(
         [],
         {
-          seek : seek_,
-          seekEnd : seekEnd_,
+          seek: seek_,
+          seekEnd: seekEnd_,
           limit,
         },
         tran,
