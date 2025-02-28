@@ -234,7 +234,7 @@ describe('nodesClaimsGet', () => {
     expect(chainIds).toHaveLength(5);
   });
 
-  test('Should get chain data with order desc', async () => {
+  test('Should get chain data with order asc and desc', async () => {
     const srcNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {
@@ -260,10 +260,11 @@ describe('nodesClaimsGet', () => {
       await sigchain.addClaim(identityLink);
     }
 
-    const response = await rpcClient.methods.nodesClaimsGet({
+    // Test for descending order
+    let response = await rpcClient.methods.nodesClaimsGet({
       order: 'desc',
     });
-    const chainIds: Array<string> = [];
+    let chainIds: Array<string> = [];
     for await (const claim of response) {
       chainIds.push(claim.claimIdEncoded ?? '');
     }
@@ -277,44 +278,18 @@ describe('nodesClaimsGet', () => {
       }
     }
     expect(isSorted).toBe(true);
-  });
 
-  test('Should get chain data with order asc', async () => {
-    const srcNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    // Add 10 claims
-    for (let i = 1; i <= 5; i++) {
-      const node2 = nodesUtils.encodeNodeId(
-        testNodesUtils.generateRandomNodeId(),
-      );
-      const nodeLink = {
-        type: 'ClaimLinkNode',
-        iss: srcNodeIdEncoded,
-        sub: node2,
-      };
-      await sigchain.addClaim(nodeLink);
-    }
-    for (let i = 6; i <= 10; i++) {
-      const identityLink = {
-        type: 'ClaimLinkIdentity',
-        iss: srcNodeIdEncoded,
-        sub: encodeProviderIdentityId([
-          ('ProviderId' + i.toString()) as ProviderId,
-          ('IdentityId' + i.toString()) as IdentityId,
-        ]),
-      };
-      await sigchain.addClaim(identityLink);
-    }
-
-    const response = await rpcClient.methods.nodesClaimsGet({
+    // Test for ascending order
+    response = await rpcClient.methods.nodesClaimsGet({
       order: 'asc',
     });
-    const chainIds: Array<string> = [];
+    chainIds = [];
     for await (const claim of response) {
       chainIds.push(claim.claimIdEncoded ?? '');
     }
 
     // Verify that chainIds are in ascending order
-    let isSorted = true;
+    isSorted = true;
     for (let i = 0; i < chainIds.length - 1; i++) {
       if (chainIds[i] > chainIds[i + 1]) {
         isSorted = false;

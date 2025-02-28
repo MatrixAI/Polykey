@@ -4,6 +4,7 @@ import type Discovery from '@/discovery/Discovery';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';

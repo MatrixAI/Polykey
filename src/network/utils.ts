@@ -440,7 +440,6 @@ async function resolveHostnames(
 // TODO: review and fix the `toError` and `fromError` code here.
 //  Right now it's very basic and need fleshing out.
 function fromError(error: any) {
-  console.error(error);
   switch (typeof error) {
     case 'symbol':
     case 'bigint':
