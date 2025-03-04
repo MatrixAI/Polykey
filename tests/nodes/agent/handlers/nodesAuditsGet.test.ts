@@ -19,7 +19,6 @@ import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as auditUtils from '@/audit/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
-import * as testNodesUtils from '../../../nodes/utils';
 
 describe('nodesAuditEventsGet', () => {
   const logger = new Logger('nodesAuditEventsGet test', LogLevel.WARN, [
@@ -174,271 +173,293 @@ describe('nodesAuditEventsGet', () => {
     return audit.generateAuditEventId();
   }
 
-  /**
-   * Generates an array of mock audit events of size `numEvents`.
-   * - Uses `callProtectedGenerateAuditEventId` to get the ID (passed in).
-   * - Uses fast-check to randomize `remoteNodeId`, `remoteHost`, and `remotePort`.
-   */
-  function generateMockAuditEvents(
-    numEvents: number,
-    callProtectedGenerateAuditEventId: () => AuditEventId,
-  ) {
-    // Define an arbitrary for the fields we want to randomize:
-    const randomFieldsArb = fc.record({
-      remoteHost: fc.ipV4(),
-      remotePort: fc.nat({ max: 65535 }),
-    });
+  test.prop(
+    [
+      fc.array(
+        fc.record({
+          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+          remoteHost: fc.ipV4(),
+          remotePort: fc.nat({ max: 65535 }),
+        }),
+        { minLength: 1, maxLength: 20 },
+      ),
+    ],
+    { numRuns: 10 },
+  )(
+    'should get audit events with property based test',
+    async (randomEvents) => {
+      // Property function
+      for (const e of randomEvents) {
+        const id = callProtectedGenerateAuditEventId();
+        // @ts-ignore: protected
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id,
+          data: {
+            remoteNodeId: e.remoteNodeId,
+            remoteHost: e.remoteHost,
+            remotePort: e.remotePort,
+            type: 'forward',
+          },
+          path: ['node', 'connection', 'forward'],
+        });
+      }
+      const response = await rpcClient.methods.nodesAuditEventsGet({
+        seek: 0,
+        seekEnd: Date.now(),
+      });
+      const auditIds: Array<string> = [];
+      for await (const result of response) {
+        auditIds.push(result.id);
+      }
+      expect(auditIds.length).toEqual(randomEvents.length);
+      await db.clear(); // Needed to clear the db otherwise results would accumulate
+    },
+  );
 
-    // Generate numEvents samples:
-    const randomValues = fc.sample(randomFieldsArb, numEvents);
+  test.prop(
+    [
+      // 1) Arbitrary array of random events to insert (up to 100)
+      fc.array(
+        fc.record({
+          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+          remoteHost: fc.ipV4(),
+          remotePort: fc.nat({ max: 65535 }),
+        }),
+        { minLength: 1, maxLength: 100 },
+      ),
+      fc.integer({ min: 1, max: 100 }),
+    ],
+    { numRuns: 3 },
+  )(
+    'should get audit events with limit (property-based)',
+    async (randomEvents, limitVal) => {
+      // Insert randomEvents
+      for (const e of randomEvents) {
+        const id = callProtectedGenerateAuditEventId();
+        // @ts-ignore: protected
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id,
+          data: {
+            remoteNodeId: e.remoteNodeId,
+            remoteHost: e.remoteHost,
+            remotePort: e.remotePort,
+            type: 'forward',
+          },
+          path: ['node', 'connection', 'forward'],
+        });
+      }
 
-    // Map each random object to the expected AuditEvent shape:
-    return randomValues.map((value) => ({
-      id: callProtectedGenerateAuditEventId(),
-      path: ['node', 'connection', 'reverse'],
-      data: {
-        remoteNodeId: nodesUtils.encodeNodeId(
-          testNodesUtils.generateRandomNodeId(),
+      // Query using the randomly generated limitVal
+      const response = await rpcClient.methods.nodesAuditEventsGet({
+        seek: 0,
+        seekEnd: Date.now(),
+        limit: limitVal,
+      });
+      const auditIds: Array<string> = [];
+      for await (const result of response) {
+        auditIds.push(result.id);
+      }
+
+      // We expect min(arrayLength, limitVal) results
+      const expected = Math.min(randomEvents.length, limitVal);
+      expect(auditIds).toHaveLength(expected);
+
+      // Finally, clear the DB for the next run
+      await db.clear();
+    },
+  );
+
+  test.prop(
+    [
+      fc
+        .array(
+          fc.record({
+            remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+            remoteHost: fc.ipV4(),
+            remotePort: fc.nat({ max: 65535 }),
+          }),
+          { minLength: 2, maxLength: 100 }, // At least 2 so there's a valid seek index
+        )
+        .chain((events) =>
+          fc.record({
+            events: fc.constant(events),
+            seekIndex: fc.integer({ min: 0, max: events.length - 1 }),
+          }),
         ),
-        remoteHost: value.remoteHost,
-        remotePort: value.remotePort,
-        type: 'reverse',
-      },
-    }));
-  }
-
-  test('should get audit events', async () => {
-    // Generate valid AuditEventIds
-    const mockAuditEvents = generateMockAuditEvents(
-      100,
-      callProtectedGenerateAuditEventId,
-    );
-
-    // Add events with correct topicPath and full path in event data
-    for (const event of mockAuditEvents) {
-      // @ts-ignore: accessing a protected method
-      await audit.setAuditEvent(['node', 'connection', 'forward'], {
+    ],
+    { numRuns: 5 },
+  )(
+    'should get audit events with a random seek index (property-based)',
+    async ({ events, seekIndex }) => {
+      // Insert the random events and store the generated AuditEventIds
+      const eventIds: Array<AuditEventId> = [];
+      for (const e of events) {
+        const id = callProtectedGenerateAuditEventId();
         // @ts-ignore: protected
-        id: event.id,
-        data: {
-          remoteNodeId: 'asdasd',
-          remoteHost: '127.0.0.1',
-          remotePort: 54321,
-          type: 'forward',
-        },
-        path: ['node', 'connection', 'forward'],
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id,
+          data: {
+            remoteNodeId: e.remoteNodeId,
+            remoteHost: e.remoteHost,
+            remotePort: e.remotePort,
+            type: 'forward',
+          },
+          path: ['node', 'connection', 'forward'],
+        });
+        eventIds.push(id);
+      }
+
+      const seekValueEncoded = auditUtils.encodeAuditEventId(
+        eventIds[seekIndex],
+      );
+
+      // Query from that seek
+      const response = await rpcClient.methods.nodesAuditEventsGet({
+        seek: seekValueEncoded,
       });
-    }
 
-    // Parameters
-    const seekValue = 0;
-    const seekEndVal = Date.now();
+      // Collect results
+      const auditIds: Array<string> = [];
+      for await (const result of response) {
+        auditIds.push(result.id);
+      }
 
-    const response = await rpcClient.methods.nodesAuditEventsGet({
-      seek: seekValue,
-      seekEnd: seekEndVal,
-    });
-
-    // Collect results
-    const auditIds: Array<string> = [];
-    for await (const result of response) {
-      auditIds.push(result.id);
-    }
-
-    const mappedMockedAuditEvents = mockAuditEvents.map((event) =>
-      auditUtils.encodeAuditEventId(event.id),
-    );
-
-    // Check if the audits grabbed from the rpc handler is the same as the generated audits from mockAuditEvents
-    expect(auditIds).toEqual(mappedMockedAuditEvents);
-  });
-
-  test('should get audit events with limit', async () => {
-    // Generate valid AuditEventIds
-    const mockAuditEvents = generateMockAuditEvents(
-      100,
-      callProtectedGenerateAuditEventId,
-    );
-
-    // Add events with correct topicPath and full path in event data
-    for (const event of mockAuditEvents) {
-      // @ts-ignore: accessing a protected method
-      await audit.setAuditEvent(['node', 'connection', 'forward'], {
-        // @ts-ignore: protected
-        id: event.id,
-        data: {
-          remoteNodeId: 'asdasd',
-          remoteHost: '127.0.0.1',
-          remotePort: 54321,
-          type: 'forward',
-        },
-        path: ['node', 'connection', 'forward'],
-      });
-    }
-    // Parameters
-    const seekValue = 0;
-    const seekEndVal = Date.now();
-    const limitVal = 50;
-
-    const response = await rpcClient.methods.nodesAuditEventsGet({
-      seek: seekValue,
-      seekEnd: seekEndVal,
-      limit: limitVal,
-    });
-
-    // Collect results
-    const auditIds: Array<string> = [];
-    for await (const result of response) {
-      auditIds.push(result.id);
-    }
-
-    // Verify that the number of events returned is equal to the limit
-    expect(auditIds).toHaveLength(limitVal);
-  });
-
-  test('should get audit events with specific seek = 50', async () => {
-    // Generate valid AuditEventIds
-    const mockAuditEvents = generateMockAuditEvents(
-      100,
-      callProtectedGenerateAuditEventId,
-    );
-
-    // Add events with correct topicPath and full path in event data
-    for (const event of mockAuditEvents) {
-      // @ts-ignore: accessing a protected method
-      await audit.setAuditEvent(['node', 'connection', 'forward'], {
-        // @ts-ignore: protected
-        id: event.id,
-        data: {
-          remoteNodeId: 'asdasd',
-          remoteHost: '127.0.0.1',
-          remotePort: 54321,
-          type: 'forward',
-        },
-        path: ['node', 'connection', 'forward'],
-      });
-    }
-
-    // Pick some value to seek from the mockAuditEvents selected from the mockAuditEvents
-    const seekIndex = 50;
-    const seekValueEncoded = auditUtils.encodeAuditEventId(
-      mockAuditEvents[seekIndex].id,
-    );
-
-    const response = await rpcClient.methods.nodesAuditEventsGet({
-      seek: seekValueEncoded,
-    });
-
-    // Collect results
-    const auditIds: Array<string> = [];
-    for await (const result of response) {
-      auditIds.push(result.id);
-    }
-
-    // Verify that the results are the same as the mockAuditEvents from the seek value onwards
-    expect(auditIds).toEqual(
-      mockAuditEvents
+      // We expect everything AFTER the seekIndex event
+      // => from (seekIndex+1) to the end
+      const expectedIds = eventIds
         .slice(seekIndex + 1)
-        .map((event) => auditUtils.encodeAuditEventId(event.id)),
-    );
+        .map((id) => auditUtils.encodeAuditEventId(id));
 
-    // Additionally, verify the seek value is exclusive and should be excluded from the results.
-    expect(auditIds).not.toContain(seekValueEncoded);
-  });
+      // Check that we only get the tail portion
+      expect(auditIds).toEqual(expectedIds);
 
-  test('should get audit events with specific seek at index 0 (exclude the first event)', async () => {
-    // Generate valid AuditEventIds
-    const mockAuditEvents = generateMockAuditEvents(
-      100,
-      callProtectedGenerateAuditEventId,
-    );
+      // Confirm the event at "seekIndex" is excluded
+      expect(auditIds).not.toContain(seekValueEncoded);
 
-    // Insert them all
-    for (const event of mockAuditEvents) {
-      // @ts-ignore: protected
-      await audit.setAuditEvent(['node', 'connection', 'forward'], {
+      // Reset DB so subsequent runs in this property-based test
+      // don't accumulate leftover events.
+      await db.clear();
+    },
+  );
+
+  test.prop(
+    [
+      fc.array(
+        fc.record({
+          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+          remoteHost: fc.ipV4(),
+          remotePort: fc.nat({ max: 65535 }),
+        }),
+        { minLength: 2, maxLength: 100 },
+        // At least length 2, so there's an event after index 0
+      ),
+    ],
+    { numRuns: 5 },
+  )(
+    'should get audit events with specific seek at index 0 (exclude the first event) [property-based]',
+    async (events) => {
+      // 1) Insert them all
+      const eventIds: Array<AuditEventId> = [];
+      for (const e of events) {
+        const id = callProtectedGenerateAuditEventId();
         // @ts-ignore: protected
-        id: event.id,
-        data: {
-          remoteNodeId: 'asdasd',
-          remoteHost: '127.0.0.1',
-          remotePort: 54321,
-          type: 'forward',
-        },
-        path: ['node', 'connection', 'forward'],
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id,
+          data: {
+            remoteNodeId: e.remoteNodeId,
+            remoteHost: e.remoteHost,
+            remotePort: e.remotePort,
+            type: 'forward',
+          },
+          path: ['node', 'connection', 'forward'],
+        });
+        eventIds.push(id);
+      }
+
+      // 2) Seek the event at index 0
+      const seekIndex = 0;
+      const seekIdEncoded = auditUtils.encodeAuditEventId(eventIds[seekIndex]);
+
+      // 3) Make the RPC call
+      const response = await rpcClient.methods.nodesAuditEventsGet({
+        seek: seekIdEncoded,
       });
-    }
 
-    // Seek the event at index 0
-    const seekIndex = 0;
-    const seekId = mockAuditEvents[seekIndex].id;
-    const seekIdEncoded = auditUtils.encodeAuditEventId(seekId);
+      // 4) Collect results
+      const auditIds: Array<string> = [];
+      for await (const result of response) {
+        auditIds.push(result.id);
+      }
 
-    // Make the RPC call
-    const response = await rpcClient.methods.nodesAuditEventsGet({
-      seek: seekIdEncoded,
-    });
+      // 5) We expect everything from index 1 onward
+      const expectedIds = eventIds
+        .slice(seekIndex + 1)
+        .map((id) => auditUtils.encodeAuditEventId(id));
 
-    // Collect results
-    const auditIds: Array<string> = [];
-    for await (const result of response) {
-      auditIds.push(result.id);
-    }
+      expect(auditIds).toEqual(expectedIds);
+      expect(auditIds).not.toContain(seekIdEncoded);
 
-    // Expect everything from index 1 onward
-    // (index 0 is excluded because we said exclusive).
-    const expectedIds = mockAuditEvents
-      .slice(seekIndex + 1)
-      .map((event) => auditUtils.encodeAuditEventId(event.id));
+      // 6) Clear DB for the next run
+      await db.clear();
+    },
+  );
 
-    expect(auditIds).toEqual(expectedIds);
-    // And confirm index 0 is NOT in the list
-    expect(auditIds).not.toContain(seekIdEncoded);
-  });
-
-  test('should get audit events with specific seek at index 99 (exclude the last event)', async () => {
-    // Generate valid AuditEventIds
-    const mockAuditEvents = generateMockAuditEvents(
-      100,
-      callProtectedGenerateAuditEventId,
-    );
-
-    // Insert them all
-    for (const event of mockAuditEvents) {
-      // @ts-ignore: protected
-      await audit.setAuditEvent(['node', 'connection', 'forward'], {
+  test.prop(
+    [
+      fc.array(
+        fc.record({
+          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+          remoteHost: fc.ipV4(),
+          remotePort: fc.nat({ max: 65535 }),
+        }),
+        { minLength: 1, maxLength: 100 },
+        // At least 1 event, so "last index" = length-1 is valid
+      ),
+    ],
+    { numRuns: 5 },
+  )(
+    'should get audit events with specific seek at last index (exclude the last event) [property-based]',
+    async (events) => {
+      // 1) Insert them all
+      const eventIds: Array<AuditEventId> = [];
+      for (const e of events) {
+        const id = callProtectedGenerateAuditEventId();
         // @ts-ignore: protected
-        id: event.id,
-        data: {
-          remoteNodeId: 'asdasd',
-          remoteHost: '127.0.0.1',
-          remotePort: 54321,
-          type: 'forward',
-        },
-        path: ['node', 'connection', 'forward'],
+        await audit.setAuditEvent(['node', 'connection', 'forward'], {
+          id,
+          data: {
+            remoteNodeId: e.remoteNodeId,
+            remoteHost: e.remoteHost,
+            remotePort: e.remotePort,
+            type: 'forward',
+          },
+          path: ['node', 'connection', 'forward'],
+        });
+        eventIds.push(id);
+      }
+
+      // 2) Seek the event at the last index
+      const seekIndex = eventIds.length - 1;
+      const seekIdEncoded = auditUtils.encodeAuditEventId(eventIds[seekIndex]);
+
+      // 3) Make the RPC call
+      const response = await rpcClient.methods.nodesAuditEventsGet({
+        seek: seekIdEncoded,
       });
-    }
 
-    // Seek the event at index 99
-    const seekIndex = 99;
-    const seekId = mockAuditEvents[seekIndex].id;
-    const seekIdEncoded = auditUtils.encodeAuditEventId(seekId);
+      // 4) Collect results
+      const auditIds: Array<string> = [];
+      for await (const result of response) {
+        auditIds.push(result.id);
+      }
 
-    // Make the RPC call
-    const response = await rpcClient.methods.nodesAuditEventsGet({
-      seek: seekIdEncoded,
-    });
+      // 5) We expect an EMPTY result, because there's nothing after the last event
+      expect(auditIds).toHaveLength(0);
+      // Confirm the last event’s ID is not present
+      expect(auditIds).not.toContain(seekIdEncoded);
 
-    // Collect results
-    const auditIds: Array<string> = [];
-    for await (const result of response) {
-      auditIds.push(result.id);
-    }
-
-    // We expect an EMPTY result, because there's nothing after index 99
-    // (the last event is excluded).
-    expect(auditIds).toHaveLength(0);
-    // Confirm that the last event’s ID is not present
-    expect(auditIds).not.toContain(seekIdEncoded);
-  });
+      // 6) Clear DB for the next run
+      await db.clear();
+    },
+  );
 });
