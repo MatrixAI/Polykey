@@ -1259,10 +1259,10 @@ class NodeManager {
       const client = connection.getClient();
       for await (const agentClaim of await client.methods.nodesClaimsGet(
         {
-          seek:
-            claimId != null
-              ? claimsUtils.encodeClaimId(claimId)
-              : ('' as ClaimIdEncoded),
+          // seek:
+          //   claimId != null
+          //     ? claimsUtils.encodeClaimId(claimId)
+          //     : ('' as ClaimIdEncoded),
         },
         ctx,
       )) {
