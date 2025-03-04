@@ -1257,7 +1257,13 @@ class NodeManager {
     return await this.withConnF(targetNodeId, ctx, async (connection) => {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
-      for await (const agentClaim of await client.methods.nodesClaimsGet({},
+      for await (const agentClaim of await client.methods.nodesClaimsGet(
+        {
+          seek:
+            claimId != null
+              ? claimsUtils.encodeClaimId(claimId)
+              : ('' as ClaimIdEncoded),
+        },
         ctx,
       )) {
         ctx.signal.throwIfAborted();
