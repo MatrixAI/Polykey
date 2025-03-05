@@ -19,6 +19,7 @@ import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as auditUtils from '@/audit/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
+import * as testNodesUtils from '../../../nodes/utils';
 
 describe('nodesAuditEventsGet', () => {
   const logger = new Logger('nodesAuditEventsGet test', LogLevel.WARN, [
@@ -173,19 +174,7 @@ describe('nodesAuditEventsGet', () => {
     return audit.generateAuditEventId();
   }
 
-  test.prop(
-    [
-      fc.array(
-        fc.record({
-          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-          remoteHost: fc.ipV4(),
-          remotePort: fc.nat({ max: 65535 }),
-        }),
-        { minLength: 1, maxLength: 20 },
-      ),
-    ],
-    { numRuns: 10 },
-  )(
+  test.prop([testNodesUtils.randomAuditEventsArb()])(
     'should get audit events with property based test',
     async (randomEvents) => {
       // Property function
@@ -218,18 +207,9 @@ describe('nodesAuditEventsGet', () => {
 
   test.prop(
     [
-      // 1) Arbitrary array of random events to insert (up to 100)
-      fc.array(
-        fc.record({
-          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-          remoteHost: fc.ipV4(),
-          remotePort: fc.nat({ max: 65535 }),
-        }),
-        { minLength: 1, maxLength: 100 },
-      ),
-      fc.integer({ min: 1, max: 100 }),
+      testNodesUtils.randomAuditEventsArb(),
+      fc.integer({ min: 1, max: 100 }), // limitVal
     ],
-    { numRuns: 3 },
   )(
     'should get audit events with limit (property-based)',
     async (randomEvents, limitVal) => {
@@ -271,15 +251,7 @@ describe('nodesAuditEventsGet', () => {
 
   test.prop(
     [
-      fc
-        .array(
-          fc.record({
-            remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-            remoteHost: fc.ipV4(),
-            remotePort: fc.nat({ max: 65535 }),
-          }),
-          { minLength: 2, maxLength: 100 }, // At least 2 so there's a valid seek index
-        )
+      testNodesUtils.randomAuditEventsArb(2, 100) // At least 2 so there's a valid seek index
         .chain((events) =>
           fc.record({
             events: fc.constant(events),
@@ -287,7 +259,6 @@ describe('nodesAuditEventsGet', () => {
           }),
         ),
     ],
-    { numRuns: 5 },
   )(
     'should get audit events with a random seek index (property-based)',
     async ({ events, seekIndex }) => {
@@ -313,7 +284,6 @@ describe('nodesAuditEventsGet', () => {
         eventIds[seekIndex],
       );
 
-      // Query from that seek
       const response = await rpcClient.methods.nodesAuditEventsGet({
         seek: seekValueEncoded,
       });
@@ -344,21 +314,11 @@ describe('nodesAuditEventsGet', () => {
 
   test.prop(
     [
-      fc.array(
-        fc.record({
-          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-          remoteHost: fc.ipV4(),
-          remotePort: fc.nat({ max: 65535 }),
-        }),
-        { minLength: 2, maxLength: 100 },
-        // At least length 2, so there's an event after index 0
-      ),
+      testNodesUtils.randomAuditEventsArb(2) // At least 2 so there's a valid seek index
     ],
-    { numRuns: 5 },
   )(
     'should get audit events with specific seek at index 0 (exclude the first event) [property-based]',
     async (events) => {
-      // 1) Insert them all
       const eventIds: Array<AuditEventId> = [];
       for (const e of events) {
         const id = callProtectedGenerateAuditEventId();
@@ -376,22 +336,22 @@ describe('nodesAuditEventsGet', () => {
         eventIds.push(id);
       }
 
-      // 2) Seek the event at index 0
+      // Seek the event at index 0
       const seekIndex = 0;
       const seekIdEncoded = auditUtils.encodeAuditEventId(eventIds[seekIndex]);
 
-      // 3) Make the RPC call
+      // Make the RPC call
       const response = await rpcClient.methods.nodesAuditEventsGet({
         seek: seekIdEncoded,
       });
 
-      // 4) Collect results
+      // Collect results
       const auditIds: Array<string> = [];
       for await (const result of response) {
         auditIds.push(result.id);
       }
 
-      // 5) We expect everything from index 1 onward
+      // We expect everything from index 1 onward
       const expectedIds = eventIds
         .slice(seekIndex + 1)
         .map((id) => auditUtils.encodeAuditEventId(id));
@@ -399,24 +359,15 @@ describe('nodesAuditEventsGet', () => {
       expect(auditIds).toEqual(expectedIds);
       expect(auditIds).not.toContain(seekIdEncoded);
 
-      // 6) Clear DB for the next run
+      // Clear DB for the next run
       await db.clear();
     },
   );
 
   test.prop(
     [
-      fc.array(
-        fc.record({
-          remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-          remoteHost: fc.ipV4(),
-          remotePort: fc.nat({ max: 65535 }),
-        }),
-        { minLength: 1, maxLength: 100 },
-        // At least 1 event, so "last index" = length-1 is valid
-      ),
+      testNodesUtils.randomAuditEventsArb(1) // At least 1 event, so "last index" = length-1 is valid
     ],
-    { numRuns: 5 },
   )(
     'should get audit events with specific seek at last index (exclude the last event) [property-based]',
     async (events) => {
@@ -442,23 +393,21 @@ describe('nodesAuditEventsGet', () => {
       const seekIndex = eventIds.length - 1;
       const seekIdEncoded = auditUtils.encodeAuditEventId(eventIds[seekIndex]);
 
-      // 3) Make the RPC call
       const response = await rpcClient.methods.nodesAuditEventsGet({
         seek: seekIdEncoded,
       });
 
-      // 4) Collect results
       const auditIds: Array<string> = [];
       for await (const result of response) {
         auditIds.push(result.id);
       }
 
-      // 5) We expect an EMPTY result, because there's nothing after the last event
+      // We expect an EMPTY result, because there's nothing after the last event
       expect(auditIds).toHaveLength(0);
       // Confirm the last event’s ID is not present
       expect(auditIds).not.toContain(seekIdEncoded);
 
-      // 6) Clear DB for the next run
+      // Clear DB for the next run
       await db.clear();
     },
   );
