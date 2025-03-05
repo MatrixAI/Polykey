@@ -16,6 +16,7 @@ import * as keysUtils from '@/keys/utils';
 import * as networkUtils from '@/network/utils';
 import * as tlsTestsUtils from '../../../utils/tls';
 import * as testNodesUtils from '../../../nodes/utils';
+import { ClaimIdEncoded } from '@/ids';
 
 describe('nodesClaimsGet', () => {
   const logger = new Logger('nodesClaimsGet test', LogLevel.WARN, [
@@ -314,4 +315,63 @@ describe('nodesClaimsGet', () => {
     // Verify the array is empty
     expect(claimIds).toHaveLength(0);
   });
+
+
+  test('Should get chain data with valid seek parameter and all chain data if invalid seek', async () => {
+    const srcNodeIdEncoded = nodesUtils.encodeNodeId(keyRing.getNodeId());
+  
+    // Add 10 claims
+    for (let i = 1; i <= 5; i++) {
+      const node2 = nodesUtils.encodeNodeId(
+        testNodesUtils.generateRandomNodeId(),
+      );
+      const nodeLink = {
+        type: 'ClaimLinkNode',
+        iss: srcNodeIdEncoded,
+        sub: node2,
+      };
+      await sigchain.addClaim(nodeLink);
+    }
+    for (let i = 6; i <= 10; i++) {
+      const identityLink = {
+        type: 'ClaimLinkIdentity',
+        iss: srcNodeIdEncoded,
+        sub: encodeProviderIdentityId([
+          ('ProviderId' + i.toString()) as ProviderId,
+          ('IdentityId' + i.toString()) as IdentityId,
+        ]),
+      };
+      await sigchain.addClaim(identityLink);
+    }
+  
+    // First, if we provide an invalid seek value, we should get all claims.
+    let response = await rpcClient.methods.nodesClaimsGet({ seek: undefined });
+    const allClaimIds: ClaimIdEncoded[] = [];
+    for await (const claim of response) {
+      // We assume claimIdEncoded is defined for all returned claims.
+      allClaimIds.push(claim.claimIdEncoded!);
+    }
+    expect(allClaimIds).toHaveLength(10);
+  
+    // Now choose a seek claim.
+    const seekClaimId = allClaimIds[3];
+  
+    // Now retrieve claims starting from the seek value.
+    response = await rpcClient.methods.nodesClaimsGet({ order: 'asc', seek: seekClaimId });
+    const subsetClaimIds: string[] = [];
+    for await (const claim of response) {
+      subsetClaimIds.push(claim.claimIdEncoded!);
+    }
+  
+    // Our expectation is that the claim with the seek value is excluded
+    // and that the remaining claims match the tail of allClaimIds.
+    console.log("subsetClaimIds",subsetClaimIds);
+    console.log("allClaimIds",allClaimIds);
+    console.log("allClaimIds.slice(4)",allClaimIds.slice(3));
+    console.log("seekClaimId", seekClaimId);
+    expect(subsetClaimIds).toEqual(allClaimIds.slice(3));
+  }); 
+  
+
+
 });

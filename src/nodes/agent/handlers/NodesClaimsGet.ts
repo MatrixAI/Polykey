@@ -32,7 +32,10 @@ class NodesClaimsGet extends ServerHandler<
     const { seek, order, limit } = input;
     const { sigchain, db }: { sigchain: Sigchain; db: DB } = this.container;
 
-    const decodedClaimId = ids.decodeClaimId(seek);
+    let decodedClaimId = ids.decodeClaimId(seek);
+    if (decodedClaimId == null) {
+      decodedClaimId = undefined;
+    }
 
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       AgentRPCResponseResult<AgentClaimMessage>

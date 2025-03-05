@@ -1257,12 +1257,18 @@ class NodeManager {
     return await this.withConnF(targetNodeId, ctx, async (connection) => {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
+      let claimIdEncoded: ClaimIdEncoded | undefined;
+
+      if(claimId != null){
+          claimIdEncoded = claimsUtils.encodeClaimId(claimId);
+      }else
+      {
+        claimIdEncoded = undefined;
+      }
+
       for await (const agentClaim of await client.methods.nodesClaimsGet(
         {
-          seek:
-            claimId != null
-              ? claimsUtils.encodeClaimId(claimId)
-              : ('' as ClaimIdEncoded),
+          seek: claimIdEncoded,
         },
         ctx,
       )) {
