@@ -205,12 +205,10 @@ describe('nodesAuditEventsGet', () => {
     },
   );
 
-  test.prop(
-    [
-      testNodesUtils.randomAuditEventsArb(),
-      fc.integer({ min: 1, max: 100 }), // limitVal
-    ],
-  )(
+  test.prop([
+    testNodesUtils.randomAuditEventsArb(),
+    fc.integer({ min: 1, max: 100 }), // LimitVal
+  ])(
     'should get audit events with limit (property-based)',
     async (randomEvents, limitVal) => {
       // Insert randomEvents
@@ -249,17 +247,16 @@ describe('nodesAuditEventsGet', () => {
     },
   );
 
-  test.prop(
-    [
-      testNodesUtils.randomAuditEventsArb(2, 100) // At least 2 so there's a valid seek index
-        .chain((events) =>
-          fc.record({
-            events: fc.constant(events),
-            seekIndex: fc.integer({ min: 0, max: events.length - 1 }),
-          }),
-        ),
-    ],
-  )(
+  test.prop([
+    testNodesUtils
+      .randomAuditEventsArb(2, 100) // At least 2 so there's a valid seek index
+      .chain((events) =>
+        fc.record({
+          events: fc.constant(events),
+          seekIndex: fc.integer({ min: 0, max: events.length - 1 }),
+        }),
+      ),
+  ])(
     'should get audit events with a random seek index (property-based)',
     async ({ events, seekIndex }) => {
       // Insert the random events and store the generated AuditEventIds
@@ -312,11 +309,9 @@ describe('nodesAuditEventsGet', () => {
     },
   );
 
-  test.prop(
-    [
-      testNodesUtils.randomAuditEventsArb(2) // At least 2 so there's a valid seek index
-    ],
-  )(
+  test.prop([
+    testNodesUtils.randomAuditEventsArb(2), // At least 2 so there's a valid seek index
+  ])(
     'should get audit events with specific seek at index 0 (exclude the first event) [property-based]',
     async (events) => {
       const eventIds: Array<AuditEventId> = [];
@@ -364,11 +359,9 @@ describe('nodesAuditEventsGet', () => {
     },
   );
 
-  test.prop(
-    [
-      testNodesUtils.randomAuditEventsArb(1) // At least 1 event, so "last index" = length-1 is valid
-    ],
-  )(
+  test.prop([
+    testNodesUtils.randomAuditEventsArb(1), // At least 1 event, so "last index" = length-1 is valid
+  ])(
     'should get audit events with specific seek at last index (exclude the last event) [property-based]',
     async (events) => {
       // 1) Insert them all

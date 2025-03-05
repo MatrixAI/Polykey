@@ -331,7 +331,6 @@ const randomAuditEventsArb = (minLength: number = 1, maxLength: number = 100) =>
     { minLength, maxLength },
   );
 
-
 export type { NCMState };
 
 export {
