@@ -698,7 +698,7 @@ describe('Discovery', () => {
     await discovery.stop();
     await discovery.destroy();
   });
-  test.only('should force discovery on recently processed vertices', async () => {
+  test('should force discovery on recently processed vertices', async () => {
     const discovery = await Discovery.createDiscovery({
       db,
       keyRing,
