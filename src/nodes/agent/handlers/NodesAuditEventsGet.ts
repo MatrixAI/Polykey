@@ -57,13 +57,6 @@ class NodesAuditEventsGet extends ServerHandler<
         tran,
       )) {
         ctx.signal.throwIfAborted();
-        // Skip the seek event to ensure exclusivity if given an AuditEventId
-        // This assumes that ids are unique
-        if (seek_ !== undefined) {
-          if (typeof seek_ !== 'number' && auditEvent.id.equals(seek_)) {
-            continue;
-          }
-        }
         yield {
           id: auditUtils.encodeAuditEventId(auditEvent.id),
           path: auditEvent.path,

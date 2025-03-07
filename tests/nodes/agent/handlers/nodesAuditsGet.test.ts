@@ -291,17 +291,14 @@ describe('nodesAuditEventsGet', () => {
         auditIds.push(result.id);
       }
 
-      // We expect everything AFTER the seekIndex event
-      // => from (seekIndex+1) to the end
+      // We expect everything AFTER the seekIndex event INCLUDING the seekIndex event
+      // => from (seekIndex) to the end
       const expectedIds = eventIds
-        .slice(seekIndex + 1)
+        .slice(seekIndex)
         .map((id) => auditUtils.encodeAuditEventId(id));
 
-      // Check that we only get the tail portion
+      // Check that we only get the tail portion including the seekIndex event
       expect(auditIds).toEqual(expectedIds);
-
-      // Confirm the event at "seekIndex" is excluded
-      expect(auditIds).not.toContain(seekValueEncoded);
 
       // Reset DB so subsequent runs in this property-based test
       // don't accumulate leftover events.
@@ -312,7 +309,7 @@ describe('nodesAuditEventsGet', () => {
   test.prop([
     testNodesUtils.randomAuditEventsArb(2), // At least 2 so there's a valid seek index
   ])(
-    'should get audit events with specific seek at index 0 (exclude the first event) [property-based]',
+    'should get audit events with specific seek at index 0 [property-based]',
     async (events) => {
       const eventIds: Array<AuditEventId> = [];
       for (const e of events) {
@@ -346,13 +343,12 @@ describe('nodesAuditEventsGet', () => {
         auditIds.push(result.id);
       }
 
-      // We expect everything from index 1 onward
+      // We expect everything from index 1 onward including the seekIndex event
       const expectedIds = eventIds
-        .slice(seekIndex + 1)
+        .slice(seekIndex)
         .map((id) => auditUtils.encodeAuditEventId(id));
 
       expect(auditIds).toEqual(expectedIds);
-      expect(auditIds).not.toContain(seekIdEncoded);
 
       // Clear DB for the next run
       await db.clear();
@@ -362,7 +358,7 @@ describe('nodesAuditEventsGet', () => {
   test.prop([
     testNodesUtils.randomAuditEventsArb(1), // At least 1 event, so "last index" = length-1 is valid
   ])(
-    'should get audit events with specific seek at last index (exclude the last event) [property-based]',
+    'should get audit events with specific seek at last index [property-based]',
     async (events) => {
       // 1) Insert them all
       const eventIds: Array<AuditEventId> = [];
@@ -395,10 +391,8 @@ describe('nodesAuditEventsGet', () => {
         auditIds.push(result.id);
       }
 
-      // We expect an EMPTY result, because there's nothing after the last event
-      expect(auditIds).toHaveLength(0);
-      // Confirm the last event’s ID is not present
-      expect(auditIds).not.toContain(seekIdEncoded);
+      // We expect a SINGLE result, because it should only return the seekIndex event
+      expect(auditIds).toHaveLength(1);
 
       // Clear DB for the next run
       await db.clear();

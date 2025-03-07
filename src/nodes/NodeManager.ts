@@ -1271,7 +1271,9 @@ class NodeManager {
           seek: claimIdEncoded,
         },
         ctx,
+        
       )) {
+        console.log("Processing claim id:", agentClaim.claimIdEncoded);
         ctx.signal.throwIfAborted();
         // Need to re-construct each claim
         const claimId: ClaimId = claimsUtils.decodeClaimId(
