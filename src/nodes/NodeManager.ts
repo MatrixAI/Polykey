@@ -1259,10 +1259,9 @@ class NodeManager {
       const client = connection.getClient();
       let claimIdEncoded: ClaimIdEncoded | undefined;
 
-      if(claimId != null){
-          claimIdEncoded = claimsUtils.encodeClaimId(claimId);
-      }else
-      {
+      if (claimId != null) {
+        claimIdEncoded = claimsUtils.encodeClaimId(claimId);
+      } else {
         claimIdEncoded = undefined;
       }
 
@@ -1271,9 +1270,7 @@ class NodeManager {
           seek: claimIdEncoded,
         },
         ctx,
-        
       )) {
-        console.log("Processing claim id:", agentClaim.claimIdEncoded);
         ctx.signal.throwIfAborted();
         // Need to re-construct each claim
         const claimId: ClaimId = claimsUtils.decodeClaimId(
