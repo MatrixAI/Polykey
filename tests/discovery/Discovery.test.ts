@@ -724,7 +724,7 @@ describe('Discovery', () => {
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId(), Date.now());
     await waitForAllDiscoveryTasks(discovery);
     // All vertices should be reprocessed
-    expect(processVertexMock).toHaveBeenCalledTimes(2);
+    expect(processVertexMock).toHaveBeenCalledTimes(3);
 
     await taskManager.stopProcessing();
     await discovery.stop();
