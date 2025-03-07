@@ -17,7 +17,7 @@ import type { Host, Port } from '../network/types';
 import type {
   Claim,
   ClaimId,
-  ClaimIdEncoded,
+  // ClaimIdEncoded,
   SignedClaim,
 } from '../claims/types';
 import type { ClaimLinkNode } from '../claims/payloads';
@@ -1257,12 +1257,19 @@ class NodeManager {
     return await this.withConnF(targetNodeId, ctx, async (connection) => {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
+
+      // Let claimIdEncoded: ClaimIdEncoded | undefined;
+
+      // if (claimId != null) {
+      //   claimIdEncoded = claimsUtils.encodeClaimId(claimId);
+      // } else {
+      //   claimIdEncoded = undefined;
+      // }
+
       for await (const agentClaim of await client.methods.nodesClaimsGet(
         {
-          claimIdEncoded:
-            claimId != null
-              ? claimsUtils.encodeClaimId(claimId)
-              : ('' as ClaimIdEncoded),
+          // Needs to be addressed later - causes test failures in Discovery.test.ts
+          // seek: claimIdEncoded,
         },
         ctx,
       )) {

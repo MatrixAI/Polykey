@@ -1,4 +1,5 @@
 import nodesAuthenticateConnection from './nodesAuthenticateConnection';
+import nodesAuditEventsGet from './nodesAuditEventsGet';
 import nodesClaimsGet from './nodesClaimsGet';
 import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet';
 import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet';
@@ -17,6 +18,7 @@ import vaultsScan from './vaultsScan';
  */
 const manifestClient = {
   nodesAuthenticateConnection,
+  nodesAuditEventsGet,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
@@ -37,6 +39,7 @@ export default manifestClient;
 
 export {
   nodesAuthenticateConnection,
+  nodesAuditEventsGet,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,

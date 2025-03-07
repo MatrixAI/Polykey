@@ -354,10 +354,10 @@ class Sigchain {
       seekOptions =
         order === 'asc'
           ? {
-              lte: [seek.toBuffer()],
+              gte: [seek.toBuffer()],
             }
           : {
-              gte: [seek.toBuffer()],
+              lte: [seek.toBuffer()],
             };
     }
     for await (const [kP, claim] of tran.iterator<Claim>(this.dbClaimsPath, {

@@ -321,6 +321,16 @@ async function nodeConnectionManagerFactory({
   };
 }
 
+const randomAuditEventsArb = (minLength: number = 1, maxLength: number = 100) =>
+  fc.array(
+    fc.record({
+      remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+      remoteHost: fc.ipV4(),
+      remotePort: fc.nat({ max: 65535 }),
+    }),
+    { minLength, maxLength },
+  );
+
 export type { NCMState };
 
 export {
@@ -343,4 +353,5 @@ export {
   verify,
   createReasonConverters,
   nodeConnectionManagerFactory,
+  randomAuditEventsArb,
 };

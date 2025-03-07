@@ -4,17 +4,40 @@ import type {
   JSONRPCResponseResult,
 } from '@matrixai/rpc';
 import type { SignedTokenEncoded } from '../../tokens/types';
-import type { ClaimIdEncoded, NodeIdEncoded, VaultIdEncoded } from '../../ids';
+import type {
+  AuditEventIdEncoded,
+  ClaimIdEncoded,
+  NodeIdEncoded,
+  VaultIdEncoded,
+} from '../../ids';
 import type { VaultAction, VaultName } from '../../vaults/types';
 import type { SignedNotification } from '../../notifications/types';
 import type { Host, Hostname, Port } from '../../network/types';
 import type { NetworkId, NodeContact } from '../../nodes/types';
+import type { AuditEvent } from '../../audit/types';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;
 
 type AgentRPCResponseResult<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<T>;
+
+type AuditIdMessage = {
+  seek?: AuditEventIdEncoded | number;
+  seekEnd?: AuditEventIdEncoded | number;
+  order?: 'asc' | 'desc';
+  limit?: number;
+};
+
+type AgentAuditMessage<T extends AuditEvent> = Omit<T, 'id'> & {
+  id: AuditEventIdEncoded;
+};
+
+type NodesClaimsGetMessage = {
+  seek?: ClaimIdEncoded | number;
+  order?: 'asc' | 'desc';
+  limit?: number;
+};
 
 type ClaimIdMessage = {
   claimIdEncoded: ClaimIdEncoded;
@@ -97,6 +120,9 @@ type NodesAuthenticateConnectionMessageNone = {
 export type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
+  AuditIdMessage,
+  AgentAuditMessage,
+  NodesClaimsGetMessage,
   ClaimIdMessage,
   AgentClaimMessage,
   NodeIdMessage,
