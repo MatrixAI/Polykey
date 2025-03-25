@@ -1,6 +1,8 @@
 import { test, fc } from '@fast-check/jest';
-import * as jwk from '@/keys/utils/jwk';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import * as jwk from '#keys/utils/jwk.js';
+
+const hexCharArb = fc.constantFrom(...`1234567890ABCDEF`.split(''));
 
 describe('keys/utils/jwk', () => {
   test.prop([testsKeysUtils.keyArb])('key convert to and from JWK', (key) => {
@@ -54,7 +56,7 @@ describe('keys/utils/jwk', () => {
     testsKeysUtils.keyJWKArb.map((keyJWK) => {
       return {
         ...keyJWK,
-        k: fc.sample(fc.hexaString(), 1)[0],
+        k: fc.sample(fc.string({ unit: hexCharArb }), 1)[0],
       };
     }),
   ])('conversion from bad JWK key returns `undefined`', (badJWK) => {
@@ -64,7 +66,7 @@ describe('keys/utils/jwk', () => {
     testsKeysUtils.publicKeyJWKArb.map((publicKeyJWK) => {
       return {
         ...publicKeyJWK,
-        x: fc.sample(fc.hexaString(), 1)[0],
+        x: fc.sample(fc.string({ unit: hexCharArb }), 1)[0],
       };
     }),
   ])('conversion from bad JWK public key returns `undefined`', (badJWK) => {
@@ -74,8 +76,8 @@ describe('keys/utils/jwk', () => {
     testsKeysUtils.privateKeyJWKArb.map((privateKeyJWK) => {
       return {
         ...privateKeyJWK,
-        x: fc.sample(fc.hexaString(), 1)[0],
-        d: fc.sample(fc.hexaString(), 1)[0],
+        x: fc.sample(fc.string({ unit: hexCharArb }), 1)[0],
+        d: fc.sample(fc.string({ unit: hexCharArb }), 1)[0],
       };
     }),
   ])('conversion from bad JWK private key returns `undefined`', (badJWK) => {

@@ -3,19 +3,19 @@ import type {
   AgentRPCResponseResult,
   HolePunchSignalMessage,
   AddressMessage,
-} from '../types';
-import type { NodeId } from '../../../ids';
-import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
-import type { Host, Port } from '../../../network/types';
-import type { JSONValue } from '../../../types';
+} from '../types.js';
+import type { NodeId } from '../../../ids/index.js';
+import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
+import type { Host, Port } from '../../../network/types.js';
+import type { JSONValue } from '../../../types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../../validation';
-import { matchSync } from '../../../utils';
-import { never } from '../../../utils';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
-import * as keysUtils from '../../../keys/utils';
-import * as ids from '../../../ids';
+import { validateSync } from '../../../validation/index.js';
+import { matchSync } from '../../../utils/index.js';
+import { never } from '../../../utils/index.js';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
+import * as keysUtils from '../../../keys/utils/index.js';
+import * as ids from '../../../ids/index.js';
 
 class NodesConnectionSignalInitial extends UnaryHandler<
   {

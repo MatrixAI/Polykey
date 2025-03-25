@@ -3,13 +3,13 @@ import type {
   ClientRPCResponseResult,
   SuccessMessage,
   VerifySignatureMessage,
-} from '../types';
-import type KeyRing from '../../keys/KeyRing';
-import type { PublicKey, Signature } from '../../keys/types';
+} from '../types.js';
+import type KeyRing from '../../keys/KeyRing.js';
+import type { PublicKey, Signature } from '../../keys/types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as keysUtils from '../../keys/utils';
-import { never } from '../../utils';
-import * as keysErrors from '../../keys/errors';
+import * as keysUtils from '../../keys/utils/index.js';
+import { never } from '../../utils/index.js';
+import * as keysErrors from '../../keys/errors.js';
 
 class KeysVerify extends UnaryHandler<
   {

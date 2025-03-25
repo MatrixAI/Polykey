@@ -8,12 +8,12 @@ import type {
   PrivateKeyJWK,
   KeyPairJWK,
   JWK,
-} from '../types';
+} from '../types.js';
 import sodium from 'sodium-native';
 import {
   validatePublicKey,
   publicKeyFromPrivateKeyEd25519,
-} from './asymmetric';
+} from './asymmetric.js';
 
 function keyToJWK(key: Key): KeyJWK {
   return {

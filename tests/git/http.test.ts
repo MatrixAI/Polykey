@@ -1,14 +1,14 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import git from 'isomorphic-git';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
-import * as gitHttp from '@/git/http';
-import * as gitUtils from '@/git/utils';
-import * as validationErrors from '@/validation/errors';
-import * as gitTestUtils from './utils';
+import * as gitTestUtils from './utils.js';
+import * as gitHttp from '#git/http.js';
+import * as gitUtils from '#git/utils.js';
+import * as validationErrors from '#validation/errors.js';
 
 describe('Git Http', () => {
   let dataDir: string;
@@ -153,7 +153,7 @@ describe('Git Http', () => {
       'agent=git/isomorphic-git@1.24.5',
     ]);
   });
-  test.prop([fc.uint8Array({ minLength: 100 }).noShrink()])(
+  test.prop([fc.noShrink(fc.uint8Array({ minLength: 100 }))])(
     'parsePackRequest handles random data',
     async (data) => {
       const bufferData = Buffer.from(data);

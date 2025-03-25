@@ -1,22 +1,22 @@
-import type { IdentityId, ProviderId } from '@/identities/types';
-import type { ClaimIdEncoded } from '@/ids';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { IdentityId, ProviderId } from '#identities/types.js';
+import type { ClaimIdEncoded } from '#ids/index.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import * as nodesUtils from '@/nodes/utils';
-import { encodeProviderIdentityId } from '@/identities/utils';
-import NodesClaimsGet from '@/nodes/agent/handlers/NodesClaimsGet';
-import { nodesClaimsGet } from '@/nodes/agent/callers';
-import KeyRing from '@/keys/KeyRing';
-import Sigchain from '@/sigchain/Sigchain';
-import * as keysUtils from '@/keys/utils';
-import * as networkUtils from '@/network/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
-import * as testNodesUtils from '../../../nodes/utils';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import * as testNodesUtils from '../../../nodes/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import { encodeProviderIdentityId } from '#identities/utils.js';
+import NodesClaimsGet from '#nodes/agent/handlers/NodesClaimsGet.js';
+import { nodesClaimsGet } from '#nodes/agent/callers/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('nodesClaimsGet', () => {
   const logger = new Logger('nodesClaimsGet test', LogLevel.WARN, [

@@ -1,4 +1,4 @@
-import type { NodeId } from '../ids/types';
+import type { NodeId } from '../ids/types.js';
 
 type StatusStarting = {
   status: 'STARTING';

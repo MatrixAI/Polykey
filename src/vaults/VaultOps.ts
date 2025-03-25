@@ -1,10 +1,12 @@
 import type Logger from '@matrixai/logger';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { Stat } from 'encryptedfs';
-import type { Vault } from './Vault';
-import path from 'path';
-import * as vaultsErrors from './errors';
-import * as vaultsUtils from './utils';
+import type { Vault } from './Vault.js';
+import type { FileSystem } from '../types.js';
+import path from 'node:path';
+import * as vaultsErrors from './errors.js';
+import * as vaultsUtils from './utils.js';
+import * as utils from '../utils/index.js';
 
 type FileOptions = {
   recursive?: boolean;
@@ -201,13 +203,14 @@ async function mkdir(
 async function addSecretDirectory(
   vault: Vault,
   secretDirectory: string,
-  fs = require('fs'),
+  fs?: FileSystem,
   logger?: Logger,
   ctx?: ContextTimed,
 ): Promise<void> {
   const absoluteDirPath = path.resolve(secretDirectory);
   await vault.writeF(
     async (efs) => {
+      fs = await utils.importFS(fs);
       for await (const secretPath of vaultsUtils.readDirRecursively(
         fs,
         absoluteDirPath,

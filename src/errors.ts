@@ -1,5 +1,5 @@
-import ErrorPolykey from './ErrorPolykey';
-import sysexits from './utils/sysexits';
+import ErrorPolykey from './ErrorPolykey.js';
+import sysexits from './utils/sysexits.js';
 
 class ErrorPolykeyUnimplemented<T> extends ErrorPolykey<T> {
   static description = 'This is an unimplemented functionality';
@@ -78,25 +78,25 @@ export {
  * reference all Polykey errors.
  * This is used by RPC to serialize errors from agent to client.
  */
-export * from './audit/errors';
-export * from './sessions/errors';
-export * from './keys/errors';
-export * from './vaults/errors';
-export * from './git/errors';
-export * from './discovery/errors';
-export * from './gestalts/errors';
-export * from './identities/errors';
-export * from './client/errors';
-export * from './network/errors';
-export * from './nodes/errors';
-export * from './claims/errors';
-export * from './sigchain/errors';
-export * from './bootstrap/errors';
-export * from './notifications/errors';
-export * from './schema/errors';
-export * from './status/errors';
-export * from './tasks/errors';
-export * from './tokens/errors';
-export * from './validation/errors';
-export * from './utils/errors';
-export * from './workers/errors';
+export * from './audit/errors.js';
+export * from './sessions/errors.js';
+export * from './keys/errors.js';
+export * from './vaults/errors.js';
+export * from './git/errors.js';
+export * from './discovery/errors.js';
+export * from './gestalts/errors.js';
+export * from './identities/errors.js';
+export * from './client/errors.js';
+export * from './network/errors.js';
+export * from './nodes/errors.js';
+export * from './claims/errors.js';
+export * from './sigchain/errors.js';
+export * from './bootstrap/errors.js';
+export * from './notifications/errors.js';
+export * from './schema/errors.js';
+export * from './status/errors.js';
+export * from './tasks/errors.js';
+export * from './tokens/errors.js';
+export * from './validation/errors.js';
+export * from './utils/errors.js';
+export * from './workers/errors.js';

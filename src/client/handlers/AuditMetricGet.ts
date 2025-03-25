@@ -1,13 +1,16 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
 import type {
   AuditMetric,
   MetricPath,
   MetricPathToAuditMetric,
-} from '../../audit/types';
-import type { Audit } from '../../audit';
-import type { AuditEventId, AuditEventIdEncoded } from '../../ids';
+} from '../../audit/types.js';
+import type { Audit } from '../../audit/index.js';
+import type { AuditEventId, AuditEventIdEncoded } from '../../ids/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as auditUtils from '../../audit/utils';
+import * as auditUtils from '../../audit/utils.js';
 
 class AuditMetricGet extends UnaryHandler<
   {

@@ -1,14 +1,15 @@
-import type { KeyPair } from '@/keys/types';
+import type { KeyPair } from '#keys/types.js';
+import { jest } from '@jest/globals';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import { nodesConnectionSignalFinal } from '@/nodes/agent/callers';
-import { NodesConnectionSignalFinal } from '@/nodes/agent/handlers';
-import * as keysUtils from '@/keys/utils/index';
-import * as networkUtils from '@/network/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
-import * as testsNodesUtils from '../../utils';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import * as testsNodesUtils from '../../utils.js';
+import { nodesConnectionSignalFinal } from '#nodes/agent/callers/index.js';
+import { NodesConnectionSignalFinal } from '#nodes/agent/handlers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
 
 describe('nodesHolePunchRequest', () => {
   const logger = new Logger('nodesHolePunchRequest test', LogLevel.WARN, [

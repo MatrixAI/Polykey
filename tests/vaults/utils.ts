@@ -1,34 +1,41 @@
-import type { Vault } from '@/vaults';
+import type { Vault } from '#vaults/index.js';
 import type {
   VaultActions,
   HeaderContent,
   HeaderGeneric,
-} from '@/vaults/types';
+} from '#vaults/types.js';
 import { TransformStream } from 'stream/web';
-import path from 'path';
+import path from 'node:path';
 import fc from 'fast-check';
-import { vaultActions } from '@/vaults/types';
-import { HeaderType } from '@/vaults/fileTree';
-import * as vaultsUtils from '@/vaults/utils';
+import { vaultActions } from '#vaults/types.js';
+import { HeaderType } from '#vaults/fileTree.js';
+import * as vaultsUtils from '#vaults/utils.js';
 
 const vaultActionArb = fc.constantFrom(...vaultActions);
 
 const vaultActionsArb = fc.dictionary(vaultActionArb, fc.constant(null), {
   minKeys: 0,
   maxKeys: vaultActions.length,
+  noNullPrototype: true,
 }) as fc.Arbitrary<VaultActions>;
 
 const headerTypeArb: fc.Arbitrary<HeaderType> = fc.oneof(
   fc.constant(HeaderType.CONTENT),
   fc.constant(HeaderType.TREE),
 );
-const headerGenericArb = fc.record<HeaderGeneric>({
-  type: headerTypeArb,
-});
-const headerContentArb = fc.record<HeaderContent>({
-  dataSize: fc.bigUint({ max: 2n ** 63n }),
-  iNode: fc.nat(),
-});
+const headerGenericArb = fc.record<HeaderGeneric>(
+  {
+    type: headerTypeArb,
+  },
+  { noNullPrototype: true },
+);
+const headerContentArb = fc.record<HeaderContent>(
+  {
+    dataSize: fc.bigInt({ max: 2n ** 63n, min: BigInt(0) }),
+    iNode: fc.nat(),
+  },
+  { noNullPrototype: true },
+);
 
 /**
  * This is used to convert regular chunks into randomly sized chunks based on

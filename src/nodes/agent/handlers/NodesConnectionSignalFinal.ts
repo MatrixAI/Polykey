@@ -4,17 +4,17 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   HolePunchRequestMessage,
-} from '../types';
-import type { NodeId } from '../../../ids';
-import type NodeConnectionManager from '../../NodeConnectionManager';
-import type { Host, Port } from '../../../network/types';
+} from '../types.js';
+import type { NodeId } from '../../../ids/index.js';
+import type NodeConnectionManager from '../../NodeConnectionManager.js';
+import type { Host, Port } from '../../../network/types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../../validation';
-import { matchSync } from '../../../utils';
-import * as keysUtils from '../../../keys/utils';
-import * as ids from '../../../ids';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
+import { validateSync } from '../../../validation/index.js';
+import { matchSync } from '../../../utils/index.js';
+import * as keysUtils from '../../../keys/utils/index.js';
+import * as ids from '../../../ids/index.js';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
 
 class NodesConnectionSignalFinal extends UnaryHandler<
   {

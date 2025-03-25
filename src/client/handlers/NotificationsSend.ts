@@ -2,14 +2,14 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NotificationSendMessage,
-} from '../types';
-import type { NodeId } from '../../ids';
-import type { General } from '../../notifications/types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
+} from '../types.js';
+import type { NodeId } from '../../ids/index.js';
+import type { General } from '../../notifications/types.js';
+import type NotificationsManager from '../../notifications/NotificationsManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class NotificationsSend extends UnaryHandler<
   {

@@ -4,14 +4,14 @@ import type {
   ClientRPCResponseResult,
   GestaltMessage,
   NodeIdMessage,
-} from '../types';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { NodeId } from '../../ids';
+} from '../types.js';
+import type GestaltGraph from '../../gestalts/GestaltGraph.js';
+import type { NodeId } from '../../ids/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as nodesUtils from '../../nodes/utils';
-import * as ids from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as nodesUtils from '../../nodes/utils.js';
+import * as ids from '../../ids/index.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class GestaltsGestaltGetByNode extends UnaryHandler<
   {

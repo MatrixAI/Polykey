@@ -1,5 +1,5 @@
-export { default as ACL } from './ACL';
-export * as types from './types';
-export * as utils from './utils';
-export * as errors from './errors';
-export * as events from './events';
+export { default as ACL } from './ACL.js';
+export * as types from './types.js';
+export * as utils from './utils.js';
+export * as errors from './errors.js';
+export * as events from './events.js';

@@ -1,5 +1,5 @@
-import RateLimiter from '@/utils/ratelimiter/RateLimiter';
-import { sleep } from '@/utils';
+import RateLimiter from '#utils/ratelimiter/RateLimiter.js';
+import { sleep } from '#utils/index.js';
 
 describe(`${RateLimiter.name}`, () => {
   let rateLimiter: RateLimiter;

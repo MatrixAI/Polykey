@@ -1,4 +1,7 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
 import type { ContainerType } from '@matrixai/rpc';
 import { UnaryHandler } from '@matrixai/rpc';
 

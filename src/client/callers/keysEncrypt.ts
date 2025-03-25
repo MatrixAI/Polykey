@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysEncrypt from '../handlers/KeysEncrypt';
+import type KeysEncrypt from '../handlers/KeysEncrypt.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysEncrypt>;

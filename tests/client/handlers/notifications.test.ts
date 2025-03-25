@@ -1,29 +1,36 @@
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { Host, TLSConfig } from '@/network/types';
-import type { General, Notification, VaultShare } from '@/notifications/types';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { Host, TLSConfig } from '#network/types.js';
+import type {
+  General,
+  Notification,
+  VaultShare,
+} from '#notifications/types.js';
 import type {
   VaultIdEncoded,
   NodeIdEncoded,
   NotificationIdEncoded,
-} from '@/ids/types';
-import type { VaultName } from '@/vaults/types';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#ids/types.js';
+import type { VaultName } from '#vaults/types.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import KeyRing from '@/keys/KeyRing';
-import ClientService from '@/client/ClientService';
-import ACL from '@/acl/ACL';
-import Sigchain from '@/sigchain/Sigchain';
-import NodeGraph from '@/nodes/NodeGraph';
-import TaskManager from '@/tasks/TaskManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeManager from '@/nodes/NodeManager';
-import NotificationsManager from '@/notifications/NotificationsManager';
+import * as testsNodesUtils from '../../nodes/utils.js';
+import * as testsUtils from '../../utils/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import ClientService from '#client/ClientService.js';
+import ACL from '#acl/ACL.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import TaskManager from '#tasks/TaskManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NotificationsManager from '#notifications/NotificationsManager.js';
 import {
   NotificationsInboxClear,
   NotificationsOutboxClear,
@@ -32,7 +39,7 @@ import {
   NotificationsInboxRead,
   NotificationsInboxRemove,
   NotificationsSend,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   notificationsInboxClear,
   notificationsInboxRead,
@@ -41,13 +48,19 @@ import {
   notificationsOutboxRead,
   notificationsOutboxRemove,
   notificationsInboxRemove,
-} from '@/client/callers';
-import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as networkUtils from '@/network/utils';
-import * as notificationsUtils from '@/notifications/utils';
-import * as testsNodesUtils from '../../nodes/utils';
-import * as testsUtils from '../../utils';
+} from '#client/callers/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
+import * as notificationsUtils from '#notifications/utils.js';
+
+async function* arrayToGenerator<T>(
+  array: Array<T>,
+): AsyncGenerator<T, void, void> {
+  for (const value of array) {
+    yield value;
+  }
+}
 
 describe('notificationsInboxClear', () => {
   const logger = new Logger('notificationsInboxClear test', LogLevel.WARN, [
@@ -73,7 +86,9 @@ describe('notificationsInboxClear', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedClearNotifications: jest.SpyInstance;
+  let mockedClearNotifications: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.clearInboxNotifications
+  >;
   beforeEach(async () => {
     mockedClearNotifications = jest
       .spyOn(NotificationsManager.prototype, 'clearInboxNotifications')
@@ -240,7 +255,9 @@ describe('notificationsInboxRead', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedReadNotifications: jest.SpyInstance;
+  let mockedReadNotifications: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.readInboxNotifications
+  >;
   beforeEach(async () => {
     mockedReadNotifications = jest.spyOn(
       NotificationsManager.prototype,
@@ -376,21 +393,23 @@ describe('notificationsInboxRead', () => {
     });
   });
   test('reads a single notification', async () => {
-    mockedReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test',
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       order: 'desc',
       limit: 1,
@@ -409,36 +428,41 @@ describe('notificationsInboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(1);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeFalsy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(1);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads unread notifications', async () => {
-    mockedReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test1',
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test1',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-      {
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test2',
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test2',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: true,
       limit: Infinity,
@@ -464,36 +488,41 @@ describe('notificationsInboxRead', () => {
     expect(notification2.sub).toBe(nodeIdReceiverEncoded);
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeTruthy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeTruthy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads notifications in reverse order', async () => {
-    mockedReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test2',
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test2',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-      {
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test1',
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test1',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       limit: Infinity,
@@ -519,25 +548,27 @@ describe('notificationsInboxRead', () => {
     expect(notification2.sub).toBe(nodeIdReceiverEncoded);
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('asc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeFalsy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('asc');
   });
   test('reads gestalt invite notifications', async () => {
-    mockedReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'GestaltInvite',
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'GestaltInvite',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       limit: Infinity,
@@ -554,31 +585,33 @@ describe('notificationsInboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('asc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeFalsy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('asc');
   });
   test('reads vault share notifications', async () => {
-    mockedReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'VaultShare',
-          vaultId: 'vault' as VaultIdEncoded,
-          vaultName: 'vault' as VaultName,
-          actions: {
-            clone: null,
-            pull: null,
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'VaultShare',
+            vaultId: 'vault' as VaultIdEncoded,
+            vaultName: 'vault' as VaultName,
+            actions: {
+              clone: null,
+              pull: null,
+            },
           },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       limit: Infinity,
@@ -602,12 +635,14 @@ describe('notificationsInboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeFalsy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads no notifications', async () => {
-    mockedReadNotifications.mockReturnValueOnce([]);
+    mockedReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([]),
+    );
     const response = await rpcClient.methods.notificationsInboxRead({
       unread: false,
       limit: Infinity,
@@ -619,9 +654,9 @@ describe('notificationsInboxRead', () => {
     }
     expect(notificationList).toHaveLength(0);
     // Check request was parsed correctly
-    expect(mockedReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedReadNotifications.mock.calls[0][0]!.unread).toBeFalsy();
+    expect(mockedReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
 });
 describe('notificationsInboxRemove', () => {
@@ -648,7 +683,9 @@ describe('notificationsInboxRemove', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedRemoveNotification: jest.SpyInstance;
+  let mockedRemoveNotification: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.removeInboxNotification
+  >;
   beforeEach(async () => {
     mockedRemoveNotification = jest.spyOn(
       NotificationsManager.prototype,
@@ -783,7 +820,7 @@ describe('notificationsInboxRemove', () => {
     });
   });
   test('removes a notification', async () => {
-    mockedRemoveNotification.mockImplementation();
+    mockedRemoveNotification.mockImplementation(async () => {});
     const receiverNotificationIdEncoded =
       'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
     await rpcClient.methods.notificationsInboxRemove({
@@ -791,7 +828,9 @@ describe('notificationsInboxRemove', () => {
     });
     expect(mockedRemoveNotification.mock.calls.length).toBe(1);
     expect(
-      nodesUtils.encodeNodeId(mockedRemoveNotification.mock.calls[0][0]),
+      notificationsUtils.encodeNotificationId(
+        mockedRemoveNotification.mock.calls[0][0]!,
+      ),
     ).toEqual(receiverNotificationIdEncoded);
   });
 });
@@ -819,7 +858,9 @@ describe('notificationsOutboxClear', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedOutboxClearNotifications: jest.SpyInstance;
+  let mockedOutboxClearNotifications: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.clearOutboxNotifications
+  >;
   beforeEach(async () => {
     mockedOutboxClearNotifications = jest
       .spyOn(NotificationsManager.prototype, 'clearOutboxNotifications')
@@ -986,7 +1027,9 @@ describe('notificationsOutboxRead', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedOutboxReadNotifications: jest.SpyInstance;
+  let mockedOutboxReadNotifications: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.readOutboxNotifications
+  >;
   beforeEach(async () => {
     mockedOutboxReadNotifications = jest.spyOn(
       NotificationsManager.prototype,
@@ -1122,21 +1165,23 @@ describe('notificationsOutboxRead', () => {
     });
   });
   test('reads a single notification', async () => {
-    mockedOutboxReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test',
+    mockedOutboxReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsOutboxRead({
       order: 'desc',
       limit: 1,
@@ -1154,39 +1199,40 @@ describe('notificationsOutboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(1);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.limit).toBe(1);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads notifications in reverse order', async () => {
-    mockedOutboxReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test2',
+    mockedOutboxReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test2',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'General',
-          message: 'test1',
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'General',
+            message: 'test1',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsOutboxRead({
       limit: Infinity,
       order: 'asc',
@@ -1211,25 +1257,26 @@ describe('notificationsOutboxRead', () => {
     expect(notification2.sub).toBe(nodeIdReceiverEncoded);
     expect(notification2.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('asc');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.order).toBe('asc');
   });
   test('reads gestalt invite notifications', async () => {
-    mockedOutboxReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'GestaltInvite',
+    mockedOutboxReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'GestaltInvite',
+          },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsOutboxRead({
       limit: Infinity,
       order: 'desc',
@@ -1245,31 +1292,32 @@ describe('notificationsOutboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads vault share notifications', async () => {
-    mockedOutboxReadNotifications.mockReturnValueOnce([
-      {
-        notificationIdEncoded: notificationsUtils.encodeNotificationId(
-          generateNotificationId(),
-        ),
-        typ: 'notification',
-        data: {
-          type: 'VaultShare',
-          vaultId: 'vault' as VaultIdEncoded,
-          vaultName: 'vault' as VaultName,
-          actions: {
-            clone: null,
-            pull: null,
+    mockedOutboxReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([
+        {
+          notificationIdEncoded: notificationsUtils.encodeNotificationId(
+            generateNotificationId(),
+          ),
+          typ: 'notification',
+          data: {
+            type: 'VaultShare',
+            vaultId: 'vault' as VaultIdEncoded,
+            vaultName: 'vault' as VaultName,
+            actions: {
+              clone: null,
+              pull: null,
+            },
           },
+          iss: nodeIdSenderEncoded,
+          sub: nodeIdReceiverEncoded,
+          isRead: true,
         },
-        iss: nodeIdSenderEncoded,
-        sub: nodeIdReceiverEncoded,
-        isRead: true,
-      },
-    ]);
+      ]),
+    );
     const response = await rpcClient.methods.notificationsOutboxRead({
       limit: Infinity,
       order: 'desc',
@@ -1292,12 +1340,13 @@ describe('notificationsOutboxRead', () => {
     expect(notification.sub).toBe(nodeIdReceiverEncoded);
     expect(notification.isRead).toBeTruthy();
     // Check request was parsed correctly
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
   test('reads no notifications', async () => {
-    mockedOutboxReadNotifications.mockReturnValueOnce([]);
+    mockedOutboxReadNotifications.mockReturnValueOnce(
+      arrayToGenerator<Notification>([]),
+    );
     const response = await rpcClient.methods.notificationsOutboxRead({
       limit: Infinity,
       order: 'desc',
@@ -1308,9 +1357,8 @@ describe('notificationsOutboxRead', () => {
     }
     expect(notificationList).toHaveLength(0);
     // Check request was parsed correctly
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].unread).toBeFalsy();
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].limit).toBe(null);
-    expect(mockedOutboxReadNotifications.mock.calls[0][0].order).toBe('desc');
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.limit).toBe(null);
+    expect(mockedOutboxReadNotifications.mock.calls[0][0]!.order).toBe('desc');
   });
 });
 describe('notificationsOutboxRemove', () => {
@@ -1337,7 +1385,9 @@ describe('notificationsOutboxRemove', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedRemoveOutboxNotification: jest.SpyInstance;
+  let mockedRemoveOutboxNotification: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.removeOutboxNotification
+  >;
   beforeEach(async () => {
     mockedRemoveOutboxNotification = jest.spyOn(
       NotificationsManager.prototype,
@@ -1472,7 +1522,7 @@ describe('notificationsOutboxRemove', () => {
     });
   });
   test('removes a notification', async () => {
-    mockedRemoveOutboxNotification.mockImplementation();
+    mockedRemoveOutboxNotification.mockImplementation(async () => {});
     const receiverNotificationIdEncoded =
       'v0ph20eva21o0197dk3ovbl3l2o' as NotificationIdEncoded;
     await rpcClient.methods.notificationsOutboxRemove({
@@ -1480,7 +1530,9 @@ describe('notificationsOutboxRemove', () => {
     });
     expect(mockedRemoveOutboxNotification.mock.calls.length).toBe(1);
     expect(
-      nodesUtils.encodeNodeId(mockedRemoveOutboxNotification.mock.calls[0][0]),
+      notificationsUtils.encodeNotificationId(
+        mockedRemoveOutboxNotification.mock.calls[0][0],
+      ),
     ).toEqual(receiverNotificationIdEncoded);
   });
 });
@@ -1508,7 +1560,9 @@ describe('notificationsSend', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedSendNotification: jest.SpyInstance;
+  let mockedSendNotification: jest.SpiedFunction<
+    typeof NodeManager.prototype.withConnF
+  >;
   beforeEach(async () => {
     mockedSendNotification = jest.spyOn(NodeManager.prototype, 'withConnF');
     dataDir = await fs.promises.mkdtemp(
@@ -1639,7 +1693,7 @@ describe('notificationsSend', () => {
     });
   });
   test('sends a notification', async () => {
-    mockedSendNotification.mockImplementation();
+    mockedSendNotification.mockImplementation(async () => {});
     const receiverNodeIdEncoded =
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded;
     await rpcClient.methods.notificationsSend({

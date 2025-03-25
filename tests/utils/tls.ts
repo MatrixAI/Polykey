@@ -5,9 +5,9 @@ import type {
   CertificatePEMChain,
   KeyPair,
   PrivateKeyPEM,
-} from '@/keys/types';
-import type { TLSConfig } from '@/network/types';
-import * as keysUtils from '@/keys/utils';
+} from '#keys/types.js';
+import type { TLSConfig } from '#network/types.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 async function createTLSConfig(
   keyPair: KeyPair,

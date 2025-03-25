@@ -1,4 +1,4 @@
-import type { POJO } from '@/types';
+import type { POJO } from '#types.js';
 import type {
   ProviderId,
   IdentityId,
@@ -6,17 +6,17 @@ import type {
   IdentityData,
   ProviderAuthenticateRequest,
   ProviderPaginationToken,
-} from '@/identities/types';
+} from '#identities/types.js';
 import type {
   IdentitySignedClaim,
   ProviderIdentityClaimId,
-} from '@/identities/types';
-import type { SignedClaim } from '@/claims/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
-import { Provider } from '@/identities';
-import * as identitiesUtils from '@/identities/utils';
-import * as identitiesErrors from '@/identities/errors';
-import * as tokenUtils from '@/tokens/utils';
+} from '#identities/types.js';
+import type { SignedClaim } from '#claims/types.js';
+import type { ClaimLinkIdentity } from '#claims/payloads/index.js';
+import { Provider } from '#identities/index.js';
+import * as identitiesUtils from '#identities/utils.js';
+import * as identitiesErrors from '#identities/errors.js';
+import * as tokenUtils from '#tokens/utils.js';
 
 class TestProvider extends Provider {
   public readonly id: ProviderId;

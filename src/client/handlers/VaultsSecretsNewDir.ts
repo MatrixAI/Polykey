@@ -1,4 +1,4 @@
-import type { FileSystem } from 'types';
+import type { FileSystem } from 'types.js';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
 import type { JSONValue } from '@matrixai/rpc';
@@ -7,12 +7,12 @@ import type {
   ClientRPCResponseResult,
   SecretDirMessage,
   SuccessMessage,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import * as vaultOps from '../../vaults/VaultOps';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
+import * as vaultOps from '../../vaults/VaultOps.js';
 
 class VaultsSecretsNewDir extends UnaryHandler<
   {

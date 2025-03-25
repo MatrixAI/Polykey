@@ -6,12 +6,12 @@ import type {
   ClientRPCResponseResult,
   SecretFilesMessage,
   SecretIdentifierMessage,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
-import path from 'path';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
+import path from 'node:path';
 import { ServerHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
 
 class VaultsSecretsList extends ServerHandler<
   {

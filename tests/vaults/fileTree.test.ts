@@ -1,21 +1,26 @@
-import type { ContentNode, FileTree, TreeNode, VaultId } from '@/vaults/types';
-import type { Vault } from '@/vaults';
-import type KeyRing from '../../src/keys/KeyRing';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type {
+  ContentNode,
+  FileTree,
+  TreeNode,
+  VaultId,
+} from '#vaults/types.js';
+import type { Vault } from '#vaults/index.js';
+import type KeyRing from '#keys/KeyRing.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { ReadableStream } from 'stream/web';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import { EncryptedFS } from 'encryptedfs';
 import { DB, type LevelPath } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as fileTree from '@/vaults/fileTree';
-import * as vaultsUtils from '@/vaults/utils';
-import * as keysUtils from '@/keys/utils';
-import * as vaultsTestUtils from './utils';
-import VaultInternal from '../../src/vaults/VaultInternal';
-import * as testNodesUtils from '../nodes/utils';
+import * as vaultsTestUtils from './utils.js';
+import * as testNodesUtils from '../nodes/utils.js';
+import * as fileTree from '#vaults/fileTree.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import VaultInternal from '#vaults/VaultInternal.js';
 
 describe('fileTree', () => {
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
@@ -702,10 +707,9 @@ describe('fileTree', () => {
     });
     test.prop(
       [
-        fc
-          .uint8Array({ size: 'large' })
-          .noShrink()
-          .map((v) => Buffer.from(v)),
+        fc.noShrink(
+          fc.uint8Array({ size: 'large' }).map((v) => Buffer.from(v)),
+        ),
       ],
       { numRuns: 20 },
     )('handles invalid data', async (data) => {

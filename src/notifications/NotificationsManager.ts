@@ -4,31 +4,28 @@ import type {
   Notification,
   NotificationData,
   NotificationDB,
-} from './types';
-import type ACL from '../acl/ACL';
-import type KeyRing from '../keys/KeyRing';
-import type NodeManager from '../nodes/NodeManager';
+} from './types.js';
+import type ACL from '../acl/ACL.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type NodeManager from '../nodes/NodeManager.js';
 import type {
   NodeId,
   NodeIdEncoded,
   NotificationIdEncoded,
   TaskHandlerId,
-} from '../ids/types';
-import type { Task, TaskHandler, TaskInfo } from '../tasks/types';
-import type { TaskManager } from '../tasks';
+} from '../ids/types.js';
+import type { Task, TaskHandler, TaskInfo } from '../tasks/types.js';
+import type { TaskManager } from '../tasks/index.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as notificationsUtils from './utils';
-import * as notificationsErrors from './errors';
-import * as notificationsEvents from './events';
-import config from '../config';
-import { ErrorPolykeyRemote } from '../network/errors';
-import * as nodesUtils from '../nodes/utils';
-import { never } from '../utils/utils';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import * as notificationsUtils from './utils.js';
+import * as notificationsErrors from './errors.js';
+import * as notificationsEvents from './events.js';
+import config from '../config.js';
+import { ErrorPolykeyRemote } from '../network/errors.js';
+import * as nodesUtils from '../nodes/utils.js';
+import { never } from '../utils/utils.js';
 
 const abortSendNotificationTaskReason = Symbol(
   'abort send notification task reason',
@@ -37,8 +34,9 @@ const abortSendNotificationTaskReason = Symbol(
 /**
  * Manage Node Notifications between Gestalts
  */
-interface NotificationsManager extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface NotificationsManager
+  extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new notificationsErrors.ErrorNotificationsRunning(),
   new notificationsErrors.ErrorNotificationsDestroyed(),
   {
@@ -315,7 +313,9 @@ class NotificationsManager {
    * Send a notification to another node
    * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async sendNotification(
     {
       nodeId,
@@ -484,7 +484,9 @@ class NotificationsManager {
   /**
    * Read pending notifications in the outbox.
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async *readOutboxNotifications({
     seek,
     seekEnd,
@@ -523,7 +525,9 @@ class NotificationsManager {
     }
   }
 
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async getOutboxNotificationTaskInfoById(
     notificationId: NotificationId,
     tran?: DBTransaction,
@@ -570,7 +574,9 @@ class NotificationsManager {
   /**
    * Clears the pending outbox notifications
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async clearOutboxNotifications(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -615,7 +621,9 @@ class NotificationsManager {
   /**
    * Receive a notification
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async receiveNotification(
     notification: Notification,
     tran?: DBTransaction,
@@ -676,7 +684,9 @@ class NotificationsManager {
   /**
    * Read a notification
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async *readInboxNotifications({
     seek,
     seekEnd,
@@ -727,7 +737,9 @@ class NotificationsManager {
    * Linearly searches for a GestaltInvite notification from the supplied NodeId.
    * Returns the notification if found.
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async findGestaltInvite(
     fromNode: NodeId,
     tran?: DBTransaction,
@@ -751,7 +763,9 @@ class NotificationsManager {
   /**
    * Removes all notifications
    */
-  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
+  @createDestroyStartStop.ready(
+    new notificationsErrors.ErrorNotificationsNotRunning(),
+  )
   public async clearInboxNotifications(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>

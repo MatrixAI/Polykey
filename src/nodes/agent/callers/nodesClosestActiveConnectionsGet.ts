@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesClosestActiveConnectionsGet from '../handlers/NodesClosestActiveConnectionsGet';
+import type NodesClosestActiveConnectionsGet from '../handlers/NodesClosestActiveConnectionsGet.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesClosestActiveConnectionsGet>;

@@ -1,16 +1,16 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { DB } from '@matrixai/db';
 import type { JSONValue } from '@matrixai/rpc';
-import type Sigchain from '../../../sigchain/Sigchain';
+import type Sigchain from '../../../sigchain/Sigchain.js';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   AgentClaimMessage,
   NodesClaimsGetMessage,
-} from '../types';
+} from '../types.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as claimsUtils from '../../../claims/utils';
-import * as ids from '../../../ids';
+import * as claimsUtils from '../../../claims/utils.js';
+import * as ids from '../../../ids/index.js';
 
 /**
  * Gets the sigchain claims of a node

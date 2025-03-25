@@ -1,17 +1,17 @@
-import nodesAuthenticateConnection from './nodesAuthenticateConnection';
-import nodesAuditEventsGet from './nodesAuditEventsGet';
-import nodesClaimsGet from './nodesClaimsGet';
-import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet';
-import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet';
-import nodesConnectionSignalFinal from './nodesConnectionSignalFinal';
-import nodesConnectionSignalInitial from './nodesConnectionSignalInitial';
-import nodesCrossSignClaim from './nodesCrossSignClaim';
-import nodesClaimNetworkSign from './nodesClaimNetworkSign';
-import nodesClaimNetworkVerify from './nodesClaimNetworkVerify';
-import notificationsSend from './notificationsSend';
-import vaultsGitInfoGet from './vaultsGitInfoGet';
-import vaultsGitPackGet from './vaultsGitPackGet';
-import vaultsScan from './vaultsScan';
+import nodesAuthenticateConnection from './nodesAuthenticateConnection.js';
+import nodesAuditEventsGet from './nodesAuditEventsGet.js';
+import nodesClaimsGet from './nodesClaimsGet.js';
+import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet.js';
+import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet.js';
+import nodesConnectionSignalFinal from './nodesConnectionSignalFinal.js';
+import nodesConnectionSignalInitial from './nodesConnectionSignalInitial.js';
+import nodesCrossSignClaim from './nodesCrossSignClaim.js';
+import nodesClaimNetworkSign from './nodesClaimNetworkSign.js';
+import nodesClaimNetworkVerify from './nodesClaimNetworkVerify.js';
+import notificationsSend from './notificationsSend.js';
+import vaultsGitInfoGet from './vaultsGitInfoGet.js';
+import vaultsGitPackGet from './vaultsGitPackGet.js';
+import vaultsScan from './vaultsScan.js';
 
 /**
  * Client manifest

@@ -1,6 +1,6 @@
-import type { Opaque, JSONValue } from '../types';
-import type { Signature, MAC } from '../keys/types';
-import type { NodeIdEncoded } from '../ids/types';
+import type { Opaque, JSONValue } from '../types.js';
+import type { Signature, MAC } from '../keys/types.js';
+import type { NodeIdEncoded } from '../ids/types.js';
 
 /**
  * Token based on JWT specification.

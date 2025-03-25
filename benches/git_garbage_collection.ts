@@ -1,5 +1,9 @@
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   let map = new Map();
@@ -7,7 +11,7 @@ async function main() {
   let arr: any = [];
   let set = new Set();
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('map', async () => {
       map = new Map();
       return async () => {
@@ -83,8 +87,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

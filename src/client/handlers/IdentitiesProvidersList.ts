@@ -1,5 +1,8 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type IdentitiesManager from '../../identities/IdentitiesManager';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type IdentitiesManager from '../../identities/IdentitiesManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class IdentitiesProvidersList extends UnaryHandler<

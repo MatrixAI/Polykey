@@ -1,5 +1,5 @@
-import * as validationErrors from './errors';
-import * as validationUtils from './utils';
+import * as validationErrors from './errors.js';
+import * as validationUtils from './utils.js';
 
 async function validate(
   parser: (keyPath: Array<string>, value: any) => Promise<any>,

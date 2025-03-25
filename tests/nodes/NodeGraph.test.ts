@@ -4,22 +4,22 @@ import type {
   NodeContactAddressData,
   NodeId,
   NodeBucket,
-} from '@/nodes/types';
-import type { Key } from '@/keys/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+} from '#nodes/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+import { jest } from '@jest/globals';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { test, fc } from '@fast-check/jest';
-import NodeGraph from '@/nodes/NodeGraph';
-import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
-import * as nodesErrors from '@/nodes/errors';
-import * as nodesUtils from '@/nodes/utils';
-import * as utils from '@/utils';
-import { encodeNodeId } from '@/ids';
-import * as testNodesUtils from './utils';
+import * as testNodesUtils from './utils.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import KeyRing from '#keys/KeyRing.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesErrors from '#nodes/errors.js';
+import * as nodesUtils from '#nodes/utils.js';
+import { encodeNodeId } from '#ids/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe(`${NodeGraph.name} test`, () => {
   const password = 'password';
@@ -53,20 +53,7 @@ describe(`${NodeGraph.name} test`, () => {
       logger: logger.getChild(DB.name),
       crypto: {
         key: dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     nodeGraph = await NodeGraph.createNodeGraph({
@@ -576,13 +563,9 @@ describe(`${NodeGraph.name} test`, () => {
     );
   });
   describe('unsetNodeContact', () => {
-    test.prop(
-      [
-        testNodesUtils.nodeIdArb.noShrink(),
-        testNodesUtils.nodeContactPairArb.noShrink(),
-      ],
-      { numRuns: 20 },
-    )(
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
+      numRuns: 20,
+    })(
       'can unsetNodeContact with single address',
       async (nodeId, nodeContactPair) => {
         const nodeContact = {
@@ -652,13 +635,9 @@ describe(`${NodeGraph.name} test`, () => {
       await nodeGraph.unsetNodeContact(nodeId2);
       expect(await nodeGraph.getBucketMetaProp(100, 'count')).toBe(0);
     });
-    test.prop(
-      [
-        testNodesUtils.nodeIdArb.noShrink(),
-        testNodesUtils.nodeContactPairArb.noShrink(),
-      ],
-      { numRuns: 20 },
-    )('should delete lastUpdatedTime', async (nodeId, nodeContactPair) => {
+    test.prop([testNodesUtils.nodeIdArb, testNodesUtils.nodeContactPairArb], {
+      numRuns: 20,
+    })('should delete lastUpdatedTime', async (nodeId, nodeContactPair) => {
       const nodeContact = {
         [nodeContactPair.nodeContactAddress]:
           nodeContactPair.nodeContactAddressData,
@@ -833,10 +812,11 @@ describe(`${NodeGraph.name} test`, () => {
   describe('getBucket', () => {
     test.prop(
       [
-        fc.integer({ min: 20, max: 254 }).noShrink(),
-        fc
-          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
-          .noShrink(),
+        fc.integer({ min: 20, max: 254 }),
+        fc.array(testNodesUtils.nodeContactArb, {
+          minLength: 1,
+          maxLength: 20,
+        }),
       ],
       { numRuns: 1 },
     )('can get a bucket', async (bucketIndex, nodeContacts) => {
@@ -861,10 +841,11 @@ describe(`${NodeGraph.name} test`, () => {
     });
     test.prop(
       [
-        fc.integer({ min: 20, max: 254 }).noShrink(),
-        fc
-          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
-          .noShrink(),
+        fc.integer({ min: 20, max: 254 }),
+        fc.array(testNodesUtils.nodeContactArb, {
+          minLength: 1,
+          maxLength: 20,
+        }),
       ],
       { numRuns: 1 },
     )(
@@ -917,10 +898,11 @@ describe(`${NodeGraph.name} test`, () => {
     );
     test.prop(
       [
-        fc.integer({ min: 20, max: 254 }).noShrink(),
-        fc
-          .array(testNodesUtils.nodeContactArb, { minLength: 1, maxLength: 20 })
-          .noShrink(),
+        fc.integer({ min: 20, max: 254 }),
+        fc.array(testNodesUtils.nodeContactArb, {
+          minLength: 1,
+          maxLength: 20,
+        }),
       ],
       { numRuns: 1 },
     )(
@@ -985,9 +967,7 @@ describe(`${NodeGraph.name} test`, () => {
   describe('getBuckets', () => {
     test.prop(
       [
-        fc
-          .uniqueArray(fc.integer({ min: 0, max: 255 }), { minLength: 1 })
-          .noShrink(),
+        fc.uniqueArray(fc.integer({ min: 0, max: 255 }), { minLength: 1 }),
         testNodesUtils.nodeContactArb,
       ],
       { numRuns: 1 },
@@ -1012,7 +992,7 @@ describe(`${NodeGraph.name} test`, () => {
     });
   });
   describe('resetBuckets', () => {
-    let getNodeIdMock: jest.SpyInstance;
+    let getNodeIdMock: jest.SpiedFunction<typeof keyRing.getNodeId>;
 
     beforeEach(() => {
       getNodeIdMock = jest.spyOn(keyRing, 'getNodeId');
@@ -1308,11 +1288,7 @@ describe(`${NodeGraph.name} test`, () => {
   });
   describe('nodesTotal', () => {
     test.prop(
-      [
-        fc
-          .array(testNodesUtils.nodeIdContactPairArb, { maxLength: 20 })
-          .noShrink(),
-      ],
+      [fc.array(testNodesUtils.nodeIdContactPairArb, { maxLength: 20 })],
       {
         numRuns: 1,
       },

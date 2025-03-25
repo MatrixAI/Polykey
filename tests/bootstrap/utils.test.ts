@@ -1,11 +1,11 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as bootstrapUtils from '@/bootstrap/utils';
-import * as bootstrapErrors from '@/bootstrap/errors';
-import { errors as statusErrors } from '@/status';
-import config from '@/config';
+import * as bootstrapUtils from '#bootstrap/utils.js';
+import * as bootstrapErrors from '#bootstrap/errors.js';
+import { errors as statusErrors } from '#status/index.js';
+import config from '#config.js';
 
 describe('bootstrap/utils', () => {
   const logger = new Logger('bootstrap/utils test', LogLevel.WARN, [

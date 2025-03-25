@@ -1,9 +1,12 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type { ContextTimedInput } from '@matrixai/contexts';
-import type { AuditEventIdEncoded } from '../../ids';
-import type { MetricPath, MetricPathToAuditMetric } from '../../audit/types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type AuditMetricGet from '../handlers/AuditMetricGet';
+import type { AuditEventIdEncoded } from '../../ids/index.js';
+import type { MetricPath, MetricPathToAuditMetric } from '../../audit/types.js';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type AuditMetricGet from '../handlers/AuditMetricGet.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<AuditMetricGet>;

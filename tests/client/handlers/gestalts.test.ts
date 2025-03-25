@@ -6,38 +6,42 @@ import type {
   ClaimId,
   NodeId,
   NodeIdEncoded,
-} from '@/ids';
-import type { TLSConfig } from '@/network/types';
+} from '#ids/index.js';
+import type { TLSConfig } from '#network/types.js';
 import type {
   Gestalt,
   GestaltIdentityInfo,
   GestaltNodeInfo,
-} from '@/gestalts/types';
-import type { SignedClaim } from '@/claims/types';
-import type { Host } from '@/network/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { DiscoveryQueueInfo } from '@/discovery/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#gestalts/types.js';
+import type { SignedClaim } from '#claims/types.js';
+import type { Host } from '#network/types.js';
+import type { ClaimLinkIdentity } from '#claims/payloads/index.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { DiscoveryQueueInfo } from '#discovery/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import KeyRing from '@/keys/KeyRing';
-import TaskManager from '@/tasks/TaskManager';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import PolykeyAgent from '@/PolykeyAgent';
-import Token from '@/tokens/Token';
-import IdentitiesManager from '@/identities/IdentitiesManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import Sigchain from '@/sigchain/Sigchain';
-import Discovery from '@/discovery/Discovery';
-import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils/index.js';
+import * as testNodesUtils from '../../nodes/utils.js';
+import TestProvider from '../../identities/TestProvider.js';
+import KeyRing from '#keys/KeyRing.js';
+import TaskManager from '#tasks/TaskManager.js';
+import ACL from '#acl/ACL.js';
+import GestaltGraph from '#gestalts/GestaltGraph.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import Token from '#tokens/Token.js';
+import IdentitiesManager from '#identities/IdentitiesManager.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import Discovery from '#discovery/Discovery.js';
+import ClientService from '#client/ClientService.js';
 import {
   GestaltsActionsGetByIdentity,
   GestaltsActionsSetByIdentity,
@@ -53,7 +57,7 @@ import {
   GestaltsGestaltList,
   GestaltsGestaltTrustByIdentity,
   GestaltsGestaltTrustByNode,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   gestaltsActionsGetByIdentity,
   gestaltsActionsGetByNode,
@@ -69,17 +73,14 @@ import {
   gestaltsGestaltList,
   gestaltsGestaltTrustByIdentity,
   gestaltsGestaltTrustByNode,
-} from '@/client/callers';
-import { encodeProviderIdentityId } from '@/ids';
-import * as nodesUtils from '@/nodes/utils';
-import * as gestaltUtils from '@/gestalts/utils';
-import * as gestaltsErrors from '@/gestalts/errors';
-import * as networkUtils from '@/network/utils';
-import * as keysUtils from '@/keys/utils';
-import * as utils from '@/utils';
-import * as testsUtils from '../../utils';
-import * as testNodesUtils from '../../nodes/utils';
-import TestProvider from '../../identities/TestProvider';
+} from '#client/callers/index.js';
+import { encodeProviderIdentityId } from '#ids/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as gestaltUtils from '#gestalts/utils.js';
+import * as gestaltsErrors from '#gestalts/errors.js';
+import * as networkUtils from '#network/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as utils from '#utils/index.js';
 
 describe('gestaltsActionsByIdentity', () => {
   const logger = new Logger('gestaltsActionsByIdentity test', LogLevel.WARN, [
@@ -1754,7 +1755,9 @@ describe('gestaltsGestaltTrustByNode', () => {
   let nodeIdRemote: NodeId;
   let nodeIdEncodedRemote: NodeIdEncoded;
   let node: PolykeyAgent;
-  let mockedRequestChainData: jest.SpyInstance;
+  let mockedRequestChainData: jest.SpiedFunction<
+    typeof NodeManager.prototype.requestChainData
+  >;
   let nodeDataDir: string;
   beforeEach(async () => {
     testProvider = new TestProvider();

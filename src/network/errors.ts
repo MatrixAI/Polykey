@@ -1,7 +1,7 @@
-import type { JSONValue } from '../types';
+import type { JSONValue } from '../types.js';
 import type { Class } from '@matrixai/errors';
-import ErrorPolykey from '../ErrorPolykey';
-import sysexits from '../utils/sysexits';
+import ErrorPolykey from '../ErrorPolykey.js';
+import sysexits from '../utils/sysexits.js';
 
 class ErrorNetwork<T> extends ErrorPolykey<T> {}
 

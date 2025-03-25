@@ -1,4 +1,4 @@
-import type { JSONValue, Opaque } from '../types';
+import type { JSONValue, Opaque } from '../types.js';
 import type {
   IdentityId,
   ProviderId,
@@ -6,10 +6,13 @@ import type {
   ProviderIdentityClaimId,
   NodeId,
   GestaltLinkId,
-} from '../ids/types';
-import type { SignedClaim, SignedClaimJSON } from '../claims/types';
-import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
-import type { ProviderPaginationToken } from '../identities/types';
+} from '../ids/types.js';
+import type { SignedClaim, SignedClaimJSON } from '../claims/types.js';
+import type {
+  ClaimLinkIdentity,
+  ClaimLinkNode,
+} from '../claims/payloads/index.js';
+import type { ProviderPaginationToken } from '../identities/types.js';
 
 const gestaltActions = ['notify', 'scan', 'claim'] as const;
 
@@ -153,4 +156,4 @@ export type {
   GestaltIdEncoded,
   GestaltLinkId,
   GestaltLinkIdString,
-} from '../ids/types';
+} from '../ids/types.js';

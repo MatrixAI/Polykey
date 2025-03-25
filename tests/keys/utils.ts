@@ -8,22 +8,17 @@ import type {
   PrivateKeyJWK,
   Signature,
   MAC,
-} from '@/keys/types';
-import type CertManager from '@/keys/CertManager';
-import type { KeyRing } from '@/keys';
+} from '#keys/types.js';
+import type CertManager from '#keys/CertManager.js';
+import type { KeyRing } from '#keys/index.js';
 import { fc } from '@fast-check/jest';
-import { IterableX as Iterable } from 'ix/iterable';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import 'ix/add/iterable-operators/takewhile';
-import 'ix/add/iterable-operators/toarray';
-import 'ix/add/asynciterable-operators/toarray';
-import 'ix/add/asynciterable-operators/take';
-import * as asymmetric from '@/keys/utils/asymmetric';
-import * as jwk from '@/keys/utils/jwk';
-import * as x509 from '@/keys/utils/x509';
-import * as utils from '@/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testsIdsUtils from '../ids/utils';
+import * as testsIdsUtils from '../ids/utils.js';
+import * as testsUtils from '../utils/index.js';
+import * as asymmetric from '#keys/utils/asymmetric.js';
+import * as jwk from '#keys/utils/jwk.js';
+import * as x509 from '#keys/utils/x509.js';
+import * as utils from '#utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 const bufferArb = (constraints?: fc.IntArrayConstraints) => {
   return fc.uint8Array(constraints).map(utils.bufferWrap);
@@ -32,81 +27,81 @@ const bufferArb = (constraints?: fc.IntArrayConstraints) => {
 /**
  * 256 bit symmetric key
  */
-const keyArb = fc
-  .uint8Array({ minLength: 32, maxLength: 32 })
-  .map(utils.bufferWrap)
-  .noShrink() as fc.Arbitrary<Key>;
+const keyArb = fc.noShrink(
+  fc.uint8Array({ minLength: 32, maxLength: 32 }).map(utils.bufferWrap),
+) as fc.Arbitrary<Key>;
 
-const keyJWKArb = keyArb
-  .map((key) => jwk.keyToJWK(key))
-  .noShrink() as fc.Arbitrary<KeyJWK>;
+const keyJWKArb = fc.noShrink(
+  keyArb.map((key) => jwk.keyToJWK(key)),
+) as fc.Arbitrary<KeyJWK>;
 
 /**
  * Ed25519 Private Key
  */
-const privateKeyArb = fc
-  .uint8Array({ minLength: 32, maxLength: 32 })
-  .map(utils.bufferWrap)
-  .noShrink() as fc.Arbitrary<PrivateKey>;
+const privateKeyArb = fc.noShrink(
+  fc.uint8Array({ minLength: 32, maxLength: 32 }).map(utils.bufferWrap),
+) as fc.Arbitrary<PrivateKey>;
 
 /**
  * Ed25519 Public Key
  */
-const publicKeyArb = privateKeyArb
-  .map(asymmetric.publicKeyFromPrivateKeyEd25519)
-  .noShrink();
+const publicKeyArb = fc.noShrink(
+  privateKeyArb.map(asymmetric.publicKeyFromPrivateKeyEd25519),
+);
 
 /**
  * Keypair of public and private key
  */
-const keyPairArb = privateKeyArb
-  .map((privateKey) => {
+const keyPairArb = fc.noShrink(
+  privateKeyArb.map((privateKey) => {
     const publicKey = asymmetric.publicKeyFromPrivateKeyEd25519(privateKey);
     return {
       publicKey,
       privateKey,
       secretKey: Buffer.concat([privateKey, publicKey]),
     };
-  })
-  .noShrink() as fc.Arbitrary<KeyPair>;
+  }),
+) as fc.Arbitrary<KeyPair>;
 
-const publicKeyJWKArb = publicKeyArb
-  .map((publicKey) => jwk.publicKeyToJWK(publicKey))
-  .noShrink() as fc.Arbitrary<PublicKeyJWK>;
+const publicKeyJWKArb = fc.noShrink(
+  publicKeyArb.map((publicKey) => jwk.publicKeyToJWK(publicKey)),
+) as fc.Arbitrary<PublicKeyJWK>;
 
-const privateKeyJWKArb = privateKeyArb
-  .map((privateKey) => jwk.privateKeyToJWK(privateKey))
-  .noShrink() as fc.Arbitrary<PrivateKeyJWK>;
+const privateKeyJWKArb = fc.noShrink(
+  privateKeyArb.map((privateKey) => jwk.privateKeyToJWK(privateKey)),
+) as fc.Arbitrary<PrivateKeyJWK>;
 
-const certPArb = fc
-  .record({
-    subjectKeyPair: keyPairArb,
-    issuerKeyPair: keyPairArb,
-    certId: testsIdsUtils.certIdArb,
-    duration: fc.integer({ min: 1, max: 1000 }),
-  })
-  .map(async ({ subjectKeyPair, issuerKeyPair, certId, duration }) => {
-    const cert = await x509.generateCertificate({
-      certId,
-      subjectKeyPair: subjectKeyPair,
-      issuerPrivateKey: issuerKeyPair.privateKey,
-      duration,
-    });
-    return cert;
-  })
-  .noShrink();
+const certPArb = fc.noShrink(
+  fc
+    .record(
+      {
+        subjectKeyPair: keyPairArb,
+        issuerKeyPair: keyPairArb,
+        certId: testsIdsUtils.certIdArb,
+        duration: fc.integer({ min: 1, max: 1000 }),
+      },
+      { noNullPrototype: true },
+    )
+    .map(async ({ subjectKeyPair, issuerKeyPair, certId, duration }) => {
+      const cert = await x509.generateCertificate({
+        certId,
+        subjectKeyPair: subjectKeyPair,
+        issuerPrivateKey: issuerKeyPair.privateKey,
+        duration,
+      });
+      return cert;
+    }),
+);
 
-const signatureArb = fc
-  .uint8Array({ minLength: 64, maxLength: 64 })
-  .map(utils.bufferWrap)
-  .noShrink() as fc.Arbitrary<Signature>;
+const signatureArb = fc.noShrink(
+  fc.uint8Array({ minLength: 64, maxLength: 64 }).map(utils.bufferWrap),
+) as fc.Arbitrary<Signature>;
 
-const macArb = fc
-  .uint8Array({ minLength: 32, maxLength: 32 })
-  .map(utils.bufferWrap)
-  .noShrink() as fc.Arbitrary<MAC>;
+const macArb = fc.noShrink(
+  fc.uint8Array({ minLength: 32, maxLength: 32 }).map(utils.bufferWrap),
+) as fc.Arbitrary<MAC>;
 
-const passwordArb = fc.string({ minLength: 0, maxLength: 20 }).noShrink();
+const passwordArb = fc.noShrink(fc.string({ minLength: 0, maxLength: 20 }));
 
 type CertManagerModel = {
   certs: Array<Certificate>;
@@ -133,20 +128,18 @@ class RenewCertWithCurrentKeyPairCommand implements CertManagerCommand {
     const firstExpiredCert = model.certs.find((cert) => {
       return !x509.certNotExpiredBy(cert, now);
     });
-    model.certs = [certNew].concat(
-      Iterable.as(model.certs)
-        .takeWhile((cert) => {
-          return x509.certNotExpiredBy(cert, now);
-        })
-        .toArray(),
-    );
+    const newCerts = [certNew];
+    for (const cert of model.certs) {
+      if (!x509.certNotExpiredBy(cert, now)) break;
+      newCerts.push(cert);
+    }
+    model.certs = newCerts;
     if (firstExpiredCert != null) {
       model.certs.push(firstExpiredCert);
     }
     // Check consistency
-    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts())
-      .take(2)
-      .toArray();
+    const certList = await testsUtils.generatorToArray(real.getCerts());
+    const [certNew_, certOld_] = certList.slice(0, 2);
     // New certificate with have a greater `CertId`
     expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Same key pair preserves the NodeId
@@ -201,20 +194,18 @@ class RenewCertWithNewKeyPairCommand implements CertManagerCommand {
     const firstExpiredCert = model.certs.find((cert) => {
       return !x509.certNotExpiredBy(cert, now);
     });
-    model.certs = [certNew].concat(
-      Iterable.as(model.certs)
-        .takeWhile((cert) => {
-          return x509.certNotExpiredBy(cert, now);
-        })
-        .toArray(),
-    );
+    const newCerts = [certNew];
+    for (const cert of model.certs) {
+      if (!x509.certNotExpiredBy(cert, now)) break;
+      newCerts.push(cert);
+    }
+    model.certs = newCerts;
     if (firstExpiredCert != null) {
       model.certs.push(firstExpiredCert);
     }
     // Check consistency
-    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts())
-      .take(2)
-      .toArray();
+    const certList = await testsUtils.generatorToArray(real.getCerts());
+    const [certNew_, certOld_] = certList.slice(0, 2);
     // New certificate with have a greater `CertId`
     expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
     // Different key pair changes the the NodeId
@@ -264,12 +255,11 @@ class ResetCertWithCurrentKeyPairCommand implements CertManagerCommand {
     const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
     model.certs = [certNew];
-    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts())
-      .take(2)
-      .toArray();
+    const certList = await testsUtils.generatorToArray(real.getCerts());
+    const [certNew_, certOld_] = certList.slice(0, 2);
     // New certificate with have a greater `CertId`
     expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
-    // Different key pair changes the the NodeId
+    // Different key pair changes the NodeId
     expect(x509.certNodeId(certNew)).toStrictEqual(x509.certNodeId(certOld));
     // New certificates should match
     expect(x509.certEqual(certNew_, certNew)).toBe(true);
@@ -317,12 +307,11 @@ class ResetCertWithNewKeyPairCommand implements CertManagerCommand {
     const certOld = model.certs[0];
     const certNew = await real.getCurrentCert();
     model.certs = [certNew];
-    const [certNew_, certOld_] = await AsyncIterable.as(real.getCerts())
-      .take(2)
-      .toArray();
+    const certList = await testsUtils.generatorToArray(real.getCerts());
+    const [certNew_, certOld_] = certList.slice(0, 2);
     // New certificate with have a greater `CertId`
     expect(x509.certCertId(certNew)! > x509.certCertId(certOld)!).toBe(true);
-    // Different key pair changes the the NodeId
+    // Different key pair changes the NodeId
     expect(x509.certNodeId(certNew)).not.toStrictEqual(
       x509.certNodeId(certOld),
     );

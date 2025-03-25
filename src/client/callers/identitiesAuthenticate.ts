@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type IdentitiesAuthenticate from '../handlers/IdentitiesAuthenticate';
+import type IdentitiesAuthenticate from '../handlers/IdentitiesAuthenticate.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<IdentitiesAuthenticate>;

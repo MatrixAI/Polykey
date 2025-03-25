@@ -1,6 +1,6 @@
 import type { Arbitrary } from 'fast-check';
 import { fc } from '@fast-check/jest';
-import * as utils from '@/utils';
+import * as utils from '#utils/index.js';
 
 class SleepCommand implements fc.AsyncCommand<any, any> {
   constructor(public readonly ms: number) {}
@@ -30,10 +30,11 @@ const scheduleCall = <T>(s: fc.Scheduler, f: () => Promise<T>) =>
  * Creates an ASCII file name
  */
 const fileNameArb = () =>
-  fc
-    .stringMatching(/^[^<>.:"/\\|?* ]{2,10}$/)
-    .filter((name) => name.trim().length > 0 && name !== '__proto__')
-    .noShrink();
+  fc.noShrink(
+    fc
+      .stringMatching(/^[^<>.:"/\\|?* ]{2,10}$/)
+      .filter((name) => name.trim().length > 0 && name !== '__proto__'),
+  );
 
 /**
  * Creates an array with the file name arbitrary, then returns a tuple
@@ -62,10 +63,9 @@ const fileNameLengthSampleArb = (
  * Creates a valid ASCII vault name
  */
 const vaultNameArb = () =>
-  fc
-    .stringMatching(/^[:\\]{6,10}$/)
-    .map((value) => `vault-${value}`)
-    .noShrink();
+  fc.noShrink(
+    fc.stringMatching(/^[:\\]{6,10}$/).map((value) => `vault-${value}`),
+  );
 
 export {
   SleepCommand,

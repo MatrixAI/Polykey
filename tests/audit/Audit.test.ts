@@ -1,20 +1,20 @@
-import type { Key } from '@/keys/types';
-import type { ConnectionData, Host, Port } from '@/network/types';
-import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { ConnectionData, Host, Port } from '#network/types.js';
+import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import Audit from '@/audit/Audit';
-import * as utils from '@/utils';
-import * as auditErrors from '@/audit/errors';
-import * as auditEvents from '@/audit/events';
-import * as keysUtils from '@/keys/utils';
-import * as nodeEvents from '@/nodes/events';
-import * as nodeUtils from '@/nodes/utils';
-import * as ids from '@/ids';
-import * as testNodesUtils from '../nodes/utils';
+import * as testNodesUtils from '../nodes/utils.js';
+import Audit from '#audit/Audit.js';
+import * as utils from '#utils/index.js';
+import * as auditErrors from '#audit/errors.js';
+import * as auditEvents from '#audit/events.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodeEvents from '#nodes/events.js';
+import * as nodeUtils from '#nodes/utils.js';
+import * as ids from '#ids/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe(Audit.name, () => {
   const logger = new Logger(`${Audit.name} test`, LogLevel.WARN, [
@@ -35,20 +35,7 @@ describe(Audit.name, () => {
       logger,
       crypto: {
         key: dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     mockNodeConnectionManager = new EventTarget() as NodeConnectionManager;

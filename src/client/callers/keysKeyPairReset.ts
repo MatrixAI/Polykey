@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysKeyPairReset from '../handlers/KeysKeyPairReset';
+import type KeysKeyPairReset from '../handlers/KeysKeyPairReset.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysKeyPairReset>;

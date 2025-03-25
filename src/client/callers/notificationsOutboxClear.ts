@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NotificationsOutboxClear from '../handlers/NotificationsOutboxClear';
+import type NotificationsOutboxClear from '../handlers/NotificationsOutboxClear.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NotificationsOutboxClear>;

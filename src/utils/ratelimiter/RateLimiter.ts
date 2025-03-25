@@ -1,5 +1,5 @@
 import { Timer } from '@matrixai/timer';
-import * as rateLimiterErrors from './errors';
+import * as rateLimiterErrors from './errors.js';
 
 /**
  * Internal data structure used to track a buckets' information.

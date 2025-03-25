@@ -1,4 +1,4 @@
-export { default as Sigchain } from './Sigchain';
-export * as types from './types';
-export * as errors from './errors';
-export * as events from './events';
+export { default as Sigchain } from './Sigchain.js';
+export * as types from './types.js';
+export * as errors from './errors.js';
+export * as events from './events.js';

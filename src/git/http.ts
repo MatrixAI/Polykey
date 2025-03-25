@@ -4,13 +4,13 @@ import type {
   Reference,
   ObjectId,
   ObjectIdList,
-} from './types';
+} from './types.js';
 import type { EncryptedFS } from 'encryptedfs';
 import type { PackObjectsResult } from 'isomorphic-git';
 import { Buffer } from 'buffer';
 import git from 'isomorphic-git';
-import * as gitUtils from './utils';
-import * as utils from '../utils';
+import * as gitUtils from './utils.js';
+import * as utils from '../utils/index.js';
 
 /**
  * Reference discovery

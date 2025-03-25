@@ -1,7 +1,7 @@
-import type { RecoveryCode } from '../types';
+import type { RecoveryCode } from '../types.js';
 import * as bip39 from '@scure/bip39';
 import { wordlist as bip39Wordlist } from '@scure/bip39/wordlists/english';
-import * as validationErrors from '../../validation/errors';
+import * as validationErrors from '../../validation/errors.js';
 
 function generateRecoveryCode(size: 12 | 24 = 24): RecoveryCode {
   if (size === 12) {

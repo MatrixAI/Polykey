@@ -3,11 +3,11 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NotificationRemoveMessage,
-} from '../types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
+} from '../types.js';
+import type NotificationsManager from '../../notifications/NotificationsManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as notificationsUtils from '../../notifications/utils';
-import * as validationErrors from '../../validation/errors';
+import * as notificationsUtils from '../../notifications/utils.js';
+import * as validationErrors from '../../validation/errors.js';
 
 class NotificationsInboxRemove extends UnaryHandler<
   {

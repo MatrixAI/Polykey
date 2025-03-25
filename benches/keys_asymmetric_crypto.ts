@@ -1,8 +1,12 @@
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
-import * as random from '@/keys/utils/random';
-import * as generate from '@/keys/utils/generate';
-import * as asymmetric from '@/keys/utils/asymmetric';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+import * as random from '#keys/utils/random.js';
+import * as generate from '#keys/utils/generate.js';
+import * as asymmetric from '#keys/utils/asymmetric.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   const keyPair = generate.generateKeyPair();
@@ -34,7 +38,7 @@ async function main() {
     plain10KiB,
   );
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('encrypt 512 B of data', () => {
       asymmetric.encryptWithPublicKey(keyPair.publicKey, plain512B);
     }),
@@ -88,8 +92,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

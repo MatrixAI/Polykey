@@ -1,18 +1,18 @@
-import type { StateVersion } from '@/schema/types';
-import type { CertManagerChangeData } from '@/keys/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { StateVersion } from '#schema/types.js';
+import type { CertManagerChangeData } from '#keys/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyAgent from '@/PolykeyAgent';
-import { Status } from '@/status';
-import { Schema } from '@/schema';
-import * as errors from '@/errors';
-import config from '@/config';
-import { promise } from '@/utils';
-import * as keysUtils from '@/keys/utils';
-import * as keysEvents from '@/keys/events';
-import * as testsUtils from './utils';
+import * as testsUtils from './utils/index.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import { Status } from '#status/index.js';
+import { Schema } from '#schema/index.js';
+import * as errors from '#errors.js';
+import config from '#config.js';
+import { promise } from '#utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as keysEvents from '#keys/events.js';
 
 describe('PolykeyAgent', () => {
   const password = 'password';
@@ -145,6 +145,7 @@ describe('PolykeyAgent', () => {
     const nodePath = path.join(dataDir, 'polykey');
     const statePath = path.join(nodePath, config.paths.stateBase);
     const schema = new Schema({
+      fs,
       statePath,
     });
     const pkAgent = await PolykeyAgent.createPolykeyAgent({

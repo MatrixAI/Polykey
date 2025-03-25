@@ -2,12 +2,12 @@ import type {
   AgentClaimMessage,
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-} from '../types';
-import type NodeManager from '../../../nodes/NodeManager';
-import type { JSONValue } from '../../../types';
+} from '../types.js';
+import type NodeManager from '../../../nodes/NodeManager.js';
+import type { JSONValue } from '../../../types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
 
 class NodesClaimNetworkVerify extends UnaryHandler<
   {

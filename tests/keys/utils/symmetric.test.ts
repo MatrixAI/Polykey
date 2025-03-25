@@ -1,7 +1,7 @@
 import { test, fc } from '@fast-check/jest';
-import * as symmetric from '@/keys/utils/symmetric';
-import * as utils from '@/utils';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import * as symmetric from '#keys/utils/symmetric.js';
+import * as utils from '#utils/index.js';
 
 describe('keys/utils/symmetric', () => {
   test.prop([

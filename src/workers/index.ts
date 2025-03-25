@@ -1,5 +1,4 @@
 export { WorkerManager } from '@matrixai/workers';
-export { default as polykeyWorker } from './polykeyWorkerModule';
-export * as utils from './utils';
-export type { PolykeyWorkerModule } from './polykeyWorkerModule';
-export type { PolykeyWorkerManagerInterface } from './types';
+export { default as polykeyWorkerManifest } from './polykeyWorkerManifest.js';
+export * as utils from './utils.js';
+export type * from './types.js';

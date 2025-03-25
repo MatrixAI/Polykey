@@ -1,10 +1,11 @@
-import type { Codec } from 'multiformats/bases/base';
+// Import type { Codec } from 'multiformats/bases/base';
 import { bases } from 'multiformats/basics';
-import { bufferWrap } from './utils';
+import { bufferWrap } from './utils.js';
 
 type MultibaseFormats = keyof typeof bases;
+type Codec = (typeof bases)[MultibaseFormats];
 
-const basesByPrefix: Record<string, Codec<string, string>> = {};
+const basesByPrefix: Record<string, Codec> = {};
 for (const k in bases) {
   const codec = bases[k];
   basesByPrefix[codec.prefix] = codec;

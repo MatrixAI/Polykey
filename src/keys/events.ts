@@ -1,5 +1,5 @@
-import type { CertManagerChangeData } from './types';
-import EventPolykey from '../EventPolykey';
+import type { CertManagerChangeData } from './types.js';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventKeys<T = undefined> extends EventPolykey<T> {}
 

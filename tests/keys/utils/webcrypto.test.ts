@@ -1,6 +1,6 @@
 import { test } from '@fast-check/jest';
-import { importKeyPair, exportKeyPair } from '@/keys/utils/webcrypto';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import { importKeyPair, exportKeyPair } from '#keys/utils/webcrypto.js';
 
 describe('keys/utils/webcrypto', () => {
   test.prop([testsKeysUtils.keyPairArb])(

@@ -1,7 +1,7 @@
-export { default as IdentitiesManager } from './IdentitiesManager';
-export { default as Provider } from './Provider';
-export * as utils from './utils';
-export * as types from './types';
-export * as errors from './errors';
-export * as events from './events';
-export * as providers from './providers';
+export { default as IdentitiesManager } from './IdentitiesManager.js';
+export { default as Provider } from './Provider.js';
+export * as utils from './utils.js';
+export * as types from './types.js';
+export * as errors from './errors.js';
+export * as events from './events.js';
+export * as providers from './providers/index.js';

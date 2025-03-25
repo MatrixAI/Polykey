@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysVerify from '../handlers/KeysVerify';
+import type KeysVerify from '../handlers/KeysVerify.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysVerify>;

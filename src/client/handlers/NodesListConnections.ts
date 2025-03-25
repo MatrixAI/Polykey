@@ -2,12 +2,12 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NodeConnectionMessage,
-} from '../types';
-import type NodeConnectionManager from '../../nodes/NodeConnectionManager';
+} from '../types.js';
+import type NodeConnectionManager from '../../nodes/NodeConnectionManager.js';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
-import * as nodesUtils from '../../nodes/utils';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class NodesListConnections extends ServerHandler<
   {

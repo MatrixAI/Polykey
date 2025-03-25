@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesClaimNetworkSign from '../handlers/NodesClaimNetworkSign';
+import type NodesClaimNetworkSign from '../handlers/NodesClaimNetworkSign.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesClaimNetworkSign>;

@@ -4,21 +4,21 @@ import type {
   VaultShare,
   Notification,
   SignedNotification,
-} from './types';
-import type { NodeId, VaultId, NotificationId } from '../ids/types';
-import type { KeyPairLocked } from '../keys/types';
+} from './types.js';
+import type { NodeId, VaultId, NotificationId } from '../ids/types.js';
+import type { KeyPairLocked } from '../keys/types.js';
 import { IdInternal } from '@matrixai/id';
-import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
-import * as notificationsErrors from './errors';
-import { createNotificationIdGenerator } from '../ids';
-import { vaultActions } from '../vaults/types';
-import { never } from '../utils';
-import Token from '../tokens/Token';
-import * as nodesUtils from '../nodes/utils';
-import * as keysUtils from '../keys/utils';
-import * as validationErrors from '../validation/errors';
-import * as utils from '../utils';
-import * as ids from '../ids';
+import { idSortable } from '@matrixai/id';
+import * as notificationsErrors from './errors.js';
+import { createNotificationIdGenerator } from '../ids/index.js';
+import { vaultActions } from '../vaults/types.js';
+import { never } from '../utils/index.js';
+import Token from '../tokens/Token.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as validationErrors from '../validation/errors.js';
+import * as utils from '../utils/index.js';
+import * as ids from '../ids/index.js';
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
   return `Keynode with ID ${nodeId} has invited this Keynode to join their Gestalt. Accept this invitation by typing the command: xxx`;
@@ -221,7 +221,7 @@ function extractFromSeek(
   let timestamp: number | undefined;
   if (seek instanceof IdInternal) {
     notificationId = seek;
-    timestamp = sortableIdUtils.extractTs(seek.toBuffer()) * 1000;
+    timestamp = idSortable.extractTs(seek.toBuffer()) * 1000;
   } else if (typeof seek === 'number') {
     timestamp = seek;
     notificationId = ids.generateNotificationIdFromTimestamp(
@@ -255,4 +255,4 @@ export {
   extractFromSeek,
 };
 
-export { encodeNotificationId, decodeNotificationId } from '../ids';
+export { encodeNotificationId, decodeNotificationId } from '../ids/index.js';

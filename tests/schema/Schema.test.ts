@@ -1,11 +1,11 @@
-import type { StateVersion } from '@/schema/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type { StateVersion } from '#schema/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import Schema from '@/schema/Schema';
-import * as schemaErrors from '@/schema/errors';
-import config from '@/config';
+import Schema from '#schema/Schema.js';
+import * as schemaErrors from '#schema/errors.js';
+import config from '#config.js';
 
 describe('Schema', () => {
   const logger = new Logger(`${Schema.name} Test`, LogLevel.WARN, [

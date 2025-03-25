@@ -3,19 +3,22 @@ import type {
   JSONRPCResponse,
   MiddlewareFactory,
 } from '@matrixai/rpc';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
-import type { Session } from '../sessions';
-import type SessionManager from '../sessions/SessionManager';
-import type KeyRing from '../keys/KeyRing';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from './types.js';
+import type { Session } from '../sessions/index.js';
+import type SessionManager from '../sessions/SessionManager.js';
+import type KeyRing from '../keys/KeyRing.js';
 import type {
   JSONRPCResponseError,
   JSONRPCResponseFailed,
 } from '@matrixai/rpc';
 import { TransformStream } from 'stream/web';
-import { authenticate, decodeAuth } from './utils';
-import { sysexits } from '../errors';
-import * as utils from '../utils';
-import * as networkUtils from '../network/utils';
+import { authenticate, decodeAuth } from './utils.js';
+import { sysexits } from '../errors.js';
+import * as utils from '../utils/index.js';
+import * as networkUtils from '../network/utils.js';
 
 function authenticationMiddlewareServer(
   sessionManager: SessionManager,

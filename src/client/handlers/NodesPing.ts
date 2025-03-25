@@ -3,13 +3,13 @@ import type {
   ClientRPCResponseResult,
   NodeIdMessage,
   SuccessMessage,
-} from '../types';
-import type { NodeId } from '../../ids';
-import type NodeManager from '../../nodes/NodeManager';
+} from '../types.js';
+import type { NodeId } from '../../ids/index.js';
+import type NodeManager from '../../nodes/NodeManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class NodesPing extends UnaryHandler<
   {

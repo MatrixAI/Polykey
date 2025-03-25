@@ -1,8 +1,8 @@
-import type { CertificatePEM, PrivateKeyPEM } from '@/keys/types';
+import type { CertificatePEM, PrivateKeyPEM } from '#keys/types.js';
 import { utils as wsUtils } from '@matrixai/ws';
-import * as clientUtils from '@/client/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testTlsUtils from '../utils/tls';
+import * as testTlsUtils from '../utils/tls.js';
+import * as clientUtils from '#client/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 describe('client/utils', () => {
   const keyPairRoot = keysUtils.generateKeyPair();

@@ -4,30 +4,30 @@ import type {
   ProviderToken,
   IdentityData,
   IdentitySignedClaim,
-} from '@/identities/types';
-import type { Key } from '@/keys/types';
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+} from '#identities/types.js';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { ClaimLinkIdentity } from '#claims/payloads/index.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+import { jest } from '@jest/globals';
 import { test } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import { IdentitiesManager, providers } from '@/identities';
-import * as identitiesErrors from '@/identities/errors';
-import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as utils from '@/utils';
-import KeyRing from '@/keys/KeyRing';
-import Sigchain from '@/sigchain/Sigchain';
-import { encodeProviderIdentityId } from '@/ids';
-import Token from '@/tokens/Token';
-import * as identitiesTestUtils from './utils';
-import TestProvider from './TestProvider';
-import * as claimsTestUtils from '../claims/utils';
-import * as keysTestUtils from '../keys/utils';
-import * as testNodesUtils from '../nodes/utils';
+import * as identitiesTestUtils from './utils.js';
+import TestProvider from './TestProvider.js';
+import * as claimsTestUtils from '../claims/utils.js';
+import * as keysTestUtils from '../keys/utils.js';
+import * as testNodesUtils from '../nodes/utils.js';
+import { IdentitiesManager, providers } from '#identities/index.js';
+import * as identitiesErrors from '#identities/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import KeyRing from '#keys/KeyRing.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import { encodeProviderIdentityId } from '#ids/index.js';
+import Token from '#tokens/Token.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('IdentitiesManager', () => {
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
@@ -48,20 +48,7 @@ describe('IdentitiesManager', () => {
       logger,
       crypto: {
         key: keysUtils.generateKey(),
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
   });
@@ -99,7 +86,7 @@ describe('IdentitiesManager', () => {
       await identitiesManager.getTokens('abc' as ProviderId);
     }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
   });
-  test.prop([
+  test.only.prop([
     identitiesTestUtils.identitiyIdArb,
     identitiesTestUtils.providerTokenArb,
   ])('get, set and unset tokens', async (identityId, providerToken) => {

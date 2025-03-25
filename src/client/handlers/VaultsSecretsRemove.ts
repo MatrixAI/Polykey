@@ -8,14 +8,14 @@ import type {
   SecretsRemoveHeaderMessage,
   SecretIdentifierMessageTagged,
   SuccessOrErrorMessageTagged,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
-import type { FileSystemWritable } from '../../vaults/types';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
+import type { FileSystemWritable } from '../../vaults/types.js';
 import { withG } from '@matrixai/resources';
 import { DuplexHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import * as clientErrors from '../errors';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
+import * as clientErrors from '../errors.js';
 
 class VaultsSecretsRemove extends DuplexHandler<
   {

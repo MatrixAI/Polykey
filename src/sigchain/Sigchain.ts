@@ -1,27 +1,27 @@
 import type { DB, DBTransaction, LevelPath, KeyPath } from '@matrixai/db';
-import type { ClaimInput } from './types';
-import type KeyRing from '../keys/KeyRing';
-import type { TokenSignature, TokenHeaderSignatureJSON } from '../tokens/types';
+import type { ClaimInput } from './types.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type {
+  TokenSignature,
+  TokenHeaderSignatureJSON,
+} from '../tokens/types.js';
 import type {
   ClaimId,
   Claim,
   ClaimHeaderSignature,
   SignedClaim,
-} from '../claims/types';
+} from '../claims/types.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as sigchainErrors from './errors';
-import * as sigchainEvents from './events';
-import Token from '../tokens/Token';
-import * as claimsUtils from '../claims/utils';
-import * as utils from '../utils';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import * as sigchainErrors from './errors.js';
+import * as sigchainEvents from './events.js';
+import Token from '../tokens/Token.js';
+import * as claimsUtils from '../claims/utils.js';
+import * as utils from '../utils/index.js';
 
-interface Sigchain extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface Sigchain extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new sigchainErrors.ErrorSigchainRunning(),
   new sigchainErrors.ErrorSigchainDestroyed(),
   {
@@ -133,7 +133,11 @@ class Sigchain {
   /**
    * Gets the last claim ID for preserving monotonicity over restarts
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new sigchainErrors.ErrorSigchainNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getLastClaimId(
     tran?: DBTransaction,
   ): Promise<ClaimId | undefined> {
@@ -148,7 +152,11 @@ class Sigchain {
   /**
    * Gets the last sequence number for preserving monotonicity over restarts
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new sigchainErrors.ErrorSigchainNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getLastSequenceNumber(
     tran?: DBTransaction,
   ): Promise<number | undefined> {
@@ -162,7 +170,7 @@ class Sigchain {
    * Call this method when the `KeyRing` changes
    * This should be replaced with rxjs later
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async onKeyRingChange() {
     const lastClaimId = await this.getLastClaimId();
     this.generateClaimId = claimsUtils.createClaimIdGenerator(
@@ -171,7 +179,7 @@ class Sigchain {
     );
   }
 
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getLastClaim(
     tran?: DBTransaction,
   ): Promise<[ClaimId, Claim] | undefined> {
@@ -184,7 +192,7 @@ class Sigchain {
     return;
   }
 
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getLastSignedClaim(
     tran?: DBTransaction,
   ): Promise<[ClaimId, SignedClaim] | undefined> {
@@ -203,7 +211,7 @@ class Sigchain {
   /**
    * Get a claim according to the `ClaimId`
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getClaim(
     claimId: ClaimId,
     tran?: DBTransaction,
@@ -217,7 +225,7 @@ class Sigchain {
   /**
    * Get a signed claim according to the `ClaimId`
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getSignedClaim(
     claimId: ClaimId,
     tran?: DBTransaction,
@@ -244,7 +252,7 @@ class Sigchain {
   /**
    * Get a claim signatures according to the `ClaimId`
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getSignatures(
     claimId: ClaimId,
     tran?: DBTransaction,
@@ -278,7 +286,7 @@ class Sigchain {
   /**
    * Get claims
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async *getClaims(
     {
       order = 'asc',
@@ -326,7 +334,7 @@ class Sigchain {
   /**
    * Get signed claims
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async *getSignedClaims(
     {
       order = 'asc',
@@ -384,7 +392,7 @@ class Sigchain {
    * Remember that `undefined` properties are deleted.
    * While `undefined` values in arrays are converted to `null`.
    */
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
+  @createDestroyStartStop.ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async addClaim(
     data: ClaimInput,
     date: Date = new Date(),

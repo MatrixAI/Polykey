@@ -1,11 +1,10 @@
-import type { NodeId } from '@/nodes/types';
-import type { ProviderIdentityId } from '@/identities/types';
-import type { SignedClaim } from '@/claims/types';
-import type { Key } from '@/keys/types';
+import type { NodeId } from '#nodes/types.js';
+import type { ProviderIdentityId } from '#identities/types.js';
+import type { SignedClaim } from '#claims/types.js';
 import type {
   ClaimLinkNode,
   ClaimLinkIdentity,
-} from '../../src/claims/payloads';
+} from '#claims/payloads/index.js';
 import type {
   GestaltIdentityInfo,
   GestaltInfo,
@@ -15,31 +14,32 @@ import type {
   GestaltLinkId,
   GestaltLinkNode,
   GestaltLinkIdentity,
-} from '../../src/gestalts/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+} from '#gestalts/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { fc, test } from '@fast-check/jest';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import ACL from '@/acl/ACL';
-import * as gestaltsErrors from '@/gestalts/errors';
-import * as gestaltsUtils from '@/gestalts/utils';
-import * as utils from '@/utils';
-import * as keysUtils from '@/keys/utils';
-import Token from '@/tokens/Token';
-import { encodeGestaltNodeId, encodeGestaltIdentityId } from '@/gestalts/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as claimsUtils from '@/claims/utils';
-import * as testsGestaltsUtils from './utils';
-import * as testsUtils from '../utils';
-import * as testsIdentitiesUtils from '../identities/utils';
-import * as testsKeysUtils from '../keys/utils';
-import * as ids from '../../src/ids';
-import * as testsIdsUtils from '../ids/utils';
-import 'ix/add/asynciterable-operators/toarray';
+import * as testsGestaltsUtils from './utils.js';
+import * as testsUtils from '../utils/index.js';
+import * as testsIdentitiesUtils from '../identities/utils.js';
+import * as testsKeysUtils from '../keys/utils.js';
+import * as ids from '../../src/ids/index.js';
+import * as testsIdsUtils from '../ids/utils.js';
+import GestaltGraph from '#gestalts/GestaltGraph.js';
+import ACL from '#acl/ACL.js';
+import * as gestaltsErrors from '#gestalts/errors.js';
+import * as gestaltsUtils from '#gestalts/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import Token from '#tokens/Token.js';
+import {
+  encodeGestaltNodeId,
+  encodeGestaltIdentityId,
+} from '#gestalts/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as claimsUtils from '#claims/utils.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('GestaltGraph', () => {
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
@@ -53,90 +53,100 @@ describe('GestaltGraph', () => {
   const gestaltNodeInfoComposedArb = testsIdsUtils.nodeIdArb.chain(
     testsGestaltsUtils.gestaltNodeInfoArb,
   );
-  const linkNodeComposedArb = fc
-    .tuple(testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb)
-    .chain(([keyPair1, keyPair2]) => {
-      const nodeId1 = keysUtils.publicKeyToNodeId(keyPair1.publicKey);
-      const nodeId2 = keysUtils.publicKeyToNodeId(keyPair2.publicKey);
-      return fc.record({
-        gestaltNodeInfo1: testsGestaltsUtils.gestaltNodeInfoArb(nodeId1),
-        gestaltNodeInfo2: testsGestaltsUtils.gestaltNodeInfoArb(nodeId2),
-        linkNode: testsGestaltsUtils.linkNodeArb(keyPair1, keyPair2),
-      });
-    })
-    .noShrink();
-  const gestaltIdentityInfoComposedArb = fc
-    .tuple(
-      testsIdentitiesUtils.providerIdArb,
-      testsIdentitiesUtils.identitiyIdArb,
-    )
-    .chain((item) => testsGestaltsUtils.gestaltIdentityInfoArb(...item))
-    .noShrink();
-  const linkIdentityComposedArb = fc
-    .tuple(
-      testsKeysUtils.keyPairArb,
-      testsIdentitiesUtils.providerIdArb,
-      testsIdentitiesUtils.identitiyIdArb,
-    )
-    .chain(([keyPair, providerId, identityId]) => {
-      const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-      return fc.record({
-        gestaltNodeInfo: testsGestaltsUtils.gestaltNodeInfoArb(nodeId),
-        gestaltIdentityInfo: testsGestaltsUtils.gestaltIdentityInfoArb(
-          providerId,
-          identityId,
-        ),
-        linkIdentity: testsGestaltsUtils.linkIdentityArb(
-          keyPair,
-          providerId,
-          identityId,
-        ),
-      });
-    })
-    .noShrink();
+  const linkNodeComposedArb = fc.noShrink(
+    fc
+      .tuple(testsKeysUtils.keyPairArb, testsKeysUtils.keyPairArb)
+      .chain(([keyPair1, keyPair2]) => {
+        const nodeId1 = keysUtils.publicKeyToNodeId(keyPair1.publicKey);
+        const nodeId2 = keysUtils.publicKeyToNodeId(keyPair2.publicKey);
+        return fc.record(
+          {
+            gestaltNodeInfo1: testsGestaltsUtils.gestaltNodeInfoArb(nodeId1),
+            gestaltNodeInfo2: testsGestaltsUtils.gestaltNodeInfoArb(nodeId2),
+            linkNode: testsGestaltsUtils.linkNodeArb(keyPair1, keyPair2),
+          },
+          { noNullPrototype: true },
+        );
+      }),
+  );
+  const gestaltIdentityInfoComposedArb = fc.noShrink(
+    fc
+      .tuple(
+        testsIdentitiesUtils.providerIdArb,
+        testsIdentitiesUtils.identitiyIdArb,
+      )
+      .chain((item) => testsGestaltsUtils.gestaltIdentityInfoArb(...item)),
+  );
+  const linkIdentityComposedArb = fc.noShrink(
+    fc
+      .tuple(
+        testsKeysUtils.keyPairArb,
+        testsIdentitiesUtils.providerIdArb,
+        testsIdentitiesUtils.identitiyIdArb,
+      )
+      .chain(([keyPair, providerId, identityId]) => {
+        const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+        return fc.record(
+          {
+            gestaltNodeInfo: testsGestaltsUtils.gestaltNodeInfoArb(nodeId),
+            gestaltIdentityInfo: testsGestaltsUtils.gestaltIdentityInfoArb(
+              providerId,
+              identityId,
+            ),
+            linkIdentity: testsGestaltsUtils.linkIdentityArb(
+              keyPair,
+              providerId,
+              identityId,
+            ),
+          },
+          { noNullPrototype: true },
+        );
+      }),
+  );
   const gestaltInfoComposedArb = fc.oneof(
     fc.tuple(fc.constant('node'), gestaltNodeInfoComposedArb),
     fc.tuple(fc.constant('identity'), gestaltIdentityInfoComposedArb),
   ) as fc.Arbitrary<
     ['node', GestaltNodeInfo] | ['identity', GestaltIdentityInfo]
   >;
-  const linkVertexComposedArb = fc
-    .oneof(
-      fc.tuple(fc.constant('node'), linkNodeComposedArb),
-      fc.tuple(fc.constant('identity'), linkIdentityComposedArb),
-    )
-    .map((item) => {
-      const [type, linkData] = item as any;
-      switch (type) {
-        case 'node':
-          return {
-            gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo1] as [
-              'node',
-              GestaltNodeInfo,
-            ],
-            gestaltVertexInfo2: [
-              'node',
-              linkData.gestaltNodeInfo2,
-            ] as GestaltInfo,
-            gestaltLink: ['node', linkData.linkNode] as GestaltLink,
-          };
-        case 'identity':
-          return {
-            gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo] as [
-              'node',
-              GestaltNodeInfo,
-            ],
-            gestaltVertexInfo2: [
-              'identity',
-              linkData.gestaltIdentityInfo,
-            ] as GestaltInfo,
-            gestaltLink: ['identity', linkData.linkIdentity] as GestaltLink,
-          };
-        default:
-      }
-      throw Error();
-    })
-    .noShrink();
+  const linkVertexComposedArb = fc.noShrink(
+    fc
+      .oneof(
+        fc.tuple(fc.constant('node'), linkNodeComposedArb),
+        fc.tuple(fc.constant('identity'), linkIdentityComposedArb),
+      )
+      .map((item) => {
+        const [type, linkData] = item as any;
+        switch (type) {
+          case 'node':
+            return {
+              gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo1] as [
+                'node',
+                GestaltNodeInfo,
+              ],
+              gestaltVertexInfo2: [
+                'node',
+                linkData.gestaltNodeInfo2,
+              ] as GestaltInfo,
+              gestaltLink: ['node', linkData.linkNode] as GestaltLink,
+            };
+          case 'identity':
+            return {
+              gestaltVertexInfo1: ['node', linkData.gestaltNodeInfo] as [
+                'node',
+                GestaltNodeInfo,
+              ],
+              gestaltVertexInfo2: [
+                'identity',
+                linkData.gestaltIdentityInfo,
+              ] as GestaltInfo,
+              gestaltLink: ['identity', linkData.linkIdentity] as GestaltLink,
+            };
+          default:
+        }
+        throw Error();
+      }),
+  );
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -148,20 +158,7 @@ describe('GestaltGraph', () => {
       logger,
       crypto: {
         key: keysUtils.generateKey(),
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     acl = await ACL.createACL({ db, logger });
@@ -758,9 +755,9 @@ describe('GestaltGraph', () => {
     for (const gestaltNodeInfo of gestaltNodeInfos) {
       await gestaltGraph.setNode(gestaltNodeInfo);
     }
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     expect(gestalts).toHaveLength(gestaltNodeInfos.length);
     for (const gestalt of gestalts) {
       const gestaltId = Object.keys(gestalt.nodes)[0];
@@ -777,52 +774,46 @@ describe('GestaltGraph', () => {
     }
   });
   test.prop([
-    fc
-      .array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 })
-      .noShrink(),
-  ])(
-    'getGestalts with identities',
-
-    async (gestaltIdentityInfos) => {
-      const ids = new Set<string>();
-      for (const gestaltIdentityInfo of gestaltIdentityInfos) {
-        ids.add(
-          gestaltIdentityInfo.providerId + gestaltIdentityInfo.identityId,
-        );
-      }
-      fc.pre(ids.size === gestaltIdentityInfos.length);
-      const gestaltGraph = await GestaltGraph.createGestaltGraph({
-        db,
-        acl,
-        logger,
-        fresh: true,
+    fc.noShrink(
+      fc.array(gestaltIdentityInfoComposedArb, { minLength: 2, maxLength: 10 }),
+    ),
+  ])('getGestalts with identities', async (gestaltIdentityInfos) => {
+    const ids = new Set<string>();
+    for (const gestaltIdentityInfo of gestaltIdentityInfos) {
+      ids.add(gestaltIdentityInfo.providerId + gestaltIdentityInfo.identityId);
+    }
+    fc.pre(ids.size === gestaltIdentityInfos.length);
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+      fresh: true,
+    });
+    for (const gestaltIdentityInfo of gestaltIdentityInfos) {
+      await gestaltGraph.setIdentity(gestaltIdentityInfo);
+    }
+    const gestalts = await testsUtils.generatorToArray(
+      gestaltGraph.getGestalts(),
+    );
+    expect(gestalts).toHaveLength(gestaltIdentityInfos.length);
+    for (const gestalt of gestalts) {
+      const gestaltId = Object.keys(gestalt.identities)[0];
+      const [, providerIdentityId] =
+        gestaltsUtils.decodeGestaltIdentityId(gestaltId)!;
+      expect(gestalt).toMatchObject({
+        matrix: {
+          [gestaltId]: {},
+        },
+        nodes: {},
+        identities: {
+          [gestaltId]: {
+            providerId: providerIdentityId[0],
+            identityId: providerIdentityId[1],
+          },
+        },
       });
-      for (const gestaltIdentityInfo of gestaltIdentityInfos) {
-        await gestaltGraph.setIdentity(gestaltIdentityInfo);
-      }
-      const gestalts = await AsyncIterable.as(
-        gestaltGraph.getGestalts(),
-      ).toArray();
-      expect(gestalts).toHaveLength(gestaltIdentityInfos.length);
-      for (const gestalt of gestalts) {
-        const gestaltId = Object.keys(gestalt.identities)[0];
-        const [, providerIdentityId] =
-          gestaltsUtils.decodeGestaltIdentityId(gestaltId)!;
-        expect(gestalt).toMatchObject({
-          matrix: {
-            [gestaltId]: {},
-          },
-          nodes: {},
-          identities: {
-            [gestaltId]: {
-              providerId: providerIdentityId[0],
-              identityId: providerIdentityId[1],
-            },
-          },
-        });
-      }
-    },
-  );
+    }
+  });
   test.prop([
     fc.array(gestaltInfoComposedArb, { minLength: 2, maxLength: 10 }),
   ])('getGestalts with nodes and identities', async (gestaltInfos) => {
@@ -850,9 +841,9 @@ describe('GestaltGraph', () => {
     for (const gestaltinfo of gestaltInfos) {
       await gestaltGraph.setVertex(gestaltinfo);
     }
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     expect(gestalts).toHaveLength(gestaltInfos.length);
     for (const gestalt of gestalts) {
       const gestaltId = Object.keys(gestalt.matrix)[0];
@@ -1150,201 +1141,208 @@ describe('GestaltGraph', () => {
   describe('Model based testing', () => {
     const altCommandsArb =
       // Use a record to generate a constrained set of vertices
-      fc
-        .record({
-          keyPairs: fc.array(testsKeysUtils.keyPairArb, {
-            minLength: 2,
-            maxLength: 10,
-          }),
-          identityInfos: fc
-            .array(gestaltIdentityInfoComposedArb, {
-              minLength: 1,
-              maxLength: 2,
-            })
-            .filter((v) => {
-              const ids = new Set<string>();
-              for (const identityInfo of v) {
-                ids.add(identityInfo.providerId + identityInfo.identityId);
-              }
-              return ids.size === v.length;
-            }),
-        })
-        .chain((verticies) => {
-          const { keyPairs, identityInfos } = verticies;
-          const nodeInfos = keyPairs.map((keyPair) => {
-            const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
-            const nodeInfo: GestaltNodeInfo = { nodeId };
-            return nodeInfo;
-          });
-          const vertexInfos = [
-            ...nodeInfos.map((nodeInfo) => ['node', nodeInfo]),
-            ...identityInfos.map((identityInfo) => ['identity', identityInfo]),
-          ] as Array<GestaltInfo>;
-
-          // Random selection arbs
-          const randomNodeInfoArb = fc.constantFrom(...nodeInfos);
-          const randomNodeIdArb = randomNodeInfoArb.map(
-            (nodeInfo) => nodeInfo.nodeId,
-          );
-          const randomIdentityInfoArb = fc.constantFrom(...identityInfos);
-          const randomProviderIdentityIdArb = randomIdentityInfoArb.map(
-            (identityInfo) =>
-              [
-                identityInfo.providerId,
-                identityInfo.identityId,
-              ] as ProviderIdentityId,
-          );
-          const randomVertexInfo = fc.constantFrom(...vertexInfos);
-          const randomVertexId = fc.oneof(
-            fc.tuple(fc.constant('node'), randomNodeIdArb),
-            fc.tuple(fc.constant('identity'), randomProviderIdentityIdArb),
-          ) as fc.Arbitrary<GestaltId>;
-          const randomKeyPair = fc.constantFrom(...keyPairs);
-
-          const setVertexCommandArb = fc
-            .tuple(randomVertexInfo, testsGestaltsUtils.gestaltActionsArb(1))
-            .map((args) => new testsGestaltsUtils.SetVertexCommand(...args));
-          const unsetVertexCommandArb = randomVertexId.map(
-            (args) => new testsGestaltsUtils.UnsetVertexCommand(args),
-          );
-          const linkNodesParamsArb = fc
-            .tuple(randomKeyPair, randomKeyPair)
-            .filter(([a, b]) => !a.privateKey.equals(b.privateKey))
-            .chain(([keyPair1, keyPair2]) => {
-              const nodeInfo1 = {
-                nodeId: keysUtils.publicKeyToNodeId(keyPair1.publicKey),
-              };
-              const nodeInfo2 = {
-                nodeId: keysUtils.publicKeyToNodeId(keyPair2.publicKey),
-              };
-              return fc.tuple(
-                fc.constant(nodeInfo1),
-                fc.constant(nodeInfo2),
-                testsGestaltsUtils.gestaltLinkNodeArb(keyPair1, keyPair2),
-              );
+      fc.noShrink(
+        fc
+          .record(
+            {
+              keyPairs: fc.array(testsKeysUtils.keyPairArb, {
+                minLength: 2,
+                maxLength: 10,
+              }),
+              identityInfos: fc
+                .array(gestaltIdentityInfoComposedArb, {
+                  minLength: 1,
+                  maxLength: 2,
+                })
+                .filter((v) => {
+                  const ids = new Set<string>();
+                  for (const identityInfo of v) {
+                    ids.add(identityInfo.providerId + identityInfo.identityId);
+                  }
+                  return ids.size === v.length;
+                }),
+            },
+            { noNullPrototype: true },
+          )
+          .chain((verticies) => {
+            const { keyPairs, identityInfos } = verticies;
+            const nodeInfos = keyPairs.map((keyPair) => {
+              const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+              const nodeInfo: GestaltNodeInfo = { nodeId };
+              return nodeInfo;
             });
-          const linkNodesCommandArb = linkNodesParamsArb.map(
-            ([nodeInfo1, nodeInfo2, linkNode]) =>
-              new testsGestaltsUtils.LinkNodeAndNodeCommand(
-                nodeInfo1,
-                nodeInfo2,
-                linkNode,
-              ),
-          );
+            const vertexInfos = [
+              ...nodeInfos.map((nodeInfo) => ['node', nodeInfo]),
+              ...identityInfos.map((identityInfo) => [
+                'identity',
+                identityInfo,
+              ]),
+            ] as Array<GestaltInfo>;
 
-          const linkIdentitiesParamsArb = fc
-            .tuple(randomKeyPair, randomIdentityInfoArb)
-            .chain(([keyPair, identityInfo]) => {
-              const nodeInfo = {
-                nodeId: keysUtils.publicKeyToNodeId(keyPair.publicKey),
-              };
-              return fc.tuple(
-                fc.constant(nodeInfo),
-                fc.constant(identityInfo),
-                testsGestaltsUtils.gestaltLinkIdentityArb(
-                  keyPair,
+            // Random selection arbs
+            const randomNodeInfoArb = fc.constantFrom(...nodeInfos);
+            const randomNodeIdArb = randomNodeInfoArb.map(
+              (nodeInfo) => nodeInfo.nodeId,
+            );
+            const randomIdentityInfoArb = fc.constantFrom(...identityInfos);
+            const randomProviderIdentityIdArb = randomIdentityInfoArb.map(
+              (identityInfo) =>
+                [
                   identityInfo.providerId,
                   identityInfo.identityId,
+                ] as ProviderIdentityId,
+            );
+            const randomVertexInfo = fc.constantFrom(...vertexInfos);
+            const randomVertexId = fc.oneof(
+              fc.tuple(fc.constant('node'), randomNodeIdArb),
+              fc.tuple(fc.constant('identity'), randomProviderIdentityIdArb),
+            ) as fc.Arbitrary<GestaltId>;
+            const randomKeyPair = fc.constantFrom(...keyPairs);
+
+            const setVertexCommandArb = fc
+              .tuple(randomVertexInfo, testsGestaltsUtils.gestaltActionsArb(1))
+              .map((args) => new testsGestaltsUtils.SetVertexCommand(...args));
+            const unsetVertexCommandArb = randomVertexId.map(
+              (args) => new testsGestaltsUtils.UnsetVertexCommand(args),
+            );
+            const linkNodesParamsArb = fc
+              .tuple(randomKeyPair, randomKeyPair)
+              .filter(([a, b]) => !a.privateKey.equals(b.privateKey))
+              .chain(([keyPair1, keyPair2]) => {
+                const nodeInfo1 = {
+                  nodeId: keysUtils.publicKeyToNodeId(keyPair1.publicKey),
+                };
+                const nodeInfo2 = {
+                  nodeId: keysUtils.publicKeyToNodeId(keyPair2.publicKey),
+                };
+                return fc.tuple(
+                  fc.constant(nodeInfo1),
+                  fc.constant(nodeInfo2),
+                  testsGestaltsUtils.gestaltLinkNodeArb(keyPair1, keyPair2),
+                );
+              });
+            const linkNodesCommandArb = linkNodesParamsArb.map(
+              ([nodeInfo1, nodeInfo2, linkNode]) =>
+                new testsGestaltsUtils.LinkNodeAndNodeCommand(
+                  nodeInfo1,
+                  nodeInfo2,
+                  linkNode,
                 ),
+            );
+
+            const linkIdentitiesParamsArb = fc
+              .tuple(randomKeyPair, randomIdentityInfoArb)
+              .chain(([keyPair, identityInfo]) => {
+                const nodeInfo = {
+                  nodeId: keysUtils.publicKeyToNodeId(keyPair.publicKey),
+                };
+                return fc.tuple(
+                  fc.constant(nodeInfo),
+                  fc.constant(identityInfo),
+                  testsGestaltsUtils.gestaltLinkIdentityArb(
+                    keyPair,
+                    identityInfo.providerId,
+                    identityInfo.identityId,
+                  ),
+                );
+              });
+            const linkIdentitiiesCommandArb = linkIdentitiesParamsArb.map(
+              ([nodeInfo, identitiyInfo, linkIdentity]) =>
+                new testsGestaltsUtils.LinkNodeAndIdentityCommand(
+                  nodeInfo,
+                  identitiyInfo,
+                  linkIdentity,
+                ),
+            );
+
+            const linkVertexCommandArb = fc
+              .oneof(
+                linkNodesParamsArb.map(
+                  ([info1, info2, link]) =>
+                    [
+                      ['node', info1],
+                      ['node', info2],
+                      ['node', link],
+                    ] as [GestaltInfo, GestaltInfo, GestaltLink],
+                ),
+                linkIdentitiesParamsArb.map(
+                  ([info1, info2, link]) =>
+                    [
+                      ['node', info1],
+                      ['identity', info2],
+                      ['identity', link],
+                    ] as [GestaltInfo, GestaltInfo, GestaltLink],
+                ),
+              )
+              .map(
+                ([gestaltInfo1, gestaltInfo2, gestaltLink]) =>
+                  new testsGestaltsUtils.LinkVertexAndVertexCommand(
+                    gestaltInfo1 as ['node', GestaltNodeInfo],
+                    gestaltInfo2,
+                    gestaltLink,
+                  ),
               );
-            });
-          const linkIdentitiiesCommandArb = linkIdentitiesParamsArb.map(
-            ([nodeInfo, identitiyInfo, linkIdentity]) =>
-              new testsGestaltsUtils.LinkNodeAndIdentityCommand(
-                nodeInfo,
-                identitiyInfo,
-                linkIdentity,
-              ),
-          );
 
-          const linkVertexCommandArb = fc
-            .oneof(
-              linkNodesParamsArb.map(
-                ([info1, info2, link]) =>
-                  [
-                    ['node', info1],
-                    ['node', info2],
-                    ['node', link],
-                  ] as [GestaltInfo, GestaltInfo, GestaltLink],
-              ),
-              linkIdentitiesParamsArb.map(
-                ([info1, info2, link]) =>
-                  [
-                    ['node', info1],
-                    ['identity', info2],
-                    ['identity', link],
-                  ] as [GestaltInfo, GestaltInfo, GestaltLink],
-              ),
-            )
-            .map(
-              ([gestaltInfo1, gestaltInfo2, gestaltLink]) =>
-                new testsGestaltsUtils.LinkVertexAndVertexCommand(
-                  gestaltInfo1 as ['node', GestaltNodeInfo],
-                  gestaltInfo2,
-                  gestaltLink,
+            const unlinkNodeCommandArb = fc
+              .tuple(randomNodeIdArb, randomNodeIdArb)
+              .map(
+                ([nodeId1, nodeId2]) =>
+                  new testsGestaltsUtils.UnlinkNodeAndNodeCommand(
+                    nodeId1,
+                    nodeId2,
+                  ),
+              );
+
+            const unlinkIdentityCommandArb = fc
+              .tuple(randomNodeIdArb, randomProviderIdentityIdArb)
+              .map(
+                ([nodeId, identityId]) =>
+                  new testsGestaltsUtils.UnlinkNodeAndIdentityCommand(
+                    nodeId,
+                    identityId,
+                  ),
+              );
+
+            const unlinkVertexCommandArb = fc
+              .tuple(
+                randomNodeIdArb.map(
+                  (nodeId) => ['node', nodeId] as ['node', NodeId],
                 ),
+                randomVertexId,
+              )
+              .map(
+                ([gestaltId1, gestaltId2]) =>
+                  new testsGestaltsUtils.UnlinkVertexAndVertexCommand(
+                    gestaltId1,
+                    gestaltId2,
+                  ),
+              );
+
+            const commandsUnlink = fc.commands(
+              [
+                unsetVertexCommandArb,
+                unlinkNodeCommandArb,
+                unlinkIdentityCommandArb,
+                unlinkVertexCommandArb,
+              ],
+              { size: '+1' },
             );
 
-          const unlinkNodeCommandArb = fc
-            .tuple(randomNodeIdArb, randomNodeIdArb)
-            .map(
-              ([nodeId1, nodeId2]) =>
-                new testsGestaltsUtils.UnlinkNodeAndNodeCommand(
-                  nodeId1,
-                  nodeId2,
-                ),
+            const commandsLink = fc.commands(
+              [
+                setVertexCommandArb,
+                linkNodesCommandArb,
+                linkIdentitiiesCommandArb,
+                linkVertexCommandArb,
+              ],
+              { size: '=' },
             );
-
-          const unlinkIdentityCommandArb = fc
-            .tuple(randomNodeIdArb, randomProviderIdentityIdArb)
-            .map(
-              ([nodeId, identityId]) =>
-                new testsGestaltsUtils.UnlinkNodeAndIdentityCommand(
-                  nodeId,
-                  identityId,
-                ),
-            );
-
-          const unlinkVertexCommandArb = fc
-            .tuple(
-              randomNodeIdArb.map(
-                (nodeId) => ['node', nodeId] as ['node', NodeId],
-              ),
-              randomVertexId,
-            )
-            .map(
-              ([gestaltId1, gestaltId2]) =>
-                new testsGestaltsUtils.UnlinkVertexAndVertexCommand(
-                  gestaltId1,
-                  gestaltId2,
-                ),
-            );
-
-          const commandsUnlink = fc.commands(
-            [
-              unsetVertexCommandArb,
-              unlinkNodeCommandArb,
-              unlinkIdentityCommandArb,
-              unlinkVertexCommandArb,
-            ],
-            { size: '+1' },
-          );
-
-          const commandsLink = fc.commands(
-            [
-              setVertexCommandArb,
-              linkNodesCommandArb,
-              linkIdentitiiesCommandArb,
-              linkVertexCommandArb,
-            ],
-            { size: '=' },
-          );
-          return fc.tuple(commandsLink, commandsUnlink);
-        })
-        .map(([commandsLink, commandsUnlink]) => {
-          return [...commandsLink, ...commandsUnlink];
-        })
-        .noShrink();
+            return fc.tuple(commandsLink, commandsUnlink);
+          })
+          .map(([commandsLink, commandsUnlink]) => {
+            return [...commandsLink, ...commandsUnlink];
+          }),
+      );
 
     test.prop([altCommandsArb], { numRuns: 20 })('model', async (cmds) => {
       await acl.start({ fresh: true });

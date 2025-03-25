@@ -6,15 +6,15 @@ import type {
   TokenHeaderSignatureEncoded,
   SignedToken,
   SignedTokenEncoded,
-} from './types';
-import type { Key, PublicKey, PrivateKey, KeyPair } from '../keys/types';
-import type { POJO } from '../types';
-import type { Signature } from '../keys/types';
-import * as tokensUtils from './utils';
-import * as tokensErrors from './errors';
-import * as ids from '../ids';
-import * as keysUtils from '../keys/utils';
-import * as validationErrors from '../validation/errors';
+} from './types.js';
+import type { Key, PublicKey, PrivateKey, KeyPair } from '../keys/types.js';
+import type { POJO } from '../types.js';
+import type { Signature } from '../keys/types.js';
+import * as tokensUtils from './utils.js';
+import * as tokensErrors from './errors.js';
+import * as ids from '../ids/index.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as validationErrors from '../validation/errors.js';
 
 /**
  * Token represents a single token with methods to sign and verify.

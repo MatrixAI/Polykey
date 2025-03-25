@@ -2,11 +2,11 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   StatusResultMessage,
-} from '../types';
-import type PolykeyAgent from '../../PolykeyAgent';
+} from '../types.js';
+import type PolykeyAgent from '../../PolykeyAgent.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import config from '../../config';
-import * as nodesUtils from '../../nodes/utils';
+import config from '../../config.js';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class AgentStatus extends UnaryHandler<
   {

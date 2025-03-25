@@ -3,14 +3,14 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   IdentityMessage,
-} from '../types';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type { GestaltAction } from '../../gestalts/types';
-import type { IdentityId, ProviderId } from '../../ids';
+} from '../types.js';
+import type GestaltGraph from '../../gestalts/GestaltGraph.js';
+import type { GestaltAction } from '../../gestalts/types.js';
+import type { IdentityId, ProviderId } from '../../ids/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
-import * as ids from '../../ids';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
+import * as ids from '../../ids/index.js';
 
 class GestaltsActionsGetByIdentity extends UnaryHandler<
   {

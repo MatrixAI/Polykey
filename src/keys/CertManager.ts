@@ -8,24 +8,22 @@ import type {
   KeyPair,
   RecoveryCode,
   CertificatePEMChain,
-} from './types';
-import type KeyRing from './KeyRing';
-import type TaskManager from '../tasks/TaskManager';
-import type { CertId, TaskHandlerId, TaskId } from '../ids/types';
-import type { Task, TaskHandler } from '../tasks/types';
-import type { PolykeyWorkerManagerInterface } from '../workers/types';
+} from './types.js';
+import type KeyRing from './KeyRing.js';
+import type TaskManager from '../tasks/TaskManager.js';
+import type { CertId, TaskHandlerId, TaskId } from '../ids/types.js';
+import type { Task, TaskHandler } from '../tasks/types.js';
+import type { PolykeyWorkerManager } from '../workers/types.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { Lock } from '@matrixai/async-locks';
-import * as keysUtils from './utils';
-import * as keysErrors from './errors';
-import * as keysEvents from './events';
-import * as ids from '../ids';
-import config from '../config';
+import * as keysUtils from './utils/index.js';
+import * as keysErrors from './errors.js';
+import * as keysEvents from './events.js';
+import * as ids from '../ids/index.js';
+import * as workerUtils from '../workers/utils.js';
+import config from '../config.js';
 
 /**
  * This signal reason indicates we want to stop the renewal
@@ -34,8 +32,8 @@ const abortRenewCertTaskReason = Symbol(
   'abort automatic certificate task renewal',
 );
 
-interface CertManager extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface CertManager extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new keysErrors.ErrorCertManagerRunning(),
   new keysErrors.ErrorCertManagerDestroyed(),
   {
@@ -80,7 +78,7 @@ class CertManager {
     taskManager: TaskManager;
     certDuration?: number;
     certRenewLeadTime?: number;
-    workerManager?: PolykeyWorkerManagerInterface;
+    workerManager?: PolykeyWorkerManager;
     logger?: Logger;
     subjectAttrsExtra?: Array<{ [key: string]: Array<string> }>;
     issuerAttrsExtra?: Array<{ [key: string]: Array<string> }>;
@@ -118,7 +116,7 @@ class CertManager {
   protected db: DB;
   protected keyRing: KeyRing;
   protected taskManager: TaskManager;
-  protected workerManager?: PolykeyWorkerManagerInterface;
+  protected workerManager?: PolykeyWorkerManager;
   protected generateCertId: () => CertId;
   protected dbPath: LevelPath = [this.constructor.name];
   /**
@@ -160,7 +158,7 @@ class CertManager {
     taskManager: TaskManager;
     certDuration: number;
     certRenewLeadTime: number;
-    workerManager?: PolykeyWorkerManagerInterface;
+    workerManager?: PolykeyWorkerManager;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -172,7 +170,7 @@ class CertManager {
     this.workerManager = workerManager;
   }
 
-  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+  public setWorkerManager(workerManager: PolykeyWorkerManager) {
     this.workerManager = workerManager;
   }
 
@@ -229,7 +227,11 @@ class CertManager {
    * Start background tasks.
    * This is idempotent.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async startTasks(now: Date = new Date()): Promise<void> {
     this.tasksRunning = true;
     await this.setupRenewCurrentCertTask(now);
@@ -265,7 +267,11 @@ class CertManager {
     this.tasksRunning = false;
   }
 
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getLastCertId(
     tran?: DBTransaction,
   ): Promise<CertId | undefined> {
@@ -280,7 +286,11 @@ class CertManager {
   /**
    * Get a certificate according to the `CertID`
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getCert(
     certId: CertId,
     tran?: DBTransaction,
@@ -298,7 +308,11 @@ class CertManager {
   /**
    * Get `Certificate` from leaf to root
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async *getCerts(tran?: DBTransaction): AsyncGenerator<Certificate> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) => this.getCerts(tran));
@@ -314,7 +328,7 @@ class CertManager {
   /**
    * Gets an array of `Certificate` in order of leaf to root
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCertsChain(
     tran?: DBTransaction,
   ): Promise<Array<Certificate>> {
@@ -328,7 +342,7 @@ class CertManager {
   /**
    * Get `CertificatePEM` from leaf to root
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async *getCertPEMs(
     tran?: DBTransaction,
   ): AsyncGenerator<CertificatePEM> {
@@ -340,7 +354,7 @@ class CertManager {
   /**
    * Gets an array of `CertificatePEM` in order of leaf to root
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCertPEMsChain(
     tran?: DBTransaction,
   ): Promise<Array<CertificatePEM>> {
@@ -354,7 +368,7 @@ class CertManager {
   /**
    * Gets a concatenated `CertificatePEM` ordered from leaf to root
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCertPEMsChainPEM(
     tran?: DBTransaction,
   ): Promise<CertificatePEMChain> {
@@ -368,7 +382,11 @@ class CertManager {
   /**
    * Get the current (leaf) certificate
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getCurrentCert(tran?: DBTransaction): Promise<Certificate> {
     let cert: Certificate;
     for await (const cert_ of this.getCerts(tran)) {
@@ -381,7 +399,7 @@ class CertManager {
   /**
    * Get the current (leaf) certificate in PEM
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async getCurrentCertPEM(
     tran?: DBTransaction,
   ): Promise<CertificatePEM> {
@@ -404,7 +422,7 @@ class CertManager {
    * It will reference the same timestamp that was used to generate the new
    * certificate.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async renewCertWithNewKeyPair(
     password: string,
     duration: number = this.certDuration,
@@ -486,7 +504,11 @@ class CertManager {
    * It will reference the same timestamp that was used to generate the new
    * certificate.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new keysErrors.ErrorCertManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async renewCertWithCurrentKeyPair(
     duration: number = this.certDuration,
     now: Date = new Date(),
@@ -547,7 +569,7 @@ class CertManager {
    * It will reference the same timestamp that was used to generate the new
    * certificate.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async resetCertWithNewKeyPair(
     password: string,
     duration: number = this.certDuration,
@@ -620,7 +642,7 @@ class CertManager {
    * It will reference the same timestamp that was used to generate the new
    * certificate.
    */
-  @ready(new keysErrors.ErrorCertManagerNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorCertManagerNotRunning())
   public async resetCertWithCurrentKeyPair(
     duration: number = this.certDuration,
     now: Date = new Date(),
@@ -757,7 +779,7 @@ class CertManager {
       }
       // Only if the task does not already exist, do we setup a new task
       if (task == null) {
-        task = await this.taskManager.scheduleTask(
+        const taskNew = await this.taskManager.scheduleTask(
           {
             handlerId: this.renewCurrentCertHandlerId,
             delay,
@@ -766,7 +788,8 @@ class CertManager {
           },
           tran,
         );
-        this.renewCurrentCertTaskId = task.id;
+        this.renewCurrentCertTaskId = taskNew.id;
+        task = taskNew;
       }
     });
   }
@@ -801,21 +824,34 @@ class CertManager {
         now,
       });
     } else {
-      cert = await this.workerManager.call(async (w) => {
-        const result = await w.generateCertificate({
-          certId: this.generateCertId().buffer,
-          subjectKeyPair: {
-            publicKey: subjectKeyPair.publicKey.buffer,
-            privateKey: subjectKeyPair.privateKey.buffer,
+      const certId = this.generateCertId();
+      const certIdAB = workerUtils.toArrayBuffer(certId.toBuffer());
+      const publicKeyAB = workerUtils.toArrayBuffer(
+        Buffer.from(subjectKeyPair.publicKey),
+      );
+      const privateKeyAB = workerUtils.toArrayBuffer(
+        Buffer.from(subjectKeyPair.privateKey),
+      );
+      const issuerPrivateKeyAB = workerUtils.toArrayBuffer(
+        Buffer.from(issuerPrivateKey),
+      );
+      const { data: certAB } =
+        await this.workerManager.methods.generateCertificate(
+          {
+            certId: certIdAB,
+            subjectKeyPair: {
+              publicKey: publicKeyAB,
+              privateKey: privateKeyAB,
+            },
+            issuerPrivateKey: issuerPrivateKeyAB,
+            duration,
+            subjectAttrsExtra,
+            issuerAttrsExtra,
+            now,
           },
-          issuerPrivateKey: issuerPrivateKey.buffer,
-          duration,
-          subjectAttrsExtra,
-          issuerAttrsExtra,
-          now,
-        });
-        return keysUtils.certFromASN1(Buffer.from(result) as CertificateASN1)!;
-      });
+          [certIdAB, publicKeyAB, privateKeyAB, issuerPrivateKeyAB],
+        );
+      cert = keysUtils.certFromASN1(Buffer.from(certAB) as CertificateASN1)!;
     }
     return cert;
   }

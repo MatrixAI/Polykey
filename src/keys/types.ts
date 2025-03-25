@@ -1,6 +1,6 @@
 import type { X509Certificate } from '@peculiar/x509';
-import type { NodeId } from '../ids/types';
-import type { Opaque, InverseRecord } from '../types';
+import type { NodeId } from '../ids/types.js';
+import type { Opaque, InverseRecord } from '../types.js';
 
 /**
  * Locked buffer wrapper type for sensitive in-memory data.
@@ -316,6 +316,6 @@ export type {
   CertManagerChangeData,
 };
 
-export type { CertId, CertIdString, CertIdEncoded } from '../ids/types';
+export type { CertId, CertIdString, CertIdEncoded } from '../ids/types.js';
 
 export { multihashCodes, multihashCodesI };

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { test } from '@fast-check/jest';
-import * as auditUtils from '@/audit/utils';
+import * as auditUtils from '#audit/utils.js';
 
 describe('Audit Utils', () => {
   const sortFn = (a: number, b: number): number => {
@@ -59,7 +59,7 @@ describe('Audit Utils', () => {
     expect(filtered).not.toInclude('e.f');
     expect(filtered).not.toInclude('e.g');
   });
-  test.prop([fc.array(orderedNumberArrayArb).noShrink()])(
+  test.prop([fc.noShrink(fc.array(orderedNumberArrayArb))])(
     'can combine strictly ordered iterators',
     async (generatorData) => {
       async function* gen(

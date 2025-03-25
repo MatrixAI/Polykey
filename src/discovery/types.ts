@@ -1,6 +1,6 @@
-import type { GestaltIdEncoded } from '../ids';
-import type { TaskIdEncoded } from '../ids';
-import type { TaskParameters, TaskStatus } from '../tasks/types';
+import type { GestaltIdEncoded } from '../ids/index.js';
+import type { TaskIdEncoded } from '../ids/index.js';
+import type { TaskParameters, TaskStatus } from '../tasks/types.js';
 
 type VertexEventIdentifier = {
   vertex: GestaltIdEncoded;

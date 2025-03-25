@@ -1,1 +1,1 @@
-export { default } from './GitHubProvider';
+export { default } from './GitHubProvider.js';

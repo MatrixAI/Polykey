@@ -5,7 +5,7 @@
  * The parse error message must focus on why the validation failed
  * @module
  */
-import * as validationErrors from './errors';
+import * as validationErrors from './errors.js';
 
 function parseInteger(data: any): number {
   data = parseInt(data);

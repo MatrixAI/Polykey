@@ -1,5 +1,5 @@
 import type { Stat } from 'encryptedfs';
-import type { FileSystem } from '../types';
+import type { FileSystem } from '../types.js';
 import type {
   ContentNode,
   DoneMessage,
@@ -10,16 +10,17 @@ import type {
   Parsed,
   HeaderGeneric,
   HeaderContent,
-} from './types';
-import path from 'path';
+} from './types.js';
+import type { FdIndex } from 'encryptedfs';
+import path from 'node:path';
 import { ReadableStream, TransformStream } from 'stream/web';
 import { minimatch } from 'minimatch';
 import { JSONParser, TokenizerError } from '@streamparser/json';
-import * as vaultsUtils from './utils';
-import { HeaderSize, HeaderType, HeaderMagic } from './types';
-import * as utils from '../utils';
-import * as utilsErrors from '../utils/errors';
-import * as validationErrors from '../validation/errors';
+import * as vaultsUtils from './utils.js';
+import { HeaderSize, HeaderType, HeaderMagic } from './types.js';
+import * as utils from '../utils/index.js';
+import * as utilsErrors from '../utils/errors.js';
+import * as validationErrors from '../validation/errors.js';
 
 /**
  * Generates a serializable format of file stats
@@ -290,7 +291,7 @@ async function* encodeContent(
       // Handle as an EFS fd
       const fsr = fs as FileSystemReadable;
       const bytesRead = await fsr.promises.read(
-        fd,
+        fd as FdIndex,
         buffer,
         undefined,
         buffer.byteLength,
@@ -305,7 +306,7 @@ async function* encodeContent(
     if (typeof fd === 'number') {
       // Handle as an EFS fd
       const fsr = fs as FileSystemReadable;
-      return await fsr.close(fd);
+      return await fsr.close(fd as FdIndex);
     } else {
       // Handle as an FS fd
       return await fd.close();

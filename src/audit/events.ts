@@ -1,5 +1,5 @@
-import type { TopicPath, TopicSubPathToAuditEvent } from './types';
-import EventPolykey from '../EventPolykey';
+import type { TopicPath, TopicSubPathToAuditEvent } from './types.js';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventAudit<T = undefined> extends EventPolykey<T> {}
 

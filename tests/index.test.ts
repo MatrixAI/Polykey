@@ -1,4 +1,4 @@
-import * as polykey from '@';
+import * as polykey from '#index.js';
 
 describe('index', () => {
   test('exports PolykeyAgent, PolykeyClient and errors', async () => {

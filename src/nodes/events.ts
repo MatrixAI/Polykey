@@ -1,7 +1,7 @@
 import type { QUICStream } from '@matrixai/quic';
-import type { ConnectionData } from '../network/types';
-import type { NodeId } from '../ids/types';
-import EventPolykey from '../EventPolykey';
+import type { ConnectionData } from '../network/types.js';
+import type { NodeId } from '../ids/types.js';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventNode<T> extends EventPolykey<T> {}
 

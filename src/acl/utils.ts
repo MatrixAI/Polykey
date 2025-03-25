@@ -1,5 +1,5 @@
-import type { Permission } from './types';
-import { createPermIdGenerator } from '../ids';
+import type { Permission } from './types.js';
+import { createPermIdGenerator } from '../ids/index.js';
 
 function permUnion(perm1: Permission, perm2: Permission): Permission {
   const vaults = {

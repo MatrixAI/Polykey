@@ -1,6 +1,9 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type Discovery from '../../discovery/Discovery';
-import type { DiscoveryQueueInfo } from '../../discovery/types';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type Discovery from '../../discovery/Discovery.js';
+import type { DiscoveryQueueInfo } from '../../discovery/types.js';
 import type { ContextTimed } from '@matrixai/contexts';
 import { ServerHandler } from '@matrixai/rpc';
 

@@ -6,10 +6,10 @@ import type {
   ClientRPCResponseResult,
   VaultIdMessage,
   VaultNameMessage,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsUtils from '../../vaults/utils.js';
 
 class VaultsCreate extends UnaryHandler<
   {

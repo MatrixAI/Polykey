@@ -1,13 +1,13 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import git from 'isomorphic-git';
 import fc from 'fast-check';
 import { test } from '@fast-check/jest';
-import * as gitUtils from '@/git/utils';
-import * as validationErrors from '@/validation/errors';
-import * as gitTestUtils from './utils';
+import * as gitTestUtils from './utils.js';
+import * as gitUtils from '#git/utils.js';
+import * as validationErrors from '#validation/errors.js';
 
 describe('Git utils', () => {
   let dataDir: string;
@@ -199,8 +199,8 @@ describe('Git utils', () => {
     expect(objectList).toIncludeAllMembers(expectedObjectIds);
   });
   test.prop([
-    gitTestUtils.gitRequestDataArb,
-    fc.uint8Array({ size: 'medium' }),
+    fc.noShrink(gitTestUtils.gitRequestDataArb),
+    fc.noShrink(fc.uint8Array({ size: 'medium' })),
   ])('parseRequestLine', async (lineData, rest) => {
     const data = gitTestUtils.generateGitNegotiationLine(
       lineData,
@@ -246,7 +246,7 @@ describe('Git utils', () => {
         break;
     }
   });
-  test.prop([fc.uint8Array({ size: 'medium', minLength: 1 }).noShrink()])(
+  test.prop([fc.noShrink(fc.uint8Array({ size: 'medium', minLength: 1 }))])(
     'parseRequestLine handles bad data',
     async (randomData) => {
       const bufferData = Buffer.from(randomData);

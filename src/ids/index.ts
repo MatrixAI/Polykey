@@ -22,10 +22,10 @@ import type {
   NotificationIdEncoded,
   AuditEventId,
   AuditEventIdEncoded,
-} from './types';
+} from './types.js';
 import { IdInternal, IdSortable, IdRandom } from '@matrixai/id';
-import * as keysUtilsRandom from '../keys/utils/random';
-import * as validationErrors from '../validation/errors';
+import * as keysUtilsRandom from '../keys/utils/random.js';
+import * as validationErrors from '../validation/errors.js';
 
 /**
  * Generates an auditId from an epoch timestamp.
@@ -605,4 +605,4 @@ export {
   generateNotificationIdFromTimestamp,
 };
 
-export * from './types';
+export * from './types.js';

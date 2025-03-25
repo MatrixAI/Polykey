@@ -1,43 +1,41 @@
-import type { IdentityId, ProviderId } from '@/identities/types';
-import type { Host } from '@/network/types';
-import type { Key } from '@/keys/types';
-import type { NodeId } from '@/ids';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { DiscoveryQueueInfo } from '@/discovery/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads/claimLinkIdentity';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { IdentityId, ProviderId } from '#identities/types.js';
+import type { Host } from '#network/types.js';
+import type { NodeId } from '#ids/index.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { DiscoveryQueueInfo } from '#discovery/types.js';
+import type { ClaimLinkIdentity } from '#claims/payloads/claimLinkIdentity.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { EventAll } from '@matrixai/events';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import { Token } from '@/tokens';
-import TaskManager from '@/tasks/TaskManager';
-import PolykeyAgent from '@/PolykeyAgent';
-import Discovery from '@/discovery/Discovery';
-import * as discoveryEvents from '@/discovery/events';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import IdentitiesManager from '@/identities/IdentitiesManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import KeyRing from '@/keys/KeyRing';
-import ACL from '@/acl/ACL';
-import Sigchain from '@/sigchain/Sigchain';
-import * as utils from '@/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as discoveryErrors from '@/discovery/errors';
-import * as keysUtils from '@/keys/utils';
-import * as gestaltsUtils from '@/gestalts/utils';
-import { encodeProviderIdentityId } from '@/ids';
-import * as testNodesUtils from '../nodes/utils';
-import TestProvider from '../identities/TestProvider';
-import 'ix/add/asynciterable-operators/toarray';
-import { createTLSConfig } from '../utils/tls';
-import * as testsUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils.js';
+import TestProvider from '../identities/TestProvider.js';
+import * as testsUtils from '../utils/index.js';
+import { Token } from '#tokens/index.js';
+import TaskManager from '#tasks/TaskManager.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import Discovery from '#discovery/Discovery.js';
+import * as discoveryEvents from '#discovery/events.js';
+import GestaltGraph from '#gestalts/GestaltGraph.js';
+import IdentitiesManager from '#identities/IdentitiesManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import KeyRing from '#keys/KeyRing.js';
+import ACL from '#acl/ACL.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import * as utils from '#utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as discoveryErrors from '#discovery/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as gestaltsUtils from '#gestalts/utils.js';
+import { encodeProviderIdentityId } from '#ids/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -108,20 +106,7 @@ describe('Discovery', () => {
       logger: logger.getChild('db'),
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
       fresh: true,
     });
@@ -163,7 +148,7 @@ describe('Discovery', () => {
       logger,
       lazy: true,
     });
-    const tlsConfig = await createTLSConfig(keyRing.keyPair);
+    const tlsConfig = await testsUtils.createTLSConfig(keyRing.keyPair);
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig,
@@ -320,9 +305,9 @@ describe('Discovery', () => {
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     await waitForAllDiscoveryTasks(discovery);
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
@@ -355,9 +340,9 @@ describe('Discovery', () => {
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId);
     await waitForAllDiscoveryTasks(discovery);
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
@@ -390,9 +375,9 @@ describe('Discovery', () => {
     await taskManager.startProcessing();
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     await waitForAllDiscoveryTasks(discovery);
-    const gestalts1 = await AsyncIterable.as(
+    const gestalts1 = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     const gestalt1 = gestalts1[0];
     const gestaltMatrix1 = gestalt1.matrix;
     const gestaltNodes1 = gestalt1.nodes;
@@ -443,9 +428,9 @@ describe('Discovery', () => {
     // already discovered vertices, however for now we must do this manually.
     await discovery.queueDiscoveryByNode(nodeA.keyRing.getNodeId());
     await waitForAllDiscoveryTasks(discovery);
-    const gestalts2 = await AsyncIterable.as(
+    const gestalts2 = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     const gestalt2 = gestalts2[0];
     const gestaltMatrix2 = gestalt2.matrix;
     const gestaltNodes2 = gestalt2.nodes;
@@ -484,9 +469,9 @@ describe('Discovery', () => {
     await discovery.start();
     await taskManager.startProcessing();
     await waitForAllDiscoveryTasks(discovery);
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     const gestalt = gestalts[0];
     const gestaltMatrix = gestalt.matrix;
     const gestaltNodes = gestalt.nodes;
@@ -627,9 +612,9 @@ describe('Discovery', () => {
     );
     await discovery.queueDiscoveryByIdentity(testToken.providerId, identityId2);
     await discovery.waitForDiscoveryTasks(true);
-    const gestalts = await AsyncIterable.as(
+    const gestalts = await testsUtils.generatorToArray(
       gestaltGraph.getGestalts(),
-    ).toArray();
+    );
     expect(gestalts.length).toBe(1);
     const gestalt = gestalts[0];
     const nodeMatrix =

@@ -8,12 +8,12 @@ import type {
   ProviderAuthenticateRequest,
   ProviderIdentityClaimId,
   ProviderPaginationToken,
-} from './types';
-import type { SignedClaim } from '../claims/types';
-import type { ClaimLinkIdentity } from '../claims/payloads/claimLinkIdentity';
-import * as identitiesErrors from './errors';
-import * as tokensSchema from '../tokens/schemas';
-import * as claimLinkIdentity from '../claims/payloads/claimLinkIdentity';
+} from './types.js';
+import type { SignedClaim } from '../claims/types.js';
+import type { ClaimLinkIdentity } from '../claims/payloads/claimLinkIdentity.js';
+import * as identitiesErrors from './errors.js';
+import * as tokensSchema from '../tokens/schemas/index.js';
+import * as claimLinkIdentity from '../claims/payloads/claimLinkIdentity.js';
 
 type GetTokens = () => Promise<ProviderTokens>;
 type GetToken = (identityId: IdentityId) => Promise<ProviderToken | undefined>;

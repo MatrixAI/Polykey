@@ -13,7 +13,7 @@
  * be copied back
  * @module
  */
-import type { StateVersion, Migration } from '../types';
+import type { StateVersion, Migration } from '../types.js';
 
 const migrations: Map<StateVersion, Migration> = new Map();
 

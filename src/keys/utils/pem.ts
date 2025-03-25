@@ -5,12 +5,12 @@ import type {
   PublicKeyPEM,
   PrivateKeyPEM,
   KeyPairPEM,
-} from '../types';
+} from '../types.js';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
 import * as asn1Pkcs8 from '@peculiar/asn1-pkcs8';
-import { validatePublicKey } from './asymmetric';
+import { validatePublicKey } from './asymmetric.js';
 
 /**
  * Converts PublicKey to SPKI PEM format.

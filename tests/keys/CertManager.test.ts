@@ -1,24 +1,24 @@
 import type {
-  Key,
   Certificate,
   CertificatePEM,
   CertificatePEMChain,
-} from '@/keys/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+} from '#keys/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test, fc } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import * as asynciterable from 'ix/asynciterable';
-import KeyRing from '@/keys/KeyRing';
-import CertManager from '@/keys/CertManager';
-import TaskManager from '@/tasks/TaskManager';
-import * as keysUtils from '@/keys/utils';
-import * as keysErrors from '@/keys/errors';
-import * as utils from '@/utils';
-import * as testsKeysUtils from './utils';
-import * as testsUtilsFastCheck from '../utils/fastCheck';
+import * as testsKeysUtils from './utils.js';
+import * as testsUtilsFastCheck from '../utils/fastCheck.js';
+import * as testsUtils from '../utils/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import CertManager from '#keys/CertManager.js';
+import TaskManager from '#tasks/TaskManager.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as keysErrors from '#keys/errors.js';
+import * as utils from '#utils/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe(CertManager.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -51,20 +51,7 @@ describe(CertManager.name, () => {
       logger,
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              Buffer.from(key) as Key,
-              Buffer.from(plainText),
-            ).buffer;
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              Buffer.from(key) as Key,
-              Buffer.from(cipherText),
-            )?.buffer;
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     taskManager = await TaskManager.createTaskManager({ db, logger });
@@ -211,7 +198,7 @@ describe(CertManager.name, () => {
     let certs: Array<Certificate>;
     let certPEMs: Array<string>;
     let currentCert: Certificate;
-    certs = await asynciterable.toArray(certManager.getCerts());
+    certs = await testsUtils.generatorToArray(certManager.getCerts());
     currentCert = certs[0];
     expect(certs).toHaveLength(1);
     expect(keysUtils.certNodeId(currentCert)).toStrictEqual(
@@ -226,13 +213,13 @@ describe(CertManager.name, () => {
     expect(keysUtils.certIssuedBy(currentCert, currentCert)).toBe(true);
     expect(keysUtils.certNotExpiredBy(currentCert, new Date())).toBe(true);
     expect(await keysUtils.certNodeSigned(currentCert)).toBe(true);
-    certPEMs = await asynciterable.toArray(certManager.getCertPEMs());
+    certPEMs = await testsUtils.generatorToArray(certManager.getCertPEMs());
     expect(certPEMs).toHaveLength(1);
     expect(certPEMs[0]).toStrictEqual(keysUtils.certToPEM(currentCert!));
     // After renewal there will be 2 certificates
     await certManager.renewCertWithNewKeyPair(password, 1000);
-    certs = await asynciterable.toArray(certManager.getCerts());
-    certPEMs = await asynciterable.toArray(certManager.getCertPEMs());
+    certs = await testsUtils.generatorToArray(certManager.getCerts());
+    certPEMs = await testsUtils.generatorToArray(certManager.getCertPEMs());
     expect(certs).toHaveLength(2);
     currentCert = certs[0];
     expect(certPEMs).toHaveLength(2);
@@ -406,23 +393,25 @@ describe(CertManager.name, () => {
     });
     test.prop(
       [
-        fc.commands([
-          // Sleep command
-          fc
-            .integer({ min: 250, max: 250 })
-            .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
-          fc
-            .integer({ min: 0, max: 2 })
-            .map(
-              (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d),
-            ),
-          fc
-            .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 2 }))
-            .map(
-              ([p, d]) =>
-                new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d),
-            ),
-        ]),
+        fc.noShrink(
+          fc.commands([
+            // Sleep command
+            fc
+              .integer({ min: 250, max: 250 })
+              .map((ms) => new testsUtilsFastCheck.SleepCommand(ms)),
+            fc
+              .integer({ min: 0, max: 2 })
+              .map(
+                (d) => new testsKeysUtils.RenewCertWithCurrentKeyPairCommand(d),
+              ),
+            fc
+              .tuple(testsKeysUtils.passwordArb, fc.integer({ min: 0, max: 2 }))
+              .map(
+                ([p, d]) =>
+                  new testsKeysUtils.RenewCertWithNewKeyPairCommand(p, d),
+              ),
+          ]),
+        ),
       ],
       { numRuns: 10 },
     )('renewing with current and new key pair', async (cmds) => {

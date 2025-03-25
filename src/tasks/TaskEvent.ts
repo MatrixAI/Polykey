@@ -1,4 +1,4 @@
-import type { TaskIdEncoded } from './types';
+import type { TaskIdEncoded } from './types.js';
 
 class TaskEvent<T = any> extends Event {
   public detail:

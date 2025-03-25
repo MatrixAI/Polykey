@@ -1,6 +1,9 @@
 import type { DB } from '@matrixai/db';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type SessionManager from '../../sessions/SessionManager';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type SessionManager from '../../sessions/SessionManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class AgentLockAll extends UnaryHandler<

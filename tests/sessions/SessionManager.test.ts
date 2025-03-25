@@ -1,15 +1,14 @@
-import type { Key } from '@/keys/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import KeyRing from '@/keys/KeyRing';
-import * as utils from '@/utils';
-import * as keysUtils from '@/keys/utils';
-import SessionManager from '@/sessions/SessionManager';
-import * as sessionsErrors from '@/sessions/errors';
-import { sleep } from '@/utils';
+import KeyRing from '#keys/KeyRing.js';
+import * as keysUtils from '#keys/utils/index.js';
+import SessionManager from '#sessions/SessionManager.js';
+import * as sessionsErrors from '#sessions/errors.js';
+import { sleep } from '#utils/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('SessionManager', () => {
   const password = 'password';
@@ -41,20 +40,7 @@ describe('SessionManager', () => {
       logger,
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
   });

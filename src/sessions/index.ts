@@ -1,6 +1,6 @@
-export { default as SessionManager } from './SessionManager';
-export { default as Session } from './Session';
-export * as errors from './errors';
-export * as types from './types';
-export * as utils from './utils';
-export * as events from './events';
+export { default as SessionManager } from './SessionManager.js';
+export { default as Session } from './Session.js';
+export * as errors from './errors.js';
+export * as types from './types.js';
+export * as utils from './utils.js';
+export * as events from './events.js';

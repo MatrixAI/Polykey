@@ -1,14 +1,14 @@
-import type { SessionToken } from './types';
-import type { FileSystem } from '../types';
+import type { SessionToken } from './types.js';
+import type { FileHandle, FileSystem } from '../types.js';
 import Logger from '@matrixai/logger';
-import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import lock from 'fd-lock';
-import * as sessionErrors from './errors';
-import * as events from './events';
-import * as utils from '../utils';
+import * as sessionErrors from './errors.js';
+import * as events from './events.js';
+import * as utils from '../utils/index.js';
 
-interface Session extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface Session extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new sessionErrors.ErrorSessionRunning(),
   new sessionErrors.ErrorSessionDestroyed(),
   {
@@ -23,7 +23,7 @@ interface Session extends CreateDestroyStartStop {}
 class Session {
   static async createSession({
     sessionTokenPath,
-    fs = require('fs'),
+    fs,
     logger = new Logger(this.name),
     sessionToken,
     fresh = false,
@@ -36,6 +36,7 @@ class Session {
   }): Promise<Session> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting session token path to ${sessionTokenPath}`);
+    fs = await utils.importFS(fs);
     const session = new this({
       sessionTokenPath,
       fs,
@@ -100,7 +101,7 @@ class Session {
   }
 
   public async readToken(): Promise<SessionToken | undefined> {
-    let sessionTokenFile;
+    let sessionTokenFile: FileHandle | undefined;
     try {
       sessionTokenFile = await this.fs.promises.open(
         this.sessionTokenPath,
@@ -131,7 +132,7 @@ class Session {
   }
 
   public async writeToken(sessionToken: SessionToken): Promise<void> {
-    let sessionTokenFile;
+    let sessionTokenFile: FileHandle | undefined;
     try {
       // Cannot use 'w', it truncates immediately
       // should truncate only while holding the lock

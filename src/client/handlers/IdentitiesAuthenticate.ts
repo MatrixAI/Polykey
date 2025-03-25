@@ -4,14 +4,14 @@ import type {
   AuthProcessMessage,
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-} from '../types';
-import type { ProviderId } from '../../ids';
-import type IdentitiesManager from '../../identities/IdentitiesManager';
+} from '../types.js';
+import type { ProviderId } from '../../ids/index.js';
+import type IdentitiesManager from '../../identities/IdentitiesManager.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import * as identitiesErrors from '../../identities/errors';
-import { validateSync } from '../../validation';
-import { matchSync, never } from '../../utils';
+import * as ids from '../../ids/index.js';
+import * as identitiesErrors from '../../identities/errors.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync, never } from '../../utils/index.js';
 
 class IdentitiesAuthenticate extends ServerHandler<
   {

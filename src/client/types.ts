@@ -11,19 +11,23 @@ import type {
   NotificationIdEncoded,
   ProviderId,
   VaultIdEncoded,
-} from '../ids';
-import type { GestaltAction } from '../gestalts/types';
-import type { CommitId, VaultAction, VaultName } from '../vaults/types';
-import type { CertificatePEM, JWKEncrypted, PublicKeyJWK } from '../keys/types';
-import type { Notification } from '../notifications/types';
-import type { ProviderToken } from '../identities/types';
-import type { AuditMetricGetTypeOverride } from './callers/auditMetricGet';
+} from '../ids/index.js';
+import type { GestaltAction } from '../gestalts/types.js';
+import type { CommitId, VaultAction, VaultName } from '../vaults/types.js';
+import type {
+  CertificatePEM,
+  JWKEncrypted,
+  PublicKeyJWK,
+} from '../keys/types.js';
+import type { Notification } from '../notifications/types.js';
+import type { ProviderToken } from '../identities/types.js';
+import type { AuditMetricGetTypeOverride } from './callers/auditMetricGet.js';
 import type {
   NodeContact,
   NodeAddress,
   NodeContactAddressData,
-} from '../nodes/types';
-import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet';
+} from '../nodes/types.js';
+import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet.js';
 
 type ClientRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCResponseResult<

@@ -4,54 +4,51 @@ import type {
   JSONRPCResponse,
   MiddlewareFactory,
 } from '@matrixai/rpc';
-import type { DeepPartial, FileSystem, ObjectEmpty, POJO } from './types';
-import type { PolykeyWorkerManagerInterface } from './workers/types';
-import type { TLSConfig } from './network/types';
-import type { NodeAddress, NodeId, SeedNodes } from './nodes/types';
-import type { Key, PasswordOpsLimit, PasswordMemLimit } from './keys/types';
+import type { DeepPartial, FileSystem, ObjectEmpty, POJO } from './types.js';
+import type { PolykeyWorkerManager } from './workers/types.js';
+import type { TLSConfig } from './network/types.js';
+import type { NodeAddress, NodeId, SeedNodes } from './nodes/types.js';
+import type { PasswordOpsLimit, PasswordMemLimit } from './keys/types.js';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-} from './client/types';
-import path from 'path';
+} from './client/types.js';
+import path from 'node:path';
 import process from 'process';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { WorkerManager } from './workers';
-import Audit from './audit/Audit';
-import KeyRing from './keys/KeyRing';
-import CertManager from './keys/CertManager';
-import Status from './status/Status';
-import Schema from './schema/Schema';
-import VaultManager from './vaults/VaultManager';
-import ACL from './acl/ACL';
-import NodeManager from './nodes/NodeManager';
-import NodeGraph from './nodes/NodeGraph';
-import NodeConnectionManager from './nodes/NodeConnectionManager';
-import NotificationsManager from './notifications/NotificationsManager';
-import GestaltGraph from './gestalts/GestaltGraph';
-import Sigchain from './sigchain/Sigchain';
-import Discovery from './discovery/Discovery';
-import SessionManager from './sessions/SessionManager';
-import IdentitiesManager from './identities/IdentitiesManager';
-import * as identityProviders from './identities/providers';
-import TaskManager from './tasks/TaskManager';
-import ClientService from './client/ClientService';
-import config from './config';
-import * as errors from './errors';
-import * as events from './events';
-import * as utils from './utils';
-import * as keysUtils from './keys/utils';
-import * as keysEvents from './keys/events';
-import * as nodesUtils from './nodes/utils';
-import * as workersUtils from './workers/utils';
-import * as clientMiddleware from './client/middleware';
-import clientServerManifest from './client/handlers';
-import agentServerManifest from './nodes/agent/handlers';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import { WorkerManager, polykeyWorkerManifest } from './workers/index.js';
+import Audit from './audit/Audit.js';
+import KeyRing from './keys/KeyRing.js';
+import CertManager from './keys/CertManager.js';
+import Status from './status/Status.js';
+import Schema from './schema/Schema.js';
+import VaultManager from './vaults/VaultManager.js';
+import ACL from './acl/ACL.js';
+import NodeManager from './nodes/NodeManager.js';
+import NodeGraph from './nodes/NodeGraph.js';
+import NodeConnectionManager from './nodes/NodeConnectionManager.js';
+import NotificationsManager from './notifications/NotificationsManager.js';
+import GestaltGraph from './gestalts/GestaltGraph.js';
+import Sigchain from './sigchain/Sigchain.js';
+import Discovery from './discovery/Discovery.js';
+import SessionManager from './sessions/SessionManager.js';
+import IdentitiesManager from './identities/IdentitiesManager.js';
+import * as identityProviders from './identities/providers/index.js';
+import TaskManager from './tasks/TaskManager.js';
+import ClientService from './client/ClientService.js';
+import config from './config.js';
+import * as errors from './errors.js';
+import * as events from './events.js';
+import * as utils from './utils/index.js';
+import * as keysUtils from './keys/utils/index.js';
+import * as keysEvents from './keys/events.js';
+import * as nodesUtils from './nodes/utils.js';
+import * as workersUtils from './workers/utils.js';
+import * as clientMiddleware from './client/middleware.js';
+import clientServerManifest from './client/handlers/index.js';
+import agentServerManifest from './nodes/agent/handlers/index.js';
 
 /**
  * Optional configuration for `PolykeyAgent`.
@@ -112,8 +109,8 @@ type PolykeyAgentOptions = {
   versionMetadata: POJO;
 };
 
-interface PolykeyAgent extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface PolykeyAgent extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new errors.ErrorPolykeyAgentRunning(),
   new errors.ErrorPolykeyAgentDestroyed(),
   {
@@ -144,7 +141,7 @@ class PolykeyAgent {
     options = {},
     fresh = false,
     // Optional dependencies
-    fs = require('fs'),
+    fs,
     logger = new Logger(this.name),
   }: {
     password: string;
@@ -215,6 +212,7 @@ class PolykeyAgent {
       throw new errors.ErrorUtilsNodePath();
     }
     logger.info(`Setting node path to ${optionsDefaulted.nodePath}`);
+    fs = await utils.importFS(fs);
     await utils.mkdirExists(fs, optionsDefaulted.nodePath);
     const statusPath = path.join(
       optionsDefaulted.nodePath,
@@ -282,20 +280,7 @@ class PolykeyAgent {
         dbPath,
         crypto: {
           key: keyRing.dbKey,
-          ops: {
-            encrypt: async (key, plainText) => {
-              return keysUtils.encryptWithKey(
-                utils.bufferWrap(key) as Key,
-                utils.bufferWrap(plainText),
-              );
-            },
-            decrypt: async (key, cipherText) => {
-              return keysUtils.decryptWithKey(
-                utils.bufferWrap(key) as Key,
-                utils.bufferWrap(cipherText),
-              );
-            },
-          },
+          ops: polykeyWorkerManifest,
         },
         fs,
         logger: logger.getChild(DB.name),
@@ -556,7 +541,7 @@ class PolykeyAgent {
   public readonly fs: FileSystem;
   public readonly logger: Logger;
   public readonly clientService: ClientService;
-  protected workerManager: PolykeyWorkerManagerInterface | undefined;
+  protected workerManager: PolykeyWorkerManager | undefined;
   protected _startTime: number = 0;
   protected _versionMetadata: JSONObject;
 
@@ -654,22 +639,22 @@ class PolykeyAgent {
     this._versionMetadata = versionMetadata;
   }
 
-  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyAgentNotRunning())
   get clientServiceHost() {
     return this.clientService.host;
   }
 
-  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyAgentNotRunning())
   get clientServicePort() {
     return this.clientService.port;
   }
 
-  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServiceHost() {
     return this.nodeConnectionManager.host;
   }
 
-  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyAgentNotRunning())
   get agentServicePort() {
     return this.nodeConnectionManager.port;
   }
@@ -681,7 +666,7 @@ class PolykeyAgent {
   /**
    * Returns the time the `PolykeyAgent` was started at in milliseconds since Unix epoch
    */
-  @ready(new errors.ErrorPolykeyAgentNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyAgentNotRunning())
   get startTime(): number {
     return this._startTime;
   }
@@ -748,20 +733,7 @@ class PolykeyAgent {
       await this.db.start({
         crypto: {
           key: this.keyRing.dbKey,
-          ops: {
-            encrypt: async (key, plainText) => {
-              return keysUtils.encryptWithKey(
-                utils.bufferWrap(key) as Key,
-                utils.bufferWrap(plainText),
-              );
-            },
-            decrypt: async (key, cipherText) => {
-              return keysUtils.decryptWithKey(
-                utils.bufferWrap(key) as Key,
-                utils.bufferWrap(cipherText),
-              );
-            },
-          },
+          ops: polykeyWorkerManifest,
         },
         fresh,
       });
@@ -976,20 +948,7 @@ class PolykeyAgent {
     await this.db.start({
       crypto: {
         key: this.keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     // TaskManager needs to be running for dependent domains to clear state.

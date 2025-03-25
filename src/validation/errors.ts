@@ -1,6 +1,6 @@
 import { AbstractError } from '@matrixai/errors';
-import ErrorPolykey from '../ErrorPolykey';
-import sysexits from '../utils/sysexits';
+import ErrorPolykey from '../ErrorPolykey.js';
+import sysexits from '../utils/sysexits.js';
 
 /**
  * Generic error containing all parsing errors that occurred during

@@ -5,16 +5,16 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NodesAddMessage,
-} from '../types';
-import type { NodeId } from '../../ids';
-import type { Host, Port } from '../../network/types';
-import type NodeManager from '../../nodes/NodeManager';
+} from '../types.js';
+import type { NodeId } from '../../ids/index.js';
+import type { Host, Port } from '../../network/types.js';
+import type NodeManager from '../../nodes/NodeManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { matchSync } from '../../utils';
-import { validateSync } from '../../validation';
-import * as ids from '../../ids';
-import * as networkUtils from '../../network/utils';
-import * as nodeErrors from '../../nodes/errors';
+import { matchSync } from '../../utils/index.js';
+import { validateSync } from '../../validation/index.js';
+import * as ids from '../../ids/index.js';
+import * as networkUtils from '../../network/utils.js';
+import * as nodeErrors from '../../nodes/errors.js';
 
 class NodesAdd extends UnaryHandler<
   {

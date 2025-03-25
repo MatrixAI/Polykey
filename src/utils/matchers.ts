@@ -1,4 +1,4 @@
-import { isDeepStrictEqual } from 'util';
+import { isDeepStrictEqual } from 'node:util';
 
 type Proc<T> = (data: any) => Promise<T> | T;
 type Case<T> = [...patterns: [any, ...Array<any>], proc: Proc<T>];

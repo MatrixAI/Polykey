@@ -7,17 +7,17 @@ import type {
   ProviderIdentityClaimId,
   ProviderAuthenticateRequest,
   ProviderPaginationToken,
-} from '../../types';
-import type { SignedClaim } from '../../../claims/types';
-import type { ClaimLinkIdentity } from '../../../claims/payloads/claimLinkIdentity';
+} from '../../types.js';
+import type { SignedClaim } from '../../../claims/types.js';
+import type { ClaimLinkIdentity } from '../../../claims/payloads/claimLinkIdentity.js';
 import { fetch, Request, Headers } from 'cross-fetch';
 import * as cheerio from 'cheerio';
 import Logger from '@matrixai/logger';
-import Provider from '../../Provider';
-import * as identitiesErrors from '../../errors';
-import * as identitiesUtils from '../../utils';
-import * as tokensUtils from '../../../tokens/utils';
-import * as utils from '../../../utils';
+import Provider from '../../Provider.js';
+import * as identitiesErrors from '../../errors.js';
+import * as identitiesUtils from '../../utils.js';
+import * as tokensUtils from '../../../tokens/utils.js';
+import * as utils from '../../../utils/index.js';
 
 class GitHubProvider extends Provider {
   public readonly id = 'github.com' as ProviderId;

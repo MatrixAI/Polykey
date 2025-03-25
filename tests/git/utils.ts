@@ -1,14 +1,14 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import type { POJO } from '@';
-import type { CapabilityList } from '@/git/types';
+import type { POJO } from '#index.js';
+import type { CapabilityList } from '#git/types.js';
 import type { Arbitrary } from 'fast-check';
 import type { EncryptedFS } from 'encryptedfs';
-import path from 'path';
+import path from 'node:path';
 import git from 'isomorphic-git';
 import fc from 'fast-check';
-import * as gitUtils from '@/git/utils';
-import * as gitHttp from '@/git/http';
-import * as utils from '@/utils';
+import * as gitUtils from '#git/utils.js';
+import * as gitHttp from '#git/http.js';
+import * as utils from '#utils/index.js';
 
 /**
  * Utility for quickly creating a git repo with history
@@ -193,43 +193,56 @@ function request({
   };
 }
 
+const hexCharArb = fc.constantFrom(...`1234567890abcdef`.split(''));
+
 // Generates a git objectId in the form of a 40-digit hex number
-const gitObjectIdArb = fc.hexaString({
+const gitObjectIdArb = fc.string({
+  unit: hexCharArb,
   maxLength: 40,
   minLength: 40,
 });
 // Generates a list of capabilities, theses are just random valid strings
 const gitCapabilityListArb = fc.array(
-  fc.stringOf(
-    fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
-    { minLength: 5 },
-  ),
+  fc.string({
+    unit: fc.constantFrom(...`abcdefghijklmnopqrstuvwxyz-1234567890`.split('')),
+    minLength: 5,
+  }),
   { size: 'small' },
 );
 // Generates git request data used for testing `parseRequestLine`
 const gitRequestDataArb = fc.oneof(
-  fc.record({
-    type: fc.constant('want') as Arbitrary<'want'>,
-    objectId: gitObjectIdArb,
-    capabilityList: gitCapabilityListArb,
-  }),
-  fc.record({
-    type: fc.constant('have') as Arbitrary<'have'>,
-    objectId: gitObjectIdArb,
-  }),
-  fc.record({
-    type: fc.constantFrom<'SEPARATOR' | 'done' | 'none'>(
-      'SEPARATOR',
-      'done',
-      'none',
-    ),
-  }),
+  fc.record(
+    {
+      type: fc.constant('want') as Arbitrary<'want'>,
+      objectId: gitObjectIdArb,
+      capabilityList: gitCapabilityListArb,
+    },
+    { noNullPrototype: true },
+  ),
+  fc.record(
+    {
+      type: fc.constant('have') as Arbitrary<'have'>,
+      objectId: gitObjectIdArb,
+    },
+    { noNullPrototype: true },
+  ),
+  fc.record(
+    {
+      type: fc.constantFrom<'SEPARATOR' | 'done' | 'none'>(
+        'SEPARATOR',
+        'done',
+        'none',
+      ),
+    },
+    { noNullPrototype: true },
+  ),
 );
 
 export {
   createGitRepo,
   generateGitNegotiationLine,
   request,
+  hexCharArb,
   gitObjectIdArb,
   gitCapabilityListArb,
   gitRequestDataArb,

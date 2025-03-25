@@ -2,14 +2,14 @@ import type { X509Certificate } from '@peculiar/x509';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { QUICSocket, QUICConnection } from '@matrixai/quic';
-import type { Host, Hostname, Port, TLSConfig } from '../network/types';
-import type { Certificate } from '../keys/types';
-import type { NodeId } from './types';
-import type agentClientManifest from './agent/callers';
+import type { Host, Hostname, Port, TLSConfig } from '../network/types.js';
+import type { Certificate } from '../keys/types.js';
+import type { NodeId } from './types.js';
+import type agentClientManifest from './agent/callers/index.js';
 import Logger from '@matrixai/logger';
-import { CreateDestroy } from '@matrixai/async-init/dist/CreateDestroy';
+import { createDestroy } from '@matrixai/async-init';
 import { status } from '@matrixai/async-init';
-import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { decorators } from '@matrixai/contexts';
 import { errors as contextErrors } from '@matrixai/contexts';
 import { AbstractEvent, EventAll } from '@matrixai/events';
 import {
@@ -18,21 +18,21 @@ import {
   errors as quicErrors,
 } from '@matrixai/quic';
 import { RPCClient, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
-import { ConnectionErrorReason, ConnectionErrorCode } from './types';
-import * as nodesErrors from './errors';
-import * as nodesEvents from './events';
-import * as nodesUtils from '../nodes/utils';
-import { never } from '../utils';
-import config from '../config';
-import * as networkUtils from '../network/utils';
+import { ConnectionErrorReason, ConnectionErrorCode } from './types.js';
+import * as nodesErrors from './errors.js';
+import * as nodesEvents from './events.js';
+import * as nodesUtils from '../nodes/utils.js';
+import { never } from '../utils/index.js';
+import config from '../config.js';
+import * as networkUtils from '../network/utils.js';
 
 type AgentClientManifest = typeof agentClientManifest;
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
-interface NodeConnection extends CreateDestroy {}
-@CreateDestroy({
+interface NodeConnection extends createDestroy.CreateDestroy {}
+@createDestroy.CreateDestroy({
   eventDestroy: nodesEvents.EventNodeConnectionDestroy,
   eventDestroyed: nodesEvents.EventNodeConnectionDestroyed,
 })
@@ -194,7 +194,7 @@ class NodeConnection {
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     config.defaultsSystem.nodesConnectionConnectTimeoutTime,
   )
@@ -229,7 +229,7 @@ class NodeConnection {
       quicSocket: QUICSocket;
       logger?: Logger;
     },
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     logger.info(`Creating forward ${this.name}`);
     // Checking if attempting to connect to a wildcard IP

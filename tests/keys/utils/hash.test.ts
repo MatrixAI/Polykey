@@ -1,6 +1,6 @@
 import { test, fc } from '@fast-check/jest';
-import * as hash from '@/keys/utils/hash';
-import * as utils from '@/utils';
+import * as hash from '#keys/utils/hash.js';
+import * as utils from '#utils/index.js';
 
 describe('keys/utils/hash', () => {
   test.prop([fc.uint8Array({ minLength: 0, maxLength: 1024 })])(

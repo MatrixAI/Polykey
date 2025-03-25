@@ -1,6 +1,6 @@
-import type { PermissionId, PermissionIdString } from '../ids/types';
-import type { GestaltActions } from '../gestalts/types';
-import type { VaultActions, VaultIdString } from '../vaults/types';
+import type { PermissionId, PermissionIdString } from '../ids/types.js';
+import type { GestaltActions } from '../gestalts/types.js';
+import type { VaultActions, VaultIdString } from '../vaults/types.js';
 
 type Permission = {
   gestalt: GestaltActions;

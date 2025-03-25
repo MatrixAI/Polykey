@@ -1,10 +1,14 @@
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   const buf = Buffer.allocUnsafe(64);
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('JSON stringify and parse buffer', () => {
       const bufJSON = JSON.stringify(buf);
       Buffer.from(JSON.parse(bufJSON));
@@ -22,8 +26,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

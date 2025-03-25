@@ -1,14 +1,17 @@
-import type { KeyPair } from '@/keys/types';
+import type { KeyPair } from '#keys/types.js';
+import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import type { Host, Port } from '#network/types.js';
+import { jest } from '@jest/globals';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import { nodesConnectionSignalInitial } from '@/nodes/agent/callers';
-import { NodesConnectionSignalInitial } from '@/nodes/agent/handlers';
-import * as keysUtils from '@/keys/utils/index';
-import * as nodesUtils from '@/nodes/utils';
-import * as networkUtils from '@/network/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
-import * as testsNodesUtils from '../../../nodes/utils';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import * as testsNodesUtils from '../../../nodes/utils.js';
+import { nodesConnectionSignalInitial } from '#nodes/agent/callers/index.js';
+import { NodesConnectionSignalInitial } from '#nodes/agent/handlers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('nodesHolePunchSignal', () => {
   const logger = new Logger('nodesHolePunchSignal test', LogLevel.WARN, [
@@ -27,7 +30,10 @@ describe('nodesHolePunchSignal', () => {
   let rpcClient: RPCClient<ClientManifest>;
   let quicClient: QUICClient;
   const dummyNodeConnectionManager = {
-    handleNodesConnectionSignalInitial: jest.fn(),
+    handleNodesConnectionSignalInitial:
+      jest.fn<
+        typeof NodeConnectionManager.prototype.handleNodesConnectionSignalInitial
+      >(),
   };
 
   beforeEach(async () => {
@@ -143,9 +149,8 @@ describe('nodesHolePunchSignal', () => {
     const signature = keysUtils.signWithPrivateKey(keyPair, data);
     dummyNodeConnectionManager.handleNodesConnectionSignalInitial.mockResolvedValue(
       {
-        host: '127.0.0.1',
-        port: 55555,
-        scopes: ['global'],
+        host: '127.0.0.1' as Host,
+        port: 55555 as Port,
       },
     );
     await rpcClient.methods.nodesConnectionSignalInitial({

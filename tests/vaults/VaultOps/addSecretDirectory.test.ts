@@ -1,18 +1,18 @@
-import type { VaultId } from '@/vaults/types';
-import type { Vault } from '@/vaults/Vault';
-import type KeyRing from '@/keys/KeyRing';
+import type { VaultId } from '#vaults/types.js';
+import type { Vault } from '#vaults/Vault.js';
+import type KeyRing from '#keys/KeyRing.js';
 import type { LevelPath } from '@matrixai/db';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import VaultInternal from '@/vaults/VaultInternal';
-import * as vaultOps from '@/vaults/VaultOps';
-import * as vaultsUtils from '@/vaults/utils';
-import * as keysUtils from '@/keys/utils';
-import * as testNodesUtils from '../../nodes/utils';
+import * as testNodesUtils from '../../nodes/utils.js';
+import VaultInternal from '#vaults/VaultInternal.js';
+import * as vaultOps from '#vaults/VaultOps.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 describe('addSecretDirectory', () => {
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);

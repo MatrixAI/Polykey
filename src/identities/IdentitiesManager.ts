@@ -4,27 +4,25 @@ import type {
   ProviderTokens,
   ProviderToken,
   IdentitySignedClaim,
-} from './types';
+} from './types.js';
 import type { DB, DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type Provider from './Provider';
-import type { ClaimLinkIdentity } from '../claims/payloads';
-import type KeyRing from '../keys/KeyRing';
-import type Sigchain from '../sigchain/Sigchain';
-import type GestaltGraph from '../gestalts/GestaltGraph';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import type Provider from './Provider.js';
+import type { ClaimLinkIdentity } from '../claims/payloads/index.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type Sigchain from '../sigchain/Sigchain.js';
+import type GestaltGraph from '../gestalts/GestaltGraph.js';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import Logger from '@matrixai/logger';
-import * as identitiesErrors from './errors';
-import * as identitiesEvents from './events';
-import Token from '../tokens/Token';
-import * as nodesUtils from '../nodes/utils';
-import { promise } from '../utils';
-import { encodeProviderIdentityId } from '../ids';
+import * as identitiesErrors from './errors.js';
+import * as identitiesEvents from './events.js';
+import Token from '../tokens/Token.js';
+import * as nodesUtils from '../nodes/utils.js';
+import { promise } from '../utils/index.js';
+import { encodeProviderIdentityId } from '../ids/index.js';
 
-interface IdentitiesManager extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface IdentitiesManager
+  extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new identitiesErrors.ErrorIdentitiesManagerRunning(),
   new identitiesErrors.ErrorIdentitiesManagerDestroyed(),
   {
@@ -121,17 +119,23 @@ class IdentitiesManager {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public getProviders(): Record<ProviderId, Provider> {
     return Object.fromEntries(this.providers);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public getProvider(pId: ProviderId): Provider | undefined {
     return this.providers.get(pId);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public registerProvider(p: Provider): void {
     if (this.providers.has(p.id)) {
       throw new identitiesErrors.ErrorProviderDuplicate();
@@ -145,12 +149,16 @@ class IdentitiesManager {
     this.providers.set(p.id, p);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public unregisterProvider(pId: ProviderId): void {
     this.providers.delete(pId);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public async getTokens(
     providerId: ProviderId,
     tran?: DBTransaction,
@@ -171,7 +179,9 @@ class IdentitiesManager {
     return providerTokens;
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public async getToken(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -193,7 +203,9 @@ class IdentitiesManager {
     return providerTokens[identityId];
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public async putToken(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -222,7 +234,9 @@ class IdentitiesManager {
     await tran.put(providerIdPath, providerTokens);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new identitiesErrors.ErrorIdentitiesManagerNotRunning(),
+  )
   public async delToken(
     providerId: ProviderId,
     identityId: IdentityId,

@@ -1,5 +1,5 @@
-import ErrorPolykey from '../ErrorPolykey';
-import sysexits from '../utils/sysexits';
+import ErrorPolykey from '../ErrorPolykey.js';
+import sysexits from '../utils/sysexits.js';
 
 class ErrorSchema<T> extends ErrorPolykey<T> {}
 

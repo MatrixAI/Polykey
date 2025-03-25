@@ -1,39 +1,39 @@
-import type { TLSConfig } from '@/network/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { TLSConfig } from '#network/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { running } from '@matrixai/async-init';
 import { RPCClient, middleware as rpcUtilsMiddleware } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import KeyRing from '@/keys/KeyRing';
-import CertManager from '@/keys/CertManager';
-import TaskManager from '@/tasks/TaskManager';
-import PolykeyAgent from '@/PolykeyAgent';
-import Status from '@/status/Status';
-import ClientService from '@/client/ClientService';
-import Session from '@/sessions/Session';
-import SessionManager from '@/sessions/SessionManager';
-import config from '@/config';
+import * as testsUtils from '../../utils/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import CertManager from '#keys/CertManager.js';
+import TaskManager from '#tasks/TaskManager.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import Status from '#status/Status.js';
+import ClientService from '#client/ClientService.js';
+import Session from '#sessions/Session.js';
+import SessionManager from '#sessions/SessionManager.js';
+import config from '#config.js';
 import {
   AgentLockAll,
   AgentStatus,
   AgentStop,
   AgentUnlock,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   agentLockAll,
   agentStatus,
   agentStop,
   agentUnlock,
-} from '@/client/callers';
-import * as clientUtils from '@/client/utils';
-import * as clientUtilsAuthMiddleware from '@/client/authenticationMiddleware';
-import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as networkUtils from '@/network/utils';
-import * as testsUtils from '../../utils';
+} from '#client/callers/index.js';
+import * as clientUtils from '#client/utils.js';
+import * as clientUtilsAuthMiddleware from '#client/authenticationMiddleware.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('agentLockAll', () => {
   const logger = new Logger('agentLockAll test', LogLevel.WARN, [

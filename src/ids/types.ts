@@ -1,5 +1,5 @@
 import type { Id } from '@matrixai/id';
-import type { Opaque } from '../types';
+import type { Opaque } from '../types.js';
 
 // ACL
 

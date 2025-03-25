@@ -1,22 +1,23 @@
 import type {
   NodeAddressScope,
+  NodeContactAddress,
   NodeContactAddressData,
   NodeId,
-} from '@/nodes/types';
-import type PolykeyAgent from '@/PolykeyAgent';
+} from '#nodes/types.js';
+import type PolykeyAgent from '#PolykeyAgent.js';
 import type Logger from '@matrixai/logger';
-import type { KeyRing } from '@/keys';
-import type { Host, Port } from '@/network/types';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
+import type { KeyRing } from '#keys/index.js';
+import type { Host, Port } from '#network/types.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
-import * as keysUtils from '@/keys/utils';
-import * as utils from '@/utils';
-import * as nodesUtils from '@/nodes/utils';
-import { hostArb, hostnameArb, portArb } from '../network/utils';
-import NodeConnectionManager from '../../src/nodes/NodeConnectionManager';
-import * as testsUtils from '../utils';
+import { hostArb, hostnameArb, portArb } from '../network/utils.js';
+import * as testsUtils from '../utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as utils from '#utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
 
 /**
  * Generate random `NodeId`
@@ -111,26 +112,28 @@ async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   );
 }
 
-const nodeIdArb = fc
-  .int8Array({ minLength: 32, maxLength: 32 })
-  .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value)))
-  .noShrink();
+const nodeIdArb = fc.noShrink(
+  fc
+    .int8Array({ minLength: 32, maxLength: 32 })
+    .map((value) => IdInternal.fromBuffer<NodeId>(Buffer.from(value))),
+);
 
 const nodeIdArrayArb = (length: number) =>
-  fc.array(nodeIdArb, { maxLength: length, minLength: length }).noShrink();
+  fc.noShrink(fc.array(nodeIdArb, { maxLength: length, minLength: length }));
 
 const uniqueNodeIdArb = (length: number) =>
-  fc
-    .array(nodeIdArb, { maxLength: length, minLength: length })
-    .noShrink()
-    .filter((values) => {
-      for (let i = 0; i < values.length; i++) {
-        for (let j = i; j < values.length; j++) {
-          if (values[i].equals(values[j])) return true;
+  fc.noShrink(
+    fc
+      .array(nodeIdArb, { maxLength: length, minLength: length })
+      .filter((values) => {
+        for (let i = 0; i < values.length; i++) {
+          for (let j = i; j < values.length; j++) {
+            if (values[i].equals(values[j])) return true;
+          }
         }
-      }
-      return false;
-    });
+        return false;
+      }),
+  );
 
 const nodeAddressArb = fc.tuple(fc.oneof(hostArb, hostnameArb), portArb);
 
@@ -145,30 +148,48 @@ const scopeArb = fc.constantFrom(
 
 const scopesArb = fc.uniqueArray(scopeArb);
 
-const nodeContactAddressDataArb = fc.record({
-  mode: fc.constantFrom('direct', 'signal', 'relay'),
-  connectedTime: fc.integer({ min: 0 }),
-  scopes: scopesArb,
-}) as fc.Arbitrary<NodeContactAddressData>;
+const nodeContactAddressDataArb = fc.record(
+  {
+    mode: fc.constantFrom('direct', 'signal', 'relay'),
+    connectedTime: fc.integer({ min: 0 }),
+    scopes: scopesArb,
+  },
+  { noNullPrototype: true },
+) as fc.Arbitrary<NodeContactAddressData>;
 
-const nodeContactPairArb = fc.record({
-  nodeContactAddress: nodeContactAddressArb,
-  nodeContactAddressData: nodeContactAddressDataArb,
-});
+const nodeContactPairArb: fc.Arbitrary<{
+  nodeContactAddress: NodeContactAddress;
+  nodeContactAddressData: NodeContactAddressData;
+}> = fc.noShrink(
+  fc.record(
+    {
+      nodeContactAddress: nodeContactAddressArb,
+      nodeContactAddressData: nodeContactAddressDataArb,
+    },
+    { noNullPrototype: true },
+  ),
+);
 
-const nodeContactArb = fc
-  .dictionary(nodeContactAddressArb, nodeContactAddressDataArb, {
+const nodeContactArb = fc.noShrink(
+  fc.dictionary(nodeContactAddressArb, nodeContactAddressDataArb, {
     minKeys: 1,
     maxKeys: 5,
-  })
-  .noShrink();
+    noNullPrototype: true,
+  }),
+);
 
-const nodeIdContactPairArb = fc
-  .record({
-    nodeId: nodeIdArb,
-    nodeContact: nodeContactArb,
-  })
-  .noShrink();
+const nodeIdContactPairArb: fc.Arbitrary<{
+  nodeId: NodeId;
+  nodeContact: Record<string, NodeContactAddressData>;
+}> = fc.noShrink(
+  fc.record(
+    {
+      nodeId: nodeIdArb,
+      nodeContact: nodeContactArb,
+    },
+    { noNullPrototype: true },
+  ),
+);
 
 /**
  * Signs using the 256-bit HMAC key
@@ -323,11 +344,14 @@ async function nodeConnectionManagerFactory({
 
 const randomAuditEventsArb = (minLength: number = 1, maxLength: number = 100) =>
   fc.array(
-    fc.record({
-      remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
-      remoteHost: fc.ipV4(),
-      remotePort: fc.nat({ max: 65535 }),
-    }),
+    fc.record(
+      {
+        remoteNodeId: fc.string({ minLength: 1, maxLength: 20 }),
+        remoteHost: fc.ipV4(),
+        remotePort: fc.nat({ max: 65535 }),
+      },
+      { noNullPrototype: true },
+    ),
     { minLength, maxLength },
   );
 

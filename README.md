@@ -58,7 +58,7 @@ npm install
 # build the dist
 npm run build
 # run the repl (this allows you to import from ./src)
-npm run ts-node
+npm run tsx
 # run the tests
 npm run test
 # lint the source code

@@ -2,17 +2,17 @@ import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
 import type { JSONObject, JSONRPCRequest } from '@matrixai/rpc';
 import type { ContextTimed } from '@matrixai/contexts';
-import type ACL from '../../../acl/ACL';
-import type VaultManager from '../../../vaults/VaultManager';
-import type { JSONValue } from '../../../types';
+import type ACL from '../../../acl/ACL.js';
+import type VaultManager from '../../../vaults/VaultManager.js';
+import type { JSONValue } from '../../../types.js';
 import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors';
-import * as vaultsUtils from '../../../vaults/utils';
-import * as vaultsErrors from '../../../vaults/errors';
-import * as nodesUtils from '../../utils';
-import * as agentUtils from '../utils';
-import * as utils from '../../../utils';
+import * as agentErrors from '../errors.js';
+import * as vaultsUtils from '../../../vaults/utils.js';
+import * as vaultsErrors from '../../../vaults/errors.js';
+import * as nodesUtils from '../../utils.js';
+import * as agentUtils from '../utils.js';
+import * as utils from '../../../utils/index.js';
 
 /**
  * Gets the git info of a vault.

@@ -1,6 +1,6 @@
 import { test, fc } from '@fast-check/jest';
-import * as tokensSchemas from '@/tokens/schemas';
-import * as testsTokensUtils from './utils';
+import * as testsTokensUtils from './utils.js';
+import * as tokensSchemas from '#tokens/schemas/index.js';
 
 describe('tokens/schemas', () => {
   test.prop([testsTokensUtils.signedTokenEncodedArb, fc.object()])(

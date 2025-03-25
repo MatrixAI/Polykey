@@ -1,9 +1,10 @@
 import type { ValidateFunction } from 'ajv';
-import type { SignedTokenEncoded } from '../types';
+import type { SignedTokenEncoded } from '../types.js';
 import Ajv from 'ajv';
 import SignedTokenEncodedSchema from './SignedTokenEncodedSchema.json';
 
-const ajv = new Ajv();
+// @ts-ignore: Ajv exports is function improperly for ESM
+const ajv = new Ajv.default();
 
 const validateSignedTokenEncoded: ValidateFunction<SignedTokenEncoded> =
   ajv.compile(SignedTokenEncodedSchema);

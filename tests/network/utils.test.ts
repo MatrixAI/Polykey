@@ -1,5 +1,5 @@
-import type { Host, Hostname, Port } from '@/network/types';
-import * as networkUtils from '@/network/utils';
+import type { Host, Hostname, Port } from '#network/types.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('utils', () => {
   test('validating hosts', () => {

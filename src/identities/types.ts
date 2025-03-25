@@ -1,11 +1,11 @@
-import type { POJO, Opaque } from '../types';
+import type { POJO, Opaque } from '../types.js';
 import type {
   ProviderId,
   IdentityId,
   ProviderIdentityClaimId,
-} from '../ids/types';
-import type { SignedClaim } from '../claims/types';
-import type { ClaimLinkIdentity } from '../claims/payloads';
+} from '../ids/types.js';
+import type { SignedClaim } from '../claims/types.js';
+import type { ClaimLinkIdentity } from '../claims/payloads/index.js';
 
 /**
  * Identity data contains key details about the
@@ -77,4 +77,4 @@ export type {
   ProviderIdentityId,
   ProviderIdentityIdEncoded,
   ProviderIdentityClaimId,
-} from '../ids/types';
+} from '../ids/types.js';

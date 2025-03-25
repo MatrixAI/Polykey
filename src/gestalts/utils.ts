@@ -1,5 +1,9 @@
-import type { GestaltLinkId, NodeId, ProviderIdentityId } from '../ids/types';
-import type { TokenSignature } from '../tokens/types';
+import type {
+  GestaltLinkId,
+  NodeId,
+  ProviderIdentityId,
+} from '../ids/types.js';
+import type { TokenSignature } from '../tokens/types.js';
 import type {
   GestaltId,
   GestaltKey,
@@ -8,12 +12,15 @@ import type {
   GestaltNodeInfoJSON,
   GestaltLink,
   GestaltLinkJSON,
-} from './types';
-import type { ClaimLinkNode, ClaimLinkIdentity } from '../claims/payloads';
+} from './types.js';
+import type {
+  ClaimLinkNode,
+  ClaimLinkIdentity,
+} from '../claims/payloads/index.js';
 import { IdInternal } from '@matrixai/id';
-import { gestaltActions } from './types';
-import * as ids from '../ids';
-import * as validationErrors from '../validation/errors';
+import { gestaltActions } from './types.js';
+import * as ids from '../ids/index.js';
+import * as validationErrors from '../validation/errors.js';
 
 function toGestaltKey(gestaltId: GestaltId): GestaltKey {
   switch (gestaltId[0]) {
@@ -195,4 +202,4 @@ export {
   decodeGestaltNodeId,
   decodeGestaltIdentityId,
   createGestaltLinkIdGenerator,
-} from '../ids';
+} from '../ids/index.js';

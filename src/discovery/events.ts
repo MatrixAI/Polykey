@@ -1,5 +1,5 @@
-import type { VertexEventIdentifier, VertexEventError } from './types';
-import EventPolykey from '../EventPolykey';
+import type { VertexEventIdentifier, VertexEventError } from './types.js';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventDiscovery<T> extends EventPolykey<T> {}
 

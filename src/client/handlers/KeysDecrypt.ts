@@ -2,10 +2,10 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   DataMessage,
-} from '../types';
-import type KeyRing from '../../keys/KeyRing';
+} from '../types.js';
+import type KeyRing from '../../keys/KeyRing.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { never } from '../../utils';
+import { never } from '../../utils/index.js';
 
 class KeysDecrypt extends UnaryHandler<
   {

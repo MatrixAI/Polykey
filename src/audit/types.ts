@@ -1,5 +1,5 @@
-import type { AuditEventId, AuditEventIdEncoded } from '../ids';
-import type { ObjectEmpty, POJO } from '../types';
+import type { AuditEventId, AuditEventIdEncoded } from '../ids/index.js';
+import type { ObjectEmpty, POJO } from '../types.js';
 import type {
   nodeConnectionInboundMetricPath,
   nodeConnectionReverseTopicPath,
@@ -14,11 +14,11 @@ import type {
   nodeConnectionMetricPath,
   topicPaths,
   metricPaths,
-} from './utils';
+} from './utils.js';
 import type {
   VertexEventError,
   VertexEventIdentifier,
-} from '../discovery/types';
+} from '../discovery/types.js';
 
 // Events
 

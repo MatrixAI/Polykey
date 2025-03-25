@@ -6,11 +6,11 @@ import type {
   ClientRPCResponseResult,
   NotificationInboxMessage,
   NotificationReadMessage,
-} from '../types';
-import type { NotificationId } from '../../ids/types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
+} from '../types.js';
+import type { NotificationId } from '../../ids/types.js';
+import type NotificationsManager from '../../notifications/NotificationsManager.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as notificationsUtils from '../../notifications/utils';
+import * as notificationsUtils from '../../notifications/utils.js';
 
 class NotificationsInboxRead extends ServerHandler<
   {

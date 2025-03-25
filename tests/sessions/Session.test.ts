@@ -1,10 +1,10 @@
-import type { SessionToken } from '@/sessions/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type { SessionToken } from '#sessions/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import Session from '@/sessions/Session';
-import * as sessionErrors from '@/sessions/errors';
+import Session from '#sessions/Session.js';
+import * as sessionErrors from '#sessions/errors.js';
 
 describe('Session', () => {
   const logger = new Logger(`${Session.name} Test`, LogLevel.WARN, [

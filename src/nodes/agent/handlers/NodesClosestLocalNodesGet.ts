@@ -6,19 +6,19 @@ import type {
   AgentRPCResponseResult,
   NodeContactMessage,
   NodeIdMessage,
-} from '../types';
-import type NodeGraph from '../../NodeGraph';
-import type { NodeId } from '../../../ids';
+} from '../types.js';
+import type NodeGraph from '../../NodeGraph.js';
+import type { NodeId } from '../../../ids/index.js';
 import type {
   NodeBucket,
   NodeContact,
   NodeContactAddressData,
-} from '../../types';
+} from '../../types.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as ids from '../../../ids';
-import * as validation from '../../../validation';
-import * as nodesUtils from '../../utils';
-import * as utils from '../../../utils';
+import * as ids from '../../../ids/index.js';
+import * as validation from '../../../validation/index.js';
+import * as nodesUtils from '../../utils.js';
+import * as utils from '../../../utils/index.js';
 
 /**
  * Gets the closest local nodes to a target node

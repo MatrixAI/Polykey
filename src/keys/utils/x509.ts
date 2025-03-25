@@ -4,19 +4,19 @@ import type {
   Certificate,
   CertificateASN1,
   CertificatePEM,
-} from '../types';
-import type { CertId, NodeId } from '../../ids/types';
+} from '../types.js';
+import type { CertId, NodeId } from '../../ids/types.js';
 import * as x509 from '@peculiar/x509';
 import * as asn1 from '@peculiar/asn1-schema';
 import * as asn1X509 from '@peculiar/asn1-x509';
-import webcrypto, { importPrivateKey, importPublicKey } from './webcrypto';
+import webcrypto, { importPrivateKey, importPublicKey } from './webcrypto.js';
 import {
   publicKeyToNodeId,
   publicKeyFromPrivateKeyEd25519,
   validatePublicKey,
-} from './asymmetric';
-import * as ids from '../../ids';
-import config from '../../config';
+} from './asymmetric.js';
+import * as ids from '../../ids/index.js';
+import config from '../../config.js';
 
 x509.cryptoProvider.set(webcrypto);
 
@@ -473,4 +473,8 @@ export {
   certFromPEM,
 };
 
-export { createCertIdGenerator, encodeCertId, decodeCertId } from '../../ids';
+export {
+  createCertIdGenerator,
+  encodeCertId,
+  decodeCertId,
+} from '../../ids/index.js';

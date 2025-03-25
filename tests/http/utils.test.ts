@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'net';
 import http from 'http';
-import * as httpUtils from '@/http/utils';
+import * as httpUtils from '#http/utils.js';
 
 describe('Http utils', () => {
   test('termination of http server', async () => {

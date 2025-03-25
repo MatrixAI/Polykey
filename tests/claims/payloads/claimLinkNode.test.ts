@@ -1,6 +1,6 @@
 import { test, fc } from '@fast-check/jest';
-import * as claimsPayloadsClaimLinkNode from '@/claims/payloads/claimLinkNode';
-import * as testsClaimsPayloadsUtils from './utils';
+import * as testsClaimsPayloadsUtils from './utils.js';
+import * as claimsPayloadsClaimLinkNode from '#claims/payloads/claimLinkNode.js';
 
 describe('claims/payloads/claimLinkNode', () => {
   test.prop([testsClaimsPayloadsUtils.claimLinkNodeEncodedArb, fc.string()])(
@@ -22,10 +22,13 @@ describe('claims/payloads/claimLinkNode', () => {
     testsClaimsPayloadsUtils.signedClaimEncodedArb(
       testsClaimsPayloadsUtils.claimLinkNodeArb,
     ),
-    fc.record({
-      payload: fc.string(),
-      signatures: fc.array(fc.string()),
-    }),
+    fc.record(
+      {
+        payload: fc.string(),
+        signatures: fc.array(fc.string()),
+      },
+      { noNullPrototype: true },
+    ),
   ])(
     'parse signed claim link node',
     (

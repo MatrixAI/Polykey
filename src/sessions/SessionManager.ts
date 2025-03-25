@@ -1,21 +1,19 @@
 import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
-import type { SessionToken } from './types';
-import type KeyRing from '../keys/KeyRing';
-import type { Key } from '../keys/types';
+import type { SessionToken } from './types.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type { Key } from '../keys/types.js';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { withF } from '@matrixai/resources';
-import * as sessionsUtils from './utils';
-import * as sessionsErrors from './errors';
-import * as sessionsEvents from './events';
-import * as keysUtils from '../keys/utils';
-import * as nodesUtils from '../nodes/utils';
+import * as sessionsUtils from './utils.js';
+import * as sessionsErrors from './errors.js';
+import * as sessionsEvents from './events.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as nodesUtils from '../nodes/utils.js';
 
-interface SessionManager extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface SessionManager
+  extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new sessionsErrors.ErrorSessionManagerRunning(),
   new sessionsErrors.ErrorSessionManagerDestroyed(),
   {
@@ -101,7 +99,9 @@ class SessionManager {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new sessionsErrors.ErrorSessionManagerNotRunning(),
+  )
   public async resetKey(tran?: DBTransaction): Promise<void> {
     const tranOrDb = tran ?? this.db;
     const key = keysUtils.generateKey();
@@ -114,7 +114,9 @@ class SessionManager {
    * @param expiry Seconds from now or default
    * @param tran
    */
-  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new sessionsErrors.ErrorSessionManagerNotRunning(),
+  )
   public async createToken(
     expiry: number | undefined = this.expiry,
     tran?: DBTransaction,
@@ -131,7 +133,9 @@ class SessionManager {
     return await sessionsUtils.createSessionToken(payload, key!, expiry);
   }
 
-  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  @createDestroyStartStop.ready(
+    new sessionsErrors.ErrorSessionManagerNotRunning(),
+  )
   public async verifyToken(
     token: SessionToken,
     tran?: DBTransaction,

@@ -1,8 +1,8 @@
-import type { TLSConfig } from '@/network/types';
+import type { TLSConfig } from '#network/types.js';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
-import ClientService from '@/client/ClientService';
-import * as keysUtils from '@/keys/utils';
-import * as testsUtils from '../utils';
+import * as testsUtils from '../utils/index.js';
+import ClientService from '#client/ClientService.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 describe(`ClientService tests`, () => {
   const logger = new Logger(`${ClientService.name} test`, LogLevel.WARN, [

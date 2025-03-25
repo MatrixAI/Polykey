@@ -1,8 +1,8 @@
 import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
 import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
-import type { Key, Certificate, CertificatePEM } from '../keys/types';
-import type { Hostname, Port } from '../network/types';
+import type { Key, Certificate, CertificatePEM } from '../keys/types.js';
+import type { Hostname, Port } from '../network/types.js';
 import type {
   NodeAddress,
   NodeContact,
@@ -12,26 +12,26 @@ import type {
   NodeBucketIndex,
   NodeId,
   SeedNodes,
-} from './types';
+} from './types.js';
 import type {
   NodesAuthenticateConnectionMessage,
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
-} from './agent/types';
+} from './agent/types.js';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import { CryptoError } from '@matrixai/quic/dist/native';
+import { native } from '@matrixai/quic';
 import { utils as quicUtils, errors as quicErrors } from '@matrixai/quic';
 import { errors as rpcErrors } from '@matrixai/rpc';
 import lexi from 'lexicographic-integer';
-import * as nodesErrors from './errors';
-import * as ids from '../ids';
-import * as keysUtils from '../keys/utils';
-import * as networkUtils from '../network/utils';
-import * as validationErrors from '../validation/errors';
-import config from '../config';
-import * as utils from '../utils';
+import * as nodesErrors from './errors.js';
+import * as ids from '../ids/index.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as networkUtils from '../network/utils.js';
+import * as validationErrors from '../validation/errors.js';
+import config from '../config.js';
+import * as utils from '../utils/index.js';
 
 const sepBuffer = dbUtils.sep;
 
@@ -155,7 +155,12 @@ function parseBucketsDbKey(keyPath: KeyPath): {
   }
   const bucketKey = bucketKeyPath.toString();
   const bucketIndex = lexi.unpack(bucketKey);
-  const nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  let nodeId: NodeId;
+  if (typeof nodeIdKey === 'string') {
+    nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  } else {
+    nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  }
   return {
     bucketIndex,
     bucketKey,
@@ -219,7 +224,12 @@ function parseLastUpdatedBucketDbKey(keyPath: KeyPath): {
   if (lastUpdated == null) {
     throw new TypeError('Buffer is not an NodeGraph index bucket key');
   }
-  const nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  let nodeId: NodeId;
+  if (typeof nodeIdKey === 'string') {
+    nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  } else {
+    nodeId = IdInternal.fromBuffer<NodeId>(Buffer.from(nodeIdKey));
+  }
   return {
     lastUpdated,
     nodeId,
@@ -544,14 +554,14 @@ async function verifyServerCertificateChain(
     }
   | {
       result: 'fail';
-      value: CryptoError;
+      value: native.CryptoError;
     }
 > {
   const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
     return {
       result: 'fail',
-      value: CryptoError.CertificateRequired,
+      value: native.CryptoError.CertificateRequired,
     };
   }
   if (nodeIds.length === 0) {
@@ -563,7 +573,7 @@ async function verifyServerCertificateChain(
     if (cert == null) {
       return {
         result: 'fail',
-        value: CryptoError.BadCertificate,
+        value: native.CryptoError.BadCertificate,
       };
     }
     certChain.push(cert);
@@ -577,27 +587,27 @@ async function verifyServerCertificateChain(
     if (now < cert.notBefore || now > cert.notAfter) {
       return {
         result: 'fail',
-        value: CryptoError.CertificateExpired,
+        value: native.CryptoError.CertificateExpired,
       };
     }
     const certNodeId = keysUtils.certNodeId(cert);
     if (certNodeId == null) {
       return {
         result: 'fail',
-        value: CryptoError.BadCertificate,
+        value: native.CryptoError.BadCertificate,
       };
     }
     const certPublicKey = keysUtils.certPublicKey(cert);
     if (certPublicKey == null) {
       return {
         result: 'fail',
-        value: CryptoError.BadCertificate,
+        value: native.CryptoError.BadCertificate,
       };
     }
     if (!(await keysUtils.certNodeSigned(cert))) {
       return {
         result: 'fail',
-        value: CryptoError.BadCertificate,
+        value: native.CryptoError.BadCertificate,
       };
     }
     for (const nodeId of nodeIds) {
@@ -614,7 +624,7 @@ async function verifyServerCertificateChain(
   if (certClaimIndex == null || certClaim == null || verifiedNodeId == null) {
     return {
       result: 'fail',
-      value: CryptoError.BadCertificate,
+      value: native.CryptoError.BadCertificate,
     };
   }
   if (certClaimIndex > 0) {
@@ -632,7 +642,7 @@ async function verifyServerCertificateChain(
       ) {
         return {
           result: 'fail',
-          value: CryptoError.BadCertificate,
+          value: native.CryptoError.BadCertificate,
         };
       }
     }
@@ -649,15 +659,15 @@ async function verifyServerCertificateChain(
  */
 async function verifyClientCertificateChain(
   certs: Array<Uint8Array>,
-): Promise<CryptoError | undefined> {
+): Promise<native.CryptoError | undefined> {
   const certPEMChain = certs.map((v) => quicUtils.derToPEM(v));
   if (certPEMChain.length === 0) {
-    return CryptoError.CertificateRequired;
+    return native.CryptoError.CertificateRequired;
   }
   const certChain: Array<Readonly<X509Certificate>> = [];
   for (const certPEM of certPEMChain) {
     const cert = keysUtils.certFromPEM(certPEM as CertificatePEM);
-    if (cert == null) return CryptoError.BadCertificate;
+    if (cert == null) return native.CryptoError.BadCertificate;
     certChain.push(cert);
   }
   const now = new Date();
@@ -666,18 +676,18 @@ async function verifyClientCertificateChain(
     const cert = certChain[certIndex];
     const certNext = certChain[certIndex + 1];
     if (leafCert && (now < cert.notBefore || now > cert.notAfter)) {
-      return CryptoError.CertificateExpired;
+      return native.CryptoError.CertificateExpired;
     }
     const certNodeId = keysUtils.certNodeId(cert);
     if (certNodeId == null) {
-      return CryptoError.BadCertificate;
+      return native.CryptoError.BadCertificate;
     }
     const certPublicKey = keysUtils.certPublicKey(cert);
     if (certPublicKey == null) {
-      return CryptoError.BadCertificate;
+      return native.CryptoError.BadCertificate;
     }
     if (!(await keysUtils.certNodeSigned(cert))) {
-      return CryptoError.BadCertificate;
+      return native.CryptoError.BadCertificate;
     }
     if (certNext != null) {
       if (
@@ -687,7 +697,7 @@ async function verifyClientCertificateChain(
           keysUtils.certPublicKey(certNext)!,
         ))
       ) {
-        return CryptoError.BadCertificate;
+        return native.CryptoError.BadCertificate;
       }
     }
     leafCert = false;
@@ -868,4 +878,4 @@ export {
   nodesAuthenticateConnectionReverseDeny,
 };
 
-export { encodeNodeId, decodeNodeId } from '../ids';
+export { encodeNodeId, decodeNodeId } from '../ids/index.js';

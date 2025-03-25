@@ -3,10 +3,10 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   GestaltMessage,
-} from '../types';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
+} from '../types.js';
+import type GestaltGraph from '../../gestalts/GestaltGraph.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as nodesUtils from '../../nodes/utils';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class GestaltsGestaltList extends ServerHandler<
   {

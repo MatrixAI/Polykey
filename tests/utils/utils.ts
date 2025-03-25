@@ -1,8 +1,8 @@
-import type { NodeId } from '@/ids/types';
+import type { NodeId } from '#ids/types.js';
 import { IdInternal } from '@matrixai/id';
-import * as keysUtils from '@/keys/utils';
-import { promise } from '@/utils';
-import * as networkErrors from '@/network/errors';
+import * as keysUtils from '#keys/utils/index.js';
+import { promise } from '#utils/index.js';
+import * as networkErrors from '#network/errors.js';
 
 function generateRandomNodeId(): NodeId {
   const random = keysUtils.getRandomBytes(16).toString('hex');
@@ -148,6 +148,16 @@ function promFromEvents<
 
 const testNetworkName = 'testNetwork';
 
+async function generatorToArray<T>(
+  generator: AsyncGenerator<T>,
+): Promise<Array<T>> {
+  const results: Array<T> = [];
+  for await (const value of generator) {
+    results.push(value);
+  }
+  return results;
+}
+
 export {
   generateRandomNodeId,
   expectRemoteError,
@@ -157,4 +167,5 @@ export {
   promFromEvent,
   promFromEvents,
   testNetworkName,
+  generatorToArray,
 };

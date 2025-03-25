@@ -5,15 +5,15 @@ import type {
   ClientRPCResponseResult,
   IdentityInfoMessage,
   ProviderSearchMessage,
-} from '../types';
-import type { IdentityId, ProviderId } from '../../ids';
-import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { IdentityData } from '../../identities/types';
+} from '../types.js';
+import type { IdentityId, ProviderId } from '../../ids/index.js';
+import type IdentitiesManager from '../../identities/IdentitiesManager.js';
+import type { IdentityData } from '../../identities/types.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import * as identitiesErrors from '../../identities/errors';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import * as identitiesErrors from '../../identities/errors.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class IdentitiesInfoConnectedGet extends ServerHandler<
   {
