@@ -56,7 +56,7 @@
   "scripts": {
     "prepare": "tsc -p ./tsconfig.build.json",
     "build": "shx rm -rf ./dist && tsc -p ./tsconfig.build.json",
-    "postbuild": "shx cp -f src/status/*.json dist/status/",
+    "postbuild": "shx cp -f src/status/*.json dist/status/ && shx cp -f src/tokens/schemas/*.json dist/tokens/schemas/",
     "postversion": "npm install --package-lock-only --ignore-scripts --silent",
     "ts-node": "ts-node",
     "ts-node-inspect": "node --require ts-node/register --inspect",
