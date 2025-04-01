@@ -654,13 +654,10 @@ class NodeConnectionManager {
     const cancelAuthenticationPs: Array<PromiseCancellable<void>> = [];
     const cancelReason = new nodesErrors.ErrorNodeConnectionManagerStopping();
     for (const [nodeIdString] of this.connections) {
-      const destroyP = this.authenticateCancel(nodeIdString, cancelReason).then(
-        async () => {
-          return await this.destroyConnection(
-            IdInternal.fromString<NodeId>(nodeIdString),
-            force,
-          );
-        },
+      this.authenticateCancel(nodeIdString, cancelReason);
+      const destroyP = this.destroyConnection(
+        IdInternal.fromString<NodeId>(nodeIdString),
+        force,
       );
       destroyConnectionPs.push(destroyP);
     }
@@ -738,12 +735,13 @@ class NodeConnectionManager {
                 connectionAndTimer.connection.connectionId,
             );
             connectionAndTimer.timer = new Timer({
-              handler: async () =>
+              handler: async () => {
                 await this.destroyConnection(
                   targetNodeId,
                   false,
                   connectionAndTimer.connection.connectionId,
-                ),
+                );
+              },
               delay,
             });
             // Prevent unhandled exceptions when cancelling
@@ -878,6 +876,7 @@ class NodeConnectionManager {
       ctx,
     );
     this.addConnection(nodeConnection.validatedNodeId, nodeConnection);
+    this.initiateForwardAuthenticate(nodeConnection.nodeId);
     // Dispatch the connection event
     const connectionData: ConnectionData = {
       remoteNodeId: nodeConnection.nodeId,
@@ -1050,6 +1049,7 @@ class NodeConnectionManager {
 
     // Creating TTL timeout.
     // Add to map
+    // TODO: update type to something like ConnectionDetails
     const newConnAndTimer: ConnectionAndTimer = {
       connection: nodeConnection,
       timer: null,
@@ -1091,7 +1091,6 @@ class NodeConnectionManager {
         authenticatedRejectP,
       };
       this.connections.set(nodeIdString, entry);
-      this.initiateForwardAuthenticate(nodeId);
     } else {
       // Adding connection to existing entry
       newConnAndTimer.timer = new Timer({
@@ -1177,7 +1176,7 @@ class NodeConnectionManager {
     const remainingKeys = Object.keys(connectionsEntry.connections);
     if (remainingKeys.length === 0) {
       // Clean up authentication
-      await this.authenticateCancel(
+      this.authenticateCancel(
         targetNodeIdString,
         new nodesErrors.ErrorNodeManagerAuthenticationFailed(
           'Connection destroyed before authentication could complete',
@@ -1663,10 +1662,52 @@ class NodeConnectionManager {
       const authenticateMessage =
         await this.authenticateNetworkForwardCallback(ctx);
       await withF([this.acquireConnectionInternal(nodeId)], async ([conn]) => {
-        await conn.rpcClient.methods.nodesAuthenticateConnection(
-          authenticateMessage,
-          ctx,
-        );
+        const authStream =
+          await conn.rpcClient.methods.nodesAuthenticateConnection(ctx);
+        const writer = authStream.writable.getWriter();
+        const reader = authStream.readable.getReader();
+        await writer.write(authenticateMessage);
+        const reverseMessageIn = (await reader.read()).value;
+        // If the reverse auth was unsuccessful, error out gracefully.
+        if (
+          reverseMessageIn == null ||
+          reverseMessageIn.type !== 'success' ||
+          !reverseMessageIn.success
+        ) {
+          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
+            'Unsuccessful forward response',
+          );
+        }
+        const forwardMessageIn = (await reader.read()).value;
+        // If the forward message retrieval was unsuccessful, error out.
+        if (forwardMessageIn == null || forwardMessageIn.type === 'success') {
+          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
+            'Invalid forward message',
+          );
+        }
+        try {
+          await this.handleReverseAuthenticate(
+            conn.nodeId,
+            forwardMessageIn,
+            ctx,
+          );
+        } catch (e) {
+          await writer.close();
+          await reader.cancel();
+          throw e;
+        }
+        // If reverse authentication finished without errors, then we continue
+        await writer.write({ type: 'success', success: true });
+        const ack = (await reader.read()).value;
+
+        if (ack == null || ack.type !== 'success' || !ack.success) {
+          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
+            'Invalid ack response',
+          );
+        }
+
+        await writer.close();
+        await reader.cancel();
       });
       connectionsEntry.authenticatedForward = AuthenticatingState.SUCCESS;
     } catch (e) {
@@ -1743,7 +1784,7 @@ class NodeConnectionManager {
   /**
    * Will initiate a forward authentication call and coalesce
    */
-  public initiateForwardAuthenticate(nodeId: NodeId) {
+  public initiateForwardAuthenticate(nodeId: NodeId): void {
     // Needs check the map if one is already running, otherwise it needs to start one and manage it.
     const nodeIdString = nodeId.toString() as NodeIdString;
     const authenticationEntry = this.connections.get(nodeIdString);
@@ -1752,8 +1793,12 @@ class NodeConnectionManager {
     }
     const existingAuthenticate =
       this.activeForwardAuthenticateCalls.get(nodeIdString);
+
     // If it exists in the map then we don't need to start one and can just return
     if (existingAuthenticate != null) return;
+    // TODO: retry if fail
+    // create retry authenticatoin on new connections if the existing connection
+    // had a failed authentication. put a limit - soemwhere around 3.
     if (
       authenticationEntry.authenticatedForward !==
         AuthenticatingState.PENDING ||
@@ -1762,10 +1807,8 @@ class NodeConnectionManager {
       return;
     }
     // Otherwise we need to start one and add it to the map
-    const forwardAuthenticateP = this.forwardAuthenticate(nodeId).finally(
-      () => {
-        this.activeForwardAuthenticateCalls.delete(nodeIdString);
-      },
+    const forwardAuthenticateP = this.forwardAuthenticate(nodeId).finally(() =>
+      this.activeForwardAuthenticateCalls.delete(nodeIdString),
     );
     // Prevent unhandled errors
     forwardAuthenticateP.then(
@@ -1773,6 +1816,40 @@ class NodeConnectionManager {
       () => {},
     );
     this.activeForwardAuthenticateCalls.set(nodeIdString, forwardAuthenticateP);
+  }
+
+  public handleAuthentication(
+    requestingNodeId: NodeId,
+    forwardMessage: NodesAuthenticateConnectionMessage,
+    ctx: ContextTimed,
+  ): PromiseCancellable<NodesAuthenticateConnectionMessage>;
+  @decorators.timedCancellable(true)
+  public async handleAuthentication(
+    requestingNodeId: NodeId,
+    forwardMessage: NodesAuthenticateConnectionMessage,
+    @decorators.context ctx: ContextTimed,
+  ): Promise<NodesAuthenticateConnectionMessage> {
+    const requestingNodeIdString = requestingNodeId.toString() as NodeIdString;
+    const connectionEntry = this.connections.get(requestingNodeIdString);
+    if (connectionEntry == null) utils.never('Connection should be defined');
+
+    await this.handleReverseAuthenticate(requestingNodeId, forwardMessage, ctx);
+    connectionEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
+
+    return await this.authenticateNetworkForwardCallback(ctx);
+  }
+
+  public finalizeAuthentication(requestingNodeId: NodeId, success: boolean) {
+    const requestingNodeIdString = requestingNodeId.toString() as NodeIdString;
+    const connectionEntry = this.connections.get(requestingNodeIdString);
+    if (connectionEntry == null) utils.never('Connection should be defined');
+    if (success) {
+      connectionEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
+      this.authenticateSuccess(requestingNodeIdString);
+    } else {
+      connectionEntry.authenticatedReverse = AuthenticatingState.FAIL;
+      this.authenticateFail(requestingNodeIdString, new Error('temp'));
+    }
   }
 
   /**
@@ -1808,7 +1885,6 @@ class NodeConnectionManager {
     nodeId: NodeId,
     @decorators.context ctx: ContextTimed,
   ): Promise<void> {
-    ctx.signal.throwIfAborted();
     const targetNodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
     if (connectionsEntry == null) {
@@ -1818,11 +1894,20 @@ class NodeConnectionManager {
     const abortHandler = () => {
       rejectAbortP(ctx.signal.reason);
     };
-    ctx.signal.addEventListener('abort', abortHandler, { once: true });
+    if (ctx.signal.aborted) {
+      abortHandler();
+    } else {
+      ctx.signal.addEventListener('abort', abortHandler, { once: true });
+    }
+    // If the connection isn't already authenticated, then try authenticating
+    if (!connectionsEntry.authenticateComplete) {
+      this.initiateForwardAuthenticate(nodeId);
+    }
     try {
       return await Promise.race([connectionsEntry.authenticatedP, abortP]);
     } catch (e) {
-      // Capture the stacktrace here since knowing where we're waiting for authentication is more useful
+      // Capture the stacktrace here since knowing where we're waiting for
+      // authentication is more useful.
       Error.captureStackTrace(e);
       throw e;
     } finally {
@@ -1881,7 +1966,7 @@ class NodeConnectionManager {
     }
   }
 
-  protected async authenticateCancel(
+  protected authenticateCancel(
     targetNodeIdString: NodeIdString,
     reason: Error,
   ) {

@@ -132,15 +132,7 @@ class NodeManager {
     _taskInfo,
     bucketIndex: NodeBucketIndex,
   ) => {
-    // Don't use defaults like this
-    // if a default is to be used
-    // provide it directly
-
-    await this.refreshBucket(
-      bucketIndex,
-      this.connectionConnectTimeoutTime,
-      ctx,
-    );
+    await this.refreshBucket(bucketIndex, undefined, ctx);
     // When completed reschedule the task
     // if refreshBucketDelay is 0 then it's considered disabled
     if (this.refreshBucketDelayTime > 0) {
@@ -718,6 +710,7 @@ class NodeManager {
     }
 
     while (true) {
+      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeSignal(
         async (nodeIdTarget, nodeIdSignaller) => {
           let nodeConnection: NodeConnection | undefined;
@@ -859,6 +852,7 @@ class NodeManager {
     }
 
     while (true) {
+      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeDirect(
         async (nodeIdTarget, nodeContact) => {
           if (!this.nodeConnectionManager.hasConnection(nodeIdTarget)) {
@@ -1131,6 +1125,7 @@ class NodeManager {
           );
         // Collecting results
         for await (const result of resultStream) {
+          ctx.signal.throwIfAborted();
           const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
           if (nodeIdNew == null) {
             utils.never(`failed to decode NodeId "${result.nodeId}"`);
@@ -1147,6 +1142,7 @@ class NodeManager {
             ctx,
           );
         for await (const { nodeIdEncoded, nodeContact } of resultStream) {
+          ctx.signal.throwIfAborted();
           const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
           if (nodeId == null) {
             utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);

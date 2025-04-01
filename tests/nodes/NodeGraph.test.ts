@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   NodeContactAddress,
   NodeContact,
@@ -308,7 +309,12 @@ describe(`${NodeGraph.name} test`, () => {
         await nodeGraph.setNodeContact(nodeId2, nodeContact2);
 
         const results: Array<[NodeId, NodeContact]> = [];
-        for await (const result of nodeGraph.getNodeContacts()) {
+        const abortController = new AbortController();
+        for await (const result of nodeGraph.getNodeContacts(
+          undefined,
+          undefined,
+          { signal: abortController.signal } as ContextTimed,
+        )) {
           results.push(result);
         }
         expect(results.length).toBe(2);

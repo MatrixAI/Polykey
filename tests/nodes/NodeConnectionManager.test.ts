@@ -950,7 +950,15 @@ describe(`${NodeConnectionManager.name}`, () => {
         ),
       );
 
+      // Disabling authentication function
+      const initiateForwardAuthenticationSpy = jest
+        .spyOn(ncmLocal.nodeConnectionManager, 'initiateForwardAuthenticate')
+        .mockImplementation(() => {
+          // Do nothing
+        });
+
       // Creating connection
+      // TODO: connection auth should not be done here to pass the test
       await ncmLocal.nodeConnectionManager.createConnection(
         [ncmPeer1.nodeId],
         localHost,
@@ -965,6 +973,9 @@ describe(`${NodeConnectionManager.name}`, () => {
       await expect(
         connection?.connection.rpcClient.unaryCaller('dummyMethod', {}),
       ).rejects.toThrow(nodesErrors.ErrorNodeConnectionManagerRPCDenied);
+
+      // Restore the original authentication functionality
+      initiateForwardAuthenticationSpy.mockRestore();
 
       const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,

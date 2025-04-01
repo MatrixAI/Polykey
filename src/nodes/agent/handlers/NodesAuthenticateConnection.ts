@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -6,39 +7,77 @@ import type {
 } from '../types.js';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type { JSONValue } from '../../../types.js';
-import type { ContextTimed } from '@matrixai/contexts';
-import { UnaryHandler } from '@matrixai/rpc';
+import { DuplexHandler } from '@matrixai/rpc';
 import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
 
-class NodesAuthenticateConnection extends UnaryHandler<
+class NodesAuthenticateConnection extends DuplexHandler<
   {
     nodeConnectionManager: NodeConnectionManager;
   },
-  AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
-  AgentRPCResponseResult<SuccessMessage>
+  AgentRPCRequestParams<SuccessMessage | NodesAuthenticateConnectionMessage>,
+  AgentRPCResponseResult<SuccessMessage | NodesAuthenticateConnectionMessage>
 > {
-  public handle = async (
-    input: AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
-    _cancel,
+  public handle = async function* (
+    input: AsyncIterableIterator<
+      AgentRPCRequestParams<SuccessMessage | NodesAuthenticateConnectionMessage>
+    >,
+    _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): Promise<AgentRPCResponseResult<SuccessMessage>> => {
-    const { nodeConnectionManager } = this.container;
+  ): AsyncGenerator<
+    AgentRPCResponseResult<SuccessMessage | NodesAuthenticateConnectionMessage>,
+    void,
+    void
+  > {
+    const {
+      nodeConnectionManager,
+    }: {
+      nodeConnectionManager: NodeConnectionManager;
+    } = this.container;
+
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
-    await nodeConnectionManager.handleReverseAuthenticate(
+
+    // Forward authentication message processing
+    const {
+      value: forwardMessageIn,
+    }: {
+      value: NodesAuthenticateConnectionMessage | SuccessMessage;
+    } = await input.next();
+    if (forwardMessageIn.type === 'success') throw new Error('exit');
+    const forwardMessageOut = await nodeConnectionManager.handleAuthentication(
       requestingNodeId,
-      input,
+      forwardMessageIn,
       ctx,
     );
-    return {
+    yield {
       type: 'success',
       success: true,
     };
+
+    // Sending authentication message
+    yield forwardMessageOut;
+    const {
+      value: reverseMessageIn,
+    }: {
+      value: NodesAuthenticateConnectionMessage | SuccessMessage;
+    } = await input.next();
+    if (reverseMessageIn.type !== 'success') throw new Error('exit');
+
+    nodeConnectionManager.finalizeAuthentication(
+      requestingNodeId,
+      reverseMessageIn.success,
+    );
+    yield {
+      type: 'success',
+      success: true,
+    }
+    // success: true
+    // fire authentication events before final ack
   };
 }
 

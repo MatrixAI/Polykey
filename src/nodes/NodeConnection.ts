@@ -169,12 +169,9 @@ class NodeConnection {
       targetHostname,
       tlsConfig,
       connectionKeepAliveIntervalTime,
-      connectionKeepAliveTimeoutTime = config.defaultsSystem
-        .nodesConnectionIdleTimeoutTimeMin,
-      connectionInitialMaxStreamsBidi = config.defaultsSystem
-        .nodesConnectionInitialMaxStreamsBidi,
-      connectionInitialMaxStreamsUni = config.defaultsSystem
-        .nodesConnectionInitialMaxStreamsUni,
+      connectionKeepAliveTimeoutTime,
+      connectionInitialMaxStreamsBidi,
+      connectionInitialMaxStreamsUni,
       quicSocket,
       manifest,
       logger,
@@ -301,9 +298,7 @@ class NodeConnection {
     const rpcClient = new RPCClient<AgentClientManifest>({
       manifest,
       middlewareFactory: rpcUtilsMiddleware.defaultClientMiddlewareWrapper(),
-      streamFactory: async () => {
-        return quicConnection.newStream();
-      },
+      streamFactory: async () => quicConnection.newStream(),
       toError: networkUtils.toError,
       logger: logger.getChild(RPCClient.name),
     });

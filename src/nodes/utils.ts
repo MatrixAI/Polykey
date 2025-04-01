@@ -18,6 +18,7 @@ import type {
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
 } from './agent/types.js';
+import type { ContextTimed } from '@matrixai/contexts';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -753,6 +754,7 @@ const quicServerCrypto: QUICServerCrypto = {
 async function* collectNodeContacts(
   levelPath: LevelPath,
   tran: DBTransaction,
+  ctx: ContextTimed,
   options: {
     reverse?: boolean;
     lt?: LevelPath;
@@ -773,6 +775,7 @@ async function* collectNodeContacts(
     gt: options.gt,
     valueAsBuffer: false,
   })) {
+    ctx.signal.throwIfAborted();
     const { nodeId: nodeIdCurrent, nodeContactAddress } = parseBucketsDbKey([
       ...(options.pathAdjust ?? []),
       ...keyPath,
