@@ -1,10 +1,14 @@
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
-import * as password from '@/keys/utils/password';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+import * as password from '#keys/utils/password.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('password hashing - min', () => {
       password.hashPassword(
         'password',
@@ -42,8 +46,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

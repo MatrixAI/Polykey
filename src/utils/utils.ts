@@ -4,16 +4,16 @@ import type {
   Timer,
   PromiseDeconstructed,
   Callback,
-} from '../types';
+} from '../types.js';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
-import os from 'os';
+import os from 'node:os';
 import process from 'process';
-import path from 'path';
-import nodesEvents from 'events';
+import path from 'node:path';
+import nodesEvents from 'node:events';
 import lexi from 'lexicographic-integer';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { timedCancellable } from '@matrixai/contexts/dist/functions';
-import * as utilsErrors from './errors';
+import { functions } from '@matrixai/contexts';
+import * as utilsErrors from './errors.js';
 
 const AsyncFunction = (async () => {}).constructor;
 const GeneratorFunction = function* () {}.constructor;
@@ -222,7 +222,7 @@ async function poll_<T, E = any>(
   }
 }
 
-const pollCancellable = timedCancellable(
+const pollCancellable = functions.timedCancellable(
   poll_,
   true,
   undefined,
@@ -541,6 +541,12 @@ function setMaxListeners(
   nodesEvents.setMaxListeners(limit, target);
 }
 
+async function importFS(fs?: FileSystem): Promise<FileSystem> {
+  if (fs != null) return fs;
+  const { default: fsImported } = await import('node:fs');
+  return fsImported;
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -581,4 +587,5 @@ export {
   isBufferSource,
   yieldMicro,
   setMaxListeners,
+  importFS,
 };

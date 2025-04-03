@@ -7,18 +7,18 @@ import type {
   PasswordOpsLimit,
   PasswordMemLimit,
   Digest,
-} from '../types';
+} from '../types.js';
 import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
-import { getRandomBytes } from './random';
+import { getRandomBytes } from './random.js';
 import {
   passwordOpsLimits,
   passwordMemLimits,
   passwordOpsLimitDefault,
   passwordMemLimitDefault,
   hashPassword,
-} from './password';
-import * as utils from '../../utils';
+} from './password.js';
+import * as utils from '../../utils/index.js';
 
 const nonceSize = sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
 const macSize = sodium.crypto_aead_xchacha20poly1305_ietf_ABYTES;
@@ -191,9 +191,11 @@ function wrapWithPassword(
     salt: salt.toString('base64url'),
   };
   const protectedHeaderEncoded = Buffer.from(
+    // @ts-ignore: canonicalize exports is function improperly for ESM
     canonicalize(protectedHeader)!,
     'utf-8',
   ).toString('base64url');
+  // @ts-ignore: canonicalize exports is function improperly for ESM
   const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
   const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
   const nonce = getRandomBytes(nonceSize);
@@ -302,9 +304,11 @@ function wrapWithKey(key: Key, keyJWK: JWK): JWKEncrypted {
     cty: 'jwk+json',
   };
   const protectedHeaderEncoded = Buffer.from(
+    // @ts-ignore: canonicalize exports is function improperly for ESM
     canonicalize(protectedHeader)!,
     'utf-8',
   ).toString('base64url');
+  // @ts-ignore: canonicalize exports is function improperly for ESM
   const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
   const additionalData = Buffer.from(protectedHeaderEncoded, 'utf-8');
   const nonce = getRandomBytes(nonceSize);

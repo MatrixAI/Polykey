@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsSecretsTouch from '../handlers/VaultsSecretsTouch';
+import type VaultsSecretsTouch from '../handlers/VaultsSecretsTouch.js';
 import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsTouch>;

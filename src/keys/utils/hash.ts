@@ -1,10 +1,10 @@
 import type { MultihashDigest } from 'multiformats/hashes/interface';
-import type { Digest, DigestCode, DigestFormats } from '../types';
+import type { Digest, DigestCode, DigestFormats } from '../types.js';
 import sodium from 'sodium-native';
 import * as multiformats from 'multiformats';
-import * as keysTypes from '../types';
-import * as utils from '../../utils';
-import * as errors from '../../errors';
+import * as keysTypes from '../types.js';
+import * as utils from '../../utils/index.js';
+import * as errors from '../../errors.js';
 
 function sha2256(data: BufferSource): Digest<'sha2-256'> {
   const digest = Buffer.allocUnsafeSlow(sodium.crypto_hash_sha256_BYTES);

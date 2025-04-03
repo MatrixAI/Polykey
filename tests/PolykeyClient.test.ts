@@ -1,25 +1,25 @@
-import type { SessionToken } from '@/sessions/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { SessionToken } from '#sessions/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import net from 'net';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import {
   utils as webSocketUtils,
   errors as webSocketErrors,
 } from '@matrixai/ws';
-import { running } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import PolykeyAgent from '@/PolykeyAgent';
-import PolykeyClient from '@/PolykeyClient';
-import Session from '@/sessions/Session';
-import config from '@/config';
-import * as ids from '@/ids';
-import * as clientUtils from '@/client/utils';
-import * as keysUtils from '@/keys/utils';
-import * as errors from '@/errors';
-import * as events from '@/events';
-import * as utils from '@/utils';
-import * as testsUtils from './utils';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import * as testsUtils from './utils/index.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import PolykeyClient from '#PolykeyClient.js';
+import Session from '#sessions/Session.js';
+import config from '#config.js';
+import * as ids from '#ids/index.js';
+import * as clientUtils from '#client/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as errors from '#errors.js';
+import * as events from '#events.js';
+import * as utils from '#utils/index.js';
 
 describe(PolykeyClient.name, () => {
   const logger = new Logger(`${PolykeyClient.name} Test`, LogLevel.WARN, [
@@ -230,7 +230,7 @@ describe(PolykeyClient.name, () => {
       // Promise that resolves when status changes
       await pkClient.webSocketClient.destroy({ force: true });
       await expect(stoppedP).toResolve();
-      expect(pkClient[running]).toBe(false);
+      expect(pkClient[createDestroyStartStop.running]).toBe(false);
     });
   });
 });

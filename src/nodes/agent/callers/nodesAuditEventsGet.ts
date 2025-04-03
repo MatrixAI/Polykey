@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesAuditEventsGet from '../handlers/NodesAuditEventsGet';
+import type NodesAuditEventsGet from '../handlers/NodesAuditEventsGet.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesAuditEventsGet>;

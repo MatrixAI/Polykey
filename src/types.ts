@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-restricted-imports -- Interim types for FileSystem
-import type fs from 'fs';
+import type fs from 'node:fs';
 
 /**
  * Plain data dictionary
@@ -171,6 +171,7 @@ export type {
   POJO,
   JSONValue,
   Opaque,
+  brand,
   Callback,
   NonEmptyArray,
   AbstractConstructorParameters,

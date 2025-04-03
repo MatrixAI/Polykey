@@ -1,8 +1,8 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import type { TLSConfig } from '@/network/types';
-import type { FileSystem } from '@/types';
-import type { VaultId } from '@/ids';
-import type NodeManager from '@/nodes/NodeManager';
+import type { TLSConfig } from '#network/types.js';
+import type { FileSystem } from '#types.js';
+import type { VaultId } from '#ids/index.js';
+import type NodeManager from '#nodes/NodeManager.js';
 import type {
   LogEntryMessage,
   SecretContentMessage,
@@ -15,23 +15,25 @@ import type {
   VaultNamesHeaderMessageTagged,
   VaultPermissionMessage,
   VaultsLogMessage,
-} from '@/client/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#client/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import fc from 'fast-check';
 import { test } from '@fast-check/jest';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import TaskManager from '@/tasks/TaskManager';
-import ACL from '@/acl/ACL';
-import KeyRing from '@/keys/KeyRing';
-import VaultManager from '@/vaults/VaultManager';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils/index.js';
+import TaskManager from '#tasks/TaskManager.js';
+import ACL from '#acl/ACL.js';
+import KeyRing from '#keys/KeyRing.js';
+import VaultManager from '#vaults/VaultManager.js';
+import GestaltGraph from '#gestalts/GestaltGraph.js';
+import NotificationsManager from '#notifications/NotificationsManager.js';
+import ClientService from '#client/ClientService.js';
 import {
   VaultsCreate,
   VaultsDelete,
@@ -52,7 +54,7 @@ import {
   VaultsSecretsStat,
   VaultsSecretsTouch,
   VaultsVersion,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   vaultsCreate,
   vaultsDelete,
@@ -73,14 +75,13 @@ import {
   vaultsSecretsStat,
   vaultsSecretsTouch,
   vaultsVersion,
-} from '@/client/callers';
-import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as vaultsUtils from '@/vaults/utils';
-import * as vaultsErrors from '@/vaults/errors';
-import * as clientErrors from '@/client/errors';
-import * as networkUtils from '@/network/utils';
-import * as testsUtils from '../../utils';
+} from '#client/callers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as vaultsErrors from '#vaults/errors.js';
+import * as clientErrors from '#client/errors.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('vaultsClone', () => {
   const logger = new Logger('vaultsClone test', LogLevel.WARN, [
@@ -507,11 +508,14 @@ describe('vaultsPermissionSet and vaultsPermissionUnset and vaultsPermissionGet'
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let notificationsManager: NotificationsManager;
-  let mockedSendNotification: jest.SpyInstance;
+  let mockedSendNotification: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.sendNotification
+  >;
   beforeEach(async () => {
     mockedSendNotification = jest
       .spyOn(NotificationsManager.prototype, 'sendNotification')
-      .mockImplementation();
+      // @ts-ignore: overriding types
+      .mockImplementation(async () => {});
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -2845,7 +2849,7 @@ describe('vaultsSecretsNewDir', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const fs: FileSystem = require('fs');
+  let fs: FileSystem;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -2857,6 +2861,7 @@ describe('vaultsSecretsNewDir', () => {
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
+    fs = await import('node:fs');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -2973,7 +2978,7 @@ describe('vaultsSecretsList', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const fs: FileSystem = require('fs');
+  let fs: FileSystem;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -2985,6 +2990,7 @@ describe('vaultsSecretsList', () => {
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
+    fs = await import('node:fs');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -3291,7 +3297,7 @@ describe('vaultsSecretsRename', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const fs: FileSystem = require('fs');
+  let fs: FileSystem;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -3303,6 +3309,7 @@ describe('vaultsSecretsRename', () => {
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
+    fs = await import('node:fs');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -3441,7 +3448,7 @@ describe('vaultsSecretsStat', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const fs: FileSystem = require('fs');
+  let fs: FileSystem;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -3453,6 +3460,7 @@ describe('vaultsSecretsStat', () => {
   }>;
   let vaultManager: VaultManager;
   beforeEach(async () => {
+    fs = await import('node:fs');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -4220,7 +4228,7 @@ describe('vaultsVersion', () => {
   ]);
   const password = 'helloWorld';
   const localhost = '127.0.0.1';
-  const fs: FileSystem = require('fs');
+  let fs: FileSystem;
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
@@ -4242,6 +4250,7 @@ describe('vaultsVersion', () => {
   };
   const vaultName = 'test-vault';
   beforeEach(async () => {
+    fs = await import('node:fs');
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );

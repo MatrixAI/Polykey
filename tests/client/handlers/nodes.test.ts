@@ -1,24 +1,27 @@
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { NodeIdEncoded } from '@/ids/types';
-import type { TLSConfig, Host, Port } from '@/network/types';
-import type { Notification } from '@/notifications/types';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { NodeIdEncoded } from '#ids/types.js';
+import type { TLSConfig, Host, Port } from '#network/types.js';
+import type { Notification } from '#notifications/types.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { NodeAddress, NodeContactAddressData } from '#nodes/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import ACL from '@/acl/ACL';
-import KeyRing from '@/keys/KeyRing';
-import NodeManager from '@/nodes/NodeManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import TaskManager from '@/tasks/TaskManager';
-import Sigchain from '@/sigchain/Sigchain';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils/index.js';
+import ACL from '#acl/ACL.js';
+import KeyRing from '#keys/KeyRing.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import TaskManager from '#tasks/TaskManager.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import NotificationsManager from '#notifications/NotificationsManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import ClientService from '#client/ClientService.js';
 import {
   NodesAdd,
   NodesClaim,
@@ -26,7 +29,7 @@ import {
   NodesPing,
   NodesGetAll,
   NodesListConnections,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   nodesAdd,
   nodesClaim,
@@ -34,14 +37,13 @@ import {
   nodesPing,
   nodesGetAll,
   nodesListConnections,
-} from '@/client/callers';
-import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as networkUtils from '@/network/utils';
-import * as notificationsUtils from '@/notifications/utils';
-import * as validationErrors from '@/validation/errors';
-import { parseNodeId } from '@/ids';
-import * as testsUtils from '../../utils';
+} from '#client/callers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as networkUtils from '#network/utils.js';
+import * as notificationsUtils from '#notifications/utils.js';
+import * as validationErrors from '#validation/errors.js';
+import { parseNodeId } from '#ids/index.js';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -269,9 +271,15 @@ describe('nodesClaim', () => {
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
-  let mockedFindGestaltInvite: jest.SpyInstance;
-  let mockedSendNotification: jest.SpyInstance;
-  let mockedClaimNode: jest.SpyInstance;
+  let mockedFindGestaltInvite: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.findGestaltInvite
+  >;
+  let mockedSendNotification: jest.SpiedFunction<
+    typeof NotificationsManager.prototype.sendNotification
+  >;
+  let mockedClaimNode: jest.SpiedFunction<
+    typeof NodeManager.prototype.claimNode
+  >;
   beforeEach(async () => {
     mockedFindGestaltInvite = jest
       .spyOn(NotificationsManager.prototype, 'findGestaltInvite')
@@ -449,7 +457,7 @@ describe('nodesFind', () => {
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
-  let mockedFindNode: jest.SpyInstance;
+  let mockedFindNode: jest.SpiedFunction<typeof NodeManager.prototype.findNode>;
   beforeEach(async () => {
     mockedFindNode = jest
       .spyOn(NodeManager.prototype, 'findNode')
@@ -605,7 +613,7 @@ describe('nodesPing', () => {
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
-  let mockedPingNode: jest.SpyInstance;
+  let mockedPingNode: jest.SpiedFunction<typeof NodeManager.prototype.pingNode>;
   beforeEach(async () => {
     mockedPingNode = jest.spyOn(NodeManager.prototype, 'pingNode');
     dataDir = await fs.promises.mkdtemp(
@@ -720,7 +728,10 @@ describe('nodesPing', () => {
     expect(response.success).toBeFalsy();
   });
   test('pings a node (online)', async () => {
-    mockedPingNode.mockResolvedValue([]);
+    mockedPingNode.mockResolvedValue([['', 0], {}] as [
+      NodeAddress,
+      NodeContactAddressData,
+    ]);
     const response = await rpcClient.methods.nodesPing({
       nodeIdEncoded:
         'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0' as NodeIdEncoded,
@@ -906,7 +917,9 @@ describe('nodesListConnections', () => {
   let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
-  let mockedConnection: jest.SpyInstance;
+  let mockedConnection: jest.SpiedFunction<
+    typeof NodeConnectionManager.prototype.listConnections
+  >;
   beforeEach(async () => {
     mockedConnection = jest.spyOn(
       NodeConnectionManager.prototype,
@@ -1023,12 +1036,13 @@ describe('nodesListConnections', () => {
         connectionId: 'someId',
         primary: true,
         address: {
-          host: '127.0.0.1',
-          port: 11111,
+          host: '127.0.0.1' as Host,
+          port: 11111 as Port,
           hostname: undefined,
         },
         usageCount: 1,
         timeout: undefined,
+        authenticated: true,
       },
     ]);
 

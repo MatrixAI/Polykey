@@ -5,19 +5,19 @@ import type {
   MiddlewareFactory,
   ServerManifest,
 } from '@matrixai/rpc';
-import type { TLSConfig } from '../network/types';
+import type { TLSConfig } from '../network/types.js';
 import Logger from '@matrixai/logger';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
+import { startStop } from '@matrixai/async-init';
 import { running, status } from '@matrixai/async-init';
 import { WebSocketServer, events as wsEvents } from '@matrixai/ws';
 import { RPCServer, middleware as rpcMiddleware } from '@matrixai/rpc';
-import * as events from './events';
-import * as errors from './errors';
-import * as networkUtils from '../network/utils';
-import config from '../config';
+import * as events from './events.js';
+import * as errors from './errors.js';
+import * as networkUtils from '../network/utils.js';
+import config from '../config.js';
 
-interface ClientService extends StartStop {}
-@StartStop({
+interface ClientService extends startStop.StartStop {}
+@startStop.StartStop({
   eventStart: events.EventClientServiceStart,
   eventStarted: events.EventClientServiceStarted,
   eventStop: events.EventClientServiceStop,
@@ -103,12 +103,12 @@ class ClientService {
     });
   }
 
-  @ready(new errors.ErrorClientServiceNotRunning())
+  @startStop.ready(new errors.ErrorClientServiceNotRunning())
   public get host() {
     return this.webSocketServer.host;
   }
 
-  @ready(new errors.ErrorClientServiceNotRunning())
+  @startStop.ready(new errors.ErrorClientServiceNotRunning())
   public get port() {
     return this.webSocketServer.port;
   }
@@ -148,7 +148,7 @@ class ClientService {
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  @ready(new errors.ErrorClientServiceNotRunning())
+  @startStop.ready(new errors.ErrorClientServiceNotRunning())
   public setTlsConfig(tlsConfig: TLSConfig): void {
     this.webSocketServer.updateConfig({
       key: tlsConfig.keyPrivatePem,

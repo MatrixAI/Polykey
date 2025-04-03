@@ -8,14 +8,14 @@ import type {
   Signature,
   JWK,
   JWKEncrypted,
-} from '../types';
-import type { NodeId } from '../../ids/types';
+} from '../types.js';
+import type { NodeId } from '../../ids/types.js';
 import sodium from 'sodium-native';
 import canonicalize from 'canonicalize';
 import { IdInternal } from '@matrixai/id';
-import { getRandomBytes } from './random';
-import * as validationErrors from '../../validation/errors';
-import * as utils from '../../utils';
+import { getRandomBytes } from './random.js';
+import * as validationErrors from '../../validation/errors.js';
+import * as utils from '../../utils/index.js';
 
 /**
  * Use this to make a key pair if you only have public key and private key
@@ -379,6 +379,7 @@ function encapsulateWithPublicKey(
     // Which does in fact require a nonce, are they re-using the same nonce somehow?
     const nonce = getRandomBytes(sodium.crypto_box_NONCEBYTES);
     const mac = Buffer.allocUnsafe(sodium.crypto_box_MACBYTES);
+    // @ts-ignore: canonicalize exports is function improperly for ESM
     const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
     const cipherText = Buffer.allocUnsafe(plainText.byteLength);
     sodium.crypto_box_detached(
@@ -417,6 +418,7 @@ function encapsulateWithPublicKey(
     return keyJWE;
   } else {
     // ECDH-ES and ECDH-EE
+    // @ts-ignore: canonicalize exports is function improperly for ESM
     const plainText = Buffer.from(canonicalize(keyJWK)!, 'utf-8');
     const publicKeyAndMacAndCipherText = Buffer.allocUnsafe(
       sodium.crypto_box_SEALBYTES + plainText.byteLength,

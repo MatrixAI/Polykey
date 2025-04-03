@@ -4,23 +4,20 @@ import type {
   PermissionIdString,
   Permission,
   VaultActions,
-} from './types';
-import type { NodeId } from '../ids/types';
-import type { GestaltAction } from '../gestalts/types';
-import type { VaultAction, VaultId } from '../vaults/types';
-import type { Ref } from '../types';
+} from './types.js';
+import type { NodeId } from '../ids/types.js';
+import type { GestaltAction } from '../gestalts/types.js';
+import type { VaultAction, VaultId } from '../vaults/types.js';
+import type { Ref } from '../types.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as aclUtils from './utils';
-import * as aclErrors from './errors';
-import * as events from './events';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import * as aclUtils from './utils.js';
+import * as aclErrors from './errors.js';
+import * as events from './events.js';
 
-interface ACL extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface ACL extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new aclErrors.ErrorACLRunning(),
   new aclErrors.ErrorACLDestroyed(),
   {
@@ -99,7 +96,7 @@ class ACL {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async sameNodePerm(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -126,7 +123,7 @@ class ACL {
     return false;
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async getNodePerms(
     tran?: DBTransaction,
   ): Promise<Array<Record<NodeId, Permission>>> {
@@ -163,7 +160,7 @@ class ACL {
     return nodePerms_;
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async getVaultPerms(
     tran?: DBTransaction,
   ): Promise<Record<VaultId, Record<NodeId, Permission>>> {
@@ -217,7 +214,7 @@ class ACL {
    * Gets the permission record for a given node id
    * Any node id is acceptable
    */
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async getNodePerm(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -244,7 +241,7 @@ class ACL {
    * The node ids in the record each represent a unique gestalt
    * If there are no permissions, then an empty record is returned
    */
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async getVaultPerm(
     vaultId: VaultId,
     tran?: DBTransaction,
@@ -299,7 +296,7 @@ class ACL {
     return perms;
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async setNodeAction(
     nodeId: NodeId,
     action: GestaltAction,
@@ -345,7 +342,7 @@ class ACL {
     }
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async unsetNodeAction(
     nodeId: NodeId,
     action: GestaltAction,
@@ -371,7 +368,7 @@ class ACL {
     await tran.put([...this.aclPermsDbPath, permId], permRef, false);
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async setVaultAction(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -415,7 +412,7 @@ class ACL {
     );
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async unsetVaultAction(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -458,7 +455,7 @@ class ACL {
    * This is intended for completely new gestalts
    * Or for gestalt splitting.
    */
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async setNodesPerm(
     nodeIds: Array<NodeId>,
     perm: Permission,
@@ -513,7 +510,7 @@ class ACL {
     }
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async setNodePerm(
     nodeId: NodeId,
     perm: Permission,
@@ -555,7 +552,7 @@ class ACL {
     }
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async unsetNodePerm(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -587,7 +584,7 @@ class ACL {
     // they can be removed later upon inspection
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async unsetVaultPerms(
     vaultId: VaultId,
     tran?: DBTransaction,
@@ -625,7 +622,7 @@ class ACL {
     await tran.del([...this.aclVaultsDbPath, vaultId.toBuffer()]);
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async joinNodePerm(
     nodeId: NodeId,
     nodeIdsJoin: Array<NodeId>,
@@ -682,7 +679,7 @@ class ACL {
     await tran.put([...this.aclPermsDbPath, permId], permRef, false);
   }
 
-  @ready(new aclErrors.ErrorACLNotRunning())
+  @createDestroyStartStop.ready(new aclErrors.ErrorACLNotRunning())
   public async joinVaultPerms(
     vaultId: VaultId,
     vaultIdsJoin: Array<VaultId>,

@@ -1,4 +1,4 @@
-import EventPolykey from './EventPolykey';
+import EventPolykey from './EventPolykey.js';
 
 abstract class EventPolykeyAgent<T> extends EventPolykey<T> {}
 
@@ -50,16 +50,16 @@ export {
  * This ensures that we have one place to construct and
  * reference all Polykey events.
  */
-export * from './acl/events';
-export * from './discovery/events';
-export * from './sessions/events';
-export * from './keys/events';
-export * from './vaults/events';
-export * from './gestalts/events';
-export * from './identities/events';
-export * from './nodes/events';
-export * from './sigchain/events';
-export * from './notifications/events';
-export * from './schema/events';
-export * from './status/events';
-export * from './tasks/events';
+export * from './acl/events.js';
+export * from './discovery/events.js';
+export * from './sessions/events.js';
+export * from './keys/events.js';
+export * from './vaults/events.js';
+export * from './gestalts/events.js';
+export * from './identities/events.js';
+export * from './nodes/events.js';
+export * from './sigchain/events.js';
+export * from './notifications/events.js';
+export * from './schema/events.js';
+export * from './status/events.js';
+export * from './tasks/events.js';

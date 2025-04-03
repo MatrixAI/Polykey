@@ -1,6 +1,6 @@
-import sysexits from './sysexits';
-import ErrorPolykey from '../ErrorPolykey';
-export * from './ratelimiter/errors';
+import sysexits from './sysexits.js';
+import ErrorPolykey from '../ErrorPolykey.js';
+export * from './ratelimiter/errors.js';
 
 class ErrorUtils<T> extends ErrorPolykey<T> {}
 

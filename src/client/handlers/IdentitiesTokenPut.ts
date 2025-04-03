@@ -4,13 +4,13 @@ import type {
   ClientRPCResponseResult,
   IdentityMessage,
   TokenMessage,
-} from '../types';
-import type IdentitiesManager from '../../identities/IdentitiesManager';
-import type { IdentityId, ProviderId } from '../../ids';
+} from '../types.js';
+import type IdentitiesManager from '../../identities/IdentitiesManager.js';
+import type { IdentityId, ProviderId } from '../../ids/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class IdentitiesTokenPut extends UnaryHandler<
   {

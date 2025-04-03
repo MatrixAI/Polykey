@@ -1,9 +1,9 @@
-import type { NodeIdString, NodeId } from '../ids/types';
-import type { NodeContact } from './types';
+import type { NodeIdString, NodeId } from '../ids/types.js';
+import type { NodeContact } from './types.js';
 import type { Semaphore } from '@matrixai/async-locks';
 import type { ContextCancellable } from '@matrixai/contexts';
-import * as nodesUtils from './utils';
-import * as utils from '../utils';
+import * as nodesUtils from './utils.js';
+import * as utils from '../utils/index.js';
 
 // Temp utility class for tracking shared queue
 export class NodeConnectionQueue {

@@ -1,7 +1,7 @@
-import os from 'os';
-import path from 'path';
+import os from 'node:os';
+import path from 'node:path';
 import process from 'process';
-import * as utils from '@/utils';
+import * as utils from '#utils/index.js';
 
 describe('utils', () => {
   test('getting default node path', () => {

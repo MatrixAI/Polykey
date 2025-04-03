@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type AgentStatus from '../handlers/AgentStatus';
+import type AgentStatus from '../handlers/AgentStatus.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<AgentStatus>;

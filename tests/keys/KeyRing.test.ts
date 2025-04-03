@@ -1,12 +1,12 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from '@fast-check/jest';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import KeyRing from '@/keys/KeyRing';
-import * as keysUtils from '@/keys/utils';
-import * as keysErrors from '@/keys/errors';
-import * as testsKeysUtils from './utils';
+import * as testsKeysUtils from './utils.js';
+import KeyRing from '#keys/KeyRing.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as keysErrors from '#keys/errors.js';
 
 describe(KeyRing.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');

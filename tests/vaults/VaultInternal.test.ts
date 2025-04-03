@@ -1,25 +1,24 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import type { VaultId } from '@/vaults/types';
-import type { Vault } from '@/vaults/Vault';
+import type { VaultId } from '#vaults/types.js';
+import type { Vault } from '#vaults/Vault.js';
 import type { LevelPath } from '@matrixai/db';
-import type { Key } from '@/keys/types';
-import type KeyRing from '@/keys/KeyRing';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type KeyRing from '#keys/KeyRing.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import git from 'isomorphic-git';
 import { EncryptedFS } from 'encryptedfs';
 import { DB } from '@matrixai/db';
 import { withF } from '@matrixai/resources';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { tagLast } from '@/vaults/types';
-import { sleep } from '@/utils';
-import VaultInternal from '@/vaults/VaultInternal';
-import * as vaultsErrors from '@/vaults/errors';
-import * as keysUtils from '@/keys/utils';
-import * as vaultsUtils from '@/vaults/utils';
-import * as utils from '@/utils';
-import * as nodeTestUtils from '../nodes/utils';
+import * as nodeTestUtils from '../nodes/utils.js';
+import { tagLast } from '#vaults/types.js';
+import { sleep } from '#utils/index.js';
+import VaultInternal from '#vaults/VaultInternal.js';
+import * as vaultsErrors from '#vaults/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('VaultInternal', () => {
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
@@ -69,20 +68,7 @@ describe('VaultInternal', () => {
     db = await DB.createDB({
       crypto: {
         key: keysUtils.generateKey(),
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
       dbPath: path.join(dataDir, 'db'),
       fs: fs,

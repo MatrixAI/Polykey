@@ -1,13 +1,13 @@
 import type {
   TokenHeaderSignatureEncoded,
   TokenPayloadEncoded,
-} from '@/tokens/types';
+} from '#tokens/types.js';
 import { test, fc } from '@fast-check/jest';
-import Token from '@/tokens/Token';
-import * as tokensUtils from '@/tokens/utils';
-import * as tokensErrors from '@/tokens/errors';
-import * as testsTokensUtils from './utils';
-import * as testsKeysUtils from '../keys/utils';
+import * as testsTokensUtils from './utils.js';
+import * as testsKeysUtils from '../keys/utils.js';
+import Token from '#tokens/Token.js';
+import * as tokensUtils from '#tokens/utils.js';
+import * as tokensErrors from '#tokens/errors.js';
 
 describe(Token.name, () => {
   test.prop([testsTokensUtils.tokenPayloadArb])(
@@ -58,15 +58,21 @@ describe(Token.name, () => {
     },
   );
   test.prop([
-    fc.record({
-      payload: fc.string() as fc.Arbitrary<TokenPayloadEncoded>,
-      signatures: fc.array(
-        fc.record({
-          protected: fc.string(),
-          signature: fc.string(),
-        }) as fc.Arbitrary<TokenHeaderSignatureEncoded>,
-      ),
-    }),
+    fc.record(
+      {
+        payload: fc.string() as fc.Arbitrary<TokenPayloadEncoded>,
+        signatures: fc.array(
+          fc.record(
+            {
+              protected: fc.string(),
+              signature: fc.string(),
+            },
+            { noNullPrototype: true },
+          ) as fc.Arbitrary<TokenHeaderSignatureEncoded>,
+        ),
+      },
+      { noNullPrototype: true },
+    ),
   ])(
     'creating Token from invalid signed token encoded results in parse error',
     (signedTokenEncodedIncorrect) => {

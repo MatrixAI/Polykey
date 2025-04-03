@@ -1,15 +1,19 @@
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
-import * as generate from '@/keys/utils/generate';
-import * as x509 from '@/keys/utils/x509';
-import * as ids from '@/ids';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+import * as generate from '#keys/utils/generate.js';
+import * as x509 from '#keys/utils/x509.js';
+import * as ids from '#ids/index.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   const issuerKeyPair = generate.generateKeyPair();
   const subjectKeyPair = generate.generateKeyPair();
   const certIdGenerator = ids.createCertIdGenerator();
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('generate certificate', async () => {
       await x509.generateCertificate({
         certId: certIdGenerator(),
@@ -61,8 +65,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

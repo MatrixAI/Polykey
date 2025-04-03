@@ -1,12 +1,12 @@
-import type { Claim, SignedClaim } from '../types';
-import type { NodeIdEncoded } from '../../ids/types';
-import type { SignedTokenEncoded } from '../../tokens/types';
-import * as tokensSchema from '../../tokens/schemas';
-import * as ids from '../../ids';
-import * as claimsUtils from '../utils';
-import * as tokensUtils from '../../tokens/utils';
-import * as validationErrors from '../../validation/errors';
-import * as utils from '../../utils';
+import type { Claim, SignedClaim } from '../types.js';
+import type { NodeIdEncoded } from '../../ids/types.js';
+import type { SignedTokenEncoded } from '../../tokens/types.js';
+import * as tokensSchema from '../../tokens/schemas/index.js';
+import * as ids from '../../ids/index.js';
+import * as claimsUtils from '../utils.js';
+import * as tokensUtils from '../../tokens/utils.js';
+import * as validationErrors from '../../validation/errors.js';
+import * as utils from '../../utils/index.js';
 
 /**
  * Asserts that a node is apart of a network

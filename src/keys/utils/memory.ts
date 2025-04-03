@@ -1,6 +1,6 @@
-import type { BufferLocked } from '../types';
+import type { BufferLocked } from '../types.js';
 import sodium from 'sodium-native';
-import * as keysErrors from '../errors';
+import * as keysErrors from '../errors.js';
 
 /**
  * Locks a buffer so that it cannot be swapped.

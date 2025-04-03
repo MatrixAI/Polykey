@@ -12,24 +12,23 @@ import type {
   RecoveryCodeLocked,
   PasswordOpsLimit,
   PasswordMemLimit,
-} from './types';
-import type { NodeId } from '../ids/types';
-import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { FileSystem, ObjectEmpty } from '../types';
-import path from 'path';
+} from './types.js';
+import type { NodeId } from '../ids/types.js';
+import type { PolykeyWorkerManager } from '../workers/types.js';
+import type { FileSystem, ObjectEmpty } from '../types.js';
+import path from 'node:path';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { Lock } from '@matrixai/async-locks';
-import * as keysUtils from './utils';
-import * as keysErrors from './errors';
-import * as keysEvents from './events';
-import { bufferLock, bufferUnlock } from './utils/memory';
+import * as keysUtils from './utils/index.js';
+import * as keysErrors from './errors.js';
+import * as keysEvents from './events.js';
+import { bufferLock, bufferUnlock } from './utils/memory.js';
+import * as utils from '../utils/index.js';
+import * as workersUtils from '../workers/utils.js';
 
-interface KeyRing extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface KeyRing extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new keysErrors.ErrorKeyRingRunning(),
   new keysErrors.ErrorKeyRingDestroyed(),
   {
@@ -48,7 +47,7 @@ class KeyRing {
     passwordMemLimit,
     strictMemoryLock = true,
     workerManager,
-    fs = require('fs'),
+    fs,
     logger = new Logger(this.name),
     ...startOptions
   }: {
@@ -57,7 +56,7 @@ class KeyRing {
     passwordOpsLimit?: PasswordOpsLimit;
     passwordMemLimit?: PasswordMemLimit;
     strictMemoryLock?: boolean;
-    workerManager?: PolykeyWorkerManagerInterface;
+    workerManager?: PolykeyWorkerManager;
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
@@ -75,6 +74,7 @@ class KeyRing {
   )): Promise<KeyRing> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting keys path to ${keysPath}`);
+    fs = await utils.importFS(fs);
     const keyRing = new this({
       keysPath,
       passwordOpsLimit,
@@ -98,7 +98,7 @@ class KeyRing {
 
   protected logger: Logger;
   protected fs: FileSystem;
-  protected workerManager?: PolykeyWorkerManagerInterface;
+  protected workerManager?: PolykeyWorkerManager;
   protected _keyPair?: KeyPairLocked;
   protected _dbKey?: BufferLocked<Key>;
   protected passwordHash?: Readonly<{
@@ -120,7 +120,7 @@ class KeyRing {
     logger,
   }: {
     keysPath: string;
-    workerManager?: PolykeyWorkerManagerInterface;
+    workerManager?: PolykeyWorkerManager;
     passwordOpsLimit?: PasswordOpsLimit;
     passwordMemLimit?: PasswordMemLimit;
     strictMemoryLock: boolean;
@@ -139,7 +139,7 @@ class KeyRing {
     this.dbKeyPath = path.join(keysPath, 'db.jwk');
   }
 
-  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+  public setWorkerManager(workerManager: PolykeyWorkerManager) {
     this.workerManager = workerManager;
   }
 
@@ -227,22 +227,22 @@ class KeyRing {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   get keyPair(): KeyPairLocked {
     return this._keyPair!;
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   get dbKey(): BufferLocked<Key> {
     return this._dbKey!;
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   get recoveryCode(): RecoveryCode | undefined {
     return this._recoveryCodeData?.toString('utf-8') as RecoveryCode;
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public getNodeId(): NodeId {
     return keysUtils.publicKeyToNodeId(this._keyPair!.publicKey);
   }
@@ -251,7 +251,7 @@ class KeyRing {
    * Warning: this is intended to be a slow operation to prevent brute force
    * attacks
    */
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public async checkPassword(password: string): Promise<boolean> {
     if (this.workerManager == null) {
       return keysUtils.checkPassword(
@@ -262,15 +262,20 @@ class KeyRing {
         this.passwordMemLimit,
       );
     } else {
-      return await this.workerManager.call(async (w) => {
-        return await w.checkPassword(
-          password,
-          this.passwordHash!.hash.buffer,
-          this.passwordHash!.salt.buffer,
-          this.passwordOpsLimit,
-          this.passwordMemLimit,
-        );
+      const passwordHashAB = workersUtils.toArrayBuffer(
+        this.passwordHash!.hash,
+      );
+      const passwordSaltAB = workersUtils.toArrayBuffer(
+        this.passwordHash!.salt,
+      );
+      const { data: result } = await this.workerManager.methods.checkPassword({
+        password: password,
+        hash: passwordHashAB,
+        salt: passwordSaltAB,
+        opsLimit: this.passwordOpsLimit,
+        memLimit: this.passwordMemLimit,
       });
+      return result;
     }
   }
 
@@ -284,7 +289,7 @@ class KeyRing {
    * If an external client intends to change the password,
    * they must be authenticated first.
    */
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public async changePassword(password: string): Promise<void> {
     await this.rotateLock.withF(async () => {
       this.logger.info('Changing root key pair password');
@@ -309,7 +314,7 @@ class KeyRing {
    * The DB key is not rotated, it is just re-encrypted with the new key pair.
    * The key pair is wrapped with the new password.
    */
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public async rotateKeyPair(
     password: string,
     rotateHook?: (
@@ -429,7 +434,7 @@ class KeyRing {
    * If it is important that the receiver can authenticate the sender, consider doing
    * `sign-then-encrypt`, by adding a signature into the plain text being sent.
    */
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public encrypt(
     receiverPublicKey: PublicKey,
     plainText: Buffer,
@@ -446,17 +451,17 @@ class KeyRing {
    * Decrypt data sent to this key pair
    * Note that this does not automatically authenticate the sender.
    */
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public decrypt(cipherText: Buffer): Buffer | undefined {
     return keysUtils.decryptWithPrivateKey(this._keyPair!, cipherText);
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public sign(data: Buffer): Signature {
     return keysUtils.signWithPrivateKey(this._keyPair!, data);
   }
 
-  @ready(new keysErrors.ErrorKeyRingNotRunning())
+  @createDestroyStartStop.ready(new keysErrors.ErrorKeyRingNotRunning())
   public verify(
     publicKey: PublicKey,
     data: Buffer,
@@ -800,13 +805,15 @@ class KeyRing {
       if (this.workerManager == null) {
         keyPair = await keysUtils.generateDeterministicKeyPair(recoveryCode);
       } else {
-        keyPair = await this.workerManager.call(async (w) => {
-          const result = await w.generateDeterministicKeyPair(recoveryCode);
-          result.publicKey = Buffer.from(result.publicKey);
-          result.privateKey = Buffer.from(result.privateKey);
-          result.secretKey = Buffer.from(result.secretKey);
-          return result as KeyPair;
-        });
+        const { data: _keyPair } =
+          await this.workerManager.methods.generateDeterministicKeyPair({
+            recoveryCode,
+          });
+        keyPair = {
+          publicKey: Buffer.from(_keyPair.publicKey),
+          privateKey: Buffer.from(_keyPair.privateKey),
+          secretKey: Buffer.from(_keyPair.secretKey),
+        } as KeyPair;
       }
     } else {
       keyPair = keysUtils.generateKeyPair();
@@ -976,17 +983,16 @@ class KeyRing {
         this.passwordMemLimit,
       );
     } else {
-      [hash, salt] = await this.workerManager.call(async (w) => {
-        const result = await w.hashPassword(
-          password,
-          undefined,
-          this.passwordOpsLimit,
-          this.passwordMemLimit,
-        );
-        result[0] = Buffer.from(result[0]);
-        result[1] = Buffer.from(result[1]);
-        return result as [PasswordHash, PasswordSalt];
+      const {
+        data: [hashAB, saltAB],
+      } = await this.workerManager.methods.hashPassword({
+        password,
+        salt: undefined,
+        opsLimit: this.passwordOpsLimit,
+        memLimit: this.passwordMemLimit,
       });
+      hash = Buffer.from(hashAB) as PasswordHash;
+      salt = Buffer.from(saltAB) as PasswordSalt;
     }
     return [hash, salt];
   }

@@ -2,7 +2,7 @@ import type tls from 'tls';
 import type https from 'https';
 import net from 'net';
 import http from 'http';
-import * as utils from '../utils';
+import * as utils from '../utils/index.js';
 
 function terminatingHttpServer(
   server: http.Server | https.Server,

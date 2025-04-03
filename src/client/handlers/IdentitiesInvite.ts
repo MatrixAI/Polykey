@@ -3,14 +3,14 @@ import type {
   ClaimNodeMessage,
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-} from '../types';
-import type { NodeId } from '../../ids';
-import type NotificationsManager from '../../notifications/NotificationsManager';
-import type ACL from '../../acl/ACL';
+} from '../types.js';
+import type { NodeId } from '../../ids/index.js';
+import type NotificationsManager from '../../notifications/NotificationsManager.js';
+import type ACL from '../../acl/ACL.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class IdentitiesInvite extends UnaryHandler<
   {

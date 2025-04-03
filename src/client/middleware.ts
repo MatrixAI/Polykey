@@ -1,13 +1,16 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from './types';
-import type { Session } from '../sessions';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from './types.js';
+import type { Session } from '../sessions/index.js';
 import type {
   JSONRPCRequest,
   JSONRPCResponse,
   MiddlewareFactory,
 } from '@matrixai/rpc';
-import type SessionManager from '../sessions/SessionManager';
-import type KeyRing from '../keys/KeyRing';
-import * as authenticationMiddlewareUtils from './authenticationMiddleware';
+import type SessionManager from '../sessions/SessionManager.js';
+import type KeyRing from '../keys/KeyRing.js';
+import * as authenticationMiddlewareUtils from './authenticationMiddleware.js';
 
 function middlewareServer(
   sessionManager: SessionManager,

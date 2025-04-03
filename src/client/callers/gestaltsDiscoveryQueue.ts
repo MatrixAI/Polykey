@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type GestaltsDiscoveryQueue from '../handlers/GestaltsDiscoveryQueue';
+import type GestaltsDiscoveryQueue from '../handlers/GestaltsDiscoveryQueue.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<GestaltsDiscoveryQueue>;

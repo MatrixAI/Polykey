@@ -4,15 +4,15 @@ import type {
   SignedClaim,
   SignedClaimEncoded,
   SignedClaimDigestEncoded,
-} from './types';
-import type { Digest, DigestFormats } from '../keys/types';
+} from './types.js';
+import type { Digest, DigestFormats } from '../keys/types.js';
 import canonicalize from 'canonicalize';
-import * as ids from '../ids';
-import * as tokensUtils from '../tokens/utils';
-import * as keysUtils from '../keys/utils';
-import * as keysTypes from '../keys/types';
-import * as validationErrors from '../validation/errors';
-import * as utils from '../utils';
+import * as ids from '../ids/index.js';
+import * as tokensUtils from '../tokens/utils.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as keysTypes from '../keys/types.js';
+import * as validationErrors from '../validation/errors.js';
+import * as utils from '../utils/index.js';
 
 function generateClaim(claim: Claim): ClaimEncoded {
   return tokensUtils.generateTokenPayload(claim);
@@ -76,6 +76,7 @@ function hashSignedClaim<F extends DigestFormats>(
   claim: SignedClaim<Claim>,
   format: F,
 ): Digest<F> {
+  // @ts-ignore: canonicalize exports is function improperly for ESM
   const claimJSON = canonicalize(claim)!;
   const claimData = Buffer.from(claimJSON, 'utf-8');
   const claimDigest = keysUtils.hash(claimData, format);
@@ -130,4 +131,8 @@ export {
   decodeSignedClaimDigest,
 };
 
-export { createClaimIdGenerator, encodeClaimId, decodeClaimId } from '../ids';
+export {
+  createClaimIdGenerator,
+  encodeClaimId,
+  decodeClaimId,
+} from '../ids/index.js';

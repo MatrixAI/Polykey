@@ -12,29 +12,26 @@ import type {
   TaskParameters,
   TaskTimestamp,
   TaskPath,
-} from './types';
+} from './types.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { Lock } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import { extractTs } from '@matrixai/id/dist/IdSortable';
+import { idSortable } from '@matrixai/id';
 import { Timer } from '@matrixai/timer';
-import TaskEvent from './TaskEvent';
-import * as tasksUtils from './utils';
-import * as tasksErrors from './errors';
-import * as tasksEvents from './events';
-import * as utils from '../utils';
+import TaskEvent from './TaskEvent.js';
+import * as tasksUtils from './utils.js';
+import * as tasksErrors from './errors.js';
+import * as tasksEvents from './events.js';
+import * as utils from '../utils/index.js';
 
 const abortSchedulingLoopReason = Symbol('abort scheduling loop reason');
 const abortQueuingLoopReason = Symbol('abort queuing loop reason');
 const cancelTimerReason = Symbol('cancel timer reason');
 
-interface TaskManager extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface TaskManager extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new tasksErrors.ErrorTaskManagerRunning(),
   new tasksErrors.ErrorTaskManagerDestroyed(),
   {
@@ -244,7 +241,11 @@ class TaskManager {
    * This call is idempotent
    * Use this when `Tasks` is started in lazy mode
    */
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new tasksErrors.ErrorTaskManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async startProcessing(): Promise<void> {
     await Promise.all([this.startScheduling(), this.startQueueing()]);
   }
@@ -312,7 +313,11 @@ class TaskManager {
     this.handlers.delete(handlerId);
   }
 
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(
+    new tasksErrors.ErrorTaskManagerNotRunning(),
+    false,
+    ['starting'],
+  )
   public async getLastTaskId(
     tran?: DBTransaction,
   ): Promise<TaskId | undefined> {
@@ -324,7 +329,7 @@ class TaskManager {
     return IdInternal.fromBuffer<TaskId>(lastTaskIdBuffer);
   }
 
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
+  @createDestroyStartStop.ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async getTask(
     taskId: TaskId,
     lazy: boolean = false,
@@ -395,7 +400,7 @@ class TaskManager {
     };
   }
 
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
+  @createDestroyStartStop.ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async *getTasks(
     order: 'asc' | 'desc' = 'asc',
     lazy: boolean = false,
@@ -429,7 +434,7 @@ class TaskManager {
     }
   }
 
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
+  @createDestroyStartStop.ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public getTaskPromise(
     taskId: TaskId,
     tran?: DBTransaction,
@@ -500,7 +505,7 @@ class TaskManager {
    * If `this.schedulingLoop` isn't running, then this will not
    * attempt to reset the `this.schedulingTimer`
    */
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
+  @createDestroyStartStop.ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async scheduleTask(
     {
       handlerId,
@@ -546,7 +551,9 @@ class TaskManager {
     const taskIdBuffer = taskId.toBuffer();
     // Timestamp extracted from `IdSortable` is a floating point in seconds
     // with subsecond fractionals, multiply it by 1000 gives us milliseconds
-    const taskTimestamp = Math.trunc(extractTs(taskId) * 1000) as TaskTimestamp;
+    const taskTimestamp = Math.trunc(
+      idSortable.extractTs(taskId) * 1000,
+    ) as TaskTimestamp;
     const taskPriority = tasksUtils.toPriority(priority);
     const taskDelay = tasksUtils.toDelay(delay);
     const taskDeadline = tasksUtils.toDeadline(deadline);
@@ -614,7 +621,7 @@ class TaskManager {
     };
   }
 
-  @ready(new tasksErrors.ErrorTaskManagerNotRunning())
+  @createDestroyStartStop.ready(new tasksErrors.ErrorTaskManagerNotRunning())
   public async updateTask(
     taskId: TaskId,
     taskPatch: Partial<{

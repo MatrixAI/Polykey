@@ -1,16 +1,16 @@
-import type { StateVersion } from './types';
-import type { FileSystem } from '../types';
-import path from 'path';
+import type { StateVersion } from './types.js';
+import type { FileSystem } from '../types.js';
+import path from 'node:path';
 import Logger from '@matrixai/logger';
-import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { RWLockWriter } from '@matrixai/async-locks';
-import * as schemaErrors from './errors';
-import * as schemaEvents from './events';
-import * as utils from '../utils';
-import config from '../config';
+import * as schemaErrors from './errors.js';
+import * as schemaEvents from './events.js';
+import * as utils from '../utils/index.js';
+import config from '../config.js';
 
-interface Schema extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface Schema extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new schemaErrors.ErrorSchemaRunning(),
   new schemaErrors.ErrorSchemaDestroyed(),
   {
@@ -24,7 +24,7 @@ class Schema {
   public static async createSchema({
     statePath,
     stateVersion = config.stateVersion as StateVersion,
-    fs = require('fs'),
+    fs,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -35,6 +35,7 @@ class Schema {
     fresh?: boolean;
   }): Promise<Schema> {
     logger.info(`Creating ${this.name}`);
+    fs = await utils.importFS(fs);
     const schema = new this({
       statePath,
       stateVersion,
@@ -56,12 +57,12 @@ class Schema {
   public constructor({
     statePath,
     stateVersion = config.stateVersion as StateVersion,
-    fs = require('fs'),
+    fs,
     logger,
   }: {
     statePath: string;
     stateVersion?: StateVersion;
-    fs?: FileSystem;
+    fs: FileSystem;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);

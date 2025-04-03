@@ -1,8 +1,8 @@
 import { test, fc } from '@fast-check/jest';
-import * as keysUtils from '@/keys/utils';
-import * as tokensUtils from '@/tokens/utils';
-import * as validationErrors from '@/validation/errors';
-import * as testsTokensUtils from './utils';
+import * as testsTokensUtils from './utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as tokensUtils from '#tokens/utils.js';
+import * as validationErrors from '#validation/errors.js';
 
 describe('tokens/utils', () => {
   test.prop([testsTokensUtils.tokenSignatureArb])(
@@ -127,10 +127,13 @@ describe('tokens/utils', () => {
   );
   test.prop([
     testsTokensUtils.signedTokenEncodedArb,
-    fc.record({
-      payload: fc.string(),
-      signatures: fc.array(fc.string()),
-    }),
+    fc.record(
+      {
+        payload: fc.string(),
+        signatures: fc.array(fc.string()),
+      },
+      { noNullPrototype: true },
+    ),
   ])(
     'parse signed token',
     (signedTokenEncodedCorrect, signedTokenEncodedIncorrect) => {

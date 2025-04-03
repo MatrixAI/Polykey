@@ -1,5 +1,5 @@
-import type { Notification } from './types';
-import EventPolykey from '../EventPolykey';
+import type { Notification } from './types.js';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventNotificationsManager<T = null> extends EventPolykey<T> {}
 

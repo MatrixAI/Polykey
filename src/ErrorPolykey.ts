@@ -1,6 +1,6 @@
 import type { Class } from '@matrixai/errors';
 import { AbstractError } from '@matrixai/errors';
-import sysexits from './utils/sysexits';
+import sysexits from './utils/sysexits.js';
 
 class ErrorPolykey<T> extends AbstractError<T> {
   static description: string = 'Polykey error';

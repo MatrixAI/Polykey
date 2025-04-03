@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsSecretsRemove from '../handlers/VaultsSecretsRemove';
+import type VaultsSecretsRemove from '../handlers/VaultsSecretsRemove.js';
 import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsRemove>;

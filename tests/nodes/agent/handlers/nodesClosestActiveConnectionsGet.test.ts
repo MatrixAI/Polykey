@@ -1,20 +1,20 @@
-import type { Host, Port } from '@/network/types';
+import type { Host, Port } from '#network/types.js';
 import type { Timer } from '@matrixai/timer';
-import type KeyRing from '@/keys/KeyRing';
-import type { NodeId, NodeIdString } from '@/ids';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { NodeConnection } from '@/nodes';
-import type { ActiveConnectionDataMessage } from '@/nodes/agent/types';
+import type KeyRing from '#keys/KeyRing.js';
+import type { NodeId, NodeIdString } from '#ids/index.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { NodeConnection } from '#nodes/index.js';
+import type { ActiveConnectionDataMessage } from '#nodes/agent/types.js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as keysUtils from '@/keys/utils';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import NodesClosestActiveConnectionsGet from '@/nodes/agent/handlers/NodesClosestActiveConnectionsGet';
-import * as nodesUtils from '@/nodes/utils';
-import * as testsUtils from '../../../utils';
+import * as testsUtils from '../../../utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import NodesClosestActiveConnectionsGet from '#nodes/agent/handlers/NodesClosestActiveConnectionsGet.js';
+import * as nodesUtils from '#nodes/utils.js';
 
 describe('nodesClosestLocalNode', () => {
-  const logger = new Logger('nodesClosestLocalNode test', LogLevel.INFO, [
+  const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const localHost = '127.0.0.1' as Host;

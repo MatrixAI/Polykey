@@ -1,14 +1,14 @@
-import type { Claim, SignedClaim } from '../types';
+import type { Claim, SignedClaim } from '../types.js';
 import type {
   NodeIdEncoded,
   ProviderIdentityClaimId,
   ProviderIdentityIdEncoded,
-} from '../../ids/types';
-import * as ids from '../../ids';
-import * as claimsUtils from '../utils';
-import * as tokensUtils from '../../tokens/utils';
-import * as validationErrors from '../../validation/errors';
-import * as utils from '../../utils';
+} from '../../ids/types.js';
+import * as ids from '../../ids/index.js';
+import * as claimsUtils from '../utils.js';
+import * as tokensUtils from '../../tokens/utils.js';
+import * as validationErrors from '../../validation/errors.js';
+import * as utils from '../../utils/index.js';
 
 /**
  * Linking node and digital identity together

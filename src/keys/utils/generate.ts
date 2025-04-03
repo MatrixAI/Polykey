@@ -1,7 +1,7 @@
-import type { Key, KeyPair, RecoveryCode } from '../types';
+import type { Key, KeyPair, RecoveryCode } from '../types.js';
 import sodium from 'sodium-native';
 import * as bip39 from '@scure/bip39';
-import * as utils from '../../utils';
+import * as utils from '../../utils/index.js';
 
 /**
  * Generates a Key.

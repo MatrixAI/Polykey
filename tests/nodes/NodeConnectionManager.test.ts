@@ -1,32 +1,33 @@
-import type { Host, Port } from '@/network/types';
-import type NodeConnection from '@/nodes/NodeConnection';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { KeyRing } from '@/keys';
-import type { NCMState } from './utils';
-import type { JSONValue, ObjectEmpty } from '@';
+import type { Host, Port } from '#network/types.js';
+import type NodeConnection from '#nodes/NodeConnection.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { KeyRing } from '#keys/index.js';
+import type { NCMState } from './utils.js';
+import type { JSONValue, ObjectEmpty } from '#index.js';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   NodesAuthenticateConnectionMessage,
   SuccessMessage,
-} from '@/nodes/agent/types';
+} from '#nodes/agent/types.js';
 import type { ContextTimed } from '@matrixai/contexts';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { destroyed } from '@matrixai/async-init';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as keysUtils from '@/keys/utils';
-import * as nodesEvents from '@/nodes/events';
-import * as nodesErrors from '@/nodes/errors';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
-import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
-import * as utils from '@/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as nodesTestUtils from './utils';
-import * as keysTestUtils from '../keys/utils';
-import * as testsUtils from '../utils';
+import * as nodesTestUtils from './utils.js';
+import * as keysTestUtils from '../keys/utils.js';
+import * as testsUtils from '../utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesEvents from '#nodes/events.js';
+import * as nodesErrors from '#nodes/errors.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import NodesConnectionSignalFinal from '#nodes/agent/handlers/NodesConnectionSignalFinal.js';
+import NodesConnectionSignalInitial from '#nodes/agent/handlers/NodesConnectionSignalInitial.js';
+import * as utils from '#utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
   ObjectEmpty,

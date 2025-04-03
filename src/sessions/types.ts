@@ -1,4 +1,4 @@
-import type { Opaque } from '../types';
+import type { Opaque } from '../types.js';
 
 type SessionToken = Opaque<'SessionToken', string>;
 

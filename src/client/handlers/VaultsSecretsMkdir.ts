@@ -6,13 +6,13 @@ import type {
   ClientRPCResponseResult,
   SecretDirMessage,
   SuccessOrErrorMessageTagged,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
-import type { POJO } from '../../types';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
+import type { POJO } from '../../types.js';
 import { DuplexHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import * as vaultOps from '../../vaults/VaultOps';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
+import * as vaultOps from '../../vaults/VaultOps.js';
 
 class VaultsSecretsMkdir extends DuplexHandler<
   {

@@ -1,9 +1,10 @@
+import { jest } from '@jest/globals';
 import { test, fc } from '@fast-check/jest';
-import * as generate from '@/keys/utils/generate';
-import * as x509 from '@/keys/utils/x509';
-import * as asymmetric from '@/keys/utils/asymmetric';
-import * as ids from '@/ids';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import * as generate from '#keys/utils/generate.js';
+import * as x509 from '#keys/utils/x509.js';
+import * as asymmetric from '#keys/utils/asymmetric.js';
+import * as ids from '#ids/index.js';
 
 describe('keys/utils/x509', () => {
   const certIdGenerator = ids.createCertIdGenerator();

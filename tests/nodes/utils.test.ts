@@ -1,21 +1,22 @@
-import type { NodeId } from '@/ids/types';
-import type { Key, CertificatePEM, PrivateKeyPEM } from '@/keys/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { NodeId } from '#ids/types.js';
+import type { CertificatePEM, PrivateKeyPEM } from '#keys/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import lexi from 'lexicographic-integer';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { errors as rpcErrors } from '@matrixai/rpc';
 import { utils as wsUtils } from '@matrixai/ws';
-import { CryptoError } from '@matrixai/quic/dist/native';
-import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as validationErrors from '@/validation/errors';
-import * as utils from '@/utils';
-import * as testNodesUtils from './utils';
-import * as testTlsUtils from '../utils/tls';
+import { native } from '@matrixai/quic';
+import * as testNodesUtils from './utils.js';
+import * as testTlsUtils from '../utils/tls.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as validationErrors from '#validation/errors.js';
+import * as utils from '#utils/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('nodes/utils', () => {
   const logger = new Logger(`nodes/utils test`, LogLevel.WARN, [
@@ -34,20 +35,7 @@ describe('nodes/utils', () => {
       logger,
       crypto: {
         key: dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
   });
@@ -418,7 +406,7 @@ describe('nodes/utils', () => {
         if (result.result !== 'fail') {
           utils.never('result.result should be "fail"');
         }
-        expect(result.value).toBe(CryptoError.CertificateExpired);
+        expect(result.value).toBe(native.CryptoError.CertificateExpired);
       });
     });
     describe('server verifyClientCertificateChain', () => {
@@ -448,7 +436,7 @@ describe('nodes/utils', () => {
         const result = await nodesUtils.verifyClientCertificateChain(
           cert.certChainPem.map((v) => wsUtils.pemToDER(v)),
         );
-        expect(result).toBe(CryptoError.CertificateExpired);
+        expect(result).toBe(native.CryptoError.CertificateExpired);
       });
     });
   });

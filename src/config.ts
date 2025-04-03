@@ -1,7 +1,7 @@
-import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types';
-import { getDefaultNodePath } from './utils';
+import type { PasswordMemLimit, PasswordOpsLimit } from './keys/types.js';
+import { getDefaultNodePath } from './utils/index.js';
 // @ts-ignore package.json is outside rootDir
-import { version } from '../package.json';
+import packageJSON from '../package.json' assert { type: 'json' };
 
 /**
  * Polykey static configuration
@@ -21,7 +21,7 @@ const config = {
    * Version of source code
    * This must match the package.json
    */
-  sourceVersion: version,
+  sourceVersion: packageJSON.version,
   /**
    * Version of the state, persisted into the node state
    * It is only incremented on breaking changes

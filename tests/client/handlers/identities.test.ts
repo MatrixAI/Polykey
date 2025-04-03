@@ -1,27 +1,30 @@
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { IdentityId, ProviderId } from '@/ids';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { IdentityId, ProviderId } from '#ids/index.js';
 import type {
   ClientRPCResponseResult,
   IdentityInfoMessage,
   IdentityMessage,
-} from '@/client/types';
-import type { TLSConfig } from '@/network/types';
-import type { Claim } from '@/claims/types';
-import type { ClaimLinkIdentity } from '@/claims/payloads';
-import type ACL from '@/acl/ACL';
-import type NotificationsManager from '@/notifications/NotificationsManager';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#client/types.js';
+import type { TLSConfig } from '#network/types.js';
+import type { Claim } from '#claims/types.js';
+import type { ClaimLinkIdentity } from '#claims/payloads/index.js';
+import type ACL from '#acl/ACL.js';
+import type NotificationsManager from '#notifications/NotificationsManager.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import Token from '@/tokens/Token';
-import Sigchain from '@/sigchain/Sigchain';
-import KeyRing from '@/keys/KeyRing';
-import IdentitiesManager from '@/identities/IdentitiesManager';
-import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils/index.js';
+import TestProvider from '../../identities/TestProvider.js';
+import Token from '#tokens/Token.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import KeyRing from '#keys/KeyRing.js';
+import IdentitiesManager from '#identities/IdentitiesManager.js';
+import ClientService from '#client/ClientService.js';
 import {
   IdentitiesAuthenticate,
   IdentitiesAuthenticatedGet,
@@ -33,7 +36,7 @@ import {
   IdentitiesTokenDelete,
   IdentitiesTokenGet,
   IdentitiesTokenPut,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   identitiesAuthenticate,
   identitiesAuthenticatedGet,
@@ -45,17 +48,14 @@ import {
   identitiesTokenDelete,
   identitiesTokenGet,
   identitiesTokenPut,
-} from '@/client/callers';
-import { encodeProviderIdentityId } from '@/ids';
-import * as keysUtils from '@/keys/utils';
-import * as validationErrors from '@/validation/errors';
-import * as claimsUtils from '@/claims/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as identitiesErrors from '@/identities/errors';
-import * as networkUtils from '@/network/utils';
-import * as testUtils from '../../utils';
-import * as testsUtils from '../../utils';
-import TestProvider from '../../identities/TestProvider';
+} from '#client/callers/index.js';
+import { encodeProviderIdentityId } from '#ids/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as validationErrors from '#validation/errors.js';
+import * as claimsUtils from '#claims/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as identitiesErrors from '#identities/errors.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('identitiesAuthenticate', () => {
   const logger = new Logger('identitiesAuthenticate test', LogLevel.WARN, [
@@ -191,7 +191,7 @@ describe('identitiesAuthenticate', () => {
     };
     const response = await rpcClient.methods.identitiesAuthenticate(request);
     const reader = response.getReader();
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       reader.read(),
       validationErrors.ErrorValidation,
     );
@@ -440,7 +440,7 @@ describe('identitiesClaim', () => {
   }>;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
-  let mockedAddClaim: jest.SpyInstance;
+  let mockedAddClaim: jest.SpiedFunction<typeof Sigchain.prototype.addClaim>;
   let testProvider: TestProvider;
   let sigchain: Sigchain;
   const testToken = {
@@ -575,21 +575,21 @@ describe('identitiesClaim', () => {
   });
   test('cannot claim invalid identity', async () => {
     // Setup provider
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.identitiesClaim({
         providerId: testToken.providerId,
         identityId: '',
       }),
       validationErrors.ErrorValidation,
     );
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.identitiesClaim({
         providerId: '',
         identityId: testToken.identityId,
       }),
       validationErrors.ErrorValidation,
     );
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       rpcClient.methods.identitiesClaim({
         providerId: '',
         identityId: '',
@@ -1276,7 +1276,7 @@ describe('identitiesInfoConnectedGet', () => {
       providerIdList: [],
     });
     const reader = response.getReader();
-    await testUtils.expectRemoteError(
+    await testsUtils.expectRemoteError(
       reader.read(),
       identitiesErrors.ErrorProviderUnimplemented,
     );
@@ -1713,7 +1713,7 @@ describe('identitiesInvite', () => {
   }>;
   let tlsConfig: TLSConfig;
   let identitiesManager: IdentitiesManager;
-  let mockedAddClaim: jest.SpyInstance;
+  let mockedAddClaim: jest.SpiedFunction<typeof Sigchain.prototype.addClaim>;
   let testProvider: TestProvider;
   let sigchain: Sigchain;
   let acl: ACL;
@@ -1876,7 +1876,9 @@ describe('identitiesProvidersList', () => {
   const providers = {};
   providers[id1] = new TestProvider();
   providers[id2] = new TestProvider();
-  let mockedGetProviders: jest.SpyInstance;
+  let mockedGetProviders: jest.SpiedFunction<
+    typeof IdentitiesManager.prototype.getProviders
+  >;
   beforeEach(async () => {
     mockedGetProviders = jest
       .spyOn(IdentitiesManager.prototype, 'getProviders')

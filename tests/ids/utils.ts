@@ -7,10 +7,10 @@ import type {
   VaultId,
   GestaltLinkId,
   ProviderIdentityClaimId,
-} from '@/ids/types';
+} from '#ids/types.js';
 import { fc } from '@fast-check/jest';
 import { IdInternal } from '@matrixai/id';
-import * as ids from '@/ids';
+import * as ids from '#ids/index.js';
 
 const nodeIdArb = fc
   .uint8Array({ minLength: 32, maxLength: 32 })

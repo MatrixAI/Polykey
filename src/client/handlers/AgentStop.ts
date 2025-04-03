@@ -1,5 +1,8 @@
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type PolykeyAgent from '../../PolykeyAgent';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type PolykeyAgent from '../../PolykeyAgent.js';
 import { running, status } from '@matrixai/async-init';
 import { UnaryHandler } from '@matrixai/rpc';
 

@@ -1,4 +1,4 @@
-import * as ids from '@/ids';
+import * as ids from '#ids/index.js';
 
 describe('ids/index', () => {
   test('node ids', () => {

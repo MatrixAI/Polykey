@@ -4,13 +4,13 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SuccessMessage,
-} from '../types';
-import type { NodeId } from '../../ids';
-import type NodeManager from '../../nodes/NodeManager';
+} from '../types.js';
+import type { NodeId } from '../../ids/index.js';
+import type NodeManager from '../../nodes/NodeManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import { matchSync } from '../../utils';
-import { validateSync } from '../../validation';
+import * as ids from '../../ids/index.js';
+import { matchSync } from '../../utils/index.js';
+import { validateSync } from '../../validation/index.js';
 
 class NodesClaim extends UnaryHandler<
   {

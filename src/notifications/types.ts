@@ -1,6 +1,10 @@
-import type { Opaque } from '../types';
-import type { NotificationId, NotificationIdEncoded } from '../ids/types';
-import type { VaultName, VaultActions, VaultIdEncoded } from '../vaults/types';
+import type { Opaque } from '../types.js';
+import type { NotificationId, NotificationIdEncoded } from '../ids/types.js';
+import type {
+  VaultName,
+  VaultActions,
+  VaultIdEncoded,
+} from '../vaults/types.js';
 
 type GestaltInvite = {
   type: 'GestaltInvite';

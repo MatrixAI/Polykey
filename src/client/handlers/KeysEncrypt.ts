@@ -3,13 +3,13 @@ import type {
   ClientRPCResponseResult,
   DataMessage,
   DecryptMessage,
-} from '../types';
-import type KeyRing from '../../keys/KeyRing';
-import type { PublicKey } from '../../keys/types';
+} from '../types.js';
+import type KeyRing from '../../keys/KeyRing.js';
+import type { PublicKey } from '../../keys/types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import { never } from '../../utils';
-import * as keysUtils from '../../keys/utils';
-import * as keysErrors from '../../keys/errors';
+import { never } from '../../utils/index.js';
+import * as keysUtils from '../../keys/utils/index.js';
+import * as keysErrors from '../../keys/errors.js';
 
 class KeysEncrypt extends UnaryHandler<
   {

@@ -4,13 +4,13 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   VaultsScanMessage,
-} from '../types';
-import type VaultManager from '../../../vaults/VaultManager';
+} from '../types.js';
+import type VaultManager from '../../../vaults/VaultManager.js';
 import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
-import * as vaultsUtils from '../../../vaults/utils';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
+import * as vaultsUtils from '../../../vaults/utils.js';
 
 /**
  * Scan vaults.

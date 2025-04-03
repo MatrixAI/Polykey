@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesListConnections from '../handlers/NodesListConnections';
+import type NodesListConnections from '../handlers/NodesListConnections.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesListConnections>;

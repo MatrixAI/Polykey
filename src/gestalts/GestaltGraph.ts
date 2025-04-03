@@ -14,25 +14,22 @@ import type {
   GestaltLinkIdentity,
   GestaltId,
   GestaltIdEncoded,
-} from './types';
-import type { ClaimId, NodeId, ProviderIdentityId } from '../ids/types';
-import type ACL from '../acl/ACL';
-import type { GestaltLinkJSON } from './types';
+} from './types.js';
+import type { ClaimId, NodeId, ProviderIdentityId } from '../ids/types.js';
+import type ACL from '../acl/ACL.js';
+import type { GestaltLinkJSON } from './types.js';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { IdInternal } from '@matrixai/id';
-import * as gestaltsUtils from './utils';
-import * as gestaltsErrors from './errors';
-import * as gestaltsEvents from './events';
-import * as aclUtils from '../acl/utils';
-import { never } from '../utils';
-import * as utils from '../utils';
+import * as gestaltsUtils from './utils.js';
+import * as gestaltsErrors from './errors.js';
+import * as gestaltsEvents from './events.js';
+import * as aclUtils from '../acl/utils.js';
+import { never } from '../utils/index.js';
+import * as utils from '../utils/index.js';
 
-interface GestaltGraph extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface GestaltGraph extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new gestaltsErrors.ErrorGestaltsGraphRunning(),
   new gestaltsErrors.ErrorGestaltsGraphDestroyed(),
   {
@@ -167,7 +164,9 @@ class GestaltGraph {
    * If this is a new node, it will set a new node pointer
    * to a new gestalt permission in the acl
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async setNode(
     nodeInfo: GestaltNodeInfo,
     tran?: DBTransaction,
@@ -200,7 +199,9 @@ class GestaltGraph {
     return gestaltNodeId;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async setIdentity(
     identityInfo: GestaltIdentityInfo,
     tran?: DBTransaction,
@@ -233,7 +234,9 @@ class GestaltGraph {
     return gestaltIdentityId;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unsetNode(nodeId: NodeId, tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.unsetNode(nodeId, tran));
@@ -264,7 +267,9 @@ class GestaltGraph {
     await this.acl.unsetNodePerm(nodeId, tran);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unsetIdentity(
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
@@ -306,7 +311,9 @@ class GestaltGraph {
   }
 
   // Calls one of `setNode` or `setIdentity`
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public setVertex(
     gestaltInfo: GestaltInfo,
     tran?: DBTransaction,
@@ -323,7 +330,9 @@ class GestaltGraph {
   }
 
   // Calls one of `unsetNode` or `unsetIdentity`
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public unsetVertex(
     gestaltId: GestaltId,
     tran?: DBTransaction,
@@ -342,7 +351,9 @@ class GestaltGraph {
   /**
    * Updates the last processed time in the database for the given vertex
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async setVertexProcessedTime(
     vertex: GestaltId,
     processedTime: number,
@@ -376,7 +387,9 @@ class GestaltGraph {
   /**
    * Removes the last processed time for a vertex
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unsetVertexProcessedTime(
     vertex: GestaltId,
     tran?: DBTransaction,
@@ -408,7 +421,9 @@ class GestaltGraph {
   /**
    * Gets the last processed time for a vertex
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getVertexProcessedTime(
     vertex: GestaltId,
     tran?: DBTransaction,
@@ -429,7 +444,9 @@ class GestaltGraph {
   /**
    * Gets the last processed time for a vertex
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async *getVertexProcessedTimes(
     {
       order = 'asc',
@@ -478,7 +495,9 @@ class GestaltGraph {
   /**
    * Updates the newest `ClaimId` for a node if it's newer than the current id stored
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async setClaimIdNewest(
     nodeId: NodeId,
     claimId: ClaimId,
@@ -510,7 +529,9 @@ class GestaltGraph {
     );
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getClaimIdNewest(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -536,7 +557,9 @@ class GestaltGraph {
    * It does not however verify the signatures.
    * Verifying signatures should be done before linking the nodes in the GG
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async linkNodeAndNode(
     nodeInfo1: GestaltNodeInfo,
     nodeInfo2: GestaltNodeInfo,
@@ -682,7 +705,9 @@ class GestaltGraph {
     return gestaltLinkIdNew;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async linkNodeAndIdentity(
     nodeInfo: GestaltNodeInfo,
     identityInfo: GestaltIdentityInfo,
@@ -845,7 +870,9 @@ class GestaltGraph {
     link: ['identity', Omit<GestaltLinkIdentity, 'id'>],
     tran?: DBTransaction,
   ): Promise<GestaltLinkId>;
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public linkVertexAndVertex(
     gestaltInfo1: GestaltInfo,
     gestaltInfo2: GestaltInfo,
@@ -880,7 +907,9 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unlinkNodeAndNode(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -950,7 +979,9 @@ class GestaltGraph {
     await this.acl.setNodesPerm(nodeIds, perm, tran);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unlinkNodeAndIdentity(
     nodeId: NodeId,
     providerIdentityId: ProviderIdentityId,
@@ -1046,7 +1077,9 @@ class GestaltGraph {
     gestaltId2: ['node', NodeId],
     tran?: DBTransaction,
   ): Promise<void>;
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public unlinkVertexAndVertex(
     gestaltId1: GestaltId,
     gestaltId2: GestaltId,
@@ -1075,7 +1108,9 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getGestaltActions(
     gestaltId: GestaltId,
     tran?: DBTransaction,
@@ -1114,7 +1149,9 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async setGestaltAction(
     gestaltId: GestaltId,
     action: GestaltAction,
@@ -1153,7 +1190,9 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async unsetGestaltAction(
     gestaltId: GestaltId,
     action: GestaltAction,
@@ -1195,7 +1234,9 @@ class GestaltGraph {
 
   // GETTERS
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async *getGestalts(tran?: DBTransaction): AsyncGenerator<Gestalt> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) => this.getGestalts(tran));
@@ -1241,7 +1282,9 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getGestaltByNode(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -1255,7 +1298,9 @@ class GestaltGraph {
     return this.getGestaltByKey(nodeKey, undefined, tran);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getGestaltByIdentity(
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
@@ -1272,7 +1317,9 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey, undefined, tran);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getNode(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -1289,7 +1336,9 @@ class GestaltGraph {
     return gestaltsUtils.fromGestaltNodeInfoJSON(gestaltNodeInfoJSON);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getIdentity(
     providerIdentityId: ProviderIdentityId,
     tran?: DBTransaction,
@@ -1323,7 +1372,9 @@ class GestaltGraph {
     gestaltId: GestaltId,
     tran?: DBTransaction,
   ): Promise<GestaltInfo | undefined>;
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getVertex(
     gestaltId: GestaltId,
     tran?: DBTransaction,
@@ -1375,7 +1426,9 @@ class GestaltGraph {
     gestaltId2: ['identity', ProviderIdentityId],
     tran?: DBTransaction,
   ): Promise<['identity', GestaltLinkIdentity] | undefined>;
-  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
+  @createDestroyStartStop.ready(
+    new gestaltsErrors.ErrorGestaltsGraphNotRunning(),
+  )
   public async getLink(
     gestaltId1: GestaltId,
     gestaltId2: GestaltId,

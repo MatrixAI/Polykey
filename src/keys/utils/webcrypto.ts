@@ -1,7 +1,7 @@
-import type { PublicKey, PrivateKey, KeyPair } from '../types';
+import type { PublicKey, PrivateKey, KeyPair } from '../types.js';
 import sodium from 'sodium-native';
 import * as peculiarWebcrypto from '@peculiar/webcrypto';
-import * as utils from '../../utils';
+import * as utils from '../../utils/index.js';
 
 /**
  * WebCrypto polyfill from @peculiar/webcrypto

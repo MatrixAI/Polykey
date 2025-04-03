@@ -1,4 +1,4 @@
-import type { Host, Hostname, Port } from '@/network/types';
+import type { Host, Hostname, Port } from '#network/types.js';
 import { fc } from '@fast-check/jest';
 
 const hostArb = fc.oneof(fc.ipV4(), fc.ipV6()) as fc.Arbitrary<Host>;

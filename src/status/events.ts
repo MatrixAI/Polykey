@@ -1,4 +1,4 @@
-import EventPolykey from '../EventPolykey';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventStatus<T> extends EventPolykey<T> {}
 

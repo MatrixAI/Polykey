@@ -1,7 +1,4 @@
-import type { WorkerManagerInterface } from '@matrixai/workers';
-import type { PolykeyWorkerModule } from './polykeyWorkerModule';
-
-type PolykeyWorkerManagerInterface =
-  WorkerManagerInterface<PolykeyWorkerModule>;
-
-export type { PolykeyWorkerManagerInterface };
+import type { PolykeyWorkerManifest } from './polykeyWorkerManifest.js';
+import type { WorkerManager } from '@matrixai/workers';
+type PolykeyWorkerManager = WorkerManager<PolykeyWorkerManifest>;
+export type { PolykeyWorkerManifest, PolykeyWorkerManager };

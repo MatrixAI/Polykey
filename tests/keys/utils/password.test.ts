@@ -1,4 +1,4 @@
-import * as password from '@/keys/utils/password';
+import * as password from '#keys/utils/password.js';
 
 describe('keys/utils/password', () => {
   test('password hashing ops limits raw numbers', () => {

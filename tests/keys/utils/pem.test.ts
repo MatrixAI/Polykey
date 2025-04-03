@@ -1,8 +1,8 @@
 import { test } from '@fast-check/jest';
-import webcrypto, { importKeyPair } from '@/keys/utils/webcrypto';
-import * as pem from '@/keys/utils/pem';
-import * as utils from '@/utils';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import webcrypto, { importKeyPair } from '#keys/utils/webcrypto.js';
+import * as pem from '#keys/utils/pem.js';
+import * as utils from '#utils/index.js';
 
 describe('keys/utils/pem', () => {
   test.prop([testsKeysUtils.keyPairArb])(

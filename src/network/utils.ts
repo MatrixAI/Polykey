@@ -1,17 +1,17 @@
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
-import type { Address, Host, Hostname, Port } from './types';
-import type { NodeAddress } from '../nodes/types';
-import type { JSONValue } from '../types';
+import type { Address, Host, Hostname, Port } from './types.js';
+import type { NodeAddress } from '../nodes/types.js';
+import type { JSONValue } from '../types.js';
 import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
-import { timedCancellable } from '@matrixai/contexts/dist/functions';
+import { functions } from '@matrixai/contexts';
 import { AbstractError } from '@matrixai/errors';
-import * as networkErrors from './errors';
-import * as validationUtils from '../validation/utils';
-import * as validationErrors from '../validation/errors';
-import * as errors from '../errors';
-import ErrorPolykey from '../ErrorPolykey';
+import * as networkErrors from './errors.js';
+import * as validationUtils from '../validation/utils.js';
+import * as validationErrors from '../validation/errors.js';
+import * as errors from '../errors.js';
+import ErrorPolykey from '../ErrorPolykey.js';
 
 /**
  * Is it an IPv4 address?
@@ -377,7 +377,7 @@ function resolveHostname(
     }
     return hosts;
   };
-  return timedCancellable(f, true)(ctx);
+  return functions.timedCancellable(f, true)(ctx);
 }
 
 /**

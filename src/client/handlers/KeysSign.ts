@@ -3,8 +3,8 @@ import type {
   ClientRPCResponseResult,
   DataMessage,
   SignatureMessage,
-} from '../types';
-import type KeyRing from '../../keys/KeyRing';
+} from '../types.js';
+import type KeyRing from '../../keys/KeyRing.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysSign extends UnaryHandler<

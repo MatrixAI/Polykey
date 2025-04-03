@@ -1,3 +1,3 @@
-export * as utils from './utils';
-export * as types from './types';
-export * as errors from './errors';
+export * as utils from './utils.js';
+export * as types from './types.js';
+export * as errors from './errors.js';

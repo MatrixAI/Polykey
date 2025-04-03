@@ -5,15 +5,15 @@ import type {
   CommitId,
   FileSystemReadable,
   FileSystemWritable,
-} from './types';
-import type { NodeId } from '../ids/types';
-import type { Path } from 'encryptedfs/dist/types';
-import path from 'path';
-import { pathJoin } from 'encryptedfs/dist/utils';
-import * as vaultsErrors from './errors';
-import { tagLast, refs, vaultActions } from './types';
-import * as nodesUtils from '../nodes/utils';
-import * as validationErrors from '../validation/errors';
+} from './types.js';
+import type { NodeId } from '../ids/types.js';
+import type { Path } from 'encryptedfs';
+import path from 'node:path';
+import { utils as encryptedFsUtils } from 'encryptedfs';
+import * as vaultsErrors from './errors.js';
+import { tagLast, refs, vaultActions } from './types.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as validationErrors from '../validation/errors.js';
 
 /**
  * Vault history is designed for linear-history.
@@ -80,7 +80,9 @@ async function* walkFs(
       // Push contents to shortlist
       const newPaths = await efs.readdir(path_);
       shortList.push(
-        ...newPaths.map((v) => pathJoin(path_!.toString(), v.toString())),
+        ...newPaths.map((v) =>
+          encryptedFsUtils.pathJoin(path_!.toString(), v.toString()),
+        ),
       );
     } else {
       // Is a file so we yield the path
@@ -170,4 +172,8 @@ export {
   uint8ArrayConcat,
 };
 
-export { createVaultIdGenerator, encodeVaultId, decodeVaultId } from '../ids';
+export {
+  createVaultIdGenerator,
+  encodeVaultId,
+  decodeVaultId,
+} from '../ids/index.js';

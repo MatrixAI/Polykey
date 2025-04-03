@@ -4,8 +4,8 @@
  * It does not cover non-JWT JWS nor JWE nor JWK.
  * @module
  */
-export { default as Token } from './Token';
-export * as utils from './utils';
-export * as errors from './errors';
-export * as types from './types';
-export * as schemas from './schemas';
+export { default as Token } from './Token.js';
+export * as utils from './utils.js';
+export * as errors from './errors.js';
+export * as types from './types.js';
+export * as schemas from './schemas/index.js';

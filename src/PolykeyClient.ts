@@ -5,33 +5,30 @@ import type {
 } from '@matrixai/rpc';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
-import type { DeepPartial, FileSystem } from './types';
+import type { DeepPartial, FileSystem } from './types.js';
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   OverrideRPClientType,
-} from './client/types';
-import type { NodeId } from './ids/types';
-import path from 'path';
+} from './client/types.js';
+import type { NodeId } from './ids/types.js';
+import path from 'node:path';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { timedCancellable, context } from '@matrixai/contexts/dist/decorators';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import { decorators } from '@matrixai/contexts';
 import { WebSocketClient, events as webSocketEvents } from '@matrixai/ws';
 import { RPCClient, middleware as rpcMiddleware } from '@matrixai/rpc';
-import { Session } from './sessions';
-import * as ids from './ids';
-import * as utils from './utils';
-import * as errors from './errors';
-import * as events from './events';
-import * as networkUtils from './network/utils';
-import * as validationErrors from './validation/errors';
-import * as clientUtils from './client/utils';
-import * as clientMiddleware from './client/middleware';
-import clientClientManifest from './client/callers';
-import config from './config';
+import { Session } from './sessions/index.js';
+import * as ids from './ids/index.js';
+import * as utils from './utils/index.js';
+import * as errors from './errors.js';
+import * as events from './events.js';
+import * as networkUtils from './network/utils.js';
+import * as validationErrors from './validation/errors.js';
+import * as clientUtils from './client/utils.js';
+import * as clientMiddleware from './client/middleware.js';
+import clientClientManifest from './client/callers/index.js';
+import config from './config.js';
 
 /**
  * Optional configuration for`PolykeyClient`.
@@ -50,8 +47,8 @@ type PolykeyClientOptions = {
   >;
 };
 
-interface PolykeyClient extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface PolykeyClient extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
   {
@@ -85,7 +82,7 @@ class PolykeyClient {
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<PolykeyClient>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     config.defaultsSystem.clientConnectTimeoutTime,
     errors.ErrorPolykeyClientCreateTimeout,
@@ -100,7 +97,7 @@ class PolykeyClient {
       options = {},
       fresh = false,
       // Optional dependencies
-      fs = require('fs'),
+      fs,
       logger = new Logger(this.name),
     }: {
       nodeId: string | NodeId;
@@ -111,7 +108,7 @@ class PolykeyClient {
       fs?: FileSystem;
       logger?: Logger;
     },
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<PolykeyClient> {
     logger.info(`Creating ${this.name}`);
     const optionsDefaulted = utils.mergeObjects(options, {
@@ -125,6 +122,7 @@ class PolykeyClient {
     if (optionsDefaulted.nodePath == null) {
       throw new errors.ErrorUtilsNodePath();
     }
+    fs = await utils.importFS(fs);
     await utils.mkdirExists(fs, optionsDefaulted.nodePath);
     const sessionTokenPath = path.join(
       optionsDefaulted.nodePath,
@@ -192,37 +190,37 @@ class PolykeyClient {
     this.fs = fs;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get nodeId() {
     return this._nodeId;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get webSocketClient() {
     return this._webSocketClient;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get rpcClient() {
     return this._rpcClient;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get host() {
     return this._webSocketClient.connection.remoteHost;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get port() {
     return this._webSocketClient.connection.remotePort;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get localHost() {
     return this._webSocketClient.connection.localHost;
   }
 
-  @ready(new errors.ErrorPolykeyClientNotRunning())
+  @createDestroyStartStop.ready(new errors.ErrorPolykeyClientNotRunning())
   public get localPort() {
     return this._webSocketClient.connection.localPort;
   }
@@ -242,7 +240,7 @@ class PolykeyClient {
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     config.defaultsSystem.clientConnectTimeoutTime,
     errors.ErrorPolykeyClientCreateTimeout,
@@ -266,7 +264,7 @@ class PolykeyClient {
       }>;
       fresh?: boolean;
     },
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
     const optionsDefaulted = utils.mergeObjects(options, {

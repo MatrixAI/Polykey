@@ -1,4 +1,4 @@
-import { ErrorPolykey, sysexits } from '../../errors';
+import { ErrorPolykey, sysexits } from '../../errors.js';
 
 class ErrorRateLimiter<T> extends ErrorPolykey<T> {}
 

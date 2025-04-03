@@ -1,38 +1,40 @@
-import type { NodeId, NodeIdEncoded, NotificationIdEncoded } from '@/ids/types';
-import type { Host } from '@/network/types';
-import type { VaultActions, VaultName } from '@/vaults/types';
-import type { Notification, NotificationData } from '@/notifications/types';
-import type { Key } from '@/keys/types';
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type {
+  NodeId,
+  NodeIdEncoded,
+  NotificationIdEncoded,
+} from '#ids/types.js';
+import type { Host } from '#network/types.js';
+import type { VaultActions, VaultName } from '#vaults/types.js';
+import type { Notification, NotificationData } from '#notifications/types.js';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { jest } from '@jest/globals';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import TaskManager from '@/tasks/TaskManager';
-import PolykeyAgent from '@/PolykeyAgent';
-import ACL from '@/acl/ACL';
-import Sigchain from '@/sigchain/Sigchain';
-import KeyRing from '@/keys/KeyRing';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import NodeManager from '@/nodes/NodeManager';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import * as nodesErrors from '@/nodes/errors';
-import * as notificationsErrors from '@/notifications/errors';
-import * as notificationsEvents from '@/notifications/events';
-import * as notificationsUtils from '@/notifications/utils';
-import * as vaultsUtils from '@/vaults/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import * as utils from '@/utils';
-import * as testsUtils from '../utils';
-import * as tlsTestsUtils from '../utils/tls';
-import 'ix/add/asynciterable-operators/toarray';
+import * as testsUtils from '../utils/index.js';
+import * as tlsTestsUtils from '../utils/tls.js';
+import TaskManager from '#tasks/TaskManager.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import ACL from '#acl/ACL.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import KeyRing from '#keys/KeyRing.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import NotificationsManager from '#notifications/NotificationsManager.js';
+import * as nodesErrors from '#nodes/errors.js';
+import * as notificationsErrors from '#notifications/errors.js';
+import * as notificationsEvents from '#notifications/events.js';
+import * as notificationsUtils from '#notifications/utils.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -82,20 +84,7 @@ describe('NotificationsManager', () => {
       logger,
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     acl = await ACL.createACL({
@@ -280,9 +269,9 @@ describe('NotificationsManager', () => {
         ),
       ])
       .then((value) => value.map((value) => value.sendP));
-    const outboxNotifications = await AsyncIterable.as(
+    const outboxNotifications = await testsUtils.generatorToArray(
       notificationsManager.readOutboxNotifications(),
-    ).toArray();
+    );
     expect(outboxNotifications).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -307,9 +296,9 @@ describe('NotificationsManager', () => {
         .next()
         .then((data) => data.done),
     ).resolves.toBe(true);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       receiver.notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications).toEqual(
       expect.arrayContaining([
@@ -398,9 +387,9 @@ describe('NotificationsManager', () => {
         .next()
         .then((data) => data.done),
     ).resolves.toBe(true);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       receiver.notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.stop();
@@ -498,11 +487,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data).toEqual(notification3.data);
     expect(receivedNotifications[0].iss).toEqual(senderIdEncoded);
@@ -546,9 +535,9 @@ describe('NotificationsManager', () => {
     ).rejects.toThrow(
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
-    let receivedNotifications = await AsyncIterable.as(
+    let receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Missing permission
     await acl.setNodePerm(senderId, {
@@ -556,9 +545,9 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    receivedNotifications = await AsyncIterable.as(
+    receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
@@ -596,9 +585,9 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     await notificationsManager.receiveNotification(notification);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].isRead).toBeTruthy();
     // Reverse side-effects
@@ -666,11 +655,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(3);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
@@ -743,11 +732,11 @@ describe('NotificationsManager', () => {
     for await (const _ of notificationsManager.readInboxNotifications()) {
       // Noop
     }
-    const unreadNotifications = await AsyncIterable.as(
+    const unreadNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         unread: true,
       }),
-    ).toArray();
+    );
     expect(unreadNotifications).toHaveLength(0);
     // Reverse side-effects
     await notificationsManager.clearInboxNotifications();
@@ -814,11 +803,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const lastNotification = await AsyncIterable.as(
+    const lastNotification = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         limit: 1,
       }),
-    ).toArray();
+    );
     expect(lastNotification).toHaveLength(1);
     // Reverse side-effects
     await notificationsManager.clearInboxNotifications();
@@ -885,11 +874,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const reversedNotifications = await AsyncIterable.as(
+    const reversedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'asc',
       }),
-    ).toArray();
+    );
     expect(reversedNotifications).toHaveLength(3);
     expect(reversedNotifications[0].data['message']).toBe('msg1');
     expect(reversedNotifications[1].data['message']).toBe('msg2');
@@ -969,29 +958,29 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    let notifications = await AsyncIterable.as(
+    let notifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'asc',
         seek: notificationsUtils.decodeNotificationId(
           notificationIdsEncoded[1],
         ),
       }),
-    ).toArray();
+    );
     expect(notifications).toHaveLength(2);
     expect(notifications[0].data['message']).toBe('msg2');
     expect(notifications[1].data['message']).toBe('msg3');
-    notifications = await AsyncIterable.as(
+    notifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'asc',
         seekEnd: notificationsUtils.decodeNotificationId(
           notificationIdsEncoded[1],
         ),
       }),
-    ).toArray();
+    );
     expect(notifications).toHaveLength(2);
     expect(notifications[0].data['message']).toBe('msg1');
     expect(notifications[1].data['message']).toBe('msg2');
-    notifications = await AsyncIterable.as(
+    notifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'asc',
         seek: notificationsUtils.decodeNotificationId(
@@ -1001,7 +990,7 @@ describe('NotificationsManager', () => {
           notificationIdsEncoded[1],
         ),
       }),
-    ).toArray();
+    );
     expect(notifications).toHaveLength(1);
     expect(notifications[0].data['message']).toBe('msg2');
     // Reverse side-effects
@@ -1074,11 +1063,11 @@ describe('NotificationsManager', () => {
     await notificationsManager.receiveNotification(notification1);
     await notificationsManager.receiveNotification(notification2);
     await notificationsManager.receiveNotification(notification3);
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(2);
     expect(receivedNotifications[0].data['message']).toBe('msg3');
     expect(receivedNotifications[1].data['message']).toBe('msg2');
@@ -1164,9 +1153,9 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.receiveNotification(notification);
     await notificationsManager.clearInboxNotifications();
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side-effects
     await acl.unsetNodePerm(senderId);
@@ -1196,9 +1185,9 @@ describe('NotificationsManager', () => {
       },
     });
     await notificationsManager.clearOutboxNotifications();
-    const outboxNotifications = await AsyncIterable.as(
+    const outboxNotifications = await testsUtils.generatorToArray(
       notificationsManager.readOutboxNotifications(),
-    ).toArray();
+    );
     expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
     await receiver.notificationsManager.clearInboxNotifications();
@@ -1259,21 +1248,21 @@ describe('NotificationsManager', () => {
     }
     await notificationsManager.stop();
     await notificationsManager.start();
-    const unreadNotifications = await AsyncIterable.as(
+    const unreadNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         unread: true,
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(unreadNotifications).toHaveLength(1);
     expect(unreadNotifications[0].data).toEqual(notification1.data);
     expect(unreadNotifications[0].iss).toBe(notification1.iss);
-    const latestNotification = await AsyncIterable.as(
+    const latestNotification = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications({
         limit: 1,
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(latestNotification).toHaveLength(1);
     expect(latestNotification[0].data).toEqual(notification2.data);
     expect(latestNotification[0].iss).toBe(notification2.iss);
@@ -1329,13 +1318,13 @@ describe('NotificationsManager', () => {
     });
     await notificationsManager.stop();
     await notificationsManager.start({ fresh: true });
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
-    const outboxNotifications = await AsyncIterable.as(
+    const outboxNotifications = await testsUtils.generatorToArray(
       notificationsManager.readOutboxNotifications(),
-    ).toArray();
+    );
     expect(outboxNotifications).toHaveLength(0);
     // Reverse side-effects
     await receiver.notificationsManager.clearInboxNotifications();

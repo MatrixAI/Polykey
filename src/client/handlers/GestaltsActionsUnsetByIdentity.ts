@@ -3,15 +3,15 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SetIdentityActionMessage,
-} from '../types';
-import type { IdentityId, ProviderId } from '../../ids';
-import type { GestaltAction } from '../../gestalts/types';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
+} from '../types.js';
+import type { IdentityId, ProviderId } from '../../ids/index.js';
+import type { GestaltAction } from '../../gestalts/types.js';
+import type GestaltGraph from '../../gestalts/GestaltGraph.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import * as gestaltsUtils from '../../gestalts/utils';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import * as gestaltsUtils from '../../gestalts/utils.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class GestaltsActionsUnsetByIdentity extends UnaryHandler<
   {

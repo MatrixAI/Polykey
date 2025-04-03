@@ -1,7 +1,7 @@
-import type { SessionToken } from './types';
-import type { TokenPayload } from '../tokens/types';
-import type { Key } from '../keys/types';
-import Token from '../tokens/Token';
+import type { SessionToken } from './types.js';
+import type { TokenPayload } from '../tokens/types.js';
+import type { Key } from '../keys/types.js';
+import Token from '../tokens/Token.js';
 
 /**
  * Create session token

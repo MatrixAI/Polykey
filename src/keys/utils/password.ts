@@ -5,10 +5,10 @@ import type {
   PasswordOpsLimit,
   PasswordMemLimitChoice,
   PasswordMemLimit,
-} from '../types';
+} from '../types.js';
 import sodium from 'sodium-native';
-import { getRandomBytes } from './random';
-import * as keysErrors from '../errors';
+import { getRandomBytes } from './random.js';
+import * as keysErrors from '../errors.js';
 
 /**
  * Use the `min` limit during testing to improve performance.

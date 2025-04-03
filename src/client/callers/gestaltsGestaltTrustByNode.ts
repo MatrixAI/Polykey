@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type GestaltsGestaltTrustByNode from '../handlers/GestaltsGestaltTrustByNode';
+import type GestaltsGestaltTrustByNode from '../handlers/GestaltsGestaltTrustByNode.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<GestaltsGestaltTrustByNode>;

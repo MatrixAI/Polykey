@@ -2,8 +2,8 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   PasswordMessage,
-} from '../types';
-import type CertManager from '../../keys/CertManager';
+} from '../types.js';
+import type CertManager from '../../keys/CertManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class KeysKeyPairReset extends UnaryHandler<

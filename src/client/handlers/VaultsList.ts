@@ -4,11 +4,11 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   VaultListMessage,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
 import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
+import * as vaultsUtils from '../../vaults/utils.js';
 
 class VaultsList extends ServerHandler<
   {

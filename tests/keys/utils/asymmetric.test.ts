@@ -1,8 +1,8 @@
 import { test, fc } from '@fast-check/jest';
-import * as asymmetric from '@/keys/utils/asymmetric';
-import * as ids from '@/ids';
-import * as utils from '@/utils';
-import * as testsKeysUtils from '../utils';
+import * as testsKeysUtils from '../utils.js';
+import * as asymmetric from '#keys/utils/asymmetric.js';
+import * as ids from '#ids/index.js';
+import * as utils from '#utils/index.js';
 
 describe('keys/utils/asymmetric', () => {
   test.prop([

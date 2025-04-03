@@ -1,36 +1,34 @@
-import type { Notification, SignedNotification } from '@/notifications/types';
-import type { NodeId } from '@/ids';
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type { Host } from '@/network/types';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { Notification, SignedNotification } from '#notifications/types.js';
+import type { NodeId } from '#ids/index.js';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type { Host } from '#network/types.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import KeyRing from '@/keys/KeyRing';
-import * as nodesUtils from '@/nodes/utils';
-import NodeGraph from '@/nodes/NodeGraph';
-import * as notificationsUtils from '@/notifications/utils';
-import { notificationsSend } from '@/nodes/agent/callers';
-import NotificationsSend from '@/nodes/agent/handlers/NotificationsSend';
-import NotificationsManager from '@/notifications/NotificationsManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodeManager from '@/nodes/NodeManager';
-import ACL from '@/acl/ACL';
-import { Token } from '@/tokens';
-import * as notificationsErrors from '@/notifications/errors';
-import * as validationErrors from '@/validation/errors';
-import * as keysUtils from '@/keys/utils';
-import * as networkUtils from '@/network/utils';
-import Sigchain from '@/sigchain/Sigchain';
-import TaskManager from '@/tasks/TaskManager';
-import * as testsUtils from '../../../utils/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
-import 'ix/add/asynciterable-operators/toarray';
+import * as testsUtils from '../../../utils/utils.js';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import KeyRing from '#keys/KeyRing.js';
+import * as nodesUtils from '#nodes/utils.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import * as notificationsUtils from '#notifications/utils.js';
+import { notificationsSend } from '#nodes/agent/callers/index.js';
+import NotificationsSend from '#nodes/agent/handlers/NotificationsSend.js';
+import NotificationsManager from '#notifications/NotificationsManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodeManager from '#nodes/NodeManager.js';
+import ACL from '#acl/ACL.js';
+import { Token } from '#tokens/index.js';
+import * as notificationsErrors from '#notifications/errors.js';
+import * as validationErrors from '#validation/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import TaskManager from '#tasks/TaskManager.js';
 
 describe('notificationsSend', () => {
   const logger = new Logger('notificationsSend test', LogLevel.WARN, [
@@ -306,9 +304,9 @@ describe('notificationsSend', () => {
       signedNotificationEncoded: signedNotification,
     });
     // Check notification was received
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(1);
     expect(receivedNotifications[0].data).toEqual(notification.data);
     expect(receivedNotifications[0].iss).toEqual(notification.iss);
@@ -348,9 +346,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsVerificationFailed,
     );
     // Check notification was not received
-    let receivedNotifications = await AsyncIterable.as(
+    let receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Improperly typed notification
     const notification2 = {
@@ -372,9 +370,9 @@ describe('notificationsSend', () => {
       validationErrors.ErrorParse,
     );
     // Check notification was not received
-    receivedNotifications = await AsyncIterable.as(
+    receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
     // Reverse side effects
     await acl.unsetNodePerm(senderNodeId);
@@ -407,9 +405,9 @@ describe('notificationsSend', () => {
       notificationsErrors.ErrorNotificationsPermissionsNotFound,
     );
     // Check notification was not received
-    const receivedNotifications = await AsyncIterable.as(
+    const receivedNotifications = await testsUtils.generatorToArray(
       notificationsManager.readInboxNotifications(),
-    ).toArray();
+    );
     expect(receivedNotifications).toHaveLength(0);
   });
 });

@@ -7,45 +7,38 @@ import type {
   VaultActions,
   VaultIdString,
   VaultIdEncoded,
-} from './types';
-import type { Vault } from './Vault';
-import type { FileSystem } from '../types';
-import type { PolykeyWorkerManagerInterface } from '../workers/types';
-import type { NodeId } from '../ids/types';
-import type KeyRing from '../keys/KeyRing';
-import type NodeManager from '../nodes/NodeManager';
-import type GestaltGraph from '../gestalts/GestaltGraph';
-import type NotificationsManager from '../notifications/NotificationsManager';
-import type ACL from '../acl/ACL';
-import type { RemoteInfo } from './VaultInternal';
-import type { VaultAction } from './types';
-import type { Key } from '../keys/types';
-import path from 'path';
+} from './types.js';
+import type { Vault } from './Vault.js';
+import type { FileSystem } from '../types.js';
+import type { NodeId } from '../ids/types.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type NodeManager from '../nodes/NodeManager.js';
+import type GestaltGraph from '../gestalts/GestaltGraph.js';
+import type NotificationsManager from '../notifications/NotificationsManager.js';
+import type ACL from '../acl/ACL.js';
+import type { PolykeyWorkerManager } from '../workers/types.js';
+import type { RemoteInfo } from './VaultInternal.js';
+import type { VaultAction } from './types.js';
+import path from 'node:path';
 import { DB } from '@matrixai/db';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { IdInternal } from '@matrixai/id';
 import { withF, withG } from '@matrixai/resources';
 import { LockBox, RWLockWriter } from '@matrixai/async-locks';
-import {
-  context,
-  timedCancellable,
-  timed,
-} from '@matrixai/contexts/dist/decorators';
+import { decorators } from '@matrixai/contexts';
 import Logger from '@matrixai/logger';
-import VaultInternal from './VaultInternal';
-import * as vaultsEvents from './events';
-import * as vaultsUtils from './utils';
-import * as vaultsErrors from './errors';
-import config from '../config';
-import { mkdirExists } from '../utils/utils';
-import * as utils from '../utils';
-import * as gitHttp from '../git/http';
-import * as nodesUtils from '../nodes/utils';
-import * as keysUtils from '../keys/utils';
+import VaultInternal from './VaultInternal.js';
+import * as vaultsEvents from './events.js';
+import * as vaultsUtils from './utils.js';
+import * as vaultsErrors from './errors.js';
+import config from '../config.js';
+import { mkdirExists } from '../utils/utils.js';
+import * as gitHttp from '../git/http.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as keysUtils from '../keys/utils/index.js';
+import { polykeyWorkerManifest } from '../workers/index.js';
+import * as utils from '#utils/index.js';
 
 /**
  * Object map pattern for each vault.
@@ -59,9 +52,8 @@ type VaultMetadata = {
   remoteInfo?: RemoteInfo;
 };
 
-interface VaultManager extends CreateDestroyStartStop {}
-
-@CreateDestroyStartStop(
+interface VaultManager extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultManagerRunning(),
   new vaultsErrors.ErrorVaultManagerDestroyed(),
   {
@@ -82,7 +74,7 @@ class VaultManager {
     nodeManager,
     gestaltGraph,
     notificationsManager,
-    fs = require('fs'),
+    fs,
     logger = new Logger(this.name),
     fresh = false,
   }: {
@@ -99,6 +91,7 @@ class VaultManager {
   }): Promise<VaultManager> {
     logger.info(`Creating ${this.name}`);
     logger.info(`Setting vaults path to ${vaultsPath}`);
+    fs = await utils.importFS(fs);
     const vaultManager = new this({
       vaultsPath,
       db,
@@ -192,20 +185,7 @@ class VaultManager {
           efsDb = await DB.createDB({
             crypto: {
               key: vaultKey,
-              ops: {
-                encrypt: async (key, plainText) => {
-                  return keysUtils.encryptWithKey(
-                    utils.bufferWrap(key) as Key,
-                    utils.bufferWrap(plainText),
-                  );
-                },
-                decrypt: async (key, cipherText) => {
-                  return keysUtils.decryptWithKey(
-                    utils.bufferWrap(key) as Key,
-                    utils.bufferWrap(cipherText),
-                  );
-                },
-              },
+              ops: polykeyWorkerManifest,
             },
             dbPath: this.efsPath,
             logger: this.logger.getChild('EFS Database'),
@@ -276,20 +256,7 @@ class VaultManager {
     await this.efsDb.start({
       crypto: {
         key: this.vaultKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
       fresh: false,
     });
@@ -306,7 +273,7 @@ class VaultManager {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+  public setWorkerManager(workerManager: PolykeyWorkerManager) {
     this.efs.setWorkerManager(workerManager);
   }
 
@@ -322,12 +289,12 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<VaultId>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async createVault(
     vaultName: VaultName,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<VaultId> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -380,7 +347,7 @@ class VaultManager {
    * Retrieves the vault metadata using the VaultId and parses it to return the
    * associated vault name.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultMeta(
     vaultId: VaultId,
     tran?: DBTransaction,
@@ -424,12 +391,12 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimed>,
   ): Promise<void>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async destroyVault(
     vaultId: VaultId,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -475,12 +442,12 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async closeVault(
     vaultId: VaultId,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -510,10 +477,10 @@ class VaultManager {
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): Promise<VaultList>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async listVaults(
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<VaultList> {
     if (tran == null) {
@@ -536,7 +503,7 @@ class VaultManager {
   /**
    * Changes the vault name metadata of a VaultId.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async renameVault(
     vaultId: VaultId,
     newVaultName: VaultName,
@@ -596,7 +563,7 @@ class VaultManager {
   /**
    * Retrieves the VaultId associated with a vault name.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultId(
     vaultName: VaultName,
     tran?: DBTransaction,
@@ -619,7 +586,7 @@ class VaultManager {
   /**
    * Retrieves the vault name associated with a VaultId.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultName(
     vaultId: VaultId,
     tran?: DBTransaction,
@@ -636,7 +603,7 @@ class VaultManager {
   /**
    * Returns a dictionary of VaultActions for each node
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultPermission(
     vaultId: VaultId,
     tran?: DBTransaction,
@@ -660,7 +627,7 @@ class VaultManager {
    * Sets clone, pull and scan permissions of a vault for a gestalt and send a
    * notification to this gestalt.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async shareVault(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -695,7 +662,7 @@ class VaultManager {
   /**
    * Unsets clone, pull and scan permissions of a vault for a gestalt.
    */
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async unshareVault(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -724,13 +691,13 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<VaultId>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async cloneVault(
     nodeId: NodeId,
     vaultNameOrId: VaultId | VaultName,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<VaultId> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -823,7 +790,7 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimed>,
   ): Promise<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async pullVault(
     {
       vaultId,
@@ -835,7 +802,7 @@ class VaultManager {
       pullVaultNameOrId?: VaultId | VaultName;
     },
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -870,12 +837,12 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<Buffer, void, void>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timed()
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timed()
   public async *handleInfoRequest(
     vaultId: VaultId,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
       const handleInfoRequest = (tran: DBTransaction) =>
@@ -916,16 +883,16 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<Buffer, void, void>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timed()
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timed()
   public async *handlePackRequest(
     vaultId: VaultId,
     body: Array<Buffer>,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<Buffer, void, void> {
     if (tran == null) {
-      // Lambda to maintain `this` context
+      // Lambda to maintain `this` decorators.context
       const handlePackRequest = (tran: DBTransaction) =>
         this.handlePackRequest(vaultId, body, tran, ctx);
       return yield* this.db.withTransactionG(async function* (tran) {
@@ -966,10 +933,10 @@ class VaultManager {
     vaultIdEncoded: VaultIdEncoded;
     vaultPermissions: VaultAction[];
   }>;
-  @timed()
+  @decorators.timed()
   public async *scanVaults(
     targetNodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<{
     vaultName: VaultName;
     vaultIdEncoded: VaultIdEncoded;
@@ -1010,18 +977,18 @@ class VaultManager {
     vaultName: VaultName;
     vaultPermissions: VaultAction[];
   }>;
-  @timed()
+  @decorators.timed()
   public async *handleScanVaults(
     nodeId: NodeId,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<{
     vaultId: VaultId;
     vaultName: VaultName;
     vaultPermissions: VaultAction[];
   }> {
     if (tran == null) {
-      // Lambda to maintain `this` context
+      // Lambda to maintain `this` decorators.context
       const handleScanVaults = (tran: DBTransaction) =>
         this.handleScanVaults(nodeId, tran, ctx);
       return yield* this.db.withTransactionG(async function* (tran) {
@@ -1064,7 +1031,7 @@ class VaultManager {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async generateVaultId(): Promise<VaultId> {
     let vaultId = this.vaultIdGenerator();
     let i = 0;
@@ -1080,7 +1047,7 @@ class VaultManager {
     return vaultId;
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   protected async getVault(
     vaultId: VaultId,
     tran: DBTransaction,
@@ -1133,13 +1100,13 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<T>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async withVaults<T>(
     vaultIds: VaultId[],
     f: (...args: Vault[]) => Promise<T>,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<T> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -1179,13 +1146,13 @@ class VaultManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<T, TReturn, TNext>;
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
-  @timed()
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @decorators.timed()
   public async *withVaultsG<T, TReturn, TNext>(
     vaultIds: Array<VaultId>,
     g: (...args: Array<Vault>) => AsyncGenerator<T, TReturn, TNext>,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<T, TReturn, TNext> {
     if (tran == null) {
       return yield* this.db.withTransactionG((tran) =>

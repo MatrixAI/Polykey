@@ -1,9 +1,9 @@
-import type { ChildProcess } from 'child_process';
-import type ErrorPolykey from '@/ErrorPolykey';
-import childProcess from 'child_process';
-import path from 'path';
-import process from 'process';
-import readline from 'readline';
+import type { ChildProcess } from 'node:child_process';
+import type ErrorPolykey from '#ErrorPolykey.js';
+import childProcess from 'node:child_process';
+import path from 'node:path';
+import process from 'node:process';
+import readline from 'node:readline';
 import Logger from '@matrixai/logger';
 
 type ExecOpts = {

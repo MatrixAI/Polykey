@@ -4,23 +4,23 @@ import type {
   StatusLive,
   StatusStopping,
   StatusDead,
-} from './types';
-import type { FileSystem, FileHandle } from '../types';
+} from './types.js';
+import type { FileSystem, FileHandle } from '../types.js';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import Logger from '@matrixai/logger';
 import lock from 'fd-lock';
-import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
-import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
-import * as statusUtils from './utils';
-import * as statusErrors from './errors';
-import * as statusEvents from './events';
-import { sleep, poll } from '../utils';
-import * as errors from '../errors';
-import { utils as nodesUtils } from '../nodes';
+import { startStop } from '@matrixai/async-init';
+import { decorators } from '@matrixai/contexts';
+import * as statusUtils from './utils.js';
+import * as statusErrors from './errors.js';
+import * as statusEvents from './events.js';
+import { sleep, poll } from '../utils/index.js';
+import * as errors from '../errors.js';
+import { utils as nodesUtils } from '../nodes/index.js';
 
-interface Status extends StartStop {}
-@StartStop({
+interface Status extends startStop.StartStop {}
+@startStop.StartStop({
   eventStart: statusEvents.EventStatusStart,
   eventStarted: statusEvents.EventStatusStarted,
   eventStop: statusEvents.EventStatusStop,
@@ -37,12 +37,12 @@ class Status {
   public constructor({
     statusPath,
     statusLockPath,
-    fs = require('fs'),
+    fs,
     logger,
   }: {
     statusPath: string;
     statusLockPath: string;
-    fs?: FileSystem;
+    fs: FileSystem;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
@@ -75,7 +75,7 @@ class Status {
     this.logger.info(`${this.constructor.name} is STARTING`);
   }
 
-  @ready(new statusErrors.ErrorStatusNotRunning(), true)
+  @startStop.ready(new statusErrors.ErrorStatusNotRunning(), true)
   public async finishStart(data: StatusLive['data']): Promise<void> {
     this.logger.info(`Finish ${this.constructor.name} STARTING`);
     await this.writeStatus({
@@ -85,7 +85,7 @@ class Status {
     this.logger.info(`${this.constructor.name} is LIVE`);
   }
 
-  @ready(new statusErrors.ErrorStatusNotRunning(), true)
+  @startStop.ready(new statusErrors.ErrorStatusNotRunning(), true)
   public async beginStop(data: StatusStopping['data']): Promise<void> {
     this.logger.info(`Begin ${this.constructor.name} STOPPING`);
     await this.writeStatus({
@@ -112,7 +112,7 @@ class Status {
    * This can be used without running Status
    */
   public async readStatus(): Promise<StatusInfo | undefined> {
-    let statusFile;
+    let statusFile: FileHandle | undefined;
     try {
       try {
         statusFile = await this.fs.promises.open(this.statusPath, 'r');
@@ -133,7 +133,7 @@ class Status {
       while (!lock(statusFile.fd)) {
         await sleep(2);
       }
-      let statusData;
+      let statusData: string;
       try {
         statusData = (await statusFile.readFile('utf-8')).trim();
       } catch (e) {
@@ -150,7 +150,7 @@ class Status {
       if (statusData === '') {
         return;
       }
-      let statusInfo;
+      let statusInfo: StatusInfo | undefined;
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
@@ -177,7 +177,7 @@ class Status {
 
   protected async writeStatus(statusInfo: StatusInfo): Promise<void> {
     this.logger.info(`Writing ${this.constructor.name} to ${this.statusPath}`);
-    let statusFile;
+    let statusFile: FileHandle | undefined;
     try {
       // Cannot use 'w', it truncates immediately
       // should truncate only while holding the lock
@@ -216,12 +216,12 @@ class Status {
     }
   }
 
-  @ready(new statusErrors.ErrorStatusNotRunning())
+  @startStop.ready(new statusErrors.ErrorStatusNotRunning())
   public async updateStatusLive(
     data: Partial<StatusLive['data']>,
   ): Promise<StatusInfo> {
     this.logger.info(`Updating ${this.constructor.name} LIVE`);
-    let statusFile;
+    let statusFile: FileHandle | undefined;
     try {
       try {
         statusFile = await this.fs.promises.open(this.statusPath, 'r+');
@@ -239,7 +239,7 @@ class Status {
       while (!lock(statusFile.fd)) {
         await sleep(2);
       }
-      let statusData;
+      let statusData: string;
       try {
         statusData = (await statusFile.readFile('utf-8')).trim();
       } catch (e) {
@@ -253,7 +253,7 @@ class Status {
           cause: e,
         });
       }
-      let statusInfo;
+      let statusInfo: StatusInfo | undefined;
       try {
         statusInfo = JSON.parse(statusData, this.statusReviver);
       } catch (e) {
@@ -306,12 +306,12 @@ class Status {
     status: StatusInfo['status'],
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<StatusInfo>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async waitFor(
     status: StatusInfo['status'],
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<StatusInfo> {
-    let statusInfo;
+    let statusInfo: StatusInfo | undefined;
     try {
       statusInfo = await poll<StatusInfo | undefined>(
         async () => {
@@ -327,8 +327,7 @@ class Status {
           ) {
             return true;
           }
-          if (statusInfo?.status === status) return true;
-          return false;
+          return statusInfo?.status === status;
         },
         50,
         ctx,

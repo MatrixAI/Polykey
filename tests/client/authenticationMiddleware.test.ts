@@ -1,11 +1,11 @@
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-} from '@/client/types';
-import type { TLSConfig } from '../../src/network/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#client/types.js';
+import type { TLSConfig } from '#network/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import {
@@ -15,16 +15,16 @@ import {
   middleware as rpcUtilsMiddleware,
 } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import KeyRing from '@/keys/KeyRing';
-import TaskManager from '@/tasks/TaskManager';
-import CertManager from '@/keys/CertManager';
-import ClientService from '@/client/ClientService';
-import { Session, SessionManager } from '@/sessions';
-import * as authMiddleware from '@/client/authenticationMiddleware';
-import * as keysUtils from '@/keys/utils';
-import * as clientUtils from '@/client/utils';
-import * as networkUtils from '@/network/utils';
-import * as testsUtils from '../utils';
+import * as testsUtils from '../utils/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import TaskManager from '#tasks/TaskManager.js';
+import CertManager from '#keys/CertManager.js';
+import ClientService from '#client/ClientService.js';
+import { Session, SessionManager } from '#sessions/index.js';
+import * as authMiddleware from '#client/authenticationMiddleware.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as clientUtils from '#client/utils.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('authenticationMiddleware', () => {
   const logger = new Logger('agentUnlock test', LogLevel.WARN, [

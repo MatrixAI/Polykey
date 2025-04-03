@@ -7,13 +7,13 @@ import type {
   ObjectType,
   Reference,
   RequestType,
-} from './types';
+} from './types.js';
 import type { EncryptedFS } from 'encryptedfs';
-import path from 'path';
+import path from 'node:path';
 import git from 'isomorphic-git';
-import { requestTypes } from './types';
-import * as utils from '../utils';
-import * as validationErrors from '../validation/errors';
+import { requestTypes } from './types.js';
+import * as utils from '../utils/index.js';
+import * as validationErrors from '../validation/errors.js';
 
 // Constants
 // Total number of bytes per pack line minus the 4 size bytes and 1 channel byte

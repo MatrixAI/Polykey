@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysSign from '../handlers/KeysSign';
+import type KeysSign from '../handlers/KeysSign.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysSign>;

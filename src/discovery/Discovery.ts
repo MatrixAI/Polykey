@@ -1,15 +1,15 @@
 import type { DB, DBTransaction } from '@matrixai/db';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
-import type { NodeId } from '../nodes/types';
-import type NodeManager from '../nodes/NodeManager';
-import type GestaltGraph from '../gestalts/GestaltGraph';
+import type { NodeId } from '../nodes/types.js';
+import type NodeManager from '../nodes/NodeManager.js';
+import type GestaltGraph from '../gestalts/GestaltGraph.js';
 import type {
   GestaltId,
   GestaltIdEncoded,
   GestaltNodeInfo,
-} from '../gestalts/types';
-import type IdentitiesManager from '../identities/IdentitiesManager';
+} from '../gestalts/types.js';
+import type IdentitiesManager from '../identities/IdentitiesManager.js';
 import type {
   IdentityData,
   IdentityId,
@@ -18,29 +18,29 @@ import type {
   ProviderIdentityClaimId,
   ProviderIdentityId,
   ProviderPaginationToken,
-} from '../identities/types';
-import type KeyRing from '../keys/KeyRing';
-import type { ClaimIdEncoded, SignedClaim } from '../claims/types';
-import type TaskManager from '../tasks/TaskManager';
-import type { Task, TaskHandler, TaskHandlerId } from '../tasks/types';
-import type { ClaimLinkIdentity, ClaimLinkNode } from '../claims/payloads';
-import type { DiscoveryQueueInfo } from './types';
+} from '../identities/types.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type { ClaimIdEncoded, SignedClaim } from '../claims/types.js';
+import type TaskManager from '../tasks/TaskManager.js';
+import type { Task, TaskHandler, TaskHandlerId } from '../tasks/types.js';
+import type {
+  ClaimLinkIdentity,
+  ClaimLinkNode,
+} from '../claims/payloads/index.js';
+import type { DiscoveryQueueInfo } from './types.js';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { context, timedCancellable } from '@matrixai/contexts/dist/decorators';
-import * as discoveryErrors from './errors';
-import * as discoveryEvents from './events';
-import * as tasksErrors from '../tasks/errors';
-import * as tasksUtils from '../tasks/utils';
-import * as gestaltsUtils from '../gestalts/utils';
-import * as nodesUtils from '../nodes/utils';
-import * as keysUtils from '../keys/utils';
-import { never } from '../utils';
-import Token from '../tokens/Token';
-import { decodeClaimId } from '../ids';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import { decorators } from '@matrixai/contexts';
+import * as discoveryErrors from './errors.js';
+import * as discoveryEvents from './events.js';
+import * as tasksErrors from '../tasks/errors.js';
+import * as tasksUtils from '../tasks/utils.js';
+import * as gestaltsUtils from '../gestalts/utils.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as keysUtils from '../keys/utils/index.js';
+import { never } from '../utils/index.js';
+import Token from '../tokens/Token.js';
+import { decodeClaimId } from '../ids/index.js';
 
 /**
  * This is the reason used to cancel duplicate tasks for vertices
@@ -57,8 +57,8 @@ const discoveryStoppingTaskReason = Symbol('discovery stopping task reason');
  */
 const discoveryDestroyedTaskReason = Symbol('discovery destroyed task reason');
 
-interface Discovery extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface Discovery extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new discoveryErrors.ErrorDiscoveryRunning(),
   new discoveryErrors.ErrorDiscoveryDestroyed(),
   {
@@ -332,7 +332,7 @@ class Discovery {
   /**
    * Queues a node for discovery. Internally calls `pushKeyToDiscoveryQueue`.
    */
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
+  @createDestroyStartStop.ready(new discoveryErrors.ErrorDiscoveryNotRunning())
   public async queueDiscoveryByNode(
     nodeId: NodeId,
     lastProcessedCutoffTime?: number,
@@ -348,7 +348,7 @@ class Discovery {
    * Queues an identity for discovery. Internally calls
    * `pushKeyToDiscoveryQueue`.
    */
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
+  @createDestroyStartStop.ready(new discoveryErrors.ErrorDiscoveryNotRunning())
   public async queueDiscoveryByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -364,7 +364,7 @@ class Discovery {
   /**
    * This returns the discovery queue
    */
-  @ready(new discoveryErrors.ErrorDiscoveryNotRunning())
+  @createDestroyStartStop.ready(new discoveryErrors.ErrorDiscoveryNotRunning())
   public async *getDiscoveryQueue(
     tran?: DBTransaction,
   ): AsyncGenerator<DiscoveryQueueInfo, void, void> {
@@ -397,11 +397,11 @@ class Discovery {
     lastProcessedCutoffTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   protected async processVertex(
     vertex: GestaltIdEncoded,
     lastProcessedCutoffTime: number | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.debug(`Processing vertex: ${vertex}`);
     const vertexId = gestaltsUtils.decodeGestaltId(vertex);
@@ -882,11 +882,11 @@ class Discovery {
     identityId: IdentityId,
     ctx: Partial<ContextTimedInput>,
   ): Promise<IdentityData | undefined>;
-  @timedCancellable(true, 20000)
+  @decorators.timedCancellable(true, 20000)
   protected async getIdentityInfo(
     providerId: ProviderId,
     identityId: IdentityId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<IdentityData | undefined> {
     const provider = this.identitiesManager.getProvider(providerId);
     // If we don't have this provider, no identity info to find
@@ -1039,11 +1039,11 @@ class Discovery {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async checkRediscovery(
     lastProcessedCutoffTime: number,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>

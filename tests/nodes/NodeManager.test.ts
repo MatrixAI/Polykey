@@ -1,50 +1,51 @@
-import type { Host, Port } from '@/network/types';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type nodeGraph from '@/nodes/NodeGraph';
-import type { NCMState } from './utils';
-import type { NodeAddress, NodeContactAddressData } from '@/nodes/types';
+import type { Host, Port } from '#network/types.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type nodeGraph from '#nodes/NodeGraph.js';
+import type { NCMState } from './utils.js';
+import type { NodeAddress, NodeContactAddressData } from '#nodes/types.js';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   NodesAuthenticateConnectionMessage,
   SuccessMessage,
-} from '@/nodes/agent/types';
-import type { JSONValue, ObjectEmpty } from '@';
+} from '#nodes/agent/types.js';
+import type { JSONValue, ObjectEmpty } from '#index.js';
 import type { ContextTimed } from '@matrixai/contexts';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { Semaphore } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
 import { UnaryHandler } from '@matrixai/rpc';
-import ACL from '@/acl/ACL';
-import NodeGraph from '@/nodes/NodeGraph';
+import { generateNodeIdForBucket } from './utils.js';
+import * as nodesTestUtils from './utils.js';
+import * as testsUtils from '../utils/index.js';
+import ACL from '#acl/ACL.js';
+import NodeGraph from '#nodes/NodeGraph.js';
 import {
   NodesClaimsGet,
   NodesClosestActiveConnectionsGet,
   NodesClosestLocalNodesGet,
-} from '@/nodes/agent/handlers';
-import * as keysUtils from '@/keys/utils';
-import * as nodesErrors from '@/nodes/errors';
-import * as nodesEvents from '@/nodes/events';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodesCrossSignClaim from '@/nodes/agent/handlers/NodesCrossSignClaim';
-import NodesConnectionSignalFinal from '@/nodes/agent/handlers/NodesConnectionSignalFinal';
-import NodesConnectionSignalInitial from '@/nodes/agent/handlers/NodesConnectionSignalInitial';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import * as nodesUtils from '@/nodes/utils';
-import { TaskManager } from '@/tasks';
-import { NodeConnection, NodeManager } from '@/nodes';
-import { GestaltGraph } from '@/gestalts';
-import { Sigchain } from '@/sigchain';
-import { KeyRing } from '@/keys';
-import NodeConnectionQueue from '@/nodes/NodeConnectionQueue';
-import * as utils from '@/utils';
-import { generateNodeIdForBucket } from './utils';
-import * as nodesTestUtils from './utils';
-import * as testsUtils from '../utils';
+} from '#nodes/agent/handlers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesErrors from '#nodes/errors.js';
+import * as nodesEvents from '#nodes/events.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodesCrossSignClaim from '#nodes/agent/handlers/NodesCrossSignClaim.js';
+import NodesConnectionSignalFinal from '#nodes/agent/handlers/NodesConnectionSignalFinal.js';
+import NodesConnectionSignalInitial from '#nodes/agent/handlers/NodesConnectionSignalInitial.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import * as nodesUtils from '#nodes/utils.js';
+import { TaskManager } from '#tasks/index.js';
+import { NodeConnection, NodeManager } from '#nodes/index.js';
+import { GestaltGraph } from '#gestalts/index.js';
+import { Sigchain } from '#sigchain/index.js';
+import { KeyRing } from '#keys/index.js';
+import NodeConnectionQueue from '#nodes/NodeConnectionQueue.js';
+import * as utils from '#utils/index.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
   ObjectEmpty,
@@ -1141,6 +1142,8 @@ describe(`${NodeManager.name}`, () => {
     });
 
     test('findNodeByMdns', async () => {
+      // Allow time for DNS to propagate
+      await utils.sleep(100);
       const result = await nodeManager.findNodeByMDNS(keyRingPeer.getNodeId());
       expect(result).toBeDefined();
       const [[host, port]] = result;
@@ -1148,6 +1151,8 @@ describe(`${NodeManager.name}`, () => {
       expect(port).toBe(nodeConnectionManagerPeer.port);
     });
     test('findNode with mdns', async () => {
+      // Allow time for DNS to propagate
+      await utils.sleep(100);
       const result = await nodeManager.findNode({
         nodeId: keyRingPeer.getNodeId(),
       });

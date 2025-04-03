@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesConnectionSignalFinal from '../handlers/NodesConnectionSignalFinal';
+import type NodesConnectionSignalFinal from '../handlers/NodesConnectionSignalFinal.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesConnectionSignalFinal>;

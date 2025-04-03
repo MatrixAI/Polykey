@@ -1,12 +1,12 @@
-import type { VaultId } from '@/vaults/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type { VaultId } from '#vaults/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { EncryptedFS } from 'encryptedfs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { IdRandom } from '@matrixai/id';
-import * as vaultsUtils from '@/vaults/utils';
-import * as keysUtils from '@/keys/utils';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
 
 describe('Vaults utils', () => {
   const logger = new Logger('Vaults utils tests', LogLevel.WARN, [

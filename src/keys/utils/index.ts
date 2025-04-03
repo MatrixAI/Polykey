@@ -4,15 +4,15 @@
  * @module
  */
 
-export * from './webcrypto';
-export * from './asymmetric';
-export * from './generate';
-export * from './hash';
-export * from './jwk';
-export * from './memory';
-export * from './password';
-export * from './pem';
-export * from './random';
-export * from './recoveryCode';
-export * from './symmetric';
-export * from './x509';
+export * from './webcrypto.js';
+export * from './asymmetric.js';
+export * from './generate.js';
+export * from './hash.js';
+export * from './jwk.js';
+export * from './memory.js';
+export * from './password.js';
+export * from './pem.js';
+export * from './random.js';
+export * from './recoveryCode.js';
+export * from './symmetric.js';
+export * from './x509.js';

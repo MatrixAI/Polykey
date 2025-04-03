@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NotificationsInboxRead from '../handlers/NotificationsInboxRead';
+import type NotificationsInboxRead from '../handlers/NotificationsInboxRead.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NotificationsInboxRead>;

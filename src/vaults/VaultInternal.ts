@@ -14,43 +14,35 @@ import type {
   VaultIdEncoded,
   VaultName,
   VaultRef,
-} from './types';
-import type { POJO } from '../types';
-import type { NodeId, NodeIdEncoded } from '../ids/types';
-import type KeyRing from '../keys/KeyRing';
-import type NodeManager from '../nodes/NodeManager';
-import type agentClientManifest from '../nodes/agent/callers';
-import path from 'path';
+} from './types.js';
+import type { POJO } from '../types.js';
+import type { NodeId, NodeIdEncoded } from '../ids/types.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type NodeManager from '../nodes/NodeManager.js';
+import type agentClientManifest from '../nodes/agent/callers/index.js';
+import path from 'node:path';
 import git from 'isomorphic-git';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { RWLockWriter } from '@matrixai/async-locks';
-import {
-  context,
-  timed,
-  timedCancellable,
-} from '@matrixai/contexts/dist/decorators';
+import { decorators } from '@matrixai/contexts';
 import { withF, withG } from '@matrixai/resources';
-import { tagLast } from './types';
-import * as vaultsErrors from './errors';
-import * as vaultsEvents from './events';
-import * as vaultsUtils from './utils';
-import * as ids from '../ids';
-import * as utils from '../utils';
-import * as nodesUtils from '../nodes/utils';
-import * as gitUtils from '../git/utils';
+import { tagLast } from './types.js';
+import * as vaultsErrors from './errors.js';
+import * as vaultsEvents from './events.js';
+import * as vaultsUtils from './utils.js';
+import * as ids from '../ids/index.js';
+import * as utils from '../utils/index.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as gitUtils from '../git/utils.js';
 
 type RemoteInfo = {
   remoteNode: NodeIdEncoded;
   remoteVault: VaultIdEncoded;
 };
 
-interface VaultInternal extends CreateDestroyStartStop {}
-
-@CreateDestroyStartStop(
+interface VaultInternal extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new vaultsErrors.ErrorVaultRunning(),
   new vaultsErrors.ErrorVaultDestroyed(),
   {
@@ -92,7 +84,7 @@ class VaultInternal {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<VaultInternal>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public static async createVaultInternal(
     {
       vaultId,
@@ -114,7 +106,7 @@ class VaultInternal {
       logger?: Logger;
     },
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<VaultInternal> {
     if (tran == null) {
       return await db.withTransactionF((tran) =>
@@ -178,7 +170,7 @@ class VaultInternal {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<VaultInternal>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public static async cloneVaultInternal(
     {
       targetNodeId,
@@ -202,7 +194,7 @@ class VaultInternal {
       logger?: Logger;
     },
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<VaultInternal> {
     if (tran == null) {
       return await db.withTransactionF((tran) =>
@@ -361,7 +353,7 @@ class VaultInternal {
     tran: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   protected async start_(
     {
       vaultName,
@@ -371,7 +363,7 @@ class VaultInternal {
       fresh: boolean;
     },
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     this.logger.info(
       `Starting ${this.constructor.name} - ${this.vaultIdEncoded}`,
@@ -442,7 +434,7 @@ class VaultInternal {
     ref?: string | VaultRef,
     limit?: number,
   ): Promise<Array<CommitLog>>;
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public async log(
     ref: string | VaultRef = 'HEAD',
     limit: number,
@@ -479,7 +471,7 @@ class VaultInternal {
    * Checks out the vault repository to specific commit ID or special tags.
    * This changes the working directory and updates the HEAD reference.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public async version(ref: string | VaultRef = tagLast): Promise<void> {
     vaultsUtils.assertRef(ref);
     if (ref === vaultsUtils.tagLast) {
@@ -509,7 +501,7 @@ class VaultInternal {
   /**
    * With context handler for using a vault in a read-only context.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public async readF<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     return withF([this.lock.read()], async () => {
       return await f(this.efsVault);
@@ -520,7 +512,7 @@ class VaultInternal {
    * With context handler for using a vault in a read-only context for a
    * generator.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public readG<T, TReturn, TNext>(
     g: (fs: FileSystemReadable) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
@@ -538,12 +530,12 @@ class VaultInternal {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
+  @decorators.timedCancellable(true)
   public async writeF(
     f: (fs: FileSystemWritable) => Promise<void>,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.writeF(f, tran, ctx));
@@ -594,12 +586,12 @@ class VaultInternal {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): AsyncGenerator<T, TReturn, TNext>;
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
-  @timed()
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
+  @decorators.timed()
   public writeG<T, TReturn, TNext>(
     g: (fs: FileSystemWritable) => AsyncGenerator<T, TReturn, TNext>,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): AsyncGenerator<T, TReturn, TNext> {
     if (tran == null) {
       return this.db.withTransactionG((tran) => this.writeG(g, tran, ctx));
@@ -643,7 +635,7 @@ class VaultInternal {
   /**
    * Acquire a read-only lock on this vault.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public acquireRead(): ResourceAcquire<FileSystemReadable> {
     return async () => {
       const acquire = this.lock.read();
@@ -660,7 +652,7 @@ class VaultInternal {
   /**
    * Acquire a read-write lock on this vault.
    */
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
   public acquireWrite(
     tran: DBTransaction | undefined,
     ctx: ContextTimed,
@@ -736,8 +728,8 @@ class VaultInternal {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @ready(new vaultsErrors.ErrorVaultNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new vaultsErrors.ErrorVaultNotRunning())
+  @decorators.timedCancellable(true)
   public async pullVault(
     {
       nodeManager,
@@ -749,7 +741,7 @@ class VaultInternal {
       pullVaultNameOrId?: VaultId | VaultName;
     },
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>

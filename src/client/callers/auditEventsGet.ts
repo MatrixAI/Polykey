@@ -1,14 +1,17 @@
 import type { ReadableStream } from 'stream/web';
 import type { HandlerTypes } from '@matrixai/rpc';
 import type { ContextTimedInput } from '@matrixai/contexts';
-import type { AuditEventIdEncoded } from '../../ids';
+import type { AuditEventIdEncoded } from '../../ids/index.js';
 import type {
   AuditEventToAuditEventSerialized,
   TopicSubPath,
   TopicSubPathToAuditEvent,
-} from '../../audit/types';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type AuditEventsGet from '../handlers/AuditEventsGet';
+} from '../../audit/types.js';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type AuditEventsGet from '../handlers/AuditEventsGet.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<AuditEventsGet>;

@@ -1,5 +1,9 @@
-import type { TaskPriority, TaskDelay, TaskDeadline } from './types';
-import { createTaskIdGenerator, encodeTaskId, decodeTaskId } from '../ids';
+import type { TaskPriority, TaskDelay, TaskDeadline } from './types.js';
+import {
+  createTaskIdGenerator,
+  encodeTaskId,
+  decodeTaskId,
+} from '../ids/index.js';
 
 /**
  * Encodes delay milliseconds

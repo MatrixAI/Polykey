@@ -2,22 +2,24 @@ import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ContextTimed } from '@matrixai/contexts';
 import type {
   Task,
+  TaskHandler,
   TaskHandlerId,
   TaskId,
   TaskPath,
   TaskStatus,
-} from '@/tasks/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+} from '#tasks/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import * as fc from 'fast-check';
 import { test } from '@fast-check/jest';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Lock } from '@matrixai/async-locks';
-import TaskManager from '@/tasks/TaskManager';
-import * as tasksErrors from '@/tasks/errors';
-import * as utils from '@/utils';
+import TaskManager from '#tasks/TaskManager.js';
+import * as tasksErrors from '#tasks/errors.js';
+import * as utils from '#utils/index.js';
 
 describe(TaskManager.name, () => {
   const logger = new Logger(`${TaskManager.name} test`, LogLevel.WARN, [
@@ -62,7 +64,7 @@ describe(TaskManager.name, () => {
       logger,
     });
     const handlerId = 'asd' as TaskHandlerId;
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async () => {});
     taskManager.registerHandler(handlerId, handler);
     await taskManager.startProcessing();
@@ -143,7 +145,7 @@ describe(TaskManager.name, () => {
       logger,
     });
     const handlerId = 'asd' as TaskHandlerId;
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async () => {});
     taskManager.registerHandler(handlerId, handler);
     await taskManager.startProcessing();
@@ -205,26 +207,37 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
     expect(handler).toHaveBeenCalledTimes(3);
   });
-  const scheduleCommandArb = fc
-    .record({
-      handlerId: fc.constant(handlerId),
-      delay: fc.integer({ min: 10, max: 1000 }),
-      parameters: fc.constant([]),
-      priority: fc.integer({ min: -200, max: 200 }),
-    })
-    .map((taskSpec) => async (context: { taskManager: TaskManager }) => {
-      return await context.taskManager.scheduleTask({
-        ...taskSpec,
-        lazy: false,
-      });
-    })
-    .noShrink();
-  const sleepCommandArb = fc
-    .integer({ min: 10, max: 100 })
-    .noShrink()
-    .map((value) => async (_context) => {
+  const scheduleCommandArb = fc.noShrink(
+    fc
+      .record(
+        {
+          handlerId: fc.constant(handlerId),
+          delay: fc.integer({ min: 10, max: 1000 }),
+          parameters: fc.constant([]),
+          priority: fc.integer({ min: -200, max: 200 }),
+        },
+        { noNullPrototype: true },
+      )
+      .map(
+        (taskSpec: {
+          handlerId: TaskHandlerId;
+          delay: number;
+          parameters: [];
+          priority: number;
+        }) =>
+          async (context: { taskManager: TaskManager }) => {
+            return await context.taskManager.scheduleTask({
+              ...taskSpec,
+              lazy: false,
+            });
+          },
+      ),
+  );
+  const sleepCommandArb = fc.noShrink(
+    fc.integer({ min: 10, max: 100 }).map((value) => async (_context) => {
       await utils.sleep(value);
-    });
+    }),
+  );
 
   const commandsArb = fc.array(
     fc.oneof(
@@ -244,7 +257,7 @@ describe(TaskManager.name, () => {
       fresh: true,
       logger,
     });
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async () => {
       await utils.sleep(200);
     });
@@ -275,7 +288,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('tasks are handled exactly once per task', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     const pendingLock = new Lock();
     const [lockReleaser] = await pendingLock.lock()();
     const resolvedTasks = new Map<number, number>();
@@ -310,7 +323,7 @@ describe(TaskManager.name, () => {
     expect(handler).toHaveBeenCalledTimes(totalTasks);
   });
   test('awaited taskPromises resolve', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, fail) => {
       if (!fail) throw Error('three');
       return fail;
@@ -334,7 +347,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('awaited taskPromises reject', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, fail) => {
       if (!fail) throw Error('three');
       return fail;
@@ -358,7 +371,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('awaited taskPromises resolve or reject', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, fail) => {
       if (!fail) throw Error('three');
       return fail;
@@ -408,7 +421,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('tasks fail with unregistered handler', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, fail) => {
       if (!fail) throw Error('three');
       return fail;
@@ -446,7 +459,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('eager taskPromise resolves when awaited after task completion', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, fail) => {
       if (!fail) throw Error('three');
       return fail;
@@ -474,7 +487,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('lazy taskPromise rejects when awaited after task completion', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async () => {});
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -552,7 +565,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('can cancel active task, clean up and reject taskPromise', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
       const abortP = new Promise((_, reject) =>
@@ -604,7 +617,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('incomplete active tasks cleaned up during startup', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async () => {});
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -654,7 +667,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('stopping should gracefully end active tasks', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
       const abortP = new Promise((_, reject) =>
@@ -708,7 +721,7 @@ describe(TaskManager.name, () => {
   test('stopped tasks should run again if allowed', async () => {
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     const handlerId1 = 'handler1' as TaskHandlerId;
-    const handler1 = jest.fn();
+    const handler1 = jest.fn<TaskHandler>();
     handler1.mockImplementation(async (ctx: ContextTimed) => {
       const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () =>
@@ -722,7 +735,7 @@ describe(TaskManager.name, () => {
       await Promise.race([pauseP, abortP]);
     });
     const handlerId2 = 'handler2' as TaskHandlerId;
-    const handler2 = jest.fn();
+    const handler2 = jest.fn<TaskHandler>();
     handler2.mockImplementation(async (ctx: ContextTimed) => {
       const abortP = new Promise((_, reject) =>
         ctx.signal.addEventListener('abort', () => reject(ctx.signal.reason)),
@@ -901,8 +914,8 @@ describe(TaskManager.name, () => {
   test('updating tasks while scheduled', async () => {
     const handlerId1 = 'handler1' as TaskHandlerId;
     const handlerId2 = 'handler2' as TaskHandlerId;
-    const handler1 = jest.fn();
-    const handler2 = jest.fn();
+    const handler1 = jest.fn<TaskHandler>();
+    const handler2 = jest.fn<TaskHandler>();
     taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId1]: handler1, [handlerId2]: handler2 },
@@ -949,7 +962,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('updating tasks while queued or active should fail', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     handler.mockImplementation(async (_ctx, _taskInfo, value) => value);
     taskManager = await TaskManager.createTaskManager({
       db,
@@ -991,8 +1004,8 @@ describe(TaskManager.name, () => {
   test('updating tasks delay should update schedule timer', async () => {
     const handlerId1 = 'handler1' as TaskHandlerId;
     const handlerId2 = 'handler2' as TaskHandlerId;
-    const handler1 = jest.fn();
-    const handler2 = jest.fn();
+    const handler1 = jest.fn<TaskHandler>();
+    const handler2 = jest.fn<TaskHandler>();
     handler1.mockImplementation(async (_ctx, _taskInfo, value) => value);
     handler2.mockImplementation(async (_ctx, _taskInfo, value) => value);
     taskManager = await TaskManager.createTaskManager({
@@ -1038,7 +1051,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('task should run after scheduled delay', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     taskManager = await TaskManager.createTaskManager({
       db,
       handlers: { [handlerId]: handler },
@@ -1089,7 +1102,7 @@ describe(TaskManager.name, () => {
     expect(taskInfinite.deadline).toBe(Infinity);
   });
   test('queued tasks should be started in priority order', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     const { p: pendingP, resolveP: resolvePendingP } = utils.promise();
     const totalTasks = 31;
     const completedTaskOrder: Array<number> = [];
@@ -1140,7 +1153,7 @@ describe(TaskManager.name, () => {
     await taskManager.stop();
   });
   test('task exceeding deadline should abort and clean up', async () => {
-    const handler = jest.fn();
+    const handler = jest.fn<TaskHandler>();
     const { p: pauseP, resolveP: resolvePauseP } = utils.promise();
     handler.mockImplementation(async (ctx: ContextTimed) => {
       const abortP = new Promise((_, reject) =>

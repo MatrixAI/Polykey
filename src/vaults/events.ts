@@ -1,4 +1,4 @@
-import EventPolykey from '../EventPolykey';
+import EventPolykey from '../EventPolykey.js';
 
 abstract class EventVaults<T> extends EventPolykey<T> {}
 

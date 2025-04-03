@@ -6,16 +6,16 @@ import type {
   ClientRPCResponseResult,
   VaultIdentifierMessage,
   VaultPermissionMessage,
-} from '../types';
-import type VaultManager from '../../vaults/VaultManager';
-import type ACL from '../../acl/ACL';
-import type { VaultAction, VaultActions } from '../../vaults/types';
-import type { NodeId, NodeIdEncoded } from '../../ids';
+} from '../types.js';
+import type VaultManager from '../../vaults/VaultManager.js';
+import type ACL from '../../acl/ACL.js';
+import type { VaultAction, VaultActions } from '../../vaults/types.js';
+import type { NodeId, NodeIdEncoded } from '../../ids/index.js';
 import { IdInternal } from '@matrixai/id';
 import { ServerHandler } from '@matrixai/rpc';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import * as nodesUtils from '../../nodes/utils';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class VaultsPermissionGet extends ServerHandler<
   {

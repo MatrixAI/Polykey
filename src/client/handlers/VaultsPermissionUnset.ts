@@ -4,18 +4,18 @@ import type {
   ClientRPCResponseResult,
   PermissionSetMessage,
   SuccessMessage,
-} from '../types';
-import type { VaultAction } from '../../vaults/types';
-import type { NodeId } from '../../ids';
-import type VaultManager from '../../vaults/VaultManager';
-import type GestaltGraph from '../../gestalts/GestaltGraph';
-import type ACL from '../../acl/ACL';
+} from '../types.js';
+import type { VaultAction } from '../../vaults/types.js';
+import type { NodeId } from '../../ids/index.js';
+import type VaultManager from '../../vaults/VaultManager.js';
+import type GestaltGraph from '../../gestalts/GestaltGraph.js';
+import type ACL from '../../acl/ACL.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as ids from '../../ids';
-import * as vaultsUtils from '../../vaults/utils';
-import * as vaultsErrors from '../../vaults/errors';
-import { validateSync } from '../../validation';
-import { matchSync } from '../../utils';
+import * as ids from '../../ids/index.js';
+import * as vaultsUtils from '../../vaults/utils.js';
+import * as vaultsErrors from '../../vaults/errors.js';
+import { validateSync } from '../../validation/index.js';
+import { matchSync } from '../../utils/index.js';
 
 class VaultsPermissionUnset extends UnaryHandler<
   {

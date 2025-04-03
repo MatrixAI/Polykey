@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type KeysPasswordChange from '../handlers/KeysPasswordChange';
+import type KeysPasswordChange from '../handlers/KeysPasswordChange.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<KeysPasswordChange>;

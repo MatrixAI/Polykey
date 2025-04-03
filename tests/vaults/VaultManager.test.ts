@@ -1,44 +1,45 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import type { NodeId } from '@/ids/types';
+import type { NodeId } from '#ids/types.js';
 import type {
   VaultAction,
   VaultId,
   VaultIdString,
   VaultName,
-} from '@/vaults/types';
-import type NotificationsManager from '@/notifications/NotificationsManager';
-import type { Host } from '@/network/types';
-import type { Sigchain } from '@/sigchain';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+} from '#vaults/types.js';
+import type NotificationsManager from '#notifications/NotificationsManager.js';
+import type { Host } from '#network/types.js';
+import type { Sigchain } from '#sigchain/index.js';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { jest } from '@jest/globals';
 import git from 'isomorphic-git';
 import { IdInternal } from '@matrixai/id';
 import { DB } from '@matrixai/db';
 import { destroyed, running } from '@matrixai/async-init';
 import { RWLockWriter } from '@matrixai/async-locks';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import TaskManager from '@/tasks/TaskManager';
-import ACL from '@/acl/ACL';
-import GestaltGraph from '@/gestalts/GestaltGraph';
-import NodeManager from '@/nodes/NodeManager';
-import NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import NodesAuthenticateConnection from '@/nodes/agent/handlers/NodesAuthenticateConnection';
-import KeyRing from '@/keys/KeyRing';
-import PolykeyAgent from '@/PolykeyAgent';
-import VaultManager from '@/vaults/VaultManager';
-import NodeGraph from '@/nodes/NodeGraph';
-import VaultInternal from '@/vaults/VaultInternal';
-import { sleep } from '@/utils';
-import * as keysUtils from '@/keys/utils';
-import * as vaultsErrors from '@/vaults/errors';
-import * as vaultsUtils from '@/vaults/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as nodeTestUtils from '../nodes/utils';
-import * as testUtils from '../utils';
-import * as tlsTestsUtils from '../utils/tls';
-import * as testsUtils from '../utils';
+import * as nodeTestUtils from '../nodes/utils.js';
+import * as testUtils from '../utils/index.js';
+import * as tlsTestsUtils from '../utils/tls.js';
+import * as testsUtils from '../utils/index.js';
+import TaskManager from '#tasks/TaskManager.js';
+import ACL from '#acl/ACL.js';
+import GestaltGraph from '#gestalts/GestaltGraph.js';
+import NodeManager from '#nodes/NodeManager.js';
+import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
+import KeyRing from '#keys/KeyRing.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import VaultManager from '#vaults/VaultManager.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import VaultInternal from '#vaults/VaultInternal.js';
+import { sleep } from '#utils/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as vaultsErrors from '#vaults/errors.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
 
 describe('VaultManager', () => {
   const localhost = '127.0.0.1';

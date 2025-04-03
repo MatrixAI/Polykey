@@ -1,5 +1,5 @@
 import { test, fc } from '@fast-check/jest';
-import * as random from '@/keys/utils/random';
+import * as random from '#keys/utils/random.js';
 
 describe('keys/utils/random', () => {
   test('get random bytes less than 65536', () => {

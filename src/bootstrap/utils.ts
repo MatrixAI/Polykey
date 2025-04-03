@@ -1,33 +1,32 @@
-import type { FileSystem } from '../types';
+import type { FileSystem } from '../types.js';
 import type {
   RecoveryCode,
-  Key,
   PrivateKey,
   PasswordOpsLimit,
   PasswordMemLimit,
-} from '../keys/types';
-import path from 'path';
+} from '../keys/types.js';
+import path from 'node:path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import * as bootstrapErrors from './errors';
-import TaskManager from '../tasks/TaskManager';
-import IdentitiesManager from '../identities/IdentitiesManager';
-import SessionManager from '../sessions/SessionManager';
-import Status from '../status/Status';
-import Schema from '../schema/Schema';
-import Sigchain from '../sigchain/Sigchain';
-import ACL from '../acl/ACL';
-import GestaltGraph from '../gestalts/GestaltGraph';
-import KeyRing from '../keys/KeyRing';
-import CertManager from '../keys/CertManager';
-import * as keysUtils from '../keys/utils';
-import NodeGraph from '../nodes/NodeGraph';
-import NodeManager from '../nodes/NodeManager';
-import VaultManager from '../vaults/VaultManager';
-import NotificationsManager from '../notifications/NotificationsManager';
-import config from '../config';
-import * as utils from '../utils';
-import * as errors from '../errors';
+import * as bootstrapErrors from './errors.js';
+import TaskManager from '../tasks/TaskManager.js';
+import IdentitiesManager from '../identities/IdentitiesManager.js';
+import SessionManager from '../sessions/SessionManager.js';
+import Status from '../status/Status.js';
+import Schema from '../schema/Schema.js';
+import Sigchain from '../sigchain/Sigchain.js';
+import ACL from '../acl/ACL.js';
+import GestaltGraph from '../gestalts/GestaltGraph.js';
+import KeyRing from '../keys/KeyRing.js';
+import CertManager from '../keys/CertManager.js';
+import NodeGraph from '../nodes/NodeGraph.js';
+import NodeManager from '../nodes/NodeManager.js';
+import VaultManager from '../vaults/VaultManager.js';
+import NotificationsManager from '../notifications/NotificationsManager.js';
+import { polykeyWorkerManifest } from '../workers/index.js';
+import config from '../config.js';
+import * as utils from '../utils/index.js';
+import * as errors from '../errors.js';
 
 /**
  * Bootstraps the Node Path`
@@ -45,7 +44,7 @@ async function bootstrapState({
   certDuration = config.defaultsUser.certDuration,
   fresh = false,
   // Optional dependencies
-  fs = require('fs'),
+  fs,
   logger = new Logger(bootstrapState.name),
 }: {
   password: string;
@@ -68,6 +67,7 @@ async function bootstrapState({
   if (nodePath == null) {
     throw new errors.ErrorUtilsNodePath();
   }
+  fs = await utils.importFS(fs);
   await utils.mkdirExists(fs, nodePath);
   // Setup node path and sub paths
   const statusPath = path.join(nodePath, config.paths.statusBase);
@@ -119,20 +119,7 @@ async function bootstrapState({
       logger: logger.getChild(DB.name),
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
       fresh,
     });

@@ -3,13 +3,13 @@ import type {
   AgentRPCResponseResult,
   NodesAuthenticateConnectionMessage,
   SuccessMessage,
-} from '../types';
-import type NodeConnectionManager from '../../../nodes/NodeConnectionManager';
-import type { JSONValue } from '../../../types';
+} from '../types.js';
+import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
+import type { JSONValue } from '../../../types.js';
 import type { ContextTimed } from '@matrixai/contexts';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
 
 class NodesAuthenticateConnection extends UnaryHandler<
   {

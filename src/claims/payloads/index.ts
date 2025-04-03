@@ -1,3 +1,3 @@
-export * from './claimLinkIdentity';
-export * from './claimLinkNode';
-export * from './claimNetworkAccess';
+export * from './claimLinkIdentity.js';
+export * from './claimLinkNode.js';
+export * from './claimNetworkAccess.js';

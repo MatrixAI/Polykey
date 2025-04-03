@@ -4,10 +4,10 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   NodesGetMessage,
-} from '../types';
-import type NodeGraph from '../../nodes/NodeGraph';
+} from '../types.js';
+import type NodeGraph from '../../nodes/NodeGraph.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as nodesUtils from '../../nodes/utils';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class NodesGetAll extends ServerHandler<
   {

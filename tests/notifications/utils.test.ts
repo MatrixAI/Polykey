@@ -1,12 +1,12 @@
-import type { Notification, NotificationData } from '@/notifications/types';
-import type { VaultActions, VaultName } from '@/vaults/types';
-import type { KeyPairLocked } from '@/keys/types';
-import * as keysUtils from '@/keys/utils';
-import * as notificationsUtils from '@/notifications/utils';
-import * as vaultsUtils from '@/vaults/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as validationErrors from '@/validation/errors';
-import * as testNodesUtils from '../nodes/utils';
+import type { Notification, NotificationData } from '#notifications/types.js';
+import type { VaultActions, VaultName } from '#vaults/types.js';
+import type { KeyPairLocked } from '#keys/types.js';
+import * as testNodesUtils from '../nodes/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as notificationsUtils from '#notifications/utils.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as validationErrors from '#validation/errors.js';
 
 describe('Notifications utils', () => {
   const keyPair = keysUtils.generateKeyPair() as KeyPairLocked;

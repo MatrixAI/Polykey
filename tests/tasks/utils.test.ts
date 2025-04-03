@@ -3,9 +3,9 @@ import type {
   TaskDeadline,
   TaskDelay,
   TaskId,
-} from '@/tasks/types';
+} from '#tasks/types.js';
 import { IdInternal } from '@matrixai/id';
-import * as tasksUtils from '@/tasks/utils';
+import * as tasksUtils from '#tasks/utils.js';
 
 describe('tasks/utils', () => {
   test('encode priority from `int8` to flipped `uint8`', () => {

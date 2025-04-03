@@ -1,13 +1,14 @@
-import type { PolykeyWorkerManagerInterface } from '@/workers/types';
+import type { PolykeyWorkerManager } from '#workers/types.js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { createWorkerManager } from '@/workers/utils';
-import * as keysUtils from '@/keys/utils';
+import { createWorkerManager } from '#workers/utils.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as workersUtils from '#workers/utils.js';
 
 describe('Polykey worker', () => {
   const logger = new Logger('PolyKey Worker Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let workerManager: PolykeyWorkerManagerInterface;
+  let workerManager: PolykeyWorkerManager;
   beforeAll(async () => {
     workerManager = await createWorkerManager({
       cores: 1,
@@ -18,41 +19,64 @@ describe('Polykey worker', () => {
     await workerManager.destroy();
   });
   test('hashPassword', async () => {
-    await workerManager.call(async (w) => {
-      await w.hashPassword('password');
-    });
+    await workerManager.methods.hashPassword({ password: 'password' });
   });
   test('checkPassword', async () => {
-    await workerManager.call(async (w) => {
-      const [hash, salt] = await w.hashPassword('password');
-      expect(await w.checkPassword('password', hash, salt)).toBeTrue();
-    });
+    const {
+      data: [hash, salt],
+    } = await workerManager.methods.hashPassword({ password: 'password' });
+    const { data: result } = await workerManager.methods.checkPassword(
+      {
+        password: 'password',
+        hash,
+        salt,
+      },
+      [hash, salt],
+    );
+    expect(result).toBeTrue();
   });
   test('generateDeterministicKeyPair', async () => {
     const recoveryCode = keysUtils.generateRecoveryCode();
-    await workerManager.call(async (w) => {
-      await w.generateDeterministicKeyPair(recoveryCode);
-    });
+    await workerManager.methods.generateDeterministicKeyPair({ recoveryCode });
   });
   test('generateCertificate', async () => {
     const keyPair = keysUtils.generateKeyPair();
     const certId = keysUtils.createCertIdGenerator()();
-    await workerManager.call(async (w) => {
-      await w.generateCertificate({
-        certId,
-        subjectKeyPair: keyPair,
-        issuerPrivateKey: keyPair.privateKey,
+    const certIdAB = workersUtils.toArrayBuffer(certId.toBuffer());
+    const privateKeyAB = workersUtils.toArrayBuffer(keyPair.privateKey);
+    const publicKeyAB = workersUtils.toArrayBuffer(keyPair.publicKey);
+    await workerManager.methods.generateCertificate(
+      {
+        certId: certIdAB,
+        subjectKeyPair: {
+          privateKey: privateKeyAB,
+          publicKey: publicKeyAB,
+        },
+        issuerPrivateKey: privateKeyAB,
         duration: 0,
-      });
-    });
+      },
+      [certIdAB, privateKeyAB, publicKeyAB],
+    );
   });
   test('encrypt, decrypt', async () => {
     const key = keysUtils.generateKey();
+    const keyAB = workersUtils.toArrayBuffer(key);
     const message = 'HelloWorld!';
-    await workerManager.call(async (w) => {
-      const encrypted = await w.encrypt(key, Buffer.from(message));
-      const decrypted = await w.decrypt(key, encrypted);
-      expect(Buffer.from(decrypted!).toString()).toBe(message);
-    });
+    const plainTextAB = workersUtils.toArrayBuffer(Buffer.from(message));
+    const { data: encryptedAB } = await workerManager.methods.encrypt(
+      {
+        key: keyAB,
+        plainText: plainTextAB,
+      },
+      [plainTextAB],
+    );
+    const { data: decryptedAB } = await workerManager.methods.decrypt(
+      {
+        key: keyAB,
+        cipherText: encryptedAB,
+      },
+      [encryptedAB],
+    );
+    expect(workersUtils.fromArrayBuffer(decryptedAB!).toString()).toBe(message);
   });
 });

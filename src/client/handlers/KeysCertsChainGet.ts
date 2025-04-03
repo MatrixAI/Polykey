@@ -4,8 +4,8 @@ import type {
   CertMessage,
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-} from '../types';
-import type CertManager from '../../keys/CertManager';
+} from '../types.js';
+import type CertManager from '../../keys/CertManager.js';
 import { ServerHandler } from '@matrixai/rpc';
 
 class KeysCertsChainGet extends ServerHandler<

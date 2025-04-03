@@ -10,21 +10,17 @@ import type {
   NodeBucketMeta,
   NodeBucketIndex,
   NodeGraphSpace,
-} from './types';
-import type KeyRing from '../keys/KeyRing';
+} from './types.js';
+import type KeyRing from '../keys/KeyRing.js';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createDestroyStartStop } from '@matrixai/async-init';
 import { IdInternal } from '@matrixai/id';
-import { timedCancellable } from '@matrixai/contexts/dist/decorators';
-import { context } from '@matrixai/contexts/dist/decorators';
-import * as nodesUtils from './utils';
-import * as nodesErrors from './errors';
-import * as nodesEvents from './events';
-import * as utils from '../utils';
-import config from '../config';
+import { decorators } from '@matrixai/contexts';
+import * as nodesUtils from './utils.js';
+import * as nodesErrors from './errors.js';
+import * as nodesEvents from './events.js';
+import * as utils from '../utils/index.js';
+import config from '../config.js';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer
@@ -41,8 +37,8 @@ import config from '../config';
  * When the node ID changes, either due to key renewal or reset, we remap all
  * existing records to the other space, and then we swap the active space key.
  */
-interface NodeGraph extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface NodeGraph extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new nodesErrors.ErrorNodeGraphRunning(),
   new nodesErrors.ErrorNodeGraphDestroyed(),
   {
@@ -226,7 +222,7 @@ class NodeGraph {
    * Locks the bucket index for exclusive operations.
    * This allows you to sequence operations for any bucket.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async lockBucket(
     bucketIndex: number,
     tran: DBTransaction,
@@ -248,12 +244,12 @@ class NodeGraph {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<NodeContact | undefined>;
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  @timedCancellable(true)
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @decorators.timedCancellable(true)
   public async getNodeContact(
     nodeId: NodeId,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeContact | undefined> {
     if (tran == null) {
       return await this.db.withTransactionF(
@@ -292,7 +288,7 @@ class NodeGraph {
    *   NodeBucketIndex asc, NodeID asc, NodeContactAddress asc
    *   NodeBucketIndex desc, NodeId desc, NodeContactAddress desc
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getNodeContacts(
     order: 'asc' | 'desc' = 'asc',
     tran?: DBTransaction,
@@ -314,7 +310,7 @@ class NodeGraph {
   /**
    * Get a single `NodeContactAddressData`.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNodeContactAddressData(
     nodeId: NodeId,
     nodeAddress: NodeAddress | NodeContactAddress,
@@ -347,7 +343,7 @@ class NodeGraph {
    *
    * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNodeContact(
     nodeId: NodeId,
     nodeContact: NodeContact,
@@ -397,7 +393,7 @@ class NodeGraph {
    *
    * @throws {nodesErrors.ErrorNodeGraphBucketLimit} If the bucket is full.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNodeContactAddressData(
     nodeId: NodeId,
     nodeAddress: NodeAddress | NodeContactAddress,
@@ -451,7 +447,7 @@ class NodeGraph {
    * Unsets a `NodeId` record.
    * It will decrement the bucket count if it existed.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async unsetNodeContact(
     nodeId: NodeId,
     tran?: DBTransaction,
@@ -478,7 +474,7 @@ class NodeGraph {
     await this.delConnectedTime(nodeId, tran);
   }
 
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async unsetNodeContactAddress(
     nodeId: NodeId,
     nodeAddress: NodeAddress | NodeContactAddress,
@@ -635,15 +631,15 @@ class NodeGraph {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<NodeBucket>;
-  @timedCancellable(true)
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @decorators.timedCancellable(true)
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(
     bucketIndex: NodeBucketIndex,
     sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
     limit: number | undefined,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeBucket> {
     if (tran == null) {
       return await this.db.withTransactionF(
@@ -710,7 +706,7 @@ class NodeGraph {
    *   NodeBucketIndex asc, connected asc
    *   NodeBucketIndex desc, connected desc
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getBuckets(
     sort: 'nodeId' | 'distance' | 'connected' = 'nodeId',
     order: 'asc' | 'desc' = 'asc',
@@ -740,7 +736,7 @@ class NodeGraph {
    * Resets the bucket according to the new node ID.
    * Run this after new node ID is generated via renewal or reset.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async resetBuckets(tran?: DBTransaction): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => this.resetBuckets(tran));
@@ -833,7 +829,7 @@ class NodeGraph {
    * Get a bucket meta POJO.
    * This will provide default values for missing properties.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucketMeta(
     bucketIndex: NodeBucketIndex,
     tran?: DBTransaction,
@@ -867,7 +863,7 @@ class NodeGraph {
    * Get a single bucket meta property.
    * This will provide default values for missing properties.
    */
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucketMetaProp<Key extends keyof NodeBucketMeta>(
     bucketIndex: NodeBucketIndex,
     key: Key,
@@ -903,7 +899,10 @@ class NodeGraph {
    * ascending order. If the given node ID already exists in the node graph,
    * then it will be the first result.
    *
+   * @param nodeId
    * @param limit - Defaults to the bucket limit.
+   * @param tran
+   * @param ctx
    * @returns The `NodeBucket` which could have less than `limit` nodes if the
    *          node graph has less than the requested limit.
    */
@@ -913,13 +912,13 @@ class NodeGraph {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<NodeBucket>;
-  @timedCancellable(true)
-  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
+  @decorators.timedCancellable(true)
+  @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestNodes(
     nodeId: NodeId,
     limit: number = this.nodeBucketLimit,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeBucket> {
     if (tran == null) {
       return await this.db.withTransactionF(

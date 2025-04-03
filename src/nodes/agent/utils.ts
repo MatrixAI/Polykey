@@ -1,7 +1,7 @@
-import type { NodeId } from '../../ids/types';
-import type { CertificatePEM } from '../../keys/types';
+import type { NodeId } from '../../ids/types.js';
+import type { CertificatePEM } from '../../keys/types.js';
 import { utils as quicUtils } from '@matrixai/quic';
-import * as keysUtils from '../../keys/utils';
+import * as keysUtils from '../../keys/utils/index.js';
 
 /**
  * Used to extract the NodeId from the connection metadata.

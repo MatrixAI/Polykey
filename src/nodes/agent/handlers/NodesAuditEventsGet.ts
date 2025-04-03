@@ -6,12 +6,12 @@ import type {
   AgentRPCResponseResult,
   AuditIdMessage,
   AgentAuditMessage,
-} from '../types';
-import type Audit from '../../../audit/Audit';
-import type { AuditEvent } from '../../../audit/types';
-import type { AuditEventId } from '../../../ids';
+} from '../types.js';
+import type Audit from '../../../audit/Audit.js';
+import type { AuditEvent } from '../../../audit/types.js';
+import type { AuditEventId } from '../../../ids/index.js';
 import { ServerHandler } from '@matrixai/rpc';
-import * as auditUtils from '../../../audit/utils';
+import * as auditUtils from '../../../audit/utils.js';
 
 /**
  * Gets audit events from a node

@@ -1,6 +1,6 @@
 import sodium from 'sodium-native';
-import * as generate from '@/keys/utils/generate';
-import * as recoveryCode from '@/keys/utils/recoveryCode';
+import * as generate from '#keys/utils/generate.js';
+import * as recoveryCode from '#keys/utils/recoveryCode.js';
 
 describe('keys/utils/generate', () => {
   test('generate keys', () => {

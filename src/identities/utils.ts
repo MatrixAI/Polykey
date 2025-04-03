@@ -1,6 +1,6 @@
 import type childProcess from 'child_process';
-import type { IdentityData } from './types';
-import os from 'os';
+import type { IdentityData } from './types.js';
+import os from 'node:os';
 import process from 'process';
 import spawn from 'cross-spawn';
 import { Searcher } from 'fast-fuzzy';
@@ -96,4 +96,7 @@ function matchIdentityData(
 
 export { browser, matchIdentityData };
 
-export { encodeProviderIdentityId, decodeProviderIdentityId } from '../ids';
+export {
+  encodeProviderIdentityId,
+  decodeProviderIdentityId,
+} from '../ids/index.js';

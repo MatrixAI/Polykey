@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsSecretsStat from '../handlers/VaultsSecretsStat';
+import type VaultsSecretsStat from '../handlers/VaultsSecretsStat.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsSecretsStat>;

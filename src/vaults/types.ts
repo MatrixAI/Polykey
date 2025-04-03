@@ -1,8 +1,8 @@
-import type { VaultId, VaultIdString, VaultIdEncoded } from '../ids/types';
+import type { VaultId, VaultIdString, VaultIdEncoded } from '../ids/types.js';
 import type { EncryptedFS } from 'encryptedfs';
-import type { Callback, Path } from 'encryptedfs/dist/types';
-import type { FdIndex } from 'encryptedfs/dist/fd/types';
-import type { Opaque } from '../types';
+import type { Callback, Path } from 'encryptedfs';
+import type { FdIndex } from 'encryptedfs';
+import type { Opaque } from '../types.js';
 
 const vaultActions = ['clone', 'pull'] as const;
 

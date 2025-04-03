@@ -1,38 +1,46 @@
 import type { DB } from '@matrixai/db';
-import type { Permission } from '@/acl/types';
-import type { NodeId, VaultId } from '@/ids/types';
+import type { Permission } from '#acl/types.js';
+import type { NodeId, VaultId } from '#ids/types.js';
 import fc from 'fast-check';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import ACL from '@/acl/ACL';
-import * as testsGestaltsUtils from '../gestalts/utils';
-import * as testsVaultsUtils from '../vaults/utils';
-import * as testsIdsUtils from '../ids/utils';
+import * as testsGestaltsUtils from '../gestalts/utils.js';
+import * as testsVaultsUtils from '../vaults/utils.js';
+import * as testsIdsUtils from '../ids/utils.js';
+import ACL from '#acl/ACL.js';
 
 const permissionArb = (vaultIds: Array<VaultId> = []) =>
-  fc.record({
-    gestalt: testsGestaltsUtils.gestaltActionsArb(),
-    vaults:
-      vaultIds.length < 1
-        ? fc.constant({})
-        : fc.dictionary(
-            fc.constantFrom(...vaultIds.map((id) => id.toString())),
-            testsVaultsUtils.vaultActionsArb,
-            {
-              minKeys: vaultIds.length,
-              maxKeys: vaultIds.length,
-            },
-          ),
-  }) as fc.Arbitrary<Permission>;
+  fc.record(
+    {
+      gestalt: testsGestaltsUtils.gestaltActionsArb(),
+      vaults:
+        vaultIds.length < 1
+          ? fc.constant({})
+          : fc.dictionary(
+              fc.constantFrom(...vaultIds.map((id) => id.toString())),
+              testsVaultsUtils.vaultActionsArb,
+              {
+                minKeys: vaultIds.length,
+                maxKeys: vaultIds.length,
+                noNullPrototype: true,
+              },
+            ),
+    },
+    { noNullPrototype: true },
+  ) as fc.Arbitrary<Permission>;
 
 const aclFactoryArb = (vaultIds: Array<VaultId> = []) => {
   return fc
-    .record({
-      nodes: fc.dictionary(
-        testsIdsUtils.nodeIdStringArb,
-        permissionArb(vaultIds),
-      ),
-    })
+    .record(
+      {
+        nodes: fc.dictionary(
+          testsIdsUtils.nodeIdStringArb,
+          permissionArb(vaultIds),
+          { noNullPrototype: true },
+        ),
+      },
+      { noNullPrototype: true },
+    )
     .map(({ nodes }) => {
       const logger = new Logger(undefined, LogLevel.SILENT);
       return async (db: DB) => {

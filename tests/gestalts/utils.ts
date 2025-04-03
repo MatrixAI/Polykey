@@ -4,10 +4,13 @@ import type {
   IdentityId,
   GestaltId,
   ProviderIdentityId,
-} from '@/ids/types';
-import type { KeyPair } from '@/keys/types';
-import type { ClaimLinkNode, ClaimLinkIdentity } from '@/claims/payloads';
-import type { SignedClaim } from '@/claims/types';
+} from '#ids/types.js';
+import type { KeyPair } from '#keys/types.js';
+import type {
+  ClaimLinkNode,
+  ClaimLinkIdentity,
+} from '#claims/payloads/index.js';
+import type { SignedClaim } from '#claims/types.js';
 import type {
   GestaltNodeInfo,
   GestaltIdentityInfo,
@@ -18,24 +21,27 @@ import type {
   GestaltInfo,
   GestaltLink,
   GestaltActions,
-} from '@/gestalts/types';
-import type { GestaltIdEncoded } from '@/ids/types';
-import type { GestaltGraph } from '../../src/gestalts';
+} from '#gestalts/types.js';
+import type { GestaltIdEncoded } from '#ids/types.js';
+import type { GestaltGraph } from '#gestalts/index.js';
 import fc from 'fast-check';
-import * as ids from '@/ids';
-import { gestaltActions } from '@/gestalts/types';
-import Token from '@/tokens/Token';
-import * as keysUtils from '@/keys/utils';
-import * as nodesUtils from '@/nodes/utils';
-import * as gestaltsUtils from '@/gestalts/utils';
-import { never } from '@/utils';
-import * as testsIdsUtils from '../ids/utils';
-import * as testsClaimsUtils from '../claims/utils';
+import * as testsIdsUtils from '../ids/utils.js';
+import * as testsClaimsUtils from '../claims/utils.js';
+import * as ids from '#ids/index.js';
+import { gestaltActions } from '#gestalts/types.js';
+import Token from '#tokens/Token.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as gestaltsUtils from '#gestalts/utils.js';
+import { never } from '#utils/index.js';
 
 const gestaltNodeInfoArb = (nodeId: NodeId): fc.Arbitrary<GestaltNodeInfo> =>
-  fc.record({
-    nodeId: fc.constant(nodeId),
-  });
+  fc.record(
+    {
+      nodeId: fc.constant(nodeId),
+    },
+    { noNullPrototype: true },
+  );
 
 const gestaltIdentityInfoArb = (
   providerId: ProviderId,
@@ -51,6 +57,7 @@ const gestaltIdentityInfoArb = (
     },
     {
       requiredKeys: ['identityId', 'providerId'],
+      noNullPrototype: true,
     },
   );
 
@@ -73,11 +80,14 @@ const gestaltLinkNodeArb = (
       token.signWithPrivateKey(keyPair2);
       return token.toSigned();
     }) as fc.Arbitrary<SignedClaim<ClaimLinkNode>>;
-  return fc.record({
-    id: testsIdsUtils.gestaltLinkIdArb,
-    claim: signedClaimLinkNode,
-    meta: fc.constant({}),
-  });
+  return fc.record(
+    {
+      id: testsIdsUtils.gestaltLinkIdArb,
+      claim: signedClaimLinkNode,
+      meta: fc.constant({}),
+    },
+    { noNullPrototype: true },
+  );
 };
 
 const linkNodeArb = (keyPair1: KeyPair, keyPair2: KeyPair) =>
@@ -105,13 +115,19 @@ const gestaltLinkIdentityArb = (
       token.signWithPrivateKey(keyPair);
       return token.toSigned();
     }) as fc.Arbitrary<SignedClaim<ClaimLinkIdentity>>;
-  return fc.record({
-    id: testsIdsUtils.gestaltLinkIdArb,
-    claim: signedClaimLinkIdentity,
-    meta: fc.record({
-      providerIdentityClaimId: testsIdsUtils.providerIdentityClaimIdArb,
-    }),
-  });
+  return fc.record(
+    {
+      id: testsIdsUtils.gestaltLinkIdArb,
+      claim: signedClaimLinkIdentity,
+      meta: fc.record(
+        {
+          providerIdentityClaimId: testsIdsUtils.providerIdentityClaimIdArb,
+        },
+        { noNullPrototype: true },
+      ),
+    },
+    { noNullPrototype: true },
+  );
 };
 
 const linkIdentityArb = (
@@ -130,7 +146,11 @@ const gestaltActionsArb = (max?: number) =>
   fc.dictionary(
     fc.oneof(...gestaltActions.map((action) => fc.constant(action))),
     fc.constant(null),
-    { minKeys: 1, maxKeys: max ?? gestaltActions.length },
+    {
+      minKeys: 1,
+      maxKeys: max ?? gestaltActions.length,
+      noNullPrototype: true,
+    },
   );
 
 type GestaltGraphModel = {

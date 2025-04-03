@@ -1,7 +1,7 @@
 import { test, fc } from '@fast-check/jest';
-import * as claimsUtils from '@/claims/utils';
-import * as validationErrors from '@/validation/errors';
-import * as testsClaimsUtils from './utils';
+import * as testsClaimsUtils from './utils.js';
+import * as claimsUtils from '#claims/utils.js';
+import * as validationErrors from '#validation/errors.js';
 
 describe('claims/utils', () => {
   test.prop([testsClaimsUtils.claimEncodedArb, fc.string()])(
@@ -17,10 +17,13 @@ describe('claims/utils', () => {
   );
   test.prop([
     testsClaimsUtils.signedClaimEncodedArb,
-    fc.record({
-      payload: fc.string(),
-      signatures: fc.array(fc.string()),
-    }),
+    fc.record(
+      {
+        payload: fc.string(),
+        signatures: fc.array(fc.string()),
+      },
+      { noNullPrototype: true },
+    ),
   ])(
     'parse signed claim',
     (signedClaimEncodedCorrect, signedClaimEncodedIncorrect) => {

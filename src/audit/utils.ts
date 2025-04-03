@@ -9,20 +9,20 @@ import type {
   AuditEventDiscoveryCheckRediscovery,
   TopicPathTreeNode,
   TopicSubPath,
-} from './types';
-import type * as nodesEvents from '../nodes/events';
-import type * as discoveryEvents from '../discovery/events';
-import type { AuditEventId } from '../ids';
-import type { TopicPath } from './types';
+} from './types.js';
+import type * as nodesEvents from '../nodes/events.js';
+import type * as discoveryEvents from '../discovery/events.js';
+import type { AuditEventId } from '../ids/index.js';
+import type { TopicPath } from './types.js';
 import { IdInternal } from '@matrixai/id';
-import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
-import * as nodesUtils from '../nodes/utils';
+import { idSortable } from '@matrixai/id';
+import * as nodesUtils from '../nodes/utils.js';
 import {
   createAuditEventIdGenerator,
   encodeAuditEventId,
   decodeAuditEventId,
   generateAuditEventIdFromTimestamp,
-} from '../ids';
+} from '../ids/index.js';
 
 // Events
 
@@ -37,7 +37,7 @@ function extractFromSeek(
   let timestamp: number | undefined;
   if (seek instanceof IdInternal) {
     auditEventId = seek;
-    timestamp = sortableIdUtils.extractTs(seek.toBuffer()) * 1000;
+    timestamp = idSortable.extractTs(seek.toBuffer()) * 1000;
   } else if (typeof seek === 'number') {
     timestamp = seek;
     auditEventId = generateAuditEventIdFromTimestamp(seek, randomSource);

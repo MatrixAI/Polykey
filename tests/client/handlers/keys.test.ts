@@ -1,21 +1,23 @@
-import type GestaltGraph from '@/gestalts/GestaltGraph';
-import type Sigchain from '@/sigchain/Sigchain';
-import type { TLSConfig } from '@/network/types';
-import type { CertificatePEM } from '@/keys/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type GestaltGraph from '#gestalts/GestaltGraph.js';
+import type Sigchain from '#sigchain/Sigchain.js';
+import type { TLSConfig } from '#network/types.js';
+import type { CertificatePEM } from '#keys/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
-import PolykeyAgent from '@/PolykeyAgent';
-import KeyRing from '@/keys/KeyRing';
-import CertManager from '@/keys/CertManager';
-import TaskManager from '@/tasks/TaskManager';
-import NodeManager from '@/nodes/NodeManager';
-import IdentitiesManager from '@/identities/IdentitiesManager';
-import ClientService from '@/client/ClientService';
+import * as testsUtils from '../../utils/index.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import KeyRing from '#keys/KeyRing.js';
+import CertManager from '#keys/CertManager.js';
+import TaskManager from '#tasks/TaskManager.js';
+import NodeManager from '#nodes/NodeManager.js';
+import IdentitiesManager from '#identities/IdentitiesManager.js';
+import ClientService from '#client/ClientService.js';
 import {
   KeysCertsChainGet,
   KeysCertsGet,
@@ -28,7 +30,7 @@ import {
   KeysPublicKey,
   KeysSign,
   KeysVerify,
-} from '@/client/handlers';
+} from '#client/handlers/index.js';
 import {
   keysCertsChainGet,
   keysCertsGet,
@@ -41,12 +43,11 @@ import {
   keysPublicKey,
   keysSign,
   keysVerify,
-} from '@/client/callers';
-import * as keysUtils from '@/keys/utils';
-import * as keysEvents from '@/keys/events';
-import * as networkUtils from '@/network/utils';
-import * as utils from '@/utils';
-import * as testsUtils from '../../utils';
+} from '#client/callers/index.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as keysEvents from '#keys/events.js';
+import * as networkUtils from '#network/utils.js';
+import * as utils from '#utils/index.js';
 
 describe('keysCertsChainGet', () => {
   const logger = new Logger('keysCertsChainGet test', LogLevel.WARN, [
@@ -69,7 +70,9 @@ describe('keysCertsChainGet', () => {
   let identitiesManager: IdentitiesManager;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let mockedGetRootCertChainPems: jest.SpyInstance;
+  let mockedGetRootCertChainPems: jest.SpiedFunction<
+    typeof CertManager.prototype.getCertPEMsChain
+  >;
   beforeEach(async () => {
     mockedGetRootCertChainPems = jest
       .spyOn(CertManager.prototype, 'getCertPEMsChain')
@@ -181,7 +184,9 @@ describe('keysCertsGet', () => {
   let identitiesManager: IdentitiesManager;
   let taskManager: TaskManager;
   let certManager: CertManager;
-  let mockedGetRootCertPem: jest.SpyInstance;
+  let mockedGetRootCertPem: jest.SpiedFunction<
+    typeof CertManager.prototype.getCurrentCertPEM
+  >;
   beforeEach(async () => {
     mockedGetRootCertPem = jest
       .spyOn(CertManager.prototype, 'getCurrentCertPEM')
@@ -489,7 +494,9 @@ describe('keysKeyPairRenew', () => {
   let rpcClient: RPCClient<{
     keysKeyPairRenew: typeof keysKeyPairRenew;
   }>;
-  let mockedRefreshBuckets: jest.SpyInstance;
+  let mockedRefreshBuckets: jest.SpiedFunction<
+    typeof NodeManager.prototype.resetBuckets
+  >;
   beforeEach(async () => {
     mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'resetBuckets');
     dataDir = await fs.promises.mkdtemp(
@@ -618,7 +625,9 @@ describe('keysKeyPairReset', () => {
   }>;
   let pkAgent: PolykeyAgent;
   let tlsConfig: TLSConfig;
-  let mockedRefreshBuckets: jest.SpyInstance;
+  let mockedRefreshBuckets: jest.SpiedFunction<
+    typeof NodeManager.prototype.resetBuckets
+  >;
   beforeEach(async () => {
     mockedRefreshBuckets = jest.spyOn(NodeManager.prototype, 'resetBuckets');
     dataDir = await fs.promises.mkdtemp(

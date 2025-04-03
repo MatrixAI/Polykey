@@ -7,27 +7,24 @@ import type {
   MetricPathToAuditMetric,
   AuditMetricNodeConnection,
   AuditEventToAuditEventDB,
-} from './types';
-import type { AuditEventId } from '../ids/types';
-import type NodeConnectionManager from '../nodes/NodeConnectionManager';
-import type Discovery from '../discovery/Discovery';
+} from './types.js';
+import type { AuditEventId } from '../ids/types.js';
+import type NodeConnectionManager from '../nodes/NodeConnectionManager.js';
+import type Discovery from '../discovery/Discovery.js';
 import type { AbstractEvent } from '@matrixai/events';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import * as sortableIdUtils from '@matrixai/id/dist/IdSortable';
+import { createDestroyStartStop } from '@matrixai/async-init';
+import { idSortable } from '@matrixai/id';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import * as auditErrors from './errors';
-import * as auditEvents from './events';
-import * as auditUtils from './utils';
-import * as nodesEvents from '../nodes/events';
-import * as discoveryEvents from '../discovery/events';
+import * as auditErrors from './errors.js';
+import * as auditEvents from './events.js';
+import * as auditUtils from './utils.js';
+import * as nodesEvents from '../nodes/events.js';
+import * as discoveryEvents from '../discovery/events.js';
 
-interface Audit extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
+interface Audit extends createDestroyStartStop.CreateDestroyStartStop {}
+@createDestroyStartStop.CreateDestroyStartStop(
   new auditErrors.ErrorAuditRunning(),
   new auditErrors.ErrorAuditDestroyed(),
   {
@@ -187,7 +184,9 @@ class Audit {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning(), false, [
+    'starting',
+  ])
   public async getLastAuditEventId(
     tran?: DBTransaction,
   ): Promise<AuditEventId | undefined> {
@@ -199,7 +198,9 @@ class Audit {
     return IdInternal.fromBuffer<AuditEventId>(lastAuditEventIdBuffer);
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning(), false, ['starting'])
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning(), false, [
+    'starting',
+  ])
   protected setEventHandler<
     T extends typeof AbstractEvent,
     P extends TopicPath,
@@ -228,7 +229,7 @@ class Audit {
     this.eventHandlerMap.set(event, { target, handler: handler as any });
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning())
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning())
   protected async setAuditEvent<T extends TopicPath>(
     topicPath: TopicPath,
     auditEvent: TopicSubPathToAuditEvent<T>,
@@ -270,7 +271,7 @@ class Audit {
     });
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning())
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning())
   public async *getAuditEventsLongRunning<T extends TopicSubPath>(
     topicPath: T,
     {
@@ -371,7 +372,7 @@ class Audit {
     }
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning())
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning())
   public async *getAuditEvents<T extends TopicSubPath>(
     topicPath: T,
     {
@@ -478,7 +479,7 @@ class Audit {
     }
   }
 
-  @ready(new auditErrors.ErrorAuditNotRunning())
+  @createDestroyStartStop.ready(new auditErrors.ErrorAuditNotRunning())
   public async getAuditMetric<T extends MetricPath>(
     metricPath: T,
     options: {
@@ -543,7 +544,7 @@ class Audit {
         )) {
           const key = keyPath.at(-1)! as Buffer;
           if (metric.data.total === 0) {
-            seekTimestamp = sortableIdUtils.extractTs(key) * 1000;
+            seekTimestamp = idSortable.extractTs(key) * 1000;
           } else {
             lastKey = key;
           }
@@ -551,7 +552,7 @@ class Audit {
         }
         if (seekTimestamp != null) {
           if (lastKey != null) {
-            seekEndTimestamp = sortableIdUtils.extractTs(lastKey) * 1000;
+            seekEndTimestamp = idSortable.extractTs(lastKey) * 1000;
           } else {
             seekEndTimestamp = Date.now();
           }

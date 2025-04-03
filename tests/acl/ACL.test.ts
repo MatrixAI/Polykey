@@ -1,19 +1,18 @@
-import type { Permission } from '@/acl/types';
-import type { NodeId } from '@/ids/types';
-import type { VaultAction, VaultId } from '@/vaults/types';
-import type { GestaltAction } from '@/gestalts/types';
-import type { Key } from '@/keys/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { Permission } from '#acl/types.js';
+import type { NodeId } from '#ids/types.js';
+import type { VaultAction, VaultId } from '#vaults/types.js';
+import type { GestaltAction } from '#gestalts/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import ACL from '@/acl/ACL';
-import * as utils from '@/utils';
-import * as aclErrors from '@/acl/errors';
-import * as keysUtils from '@/keys/utils';
-import * as vaultsUtils from '@/vaults/utils';
-import * as testNodesUtils from '../nodes/utils';
+import * as testNodesUtils from '../nodes/utils.js';
+import ACL from '#acl/ACL.js';
+import * as aclErrors from '#acl/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as vaultsUtils from '#vaults/utils.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe(ACL.name, () => {
   const logger = new Logger(`${ACL.name} test`, LogLevel.WARN, [
@@ -49,20 +48,7 @@ describe(ACL.name, () => {
       logger,
       crypto: {
         key: dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(plainText),
-            );
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              utils.bufferWrap(key) as Key,
-              utils.bufferWrap(cipherText),
-            );
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
     vaultId1 = vaultIdGenerator();

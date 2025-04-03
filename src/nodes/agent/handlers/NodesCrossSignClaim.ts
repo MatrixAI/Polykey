@@ -3,13 +3,13 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   AgentClaimMessage,
-} from '../types';
-import type NodeManager from '../../NodeManager';
-import type ACL from '../../../acl/ACL';
+} from '../types.js';
+import type NodeManager from '../../NodeManager.js';
+import type ACL from '../../../acl/ACL.js';
 import { DuplexHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors';
-import * as agentUtils from '../utils';
-import * as nodesErrors from '../../errors';
+import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 
 /**
  * Claims a node

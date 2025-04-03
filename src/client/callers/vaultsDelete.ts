@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type VaultsDelete from '../handlers/VaultsDelete';
+import type VaultsDelete from '../handlers/VaultsDelete.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<VaultsDelete>;

@@ -1,6 +1,6 @@
-import type { NodeId } from '../ids/types';
-import type { CertificatePEMChain, PrivateKeyPEM } from '../keys/types';
-import type { Opaque } from '../types';
+import type { NodeId } from '../ids/types.js';
+import type { CertificatePEMChain, PrivateKeyPEM } from '../keys/types.js';
+import type { Opaque } from '../types.js';
 
 /**
  * Host is always an IP address

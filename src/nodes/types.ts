@@ -1,8 +1,8 @@
 import type { ContextTimed } from '@matrixai/contexts';
-import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types';
-import type { Host, Hostname, Port } from '../network/types';
-import type { NodesAuthenticateConnectionMessage } from '../nodes/agent/types';
-import type { Opaque } from '../types';
+import type { NodeId, NodeIdString, NodeIdEncoded } from '../ids/types.js';
+import type { Host, Hostname, Port } from '../network/types.js';
+import type { NodesAuthenticateConnectionMessage } from '../nodes/agent/types.js';
+import type { Opaque } from '../types.js';
 
 /**
  * Key indicating which space the NodeGraph is in

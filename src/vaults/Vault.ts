@@ -1,4 +1,4 @@
-import type VaultInternal from './VaultInternal';
+import type VaultInternal from './VaultInternal.js';
 
 interface Vault {
   vaultDataDir: VaultInternal['vaultDataDir'];

@@ -7,19 +7,19 @@ import type {
   AuthenticateNetworkReverseCallback,
   NodeId,
   NodeIdString,
-} from './types';
-import type { NodesAuthenticateConnectionMessage } from './agent/types';
-import type { AgentServerManifest } from './agent/handlers';
-import type KeyRing from '../keys/KeyRing';
-import type { CertificatePEM } from '../keys/types';
+} from './types.js';
+import type { NodesAuthenticateConnectionMessage } from './agent/types.js';
+import type { AgentServerManifest } from './agent/handlers/index.js';
+import type KeyRing from '../keys/KeyRing.js';
+import type { CertificatePEM } from '../keys/types.js';
 import type {
   ConnectionData,
   Host,
   Hostname,
   Port,
   TLSConfig,
-} from '../network/types';
-import type { JSONValue } from '../types';
+} from '../network/types.js';
+import type { JSONValue } from '../types.js';
 import { TransformStream } from 'stream/web';
 import {
   events as quicEvents,
@@ -36,31 +36,22 @@ import {
 import Logger from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { IdInternal } from '@matrixai/id';
-import {
-  ready,
-  running,
-  StartStop,
-  status,
-} from '@matrixai/async-init/dist/StartStop';
+import { startStop } from '@matrixai/async-init';
 import { AbstractEvent, EventAll } from '@matrixai/events';
-import {
-  context,
-  timed,
-  timedCancellable,
-} from '@matrixai/contexts/dist/decorators';
+import { decorators } from '@matrixai/contexts';
 import { Semaphore } from '@matrixai/async-locks';
 import { PromiseCancellable } from '@matrixai/async-cancellable';
-import NodeConnection from './NodeConnection';
-import agentClientManifest from './agent/callers';
-import * as nodesUtils from './utils';
-import * as nodesErrors from './errors';
-import * as nodesEvents from './events';
-import * as agentUtils from './agent/utils';
-import * as keysUtils from '../keys/utils';
-import * as networkUtils from '../network/utils';
-import * as utils from '../utils';
-import RateLimiter from '../utils/ratelimiter/RateLimiter';
-import config from '../config';
+import NodeConnection from './NodeConnection.js';
+import agentClientManifest from './agent/callers/index.js';
+import * as nodesUtils from './utils.js';
+import * as nodesErrors from './errors.js';
+import * as nodesEvents from './events.js';
+import * as agentUtils from './agent/utils.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as networkUtils from '../network/utils.js';
+import * as utils from '../utils/index.js';
+import RateLimiter from '../utils/ratelimiter/RateLimiter.js';
+import config from '../config.js';
 
 type ConnectionAndTimer = {
   connection: NodeConnection;
@@ -127,8 +118,8 @@ const rpcMethodsWhitelist = ['nodesAuthenticateConnection'];
  * The NodeConnectionManager encapsulates `QUICServer`.
  * While the NodeConnection encapsulates `QUICClient`.
  */
-interface NodeConnectionManager extends StartStop {}
-@StartStop({
+interface NodeConnectionManager extends startStop.StartStop {}
+@startStop.StartStop({
   eventStart: nodesEvents.EventNodeConnectionManagerStart,
   eventStarted: nodesEvents.EventNodeConnectionManagerStarted,
   eventStop: nodesEvents.EventNodeConnectionManagerStop,
@@ -290,7 +281,7 @@ class NodeConnectionManager {
     _evt: nodesEvents.EventNodeConnectionManagerClose,
   ) => {
     this.logger.debug(`close event triggering NodeConnectionManager.stop`);
-    if (this[running] && this[status] !== 'stopping') {
+    if (this[startStop.running] && this[startStop.status] !== 'stopping') {
       await this.stop();
     }
   };
@@ -531,7 +522,7 @@ class NodeConnectionManager {
   /**
    * Get the host that node connection manager is bound to.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get host(): Host {
     return this.quicSocket.host as unknown as Host;
   }
@@ -539,12 +530,12 @@ class NodeConnectionManager {
   /**
    * Get the port that node connection manager is bound to.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get port(): Port {
     return this.quicSocket.port as unknown as Port;
   }
 
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public get type(): 'ipv4' | 'ipv6' | 'ipv4&ipv6' {
     return this.quicSocket.type;
   }
@@ -797,10 +788,10 @@ class NodeConnectionManager {
     ctx: Partial<ContextTimedInput> | undefined,
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async withConnF<T>(
     targetNodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T> {
     return await withF(
@@ -825,11 +816,11 @@ class NodeConnectionManager {
     ctx: Partial<ContextTimedInput> | undefined,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timed()
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timed()
   public async *withConnG<T, TReturn, TNext>(
     targetNodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(targetNodeId, ctx);
@@ -856,8 +847,8 @@ class NodeConnectionManager {
     port: Port,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -866,7 +857,7 @@ class NodeConnectionManager {
     nodeIds: Array<NodeId>,
     host: Host,
     port: Port,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
@@ -923,8 +914,8 @@ class NodeConnectionManager {
     addresses: Array<[Host, Port]>,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -932,7 +923,7 @@ class NodeConnectionManager {
   public async createConnectionMultiple(
     nodeIds: Array<NodeId>,
     addresses: Array<[Host, Port]>,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     // Setting up intermediate signal
     const abortControllerMultiConn = new AbortController();
@@ -978,8 +969,8 @@ class NodeConnectionManager {
     nodeIdSignaller: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<NodeConnection>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -987,7 +978,7 @@ class NodeConnectionManager {
   public async createConnectionPunch(
     nodeIdTarget: NodeId,
     nodeIdSignaller: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<NodeConnection> {
     // Get the signaller node from the existing connections
     if (!this.hasConnection(nodeIdSignaller)) {
@@ -1240,7 +1231,7 @@ class NodeConnectionManager {
    * This takes a reverse initiated QUICConnection, wraps it as a
    * NodeConnection and adds it to the connection map.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   protected handleConnectionReverse(quicConnection: QUICConnection) {
     // Checking NodeId
     // No specific error here, validation is handled by the QUICServer
@@ -1313,8 +1304,8 @@ class NodeConnectionManager {
     port: Port,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -1322,7 +1313,7 @@ class NodeConnectionManager {
   public async holePunch(
     host: Host,
     port: Port,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     // We need to send a random data packet to the target until the process times out or a connection is established
     let ended = false;
@@ -1357,12 +1348,12 @@ class NodeConnectionManager {
     }
   }
 
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public hasConnection(nodeId: NodeId): boolean {
     return this.connections.has(nodeId.toString() as NodeIdString);
   }
 
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   public listConnections(): Array<{
     nodeId: NodeId;
     connectionId: string;
@@ -1438,7 +1429,7 @@ class NodeConnectionManager {
    * Active attempts are tracked inside the `activeHolePunchPs` set and are cancelled and awaited when the
    * `NodeConnectionManager` stops.
    */
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public handleNodesConnectionSignalFinal(host: Host, port: Port) {
     const id = `${host}:${port}`;
     if (this.activeHolePunchPs.has(id)) return;
@@ -1504,8 +1495,8 @@ class NodeConnectionManager {
     host: Host;
     port: Port;
   }>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -1518,7 +1509,7 @@ class NodeConnectionManager {
       port: Port;
     },
     requestSignature: string,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<{
     host: Host;
     port: Port;
@@ -1604,7 +1595,7 @@ class NodeConnectionManager {
   /**
    * Returns a list of active connections and their address information.
    */
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public getClosestConnections(
     targetNodeId: NodeId,
     limit: number = this.connectionGetClosestLimit,
@@ -1653,14 +1644,14 @@ class NodeConnectionManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async forwardAuthenticate(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     const targetNodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
@@ -1706,7 +1697,7 @@ class NodeConnectionManager {
     message: NodesAuthenticateConnectionMessage,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -1714,7 +1705,7 @@ class NodeConnectionManager {
   public async handleReverseAuthenticate(
     nodeId: NodeId,
     message: NodesAuthenticateConnectionMessage,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     const targetNodeIdString = nodeId.toString() as NodeIdString;
     const connectionsEntry = this.connections.get(targetNodeIdString);
@@ -1808,14 +1799,14 @@ class NodeConnectionManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<void>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async isAuthenticatedP(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     ctx.signal.throwIfAborted();
     const targetNodeIdString = nodeId.toString() as NodeIdString;

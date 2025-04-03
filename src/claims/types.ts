@@ -1,4 +1,4 @@
-import type { Opaque } from '../types';
+import type { Opaque } from '../types.js';
 import type {
   TokenPayload,
   TokenHeaderSignature,
@@ -6,8 +6,8 @@ import type {
   SignedTokenJSON,
   SignedTokenEncoded,
   TokenPayloadEncoded,
-} from '../tokens/types';
-import type { ClaimIdEncoded } from '../ids/types';
+} from '../tokens/types.js';
+import type { ClaimIdEncoded } from '../ids/types.js';
 
 /**
  * Claim is structured data based on TokenPayload
@@ -61,4 +61,4 @@ export type {
   SignedClaimDigestEncoded,
 };
 
-export type { ClaimId, ClaimIdString, ClaimIdEncoded } from '../ids/types';
+export type { ClaimId, ClaimIdString, ClaimIdEncoded } from '../ids/types.js';

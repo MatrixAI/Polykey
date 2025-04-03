@@ -2,7 +2,7 @@ import {
   validate,
   validateSync,
   errors as validationErrors,
-} from '@/validation';
+} from '#validation/index.js';
 
 describe('validation/index', () => {
   test('validate primitives', async () => {

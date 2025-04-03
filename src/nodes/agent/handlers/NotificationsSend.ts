@@ -3,11 +3,11 @@ import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
   SignedNotificationEncoded,
-} from '../types';
-import type KeyRing from '../../../keys/KeyRing';
-import type NotificationsManager from '../../../notifications/NotificationsManager';
+} from '../types.js';
+import type KeyRing from '../../../keys/KeyRing.js';
+import type NotificationsManager from '../../../notifications/NotificationsManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as notificationsUtils from '../../../notifications/utils';
+import * as notificationsUtils from '../../../notifications/utils.js';
 
 /**
  * Sends a notification to a node

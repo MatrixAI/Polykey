@@ -1,4 +1,4 @@
-import * as aclUtils from '@/acl/utils';
+import * as aclUtils from '#acl/utils.js';
 
 describe('acl/utils', () => {
   test('merging permissions', async () => {

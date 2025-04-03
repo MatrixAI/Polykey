@@ -1,6 +1,9 @@
 import type { DB } from '@matrixai/db';
-import type { ClientRPCRequestParams, ClientRPCResponseResult } from '../types';
-import type NotificationsManager from '../../notifications/NotificationsManager';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from '../types.js';
+import type NotificationsManager from '../../notifications/NotificationsManager.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class NotificationsOutboxClear extends UnaryHandler<

@@ -1,11 +1,11 @@
-import type { StatusLive } from '@/status/types';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import type { StatusLive } from '#status/types.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import config from '@/config';
-import { Status, errors as statusErrors } from '@/status';
-import * as testNodesUtils from '../nodes/utils';
+import * as testNodesUtils from '../nodes/utils.js';
+import config from '#config.js';
+import { Status, errors as statusErrors } from '#status/index.js';
 
 describe('Status', () => {
   const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [

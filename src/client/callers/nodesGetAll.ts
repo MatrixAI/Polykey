@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type NodesGetAll from '../handlers/NodesGetAll';
+import type NodesGetAll from '../handlers/NodesGetAll.js';
 import { ServerCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesGetAll>;

@@ -1,14 +1,17 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import fs from 'node:fs';
+import os from 'node:os';
+import url from 'node:url';
+import path from 'node:path';
 import b from 'benny';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import KeyRing from '@/keys/KeyRing';
-import { summaryName, suiteCommon } from '../../utils';
+import { suiteCommon } from './utils/utils.js';
+import KeyRing from '#keys/KeyRing.js';
+
+const filename = url.fileURLToPath(new URL(import.meta.url));
 
 async function main() {
   const summary = await b.suite(
-    summaryName(__filename),
+    path.basename(filename, path.extname(filename)),
     b.add('KeyRing fresh creation', async () => {
       const dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-bench-'),
@@ -52,8 +55,11 @@ async function main() {
   return summary;
 }
 
-if (require.main === module) {
-  void main();
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = url.fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    void main();
+  }
 }
 
 export default main;

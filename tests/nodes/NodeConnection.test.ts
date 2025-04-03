@@ -1,22 +1,22 @@
-import type { Host, Port, TLSConfig } from '@/network/types';
-import type { NodeId, NodeIdEncoded } from '@/ids';
+import type { Host, Port, TLSConfig } from '#network/types.js';
+import type { NodeId, NodeIdEncoded } from '#ids/index.js';
 import type { RPCStream } from '@matrixai/rpc';
-import type { AgentServerManifest } from '@/nodes/agent/handlers';
-import type { AgentClientManifest } from '@/nodes/agent/callers';
+import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import type { QUICConnection } from '@matrixai/quic';
 import { QUICServer, QUICSocket, events as quicEvents } from '@matrixai/quic';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { errors as quicErrors } from '@matrixai/quic';
 import { RPCServer } from '@matrixai/rpc';
-import * as nodesUtils from '@/nodes/utils';
-import * as nodesEvents from '@/nodes/events';
-import * as nodesErrors from '@/nodes/errors';
-import * as keysUtils from '@/keys/utils';
-import NodeConnection from '@/nodes/NodeConnection';
-import { promise } from '@/utils';
-import * as networkUtils from '@/network/utils';
-import * as tlsTestUtils from '../utils/tls';
-import * as testsUtils from '../utils/utils';
+import * as tlsTestUtils from '../utils/tls.js';
+import * as testsUtils from '../utils/utils.js';
+import * as nodesUtils from '#nodes/utils.js';
+import * as nodesEvents from '#nodes/events.js';
+import * as nodesErrors from '#nodes/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import NodeConnection from '#nodes/NodeConnection.js';
+import { promise } from '#utils/index.js';
+import * as networkUtils from '#network/utils.js';
 
 describe(`${NodeConnection.name}`, () => {
   const logger = new Logger(`${NodeConnection.name} test`, LogLevel.WARN, [

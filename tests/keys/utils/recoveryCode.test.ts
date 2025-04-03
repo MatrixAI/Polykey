@@ -1,7 +1,7 @@
 import {
   generateRecoveryCode,
   validateRecoveryCode,
-} from '@/keys/utils/recoveryCode';
+} from '#keys/utils/recoveryCode.js';
 
 describe('keys/utils/recoveryCode', () => {
   test('generates recovery code', () => {

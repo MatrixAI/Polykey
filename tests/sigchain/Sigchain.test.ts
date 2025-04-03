@@ -1,21 +1,20 @@
-import type { Key } from '@/keys/types';
-import type { ClaimId, SignedClaim } from '@/claims/types';
-import type { ClaimInput } from '@/sigchain/types';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import type { ClaimId, SignedClaim } from '#claims/types.js';
+import type { ClaimInput } from '#sigchain/types.js';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 import { test, fc } from '@fast-check/jest';
-import { AsyncIterableX as AsyncIterable } from 'ix/asynciterable';
-import 'ix/add/asynciterable-operators/toarray';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-import KeyRing from '@/keys/KeyRing';
-import Sigchain from '@/sigchain/Sigchain';
-import Token from '@/tokens/Token';
-import * as sigchainErrors from '@/sigchain/errors';
-import * as keysUtils from '@/keys/utils';
-import * as claimsUtils from '@/claims/utils';
-import * as utils from '@/utils';
+import * as testsUtils from '../utils/index.js';
+import KeyRing from '#keys/KeyRing.js';
+import Sigchain from '#sigchain/Sigchain.js';
+import Token from '#tokens/Token.js';
+import * as sigchainErrors from '#sigchain/errors.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as claimsUtils from '#claims/utils.js';
+import * as utils from '#utils/index.js';
+import { polykeyWorkerManifest } from '#workers/index.js';
 
 describe(Sigchain.name, () => {
   const password = keysUtils.getRandomBytes(10).toString('utf-8');
@@ -47,20 +46,7 @@ describe(Sigchain.name, () => {
       logger,
       crypto: {
         key: keyRing.dbKey,
-        ops: {
-          encrypt: async (key, plainText) => {
-            return keysUtils.encryptWithKey(
-              Buffer.from(key) as Key,
-              Buffer.from(plainText),
-            ).buffer;
-          },
-          decrypt: async (key, cipherText) => {
-            return keysUtils.decryptWithKey(
-              Buffer.from(key) as Key,
-              Buffer.from(cipherText),
-            )?.buffer;
-          },
-        },
+        ops: polykeyWorkerManifest,
       },
     });
   });
@@ -173,11 +159,11 @@ describe(Sigchain.name, () => {
       expect(result.status).toBe('fulfilled');
     }
     // Get all chain of claims in descending order
-    const signedClaims = await AsyncIterable.as(
+    const signedClaims = await testsUtils.generatorToArray(
       sigchain.getSignedClaims({
         order: 'desc',
       }),
-    ).toArray();
+    );
     expect(signedClaims.length).toBe(datas.length);
     let digest: string | null = null;
     for (const [, signedClaim] of signedClaims) {
@@ -267,11 +253,11 @@ describe(Sigchain.name, () => {
         const signatures = await sigchain.getSignatures(claimId);
         expect(signatures).toEqual(signedClaim.signatures);
       }
-      const signedClaims = await AsyncIterable.as(
+      const signedClaims = await testsUtils.generatorToArray(
         sigchain.getSignedClaims(),
-      ).toArray();
+      );
       expect(signedClaims).toEqual(claimIdSignedClaims);
-      const claims = await AsyncIterable.as(sigchain.getClaims()).toArray();
+      const claims = await testsUtils.generatorToArray(sigchain.getClaims());
       expect(claims).toEqual(
         claimIdSignedClaims.map((c) => [c[0], c[1].payload]),
       );
@@ -321,9 +307,9 @@ describe(Sigchain.name, () => {
     for (let i = 0; i < 3; i++) {
       claims.push(await sigchain.addClaim({}));
     }
-    const claimsAsc = await AsyncIterable.as(
+    const claimsAsc = await testsUtils.generatorToArray(
       sigchain.getClaims({ seek: claims[1][0], order: 'asc' }),
-    ).toArray();
+    );
     expect(claimsAsc).toHaveLength(2);
     // The claim we seeked to is included
     expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();
@@ -341,9 +327,9 @@ describe(Sigchain.name, () => {
     for (let i = 0; i < 3; i++) {
       claims.push(await sigchain.addClaim({}));
     }
-    const claimsAsc = await AsyncIterable.as(
+    const claimsAsc = await testsUtils.generatorToArray(
       sigchain.getClaims({ seek: claims[1][0], order: 'desc' }),
-    ).toArray();
+    );
     expect(claimsAsc).toHaveLength(2);
     // The claim we seeked to is included
     expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();
@@ -361,9 +347,9 @@ describe(Sigchain.name, () => {
     for (let i = 0; i < 3; i++) {
       claims.push(await sigchain.addClaim({}));
     }
-    const claimsAsc = await AsyncIterable.as(
+    const claimsAsc = await testsUtils.generatorToArray(
       sigchain.getClaims({ seek: claims[1][0], limit: 1 }),
-    ).toArray();
+    );
     expect(claimsAsc).toHaveLength(1);
     // The claim we seeked to is included
     expect(claimsAsc[0][0].equals(claims[1][0])).toBeTrue();

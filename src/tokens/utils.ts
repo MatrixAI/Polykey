@@ -9,15 +9,16 @@ import type {
   SignedToken,
   SignedTokenEncoded,
   TokenHeaderSignatureEncoded,
-} from './types';
+} from './types.js';
 import { Buffer } from 'buffer';
 import canonicalize from 'canonicalize';
-import * as ids from '../ids';
-import * as validationErrors from '../validation/errors';
-import * as keysUtils from '../keys/utils';
-import * as utils from '../utils';
+import * as ids from '../ids/index.js';
+import * as validationErrors from '../validation/errors.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as utils from '../utils/index.js';
 
 function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
+  // @ts-ignore: canonicalize exports is function improperly for ESM
   const payloadJSON = canonicalize(payload)!;
   const payloadData = Buffer.from(payloadJSON, 'utf-8');
   return payloadData.toString('base64url') as TokenPayloadEncoded;
@@ -26,6 +27,7 @@ function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
 function generateTokenProtectedHeader(
   header: TokenProtectedHeader,
 ): TokenProtectedHeaderEncoded {
+  // @ts-ignore: canonicalize exports is function improperly for ESM
   const headerJSON = canonicalize(header)!;
   const headerData = Buffer.from(headerJSON, 'utf-8');
   return headerData.toString('base64url') as TokenProtectedHeaderEncoded;

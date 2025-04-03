@@ -1,25 +1,25 @@
-import type { AuditEventId } from '@/ids';
-import type NodeConnectionManager from '@/nodes/NodeConnectionManager';
-import type Discovery from '@/discovery/Discovery';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { AuditEventId } from '#ids/index.js';
+import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import type Discovery from '#discovery/Discovery.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { test } from '@fast-check/jest';
 import fc from 'fast-check';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import NodesAuditEventsGet from '@/nodes/agent/handlers/NodesAuditEventsGet';
-import { nodesAuditEventsGet } from '@/nodes/agent/callers';
-import * as nodesUtils from '@/nodes/utils';
-import KeyRing from '@/keys/KeyRing';
-import Audit from '@/audit/Audit';
-import * as keysUtils from '@/keys/utils';
-import * as networkUtils from '@/network/utils';
-import * as auditUtils from '@/audit/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
-import * as testNodesUtils from '../../../nodes/utils';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import * as testNodesUtils from '../../../nodes/utils.js';
+import NodesAuditEventsGet from '#nodes/agent/handlers/NodesAuditEventsGet.js';
+import { nodesAuditEventsGet } from '#nodes/agent/callers/index.js';
+import * as nodesUtils from '#nodes/utils.js';
+import KeyRing from '#keys/KeyRing.js';
+import Audit from '#audit/Audit.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
+import * as auditUtils from '#audit/utils.js';
 
 describe('nodesAuditEventsGet', () => {
   const logger = new Logger('nodesAuditEventsGet test', LogLevel.WARN, [
@@ -251,10 +251,13 @@ describe('nodesAuditEventsGet', () => {
     testNodesUtils
       .randomAuditEventsArb(2, 100) // At least 2 so there's a valid seek index
       .chain((events) =>
-        fc.record({
-          events: fc.constant(events),
-          seekIndex: fc.integer({ min: 0, max: events.length - 1 }),
-        }),
+        fc.record(
+          {
+            events: fc.constant(events),
+            seekIndex: fc.integer({ min: 0, max: events.length - 1 }),
+          },
+          { noNullPrototype: true },
+        ),
       ),
   ])(
     'should get audit events with a random seek index (property-based)',

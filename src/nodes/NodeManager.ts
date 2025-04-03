@@ -2,31 +2,31 @@ import type { DB, DBTransaction } from '@matrixai/db';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ResourceAcquire } from '@matrixai/resources';
-import type KeyRing from '../keys/KeyRing';
-import type Sigchain from '../sigchain/Sigchain';
-import type TaskManager from '../tasks/TaskManager';
-import type GestaltGraph from '../gestalts/GestaltGraph';
+import type KeyRing from '../keys/KeyRing.js';
+import type Sigchain from '../sigchain/Sigchain.js';
+import type TaskManager from '../tasks/TaskManager.js';
+import type GestaltGraph from '../gestalts/GestaltGraph.js';
 import type {
   Task,
   TaskHandler,
   TaskHandlerId,
   TaskInfo,
-} from '../tasks/types';
-import type { SignedTokenEncoded } from '../tokens/types';
-import type { Host, Port } from '../network/types';
+} from '../tasks/types.js';
+import type { SignedTokenEncoded } from '../tokens/types.js';
+import type { Host, Port } from '../network/types.js';
 import type {
   Claim,
   ClaimId,
   // ClaimIdEncoded,
   SignedClaim,
-} from '../claims/types';
-import type { ClaimLinkNode } from '../claims/payloads';
-import type NodeConnection from '../nodes/NodeConnection';
+} from '../claims/types.js';
+import type { ClaimLinkNode } from '../claims/payloads/index.js';
+import type NodeConnection from '../nodes/NodeConnection.js';
 import type {
   AgentClaimMessage,
   AgentRPCRequestParams,
   AgentRPCResponseResult,
-} from './agent/types';
+} from './agent/types.js';
 import type {
   NodeAddress,
   NodeBucket,
@@ -34,36 +34,32 @@ import type {
   NodeContactAddressData,
   NodeId,
   NodeIdEncoded,
-} from './types';
-import type NodeConnectionManager from './NodeConnectionManager';
-import type NodeGraph from './NodeGraph';
+} from './types.js';
+import type NodeConnectionManager from './NodeConnectionManager.js';
+import type NodeGraph from './NodeGraph.js';
 import type { ServicePOJO } from '@matrixai/mdns';
 import { withF } from '@matrixai/resources';
 import { events as mdnsEvents, MDNS, utils as mdnsUtils } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
-import { ready, StartStop } from '@matrixai/async-init/dist/StartStop';
+import { startStop } from '@matrixai/async-init';
 import { Lock, LockBox, Semaphore } from '@matrixai/async-locks';
 import { IdInternal } from '@matrixai/id';
-import {
-  context,
-  timed,
-  timedCancellable,
-} from '@matrixai/contexts/dist/decorators';
-import * as nodesUtils from './utils';
-import * as nodesEvents from './events';
-import * as nodesErrors from './errors';
-import * as agentErrors from './agent/errors';
-import NodeConnectionQueue from './NodeConnectionQueue';
-import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority';
-import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess';
-import Token from '../tokens/Token';
-import * as keysUtils from '../keys/utils';
-import * as tasksErrors from '../tasks/errors';
-import * as claimsUtils from '../claims/utils';
-import * as claimsErrors from '../claims/errors';
-import * as utils from '../utils/utils';
-import config from '../config';
-import * as networkUtils from '../network/utils';
+import { decorators } from '@matrixai/contexts';
+import * as nodesUtils from './utils.js';
+import * as nodesEvents from './events.js';
+import * as nodesErrors from './errors.js';
+import * as agentErrors from './agent/errors.js';
+import NodeConnectionQueue from './NodeConnectionQueue.js';
+import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority.js';
+import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess.js';
+import Token from '../tokens/Token.js';
+import * as keysUtils from '../keys/utils/index.js';
+import * as tasksErrors from '../tasks/errors.js';
+import * as claimsUtils from '../claims/utils.js';
+import * as claimsErrors from '../claims/errors.js';
+import * as utils from '../utils/utils.js';
+import config from '../config.js';
+import * as networkUtils from '../network/utils.js';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
 const abortSingletonTaskReason = Symbol('abort singleton task reason');
@@ -76,8 +72,8 @@ const abortPendingConnectionsReason = Symbol(
  * It encapsulates mutations to the NodeGraph.
  * It listens to the NodeConnectionManager events.
  */
-interface NodeManager extends StartStop {}
-@StartStop({
+interface NodeManager extends startStop.StartStop {}
+@startStop.StartStop({
   eventStart: nodesEvents.EventNodeManagerStart,
   eventStarted: nodesEvents.EventNodeManagerStarted,
   eventStop: nodesEvents.EventNodeManagerStop,
@@ -517,10 +513,10 @@ class NodeManager {
     ctx: Partial<ContextTimedInput> | undefined,
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async withConnF<T>(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     f: (conn: NodeConnection) => Promise<T>,
   ): Promise<T> {
     return await withF(
@@ -545,11 +541,11 @@ class NodeManager {
     ctx: Partial<ContextTimedInput> | undefined,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timed()
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @decorators.timed()
   public async *withConnG<T, TReturn, TNext>(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(nodeId, ctx);
@@ -594,7 +590,7 @@ class NodeManager {
     },
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[NodeAddress, NodeContactAddressData] | undefined>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async findNode(
     {
       nodeId,
@@ -609,7 +605,7 @@ class NodeManager {
       concurrencyLimit: number;
       limit: number;
     },
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
     // Setting up intermediate signal
     const abortController = new AbortController();
@@ -688,12 +684,12 @@ class NodeManager {
     connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async findNodeBySignal(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
@@ -824,12 +820,12 @@ class NodeManager {
     connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async findNodeByDirect(
     nodeId: NodeId,
     nodeConnectionsQueue: NodeConnectionQueue,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     // Setting up intermediate signal
     const abortController = new AbortController();
@@ -967,13 +963,13 @@ class NodeManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<Array<[Host, Port]>>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     (nodeManager: NodeManager) => nodeManager.connectionConnectTimeoutTime,
   )
   public async queryMDNS(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<Array<[Host, Port]>> {
     const addresses: Array<[Host, Port]> = [];
     if (this.mdns == null) return addresses;
@@ -1064,13 +1060,13 @@ class NodeManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[[Host, Port], NodeContactAddressData]>;
-  @timedCancellable(
+  @decorators.timedCancellable(
     true,
     (nodeManager: NodeManager) => nodeManager.connectionFindMDNSTimeoutTime,
   )
   public async findNodeByMDNS(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<[[Host, Port], NodeContactAddressData]> {
     try {
       if (this.mdns == null) {
@@ -1173,15 +1169,15 @@ class NodeManager {
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<[NodeAddress, NodeContactAddressData] | undefined>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async pingNode(
     nodeId: NodeId,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<[NodeAddress, NodeContactAddressData] | undefined> {
     return await this.findNode(
       {
@@ -1205,8 +1201,8 @@ class NodeManager {
     port: Port,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<boolean>;
-  @ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
-  @timedCancellable(
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
     true,
     (nodeConnectionManager: NodeConnectionManager) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
@@ -1215,7 +1211,7 @@ class NodeManager {
     nodeId: NodeId,
     host: Host,
     port: Port,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<boolean> {
     if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
     try {
@@ -1247,11 +1243,11 @@ class NodeManager {
     claimId?: ClaimId,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async requestChainData(
     targetNodeId: NodeId,
     claimId: ClaimId | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
     return await this.withConnF(targetNodeId, ctx, async (connection) => {
@@ -1314,11 +1310,11 @@ class NodeManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async claimNode(
     targetNodeId: NodeId,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
       return this.db.withTransactionF((tran) => {
@@ -1668,8 +1664,10 @@ class NodeManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
-  @timedCancellable(true)
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, [
+    'stopping',
+  ])
+  @decorators.timedCancellable(true)
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
@@ -1678,7 +1676,7 @@ class NodeManager {
     force: boolean = false,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     tran: DBTransaction,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     // We don't want to add our own node
     if (nodeId.equals(this.keyRing.getNodeId())) {
@@ -1823,11 +1821,11 @@ class NodeManager {
     ctx?: Partial<ContextTimed>,
     tran?: DBTransaction,
   ): PromiseCancellable<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   protected async garbageCollectBucket(
     bucketIndex: number,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
@@ -2023,12 +2021,12 @@ class NodeManager {
     connectionConnectTimeoutTime?: number,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<void>;
-  @timedCancellable(true)
+  @decorators.timedCancellable(true)
   public async refreshBucket(
     bucketIndex: NodeBucketIndex,
     connectionConnectTimeoutTime: number | undefined = this
       .connectionConnectTimeoutTime,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     // We need to generate a random nodeId for this bucket
     const nodeId = this.keyRing.getNodeId();
@@ -2144,14 +2142,16 @@ class NodeManager {
     tran?: DBTransaction,
     ctx?: Partial<ContextTimedInput>,
   ): Promise<Task>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, ['stopping'])
-  @timedCancellable(true)
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning(), true, [
+    'stopping',
+  ])
+  @decorators.timedCancellable(true)
   public async updateRefreshBucketDelay(
     bucketIndex: number,
     delay: number = this.refreshBucketDelayTime,
     lazy: boolean = true,
     tran: DBTransaction | undefined,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<Task> {
     if (tran == null) {
       return this.db.withTransactionF((tran) =>
@@ -2246,13 +2246,13 @@ class NodeManager {
     blocking?: boolean,
     ctx?: Partial<ContextTimedInput>,
   ): PromiseCancellable<void>;
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  @timedCancellable(true)
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  @decorators.timedCancellable(true)
   public async syncNodeGraph(
     initialNodes: Array<[NodeId, NodeAddress]>,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     blocking: boolean = false,
-    @context ctx: ContextTimed,
+    @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     const logger = this.logger.getChild('syncNodeGraph');
     logger.info('Synchronizing NodeGraph');

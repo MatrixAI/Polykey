@@ -3,10 +3,10 @@ import type {
   ClientRPCResponseResult,
   KeyPairMessage,
   PasswordMessage,
-} from '../types';
-import type KeyRing from '../../keys/KeyRing';
+} from '../types.js';
+import type KeyRing from '../../keys/KeyRing.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as keysUtils from '../../keys/utils';
+import * as keysUtils from '../../keys/utils/index.js';
 
 class KeysKeyPair extends UnaryHandler<
   {

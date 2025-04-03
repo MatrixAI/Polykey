@@ -1,21 +1,21 @@
-import type { NodeIdEncoded } from '@/ids';
-import type { Host, Port } from '@/network/types';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { NodeIdEncoded } from '#ids/index.js';
+import type { Host, Port } from '#network/types.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { QUICClient, QUICServer, events as quicEvents } from '@matrixai/quic';
 import { DB } from '@matrixai/db';
 import { RPCClient, RPCServer } from '@matrixai/rpc';
-import KeyRing from '@/keys/KeyRing';
-import * as nodesUtils from '@/nodes/utils';
-import { nodesClosestLocalNodesGet } from '@/nodes/agent/callers';
-import NodesClosestLocalNodesGet from '@/nodes/agent/handlers/NodesClosestLocalNodesGet';
-import NodeGraph from '@/nodes/NodeGraph';
-import * as keysUtils from '@/keys/utils';
-import * as networkUtils from '@/network/utils';
-import * as testNodesUtils from '../../../nodes/utils';
-import * as tlsTestsUtils from '../../../utils/tls';
+import * as testNodesUtils from '../../../nodes/utils.js';
+import * as tlsTestsUtils from '../../../utils/tls.js';
+import KeyRing from '#keys/KeyRing.js';
+import * as nodesUtils from '#nodes/utils.js';
+import { nodesClosestLocalNodesGet } from '#nodes/agent/callers/index.js';
+import NodesClosestLocalNodesGet from '#nodes/agent/handlers/NodesClosestLocalNodesGet.js';
+import NodeGraph from '#nodes/NodeGraph.js';
+import * as keysUtils from '#keys/utils/index.js';
+import * as networkUtils from '#network/utils.js';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [

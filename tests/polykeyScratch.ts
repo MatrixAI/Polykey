@@ -3,14 +3,14 @@
  * the need for the CLI. This should allow streamline testing
  * against networks
  */
-import type { Hostname } from '../src/network/types';
+import type { Hostname } from '#network/types.js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 // Import { trackTimers } from './utils';
-import * as testsUtils from './utils';
-import PolykeyAgent from '../src/PolykeyAgent';
-import { sleep } from '../src/utils';
-import { encodeNodeId } from '../src/ids';
-import { resolveSeednodes } from '../src/nodes/utils';
+import * as testsUtils from './utils/index.js';
+import PolykeyAgent from '#PolykeyAgent.js';
+import { sleep } from '#utils/index.js';
+import { encodeNodeId } from '#ids/index.js';
+import { resolveSeednodes } from '#nodes/utils.js';
 
 async function main() {
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
