@@ -1,5 +1,16 @@
 // eslint-disable-next-line no-restricted-imports -- Interim types for FileSystem
 import type fs from 'node:fs';
+import type {
+  JSONRPCRequest,
+  JSONRPCResponse,
+  MiddlewareFactory,
+} from '@matrixai/rpc';
+import type { PasswordOpsLimit, PasswordMemLimit } from './keys/types.js';
+import type {
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
+} from './client/types.js';
+import type { SeedNodes } from './nodes/types.js';
 export type * from 'acl/types.js';
 export type * from 'audit/types.js';
 export type * from 'claims/types.js';
@@ -187,6 +198,65 @@ type InverseRecord<
 // eslint-disable-next-line
 type ObjectEmpty = {};
 
+/**
+ * Optional configuration for `PolykeyAgent`.
+ */
+type PolykeyAgentOptions = {
+  nodePath: string;
+  clientServiceHost: string;
+  clientServicePort: number;
+  agentServiceHost: string;
+  agentServicePort: number;
+  network: string;
+  seedNodes: SeedNodes;
+  workers: number;
+  ipv6Only: boolean;
+  keys: {
+    passwordOpsLimit: PasswordOpsLimit;
+    passwordMemLimit: PasswordMemLimit;
+    strictMemoryLock: boolean;
+    certDuration: number;
+    certRenewLeadTime: number;
+    recoveryCode: string;
+  } & (
+    | ObjectEmpty
+    | { recoveryCode: string }
+    | { privateKey: Buffer }
+    | { privateKeyPath: string }
+  );
+  client: {
+    keepAliveTimeoutTime: number;
+    keepAliveIntervalTime: number;
+    rpcCallTimeoutTime: number;
+    rpcParserBufferSize: number;
+    rpcMiddlewareFactory?: MiddlewareFactory<
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCRequest<ClientRPCRequestParams>,
+      JSONRPCResponse<ClientRPCResponseResult>,
+      JSONRPCResponse<ClientRPCResponseResult>
+    >;
+  };
+  nodes: {
+    connectionIdleTimeoutTimeMin: number;
+    connectionIdleTimeoutTimeScale: number;
+    connectionFindConcurrencyLimit: number;
+    connectionConnectTimeoutTime: number;
+    connectionKeepAliveTimeoutTime: number;
+    connectionKeepAliveIntervalTime: number;
+    connectionHolePunchIntervalTime: number;
+    connectionInitialMaxStreamsBidi: number;
+    connectionInitialMaxStreamsUni: number;
+    rpcCallTimeoutTime: number;
+    rpcParserBufferSize: number;
+    dnsServers: Array<string> | undefined;
+  };
+  mdns: {
+    groups: Array<string>;
+    port: number;
+  };
+  versionMetadata: POJO;
+};
+
 export type {
   POJO,
   JSONValue,
@@ -210,4 +280,5 @@ export type {
   RecordKeyFromValue,
   InverseRecord,
   ObjectEmpty,
+  PolykeyAgentOptions,
 };

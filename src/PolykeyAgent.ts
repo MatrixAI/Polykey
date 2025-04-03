@@ -1,18 +1,14 @@
+import type { JSONObject } from '@matrixai/rpc';
 import type {
-  JSONObject,
-  JSONRPCRequest,
-  JSONRPCResponse,
-  MiddlewareFactory,
-} from '@matrixai/rpc';
-import type { DeepPartial, FileSystem, ObjectEmpty, POJO } from './types.js';
+  DeepPartial,
+  FileSystem,
+  ObjectEmpty,
+  POJO,
+  PolykeyAgentOptions,
+} from './types.js';
 import type { PolykeyWorkerManager } from './workers/types.js';
 import type { TLSConfig } from './network/types.js';
 import type { NodeAddress, NodeId, SeedNodes } from './nodes/types.js';
-import type { PasswordOpsLimit, PasswordMemLimit } from './keys/types.js';
-import type {
-  ClientRPCRequestParams,
-  ClientRPCResponseResult,
-} from './client/types.js';
 import path from 'node:path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -49,65 +45,6 @@ import * as workersUtils from './workers/utils.js';
 import * as clientMiddleware from './client/middleware.js';
 import clientServerManifest from './client/handlers/index.js';
 import agentServerManifest from './nodes/agent/handlers/index.js';
-
-/**
- * Optional configuration for `PolykeyAgent`.
- */
-type PolykeyAgentOptions = {
-  nodePath: string;
-  clientServiceHost: string;
-  clientServicePort: number;
-  agentServiceHost: string;
-  agentServicePort: number;
-  network: string;
-  seedNodes: SeedNodes;
-  workers: number;
-  ipv6Only: boolean;
-  keys: {
-    passwordOpsLimit: PasswordOpsLimit;
-    passwordMemLimit: PasswordMemLimit;
-    strictMemoryLock: boolean;
-    certDuration: number;
-    certRenewLeadTime: number;
-    recoveryCode: string;
-  } & (
-    | ObjectEmpty
-    | { recoveryCode: string }
-    | { privateKey: Buffer }
-    | { privateKeyPath: string }
-  );
-  client: {
-    keepAliveTimeoutTime: number;
-    keepAliveIntervalTime: number;
-    rpcCallTimeoutTime: number;
-    rpcParserBufferSize: number;
-    rpcMiddlewareFactory?: MiddlewareFactory<
-      JSONRPCRequest<ClientRPCRequestParams>,
-      JSONRPCRequest<ClientRPCRequestParams>,
-      JSONRPCResponse<ClientRPCResponseResult>,
-      JSONRPCResponse<ClientRPCResponseResult>
-    >;
-  };
-  nodes: {
-    connectionIdleTimeoutTimeMin: number;
-    connectionIdleTimeoutTimeScale: number;
-    connectionFindConcurrencyLimit: number;
-    connectionConnectTimeoutTime: number;
-    connectionKeepAliveTimeoutTime: number;
-    connectionKeepAliveIntervalTime: number;
-    connectionHolePunchIntervalTime: number;
-    connectionInitialMaxStreamsBidi: number;
-    connectionInitialMaxStreamsUni: number;
-    rpcCallTimeoutTime: number;
-    rpcParserBufferSize: number;
-    dnsServers: Array<string> | undefined;
-  };
-  mdns: {
-    groups: Array<string>;
-    port: number;
-  };
-  versionMetadata: POJO;
-};
 
 interface PolykeyAgent extends createDestroyStartStop.CreateDestroyStartStop {}
 @createDestroyStartStop.CreateDestroyStartStop(
