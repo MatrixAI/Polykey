@@ -1,134 +1,230 @@
-# TYPE git.gitgc_ops gauge
-git.gitgc_ops{name="map"} 15219
-git.gitgc_ops{name="obj"} 10991
-git.gitgc_ops{name="arr"} 82815
-git.gitgc_ops{name="set"} 16316
+# TYPE basic_buffer_encoding_decoding_ops gauge
+basic_buffer_encoding_decoding_ops{name="JSON stringify and parse buffer"} 274728
+basic_buffer_encoding_decoding_ops{name="Base64 encode and decode buffer"} 2555304
+basic_buffer_encoding_decoding_ops{name="Base64url encode and decode buffer"} 1562500
 
-# TYPE git.gitgc_margin gauge
-git.gitgc_margin{name="map"} 0.56
-git.gitgc_margin{name="obj"} 0.68
-git.gitgc_margin{name="arr"} 0.26
-git.gitgc_margin{name="set"} 2.11
+# TYPE basic_buffer_encoding_decoding_margin gauge
+basic_buffer_encoding_decoding_margin{name="JSON stringify and parse buffer"} 1.88
+basic_buffer_encoding_decoding_margin{name="Base64 encode and decode buffer"} 16.03
+basic_buffer_encoding_decoding_margin{name="Base64url encode and decode buffer"} 13.59
 
-# TYPE git.gitgc_samples counter
-git.gitgc_samples{name="map"} 84
-git.gitgc_samples{name="obj"} 87
-git.gitgc_samples{name="arr"} 85
-git.gitgc_samples{name="set"} 74
+# TYPE basic_buffer_encoding_decoding_samples counter
+basic_buffer_encoding_decoding_samples{name="JSON stringify and parse buffer"} 88
+basic_buffer_encoding_decoding_samples{name="Base64 encode and decode buffer"} 76
+basic_buffer_encoding_decoding_samples{name="Base64url encode and decode buffer"} 67
 
-# TYPE keys.asymmetric_crypto_ops gauge
-keys.asymmetric_crypto_ops{name="encrypt 512 B of data"} 7590
-keys.asymmetric_crypto_ops{name="encrypt 1 KiB of data"} 7544
-keys.asymmetric_crypto_ops{name="encrypt 10 KiB of data"} 6904
-keys.asymmetric_crypto_ops{name="decrypt 512 B of data"} 10385
-keys.asymmetric_crypto_ops{name="decrypt 1 KiB of data"} 10200
-keys.asymmetric_crypto_ops{name="decrypt 10 KiB of data"} 9059
-keys.asymmetric_crypto_ops{name="sign 512 B of data"} 20480
-keys.asymmetric_crypto_ops{name="sign 1 KiB of data"} 19640
-keys.asymmetric_crypto_ops{name="sign 10 KiB of data"} 11166
-keys.asymmetric_crypto_ops{name="verify 512 B of data"} 15596
-keys.asymmetric_crypto_ops{name="verify 1 KiB of data"} 15538
-keys.asymmetric_crypto_ops{name="verify 10 KiB of data"} 12118
+# TYPE git_garbage_collection_ops gauge
+git_garbage_collection_ops{name="map"} 17864
+git_garbage_collection_ops{name="obj"} 9336
+git_garbage_collection_ops{name="arr"} 97792
+git_garbage_collection_ops{name="set"} 25779
 
-# TYPE keys.asymmetric_crypto_margin gauge
-keys.asymmetric_crypto_margin{name="encrypt 512 B of data"} 0.15
-keys.asymmetric_crypto_margin{name="encrypt 1 KiB of data"} 0.37
-keys.asymmetric_crypto_margin{name="encrypt 10 KiB of data"} 0.56
-keys.asymmetric_crypto_margin{name="decrypt 512 B of data"} 0.31
-keys.asymmetric_crypto_margin{name="decrypt 1 KiB of data"} 0.22
-keys.asymmetric_crypto_margin{name="decrypt 10 KiB of data"} 0.4
-keys.asymmetric_crypto_margin{name="sign 512 B of data"} 0.85
-keys.asymmetric_crypto_margin{name="sign 1 KiB of data"} 0.39
-keys.asymmetric_crypto_margin{name="sign 10 KiB of data"} 0.69
-keys.asymmetric_crypto_margin{name="verify 512 B of data"} 0.77
-keys.asymmetric_crypto_margin{name="verify 1 KiB of data"} 0.69
-keys.asymmetric_crypto_margin{name="verify 10 KiB of data"} 0.25
+# TYPE git_garbage_collection_margin gauge
+git_garbage_collection_margin{name="map"} 3.3
+git_garbage_collection_margin{name="obj"} 18.37
+git_garbage_collection_margin{name="arr"} 1.98
+git_garbage_collection_margin{name="set"} 6.15
 
-# TYPE keys.asymmetric_crypto_samples counter
-keys.asymmetric_crypto_samples{name="encrypt 512 B of data"} 97
-keys.asymmetric_crypto_samples{name="encrypt 1 KiB of data"} 98
-keys.asymmetric_crypto_samples{name="encrypt 10 KiB of data"} 94
-keys.asymmetric_crypto_samples{name="decrypt 512 B of data"} 94
-keys.asymmetric_crypto_samples{name="decrypt 1 KiB of data"} 97
-keys.asymmetric_crypto_samples{name="decrypt 10 KiB of data"} 93
-keys.asymmetric_crypto_samples{name="sign 512 B of data"} 95
-keys.asymmetric_crypto_samples{name="sign 1 KiB of data"} 95
-keys.asymmetric_crypto_samples{name="sign 10 KiB of data"} 92
-keys.asymmetric_crypto_samples{name="verify 512 B of data"} 93
-keys.asymmetric_crypto_samples{name="verify 1 KiB of data"} 94
-keys.asymmetric_crypto_samples{name="verify 10 KiB of data"} 95
+# TYPE git_garbage_collection_samples counter
+git_garbage_collection_samples{name="map"} 61
+git_garbage_collection_samples{name="obj"} 47
+git_garbage_collection_samples{name="arr"} 82
+git_garbage_collection_samples{name="set"} 60
 
-# TYPE keys.key_generation_ops gauge
-keys.key_generation_ops{name="generate root asymmetric keypair"} 43471
-keys.key_generation_ops{name="generate deterministic root keypair"} 115
-keys.key_generation_ops{name="generate 256 bit symmetric key"} 1564369
+# TYPE keys_asymmetric_crypto_ops gauge
+keys_asymmetric_crypto_ops{name="encrypt 512 B of data"} 9603
+keys_asymmetric_crypto_ops{name="encrypt 1 KiB of data"} 9471
+keys_asymmetric_crypto_ops{name="encrypt 10 KiB of data"} 7213
+keys_asymmetric_crypto_ops{name="decrypt 512 B of data"} 9059
+keys_asymmetric_crypto_ops{name="decrypt 1 KiB of data"} 12576
+keys_asymmetric_crypto_ops{name="decrypt 10 KiB of data"} 10119
+keys_asymmetric_crypto_ops{name="sign 512 B of data"} 27425
+keys_asymmetric_crypto_ops{name="sign 1 KiB of data"} 26202
+keys_asymmetric_crypto_ops{name="sign 10 KiB of data"} 13240
+keys_asymmetric_crypto_ops{name="verify 512 B of data"} 21423
+keys_asymmetric_crypto_ops{name="verify 1 KiB of data"} 21612
+keys_asymmetric_crypto_ops{name="verify 10 KiB of data"} 15481
 
-# TYPE keys.key_generation_margin gauge
-keys.key_generation_margin{name="generate root asymmetric keypair"} 0.24
-keys.key_generation_margin{name="generate deterministic root keypair"} 0.27
-keys.key_generation_margin{name="generate 256 bit symmetric key"} 0.29
+# TYPE keys_asymmetric_crypto_margin gauge
+keys_asymmetric_crypto_margin{name="encrypt 512 B of data"} 1.71
+keys_asymmetric_crypto_margin{name="encrypt 1 KiB of data"} 0.95
+keys_asymmetric_crypto_margin{name="encrypt 10 KiB of data"} 8.71
+keys_asymmetric_crypto_margin{name="decrypt 512 B of data"} 11.24
+keys_asymmetric_crypto_margin{name="decrypt 1 KiB of data"} 2.01
+keys_asymmetric_crypto_margin{name="decrypt 10 KiB of data"} 3.06
+keys_asymmetric_crypto_margin{name="sign 512 B of data"} 1.66
+keys_asymmetric_crypto_margin{name="sign 1 KiB of data"} 0.54
+keys_asymmetric_crypto_margin{name="sign 10 KiB of data"} 1.8
+keys_asymmetric_crypto_margin{name="verify 512 B of data"} 2.47
+keys_asymmetric_crypto_margin{name="verify 1 KiB of data"} 1.76
+keys_asymmetric_crypto_margin{name="verify 10 KiB of data"} 1.92
 
-# TYPE keys.key_generation_samples counter
-keys.key_generation_samples{name="generate root asymmetric keypair"} 95
-keys.key_generation_samples{name="generate deterministic root keypair"} 83
-keys.key_generation_samples{name="generate 256 bit symmetric key"} 92
+# TYPE keys_asymmetric_crypto_samples counter
+keys_asymmetric_crypto_samples{name="encrypt 512 B of data"} 91
+keys_asymmetric_crypto_samples{name="encrypt 1 KiB of data"} 90
+keys_asymmetric_crypto_samples{name="encrypt 10 KiB of data"} 74
+keys_asymmetric_crypto_samples{name="decrypt 512 B of data"} 77
+keys_asymmetric_crypto_samples{name="decrypt 1 KiB of data"} 88
+keys_asymmetric_crypto_samples{name="decrypt 10 KiB of data"} 80
+keys_asymmetric_crypto_samples{name="sign 512 B of data"} 94
+keys_asymmetric_crypto_samples{name="sign 1 KiB of data"} 90
+keys_asymmetric_crypto_samples{name="sign 10 KiB of data"} 94
+keys_asymmetric_crypto_samples{name="verify 512 B of data"} 90
+keys_asymmetric_crypto_samples{name="verify 1 KiB of data"} 91
+keys_asymmetric_crypto_samples{name="verify 10 KiB of data"} 92
 
-# TYPE keys.random_bytes_ops gauge
-keys.random_bytes_ops{name="random 512 B of data"} 424548
-keys.random_bytes_ops{name="random 1 KiB of data"} 226078
-keys.random_bytes_ops{name="random 10 KiB of data"} 24618
+# TYPE keys_key_generation_ops gauge
+keys_key_generation_ops{name="generate root asymmetric keypair"} 52320
+keys_key_generation_ops{name="generate deterministic root keypair"} 68
+keys_key_generation_ops{name="generate 256 bit symmetric key"} 954248
 
-# TYPE keys.random_bytes_margin gauge
-keys.random_bytes_margin{name="random 512 B of data"} 0.81
-keys.random_bytes_margin{name="random 1 KiB of data"} 0.75
-keys.random_bytes_margin{name="random 10 KiB of data"} 0.65
+# TYPE keys_key_generation_margin gauge
+keys_key_generation_margin{name="generate root asymmetric keypair"} 2.93
+keys_key_generation_margin{name="generate deterministic root keypair"} 11.14
+keys_key_generation_margin{name="generate 256 bit symmetric key"} 10.65
 
-# TYPE keys.random_bytes_samples counter
-keys.random_bytes_samples{name="random 512 B of data"} 91
-keys.random_bytes_samples{name="random 1 KiB of data"} 92
-keys.random_bytes_samples{name="random 10 KiB of data"} 89
+# TYPE keys_key_generation_samples counter
+keys_key_generation_samples{name="generate root asymmetric keypair"} 84
+keys_key_generation_samples{name="generate deterministic root keypair"} 68
+keys_key_generation_samples{name="generate 256 bit symmetric key"} 76
 
-# TYPE keys.recovery_code_ops gauge
-keys.recovery_code_ops{name="generate 24 word recovery code"} 71881
-keys.recovery_code_ops{name="generate 12 word recovery code"} 81700
+# TYPE keys_keyring_lifecycle_ops gauge
+keys_keyring_lifecycle_ops{name="KeyRing fresh creation"} 0.8
+keys_keyring_lifecycle_ops{name="KeyRing start & stop"} 1.2
 
-# TYPE keys.recovery_code_margin gauge
-keys.recovery_code_margin{name="generate 24 word recovery code"} 0.59
-keys.recovery_code_margin{name="generate 12 word recovery code"} 0.8
+# TYPE keys_keyring_lifecycle_margin gauge
+keys_keyring_lifecycle_margin{name="KeyRing fresh creation"} 40.21
+keys_keyring_lifecycle_margin{name="KeyRing start & stop"} 4.27
 
-# TYPE keys.recovery_code_samples counter
-keys.recovery_code_samples{name="generate 24 word recovery code"} 86
-keys.recovery_code_samples{name="generate 12 word recovery code"} 85
+# TYPE keys_keyring_lifecycle_samples counter
+keys_keyring_lifecycle_samples{name="KeyRing fresh creation"} 8
+keys_keyring_lifecycle_samples{name="KeyRing start & stop"} 11
 
-# TYPE keys.symmetric_crypto_ops gauge
-keys.symmetric_crypto_ops{name="encrypt 512 B of data"} 380489
-keys.symmetric_crypto_ops{name="encrypt 1 KiB of data"} 291515
-keys.symmetric_crypto_ops{name="encrypt 10 KiB of data"} 63876
-keys.symmetric_crypto_ops{name="decrypt 512 B of data"} 555805
-keys.symmetric_crypto_ops{name="decrypt 1 KiB of data"} 416915
-keys.symmetric_crypto_ops{name="decrypt 10 KiB of data"} 80024
+# TYPE keys_password_hashing_ops gauge
+keys_password_hashing_ops{name="password hashing - min"} 35205
+keys_password_hashing_ops{name="password hashing - interactive"} 15
+keys_password_hashing_ops{name="password hashing - moderate"} 2
+keys_password_hashing_ops{name="password hashing - sensitive"} 0
 
-# TYPE keys.symmetric_crypto_margin gauge
-keys.symmetric_crypto_margin{name="encrypt 512 B of data"} 0.9
-keys.symmetric_crypto_margin{name="encrypt 1 KiB of data"} 0.66
-keys.symmetric_crypto_margin{name="encrypt 10 KiB of data"} 0.91
-keys.symmetric_crypto_margin{name="decrypt 512 B of data"} 1.15
-keys.symmetric_crypto_margin{name="decrypt 1 KiB of data"} 0.92
-keys.symmetric_crypto_margin{name="decrypt 10 KiB of data"} 0.64
+# TYPE keys_password_hashing_margin gauge
+keys_password_hashing_margin{name="password hashing - min"} 6.77
+keys_password_hashing_margin{name="password hashing - interactive"} 2.12
+keys_password_hashing_margin{name="password hashing - moderate"} 5.82
+keys_password_hashing_margin{name="password hashing - sensitive"} 5.75
 
-# TYPE keys.symmetric_crypto_samples counter
-keys.symmetric_crypto_samples{name="encrypt 512 B of data"} 89
-keys.symmetric_crypto_samples{name="encrypt 1 KiB of data"} 93
-keys.symmetric_crypto_samples{name="encrypt 10 KiB of data"} 86
-keys.symmetric_crypto_samples{name="decrypt 512 B of data"} 91
-keys.symmetric_crypto_samples{name="decrypt 1 KiB of data"} 90
-keys.symmetric_crypto_samples{name="decrypt 10 KiB of data"} 93
+# TYPE keys_password_hashing_samples counter
+keys_password_hashing_samples{name="password hashing - min"} 80
+keys_password_hashing_samples{name="password hashing - interactive"} 41
+keys_password_hashing_samples{name="password hashing - moderate"} 10
+keys_password_hashing_samples{name="password hashing - sensitive"} 5
 
-# TYPE keys.x509_ops gauge
-keys.x509_ops{name="generate certificate"} 126
+# TYPE keys_random_bytes_ops gauge
+keys_random_bytes_ops{name="random 512 B of data"} 443618
+keys_random_bytes_ops{name="random 1 KiB of data"} 227655
+keys_random_bytes_ops{name="random 10 KiB of data"} 26499
 
-# TYPE keys.x509_margin gauge
-keys.x509_margin{name="generate certificate"} 3.68
+# TYPE keys_random_bytes_margin gauge
+keys_random_bytes_margin{name="random 512 B of data"} 3.36
+keys_random_bytes_margin{name="random 1 KiB of data"} 2.21
+keys_random_bytes_margin{name="random 10 KiB of data"} 2.32
 
-# TYPE keys.x509_samples counter
-keys.x509_samples{name="generate certificate"} 78
+# TYPE keys_random_bytes_samples counter
+keys_random_bytes_samples{name="random 512 B of data"} 84
+keys_random_bytes_samples{name="random 1 KiB of data"} 83
+keys_random_bytes_samples{name="random 10 KiB of data"} 82
+
+# TYPE keys_recovery_code_ops gauge
+keys_recovery_code_ops{name="generate 24 word recovery code"} 72989
+keys_recovery_code_ops{name="generate 12 word recovery code"} 91251
+
+# TYPE keys_recovery_code_margin gauge
+keys_recovery_code_margin{name="generate 24 word recovery code"} 3.32
+keys_recovery_code_margin{name="generate 12 word recovery code"} 3.7
+
+# TYPE keys_recovery_code_samples counter
+keys_recovery_code_samples{name="generate 24 word recovery code"} 78
+keys_recovery_code_samples{name="generate 12 word recovery code"} 75
+
+# TYPE keys_symmetric_crypto_ops gauge
+keys_symmetric_crypto_ops{name="encrypt 512 B of data"} 375338
+keys_symmetric_crypto_ops{name="encrypt 1 KiB of data"} 278054
+keys_symmetric_crypto_ops{name="encrypt 10 KiB of data"} 65278
+keys_symmetric_crypto_ops{name="encrypt 1 MiB of data"} 837
+keys_symmetric_crypto_ops{name="encrypt 10 MiB of data"} 82
+keys_symmetric_crypto_ops{name="decrypt 512 B of data"} 375279
+keys_symmetric_crypto_ops{name="decrypt 1 KiB of data"} 208259
+keys_symmetric_crypto_ops{name="decrypt 10 KiB of data"} 74931
+keys_symmetric_crypto_ops{name="decrypt 1 MiB of data"} 1036
+keys_symmetric_crypto_ops{name="decrypt 10 MiB of data"} 84
+
+# TYPE keys_symmetric_crypto_margin gauge
+keys_symmetric_crypto_margin{name="encrypt 512 B of data"} 2.56
+keys_symmetric_crypto_margin{name="encrypt 1 KiB of data"} 3.36
+keys_symmetric_crypto_margin{name="encrypt 10 KiB of data"} 2.39
+keys_symmetric_crypto_margin{name="encrypt 1 MiB of data"} 3.39
+keys_symmetric_crypto_margin{name="encrypt 10 MiB of data"} 4.22
+keys_symmetric_crypto_margin{name="decrypt 512 B of data"} 10.61
+keys_symmetric_crypto_margin{name="decrypt 1 KiB of data"} 14.04
+keys_symmetric_crypto_margin{name="decrypt 10 KiB of data"} 3.02
+keys_symmetric_crypto_margin{name="decrypt 1 MiB of data"} 2.85
+keys_symmetric_crypto_margin{name="decrypt 10 MiB of data"} 2.31
+
+# TYPE keys_symmetric_crypto_samples counter
+keys_symmetric_crypto_samples{name="encrypt 512 B of data"} 76
+keys_symmetric_crypto_samples{name="encrypt 1 KiB of data"} 85
+keys_symmetric_crypto_samples{name="encrypt 10 KiB of data"} 85
+keys_symmetric_crypto_samples{name="encrypt 1 MiB of data"} 81
+keys_symmetric_crypto_samples{name="encrypt 10 MiB of data"} 72
+keys_symmetric_crypto_samples{name="decrypt 512 B of data"} 61
+keys_symmetric_crypto_samples{name="decrypt 1 KiB of data"} 65
+keys_symmetric_crypto_samples{name="decrypt 10 KiB of data"} 79
+keys_symmetric_crypto_samples{name="decrypt 1 MiB of data"} 84
+keys_symmetric_crypto_samples{name="decrypt 10 MiB of data"} 73
+
+# TYPE keys_x509_ops gauge
+keys_x509_ops{name="generate certificate"} 95
+keys_x509_ops{name="certificate serialization to ASN1 buffer"} 18625186
+keys_x509_ops{name="certificate deserialization from ASN1 buffer"} 321
+keys_x509_ops{name="certificate serialization & deserialization to ASN1 buffer"} 423
+
+# TYPE keys_x509_margin gauge
+keys_x509_margin{name="generate certificate"} 4.23
+keys_x509_margin{name="certificate serialization to ASN1 buffer"} 4.27
+keys_x509_margin{name="certificate deserialization from ASN1 buffer"} 6.13
+keys_x509_margin{name="certificate serialization & deserialization to ASN1 buffer"} 2.78
+
+# TYPE keys_x509_samples counter
+keys_x509_samples{name="generate certificate"} 66
+keys_x509_samples{name="certificate serialization to ASN1 buffer"} 76
+keys_x509_samples{name="certificate deserialization from ASN1 buffer"} 70
+keys_x509_samples{name="certificate serialization & deserialization to ASN1 buffer"} 76
+
+# TYPE workers_keys_ops gauge
+workers_keys_ops{name="hash password"} 2.56
+workers_keys_ops{name="check password"} 2.64
+workers_keys_ops{name="generate deterministic key pair"} 81.85
+workers_keys_ops{name="generate certificate"} 66.96
+
+# TYPE workers_keys_margin gauge
+workers_keys_margin{name="hash password"} 12.17
+workers_keys_margin{name="check password"} 3.9
+workers_keys_margin{name="generate deterministic key pair"} 1.72
+workers_keys_margin{name="generate certificate"} 3.62
+
+# TYPE workers_keys_samples counter
+workers_keys_samples{name="hash password"} 18
+workers_keys_samples{name="check password"} 17
+workers_keys_samples{name="generate deterministic key pair"} 78
+workers_keys_samples{name="generate certificate"} 72
+
+# TYPE workers_overhead_ops gauge
+workers_overhead_ops{name="call overhead"} 812
+workers_overhead_ops{name="parallel call overhead"} 409
+
+# TYPE workers_overhead_margin gauge
+workers_overhead_margin{name="call overhead"} 0.92
+workers_overhead_margin{name="parallel call overhead"} 1.02
+
+# TYPE workers_overhead_samples counter
+workers_overhead_samples{name="call overhead"} 83
+workers_overhead_samples{name="parallel call overhead"} 85

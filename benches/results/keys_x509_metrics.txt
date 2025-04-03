@@ -1,0 +1,17 @@
+# TYPE keys_x509_ops gauge
+keys_x509_ops{name="generate certificate"} 95
+keys_x509_ops{name="certificate serialization to ASN1 buffer"} 18625186
+keys_x509_ops{name="certificate deserialization from ASN1 buffer"} 321
+keys_x509_ops{name="certificate serialization & deserialization to ASN1 buffer"} 423
+
+# TYPE keys_x509_margin gauge
+keys_x509_margin{name="generate certificate"} 4.23
+keys_x509_margin{name="certificate serialization to ASN1 buffer"} 4.27
+keys_x509_margin{name="certificate deserialization from ASN1 buffer"} 6.13
+keys_x509_margin{name="certificate serialization & deserialization to ASN1 buffer"} 2.78
+
+# TYPE keys_x509_samples counter
+keys_x509_samples{name="generate certificate"} 66
+keys_x509_samples{name="certificate serialization to ASN1 buffer"} 76
+keys_x509_samples{name="certificate deserialization from ASN1 buffer"} 70
+keys_x509_samples{name="certificate serialization & deserialization to ASN1 buffer"} 76

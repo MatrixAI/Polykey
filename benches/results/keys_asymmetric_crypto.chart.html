@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <title>keys_asymmetric_crypto</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #ddd;
+      }
+
+      .container {
+        box-sizing: border-box;
+        height: 96vh;
+        width: 96vw;
+        margin: 2vh 2vw;
+        resize: both;
+        overflow: hidden;
+        padding: 20px;
+        background: white;
+        box-shadow: 0 0 15px #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <canvas id="chart1743648997897" width="16" height="9"></canvas>
+    </div>
+    <script>
+      const format = (num) => {
+        const [whole, fraction] = String(num).split('.')
+        const chunked = []
+        whole
+          .split('')
+          .reverse()
+          .forEach((char, index) => {
+            if (index % 3 === 0) {
+              chunked.unshift([char])
+            } else {
+              chunked[0].unshift(char)
+            }
+          })
+
+        const fractionStr = fraction !== undefined ? '.' + fraction : ''
+
+        return (
+          chunked.map((chunk) => chunk.join('')).join(' ') + fractionStr
+        )
+      }
+      const ctx1743648997897 = document
+        .getElementById('chart1743648997897')
+        .getContext('2d')
+      const chart1743648997897 = new Chart(ctx1743648997897, {
+        type: 'bar',
+        data: {
+          labels: ["encrypt 512 B of data","encrypt 1 KiB of data","encrypt 10 KiB of data","decrypt 512 B of data","decrypt 1 KiB of data","decrypt 10 KiB of data","sign 512 B of data","sign 1 KiB of data","sign 10 KiB of data","verify 512 B of data","verify 1 KiB of data","verify 10 KiB of data"],
+          datasets: [
+            {
+              data: [9603,9471,7213,9059,12576,10119,27425,26202,13240,21423,21612,15481],
+              backgroundColor: ["hsl(42.023999999999994, 85%, 55%)","hsl(41.436, 85%, 55%)","hsl(31.559999999999995, 85%, 55%)","hsl(39.636, 85%, 55%)","hsl(55.032000000000004, 85%, 55%)","hsl(44.28, 85%, 55%)","hsl(120, 85%, 55%)","hsl(114.648, 85%, 55%)","hsl(57.936, 85%, 55%)","hsl(93.732, 85%, 55%)","hsl(94.55999999999999, 85%, 55%)","hsl(67.74, 85%, 55%)"],
+              borderColor: ["hsl(42.023999999999994, 85%, 55%)","hsl(41.436, 85%, 55%)","hsl(31.559999999999995, 85%, 55%)","hsl(39.636, 85%, 55%)","hsl(55.032000000000004, 85%, 55%)","hsl(44.28, 85%, 55%)","hsl(120, 85%, 55%)","hsl(114.648, 85%, 55%)","hsl(57.936, 85%, 55%)","hsl(93.732, 85%, 55%)","hsl(94.55999999999999, 85%, 55%)","hsl(67.74, 85%, 55%)"],
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: 'keys_asymmetric_crypto',
+              font: { size: 20 },
+              padding: 20,
+            },
+            legend: {
+              display: false,
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  return format(context.parsed.y) + ' ops/s'
+                },
+              },
+              displayColors: false,
+              backgroundColor: '#222222',
+              padding: 10,
+              cornerRadius: 5,
+              intersect: false,
+            },
+          },
+          scales: {
+            x: {
+              grid: {
+                color: '#888888',
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Operations per second',
+                padding: 10,
+              },
+              grid: {
+                color: '#888888',
+              },
+            },
+          },
+        },
+      })
+    </script>
+  </body>
+</html>

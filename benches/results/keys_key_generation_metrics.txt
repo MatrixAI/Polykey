@@ -1,0 +1,14 @@
+# TYPE keys_key_generation_ops gauge
+keys_key_generation_ops{name="generate root asymmetric keypair"} 52320
+keys_key_generation_ops{name="generate deterministic root keypair"} 68
+keys_key_generation_ops{name="generate 256 bit symmetric key"} 954248
+
+# TYPE keys_key_generation_margin gauge
+keys_key_generation_margin{name="generate root asymmetric keypair"} 2.93
+keys_key_generation_margin{name="generate deterministic root keypair"} 11.14
+keys_key_generation_margin{name="generate 256 bit symmetric key"} 10.65
+
+# TYPE keys_key_generation_samples counter
+keys_key_generation_samples{name="generate root asymmetric keypair"} 84
+keys_key_generation_samples{name="generate deterministic root keypair"} 68
+keys_key_generation_samples{name="generate 256 bit symmetric key"} 76

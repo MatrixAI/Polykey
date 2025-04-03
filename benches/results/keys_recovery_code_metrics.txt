@@ -1,0 +1,11 @@
+# TYPE keys_recovery_code_ops gauge
+keys_recovery_code_ops{name="generate 24 word recovery code"} 72989
+keys_recovery_code_ops{name="generate 12 word recovery code"} 91251
+
+# TYPE keys_recovery_code_margin gauge
+keys_recovery_code_margin{name="generate 24 word recovery code"} 3.32
+keys_recovery_code_margin{name="generate 12 word recovery code"} 3.7
+
+# TYPE keys_recovery_code_samples counter
+keys_recovery_code_samples{name="generate 24 word recovery code"} 78
+keys_recovery_code_samples{name="generate 12 word recovery code"} 75

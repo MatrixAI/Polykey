@@ -1,0 +1,35 @@
+# TYPE keys_symmetric_crypto_ops gauge
+keys_symmetric_crypto_ops{name="encrypt 512 B of data"} 375338
+keys_symmetric_crypto_ops{name="encrypt 1 KiB of data"} 278054
+keys_symmetric_crypto_ops{name="encrypt 10 KiB of data"} 65278
+keys_symmetric_crypto_ops{name="encrypt 1 MiB of data"} 837
+keys_symmetric_crypto_ops{name="encrypt 10 MiB of data"} 82
+keys_symmetric_crypto_ops{name="decrypt 512 B of data"} 375279
+keys_symmetric_crypto_ops{name="decrypt 1 KiB of data"} 208259
+keys_symmetric_crypto_ops{name="decrypt 10 KiB of data"} 74931
+keys_symmetric_crypto_ops{name="decrypt 1 MiB of data"} 1036
+keys_symmetric_crypto_ops{name="decrypt 10 MiB of data"} 84
+
+# TYPE keys_symmetric_crypto_margin gauge
+keys_symmetric_crypto_margin{name="encrypt 512 B of data"} 2.56
+keys_symmetric_crypto_margin{name="encrypt 1 KiB of data"} 3.36
+keys_symmetric_crypto_margin{name="encrypt 10 KiB of data"} 2.39
+keys_symmetric_crypto_margin{name="encrypt 1 MiB of data"} 3.39
+keys_symmetric_crypto_margin{name="encrypt 10 MiB of data"} 4.22
+keys_symmetric_crypto_margin{name="decrypt 512 B of data"} 10.61
+keys_symmetric_crypto_margin{name="decrypt 1 KiB of data"} 14.04
+keys_symmetric_crypto_margin{name="decrypt 10 KiB of data"} 3.02
+keys_symmetric_crypto_margin{name="decrypt 1 MiB of data"} 2.85
+keys_symmetric_crypto_margin{name="decrypt 10 MiB of data"} 2.31
+
+# TYPE keys_symmetric_crypto_samples counter
+keys_symmetric_crypto_samples{name="encrypt 512 B of data"} 76
+keys_symmetric_crypto_samples{name="encrypt 1 KiB of data"} 85
+keys_symmetric_crypto_samples{name="encrypt 10 KiB of data"} 85
+keys_symmetric_crypto_samples{name="encrypt 1 MiB of data"} 81
+keys_symmetric_crypto_samples{name="encrypt 10 MiB of data"} 72
+keys_symmetric_crypto_samples{name="decrypt 512 B of data"} 61
+keys_symmetric_crypto_samples{name="decrypt 1 KiB of data"} 65
+keys_symmetric_crypto_samples{name="decrypt 10 KiB of data"} 79
+keys_symmetric_crypto_samples{name="decrypt 1 MiB of data"} 84
+keys_symmetric_crypto_samples{name="decrypt 10 MiB of data"} 73

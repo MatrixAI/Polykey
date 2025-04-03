@@ -1,0 +1,11 @@
+# TYPE workers_overhead_ops gauge
+workers_overhead_ops{name="call overhead"} 812
+workers_overhead_ops{name="parallel call overhead"} 409
+
+# TYPE workers_overhead_margin gauge
+workers_overhead_margin{name="call overhead"} 0.92
+workers_overhead_margin{name="parallel call overhead"} 1.02
+
+# TYPE workers_overhead_samples counter
+workers_overhead_samples{name="call overhead"} 83
+workers_overhead_samples{name="parallel call overhead"} 85

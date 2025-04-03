@@ -1,0 +1,17 @@
+# TYPE git_garbage_collection_ops gauge
+git_garbage_collection_ops{name="map"} 17864
+git_garbage_collection_ops{name="obj"} 9336
+git_garbage_collection_ops{name="arr"} 97792
+git_garbage_collection_ops{name="set"} 25779
+
+# TYPE git_garbage_collection_margin gauge
+git_garbage_collection_margin{name="map"} 3.3
+git_garbage_collection_margin{name="obj"} 18.37
+git_garbage_collection_margin{name="arr"} 1.98
+git_garbage_collection_margin{name="set"} 6.15
+
+# TYPE git_garbage_collection_samples counter
+git_garbage_collection_samples{name="map"} 61
+git_garbage_collection_samples{name="obj"} 47
+git_garbage_collection_samples{name="arr"} 82
+git_garbage_collection_samples{name="set"} 60
