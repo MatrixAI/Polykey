@@ -1,5 +1,25 @@
 // eslint-disable-next-line no-restricted-imports -- Interim types for FileSystem
 import type fs from 'node:fs';
+export type * from 'acl/types.js';
+export type * from 'audit/types.js';
+export type * from 'claims/types.js';
+export type * as clientTypes from 'client/types.js';
+export type * from 'discovery/types.js';
+export type * from 'gestalts/types.js';
+export type * from 'git/types.js';
+export type * from 'identities/types.js';
+export type * from 'ids/types.js';
+export type * from 'keys/types.js';
+export type * from 'network/types.js';
+export type * from 'nodes/types.js';
+export type * from 'notifications/types.js';
+export type * from 'schema/types.js';
+export type * from 'sessions/types.js';
+export type * from 'sigchain/types.js';
+export type * from 'status/types.js';
+export type * from 'tokens/types.js';
+export type * from 'vaults/types.js';
+export type * from 'workers/types.js';
 
 /**
  * Plain data dictionary
