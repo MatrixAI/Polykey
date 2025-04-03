@@ -80,10 +80,10 @@
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">statusLockPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">statusPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
+<h5><span class="tsd-kind-parameter">__namedParameters</span>: <span class="tsd-signature-symbol">{ </span><br/><span>    </span><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">statusLockPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span>    </span><span class="tsd-kind-property">statusPath</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h5>
 <ul class="tsd-parameters">
 <li class="tsd-parameter">
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">?: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></h5></li>
+<h5><span class="tsd-kind-property">fs</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/FileSystem.html" class="tsd-signature-type tsd-kind-interface">FileSystem</a></h5></li>
 <li class="tsd-parameter">
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type ">Logger</span></h5></li>
 <li class="tsd-parameter">
@@ -91,7 +91,7 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">status<wbr/>Path</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="status.Status.html" class="tsd-signature-type tsd-kind-class">Status</a></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.constructor</p>
+<p>Inherited from startStop.StartStop.constructor</p>
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L37">src/status/Status.ts:37</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
@@ -99,7 +99,7 @@
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_initLock_" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagReadonly">Readonly</code> <span>[init<wbr/>Lock]</span><a href="#_initLock_" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">[init<wbr/>Lock]</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">RWLockWriter</span></div><aside class="tsd-sources">
-<p>Inherited from StartStop.[initLock]</p>
+<p>Inherited from startStop.StartStop.[initLock]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:9</li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="fs" class="tsd-anchor"></a>
@@ -152,7 +152,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span></h4>
 <div class="tsd-comment tsd-typography"></div></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L357">src/status/Status.ts:357</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L356">src/status/Status.ts:356</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member tsd-is-protected"><a id="statusReviver" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagProtected">Protected</code> <span>status<wbr/>Reviver</span><a href="#statusReviver" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">status<wbr/>Reviver</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">key</span>, <span class="tsd-kind-parameter">value</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> =&gt; </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol"> = ...</span></div>
@@ -175,7 +175,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">any</span></h4>
 <div class="tsd-comment tsd-typography"></div></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L367">src/status/Status.ts:367</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L366">src/status/Status.ts:366</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Accessors</h2>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandled_" class="tsd-anchor"></a>
@@ -184,7 +184,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_eventHandled_._eventHandled_-1"><span class="tsd-signature-symbol">get</span> [eventHandled]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyWeakSet</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Event</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[eventHandled]</p>
+<p>Inherited from startStop.StartStop.[eventHandled]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:7</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventHandlers_" class="tsd-anchor"></a>
@@ -193,7 +193,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_eventHandlers_._eventHandlers_-1"><span class="tsd-signature-symbol">get</span> [eventHandlers]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">ReadonlyMap</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type ">Set</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">EventHandlerInfo</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[eventHandlers]</p>
+<p>Inherited from startStop.StartStop.[eventHandlers]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:6</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_eventTarget_" class="tsd-anchor"></a>
@@ -202,7 +202,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_eventTarget_._eventTarget_-1"><span class="tsd-signature-symbol">get</span> [eventTarget]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">EventTarget</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">EventTarget</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[eventTarget]</p>
+<p>Inherited from startStop.StartStop.[eventTarget]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:5</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_handleEventError_" class="tsd-anchor"></a>
@@ -222,7 +222,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li>
 <h5><span class="tsd-kind-parameter">evt</span>: <span class="tsd-signature-type ">EventError</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4></li></ul></li></ul><aside class="tsd-sources">
-<p>Inherited from StartStop.[handleEventError]</p>
+<p>Inherited from startStop.StartStop.[handleEventError]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:8</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_running_" class="tsd-anchor"></a>
@@ -231,7 +231,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_running_._running_-1"><span class="tsd-signature-symbol">get</span> [running]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[running]</p>
+<p>Inherited from startStop.StartStop.[running]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:6</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_statusP_" class="tsd-anchor"></a>
@@ -240,7 +240,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_statusP_._statusP_-1"><span class="tsd-signature-symbol">get</span> [statusP]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Status</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[statusP]</p>
+<p>Inherited from startStop.StartStop.[statusP]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:8</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited tsd-is-external"><a id="_status_" class="tsd-anchor"></a>
@@ -249,7 +249,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li class="tsd-signature" id="_status_._status_-1"><span class="tsd-signature-symbol">get</span> [status]<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Status</span></li>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Status</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.[status]</p>
+<p>Inherited from startStop.StartStop.[status]</p>
 <ul>
 <li>Defined in node_modules/@matrixai/async-init/dist/StartStop.d.ts:7</li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
@@ -269,7 +269,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">AddEventListenerOptions</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.addEventListener</p>
+<p>Inherited from startStop.StartStop.addEventListener</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:9</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="beginStop" class="tsd-anchor"></a>
@@ -301,7 +301,7 @@ in order to encode the <code>NodeId</code> before the <code>toJSON</code> of IdI
 <li>
 <h5><span class="tsd-kind-parameter">event</span>: <span class="tsd-signature-type ">Event</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.dispatchEvent</p>
+<p>Inherited from startStop.StartStop.dispatchEvent</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:11</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="finishStart" class="tsd-anchor"></a>
@@ -359,7 +359,7 @@ This can be used without running Status</p>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">EventListenerOptions</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.removeEventListener</p>
+<p>Inherited from startStop.StartStop.removeEventListener</p>
 <ul>
 <li>Defined in node_modules/@matrixai/events/dist/Evented.d.ts:10</li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="start" class="tsd-anchor"></a>
@@ -378,7 +378,7 @@ This can be used without running Status</p>
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">pid</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.start</p>
+<p>Inherited from startStop.StartStop.start</p>
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L54">src/status/Status.ts:54</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member tsd-is-inherited"><a id="stop" class="tsd-anchor"></a>
@@ -395,7 +395,7 @@ This can be used without running Status</p>
 <li class="tsd-parameter-index-signature">
 <h5><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">key</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">any</span></h5></li></ul></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
-<p>Inherited from StartStop.stop</p>
+<p>Inherited from startStop.StartStop.stop</p>
 <ul>
 <li>Defined in <a href="https://github.com/MatrixAI/Polykey/blob/master/src/status/Status.ts#L98">src/status/Status.ts:98</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="updateStatusLive" class="tsd-anchor"></a>
@@ -489,6 +489,7 @@ This can be used without running Status</p>
 <nav class="tsd-navigation"><a href="../modules.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>polykey</span></a>
 <ul class="tsd-small-nested-navigation">
 <li><a href="../modules/acl.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>acl</span></a></li>
+<li><a href="../modules/audit.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>audit</span></a></li>
 <li><a href="../modules/bootstrap.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>bootstrap</span></a></li>
 <li><a href="../modules/claims.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>claims</span></a></li>
 <li><a href="../modules/client.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4"></use></svg><span>client</span></a></li>
@@ -547,7 +548,8 @@ This can be used without running Status</p>
 <li><a href="../types/RecordKeyFromValue.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Record<wbr/>Key<wbr/>From<wbr/>Value</span></a></li>
 <li><a href="../types/Ref.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Ref</span></a></li>
 <li><a href="../types/Timer.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Timer</span></a></li>
-<li><a href="../variables/config.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-32"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-variable)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.106 16L8.85 7.24H9.966L11.454 13.192C11.558 13.608 11.646 13.996 11.718 14.356C11.79 14.708 11.842 14.976 11.874 15.16C11.906 14.976 11.954 14.708 12.018 14.356C12.09 13.996 12.178 13.608 12.282 13.192L13.758 7.24H14.85L12.582 16H11.106Z" fill="var(--color-text)"></path></g></svg><span>config</span></a></li></ul></nav></div></div></div>
+<li><a href="../variables/brand.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-32"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-variable)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M11.106 16L8.85 7.24H9.966L11.454 13.192C11.558 13.608 11.646 13.996 11.718 14.356C11.79 14.708 11.842 14.976 11.874 15.16C11.906 14.976 11.954 14.708 12.018 14.356C12.09 13.996 12.178 13.608 12.282 13.192L13.758 7.24H14.85L12.582 16H11.106Z" fill="var(--color-text)"></path></g></svg><span>brand</span></a></li>
+<li><a href="../variables/config.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>config</span></a></li></ul></nav></div></div></div>
 <div class="tsd-generator">
 <p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div>
 <div class="overlay"></div></body></html>
