@@ -547,6 +547,42 @@ async function importFS(fs?: FileSystem): Promise<FileSystem> {
   return fsImported;
 }
 
+/**
+ * Races a promise against a context. If the context is aborted, then the promise
+ * rejects with the reason. Otherwise, the original value is returned upon
+ * resolving.
+ * @param prom The promise to resolve
+ * @param ctx The ctx with which to race the promise against
+ * @returns A promise which resolves to the prom value or errors if ctx aborts
+ */
+async function resultOrAbort<T>(
+  prom: Promise<T>,
+  ctx: ContextTimed,
+): Promise<T> {
+  // Create an abort promise which rejects when ctx is aborted
+  const { p: abortP, rejectP: rejectAbortP } = promise<never>();
+  const abortHandler = () => {
+    rejectAbortP(ctx.signal.reason);
+  };
+  if (ctx.signal.aborted) {
+    abortHandler();
+  } else {
+    ctx.signal.addEventListener('abort', abortHandler, { once: true });
+  }
+
+  // Race the original promise and abortP. If the original promise resolves
+  // first, then it is returned. If the context aborts first, then the
+  // promise is rejected.
+  try {
+    return await Promise.race([prom, abortP]);
+  } catch (e) {
+    Error.captureStackTrace(e);
+    throw e;
+  } finally {
+    ctx.signal.removeEventListener('abort', abortHandler);
+  }
+}
+
 export {
   AsyncFunction,
   GeneratorFunction,
@@ -588,4 +624,5 @@ export {
   yieldMicro,
   setMaxListeners,
   importFS,
+  resultOrAbort,
 };

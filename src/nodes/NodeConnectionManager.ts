@@ -8,7 +8,10 @@ import type {
   NodeId,
   NodeIdString,
 } from './types.js';
-import type { NodesAuthenticateConnectionMessage } from './agent/types.js';
+import type {
+  NodesAuthenticateConnectionMessage,
+  SuccessMessage,
+} from './agent/types.js';
 import type { AgentServerManifest } from './agent/handlers/index.js';
 import type KeyRing from '../keys/KeyRing.js';
 import type { CertificatePEM } from '../keys/types.js';
@@ -345,7 +348,9 @@ class NodeConnectionManager {
    * This should trigger the destruction of the `NodeConnection` through the
    * `EventNodeConnectionError` -> `EventNodeConnectionClose` event path.
    */
-  protected handleEventQUICError = (evt: quicEvents.EventQUICSocketError) => {
+  protected handleEventQUICError = (
+    evt: quicEvents.EventQUICSocketError,
+  ): void => {
     const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
       undefined,
       { cause: evt.detail },
@@ -361,7 +366,7 @@ class NodeConnectionManager {
    */
   protected handleEventQUICSocketStopped = (
     _evt: quicEvents.EventQUICSocketStopped,
-  ) => {
+  ): void => {
     const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
       'QUICSocket stopped unexpectedly',
     );
@@ -376,7 +381,7 @@ class NodeConnectionManager {
    */
   protected handleEventQUICServerStopped = (
     _evt: quicEvents.EventQUICServerStopped,
-  ) => {
+  ): void => {
     const err = new nodesErrors.ErrorNodeConnectionManagerInternalError(
       'QUICServer stopped unexpectedly',
     );
@@ -392,7 +397,7 @@ class NodeConnectionManager {
    */
   protected handleEventQUICServerConnection = (
     evt: quicEvents.EventQUICServerConnection,
-  ) => {
+  ): void => {
     this.handleConnectionReverse(evt.detail);
   };
 
@@ -604,10 +609,6 @@ class NodeConnectionManager {
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  /**
-   * What doe stop do with force?
-   * Figure it out.
-   */
   public async stop({
     force = false,
   }: {
@@ -685,11 +686,14 @@ class NodeConnectionManager {
   }
 
   /**
-   * This is the internal acquireConnection for using connections without authentication.
-   * For usage with withF, to acquire a connection
+   * This is the internal acquireConnection for using connections without
+   * authentication. For usage with withF, to acquire a connection. To wait for
+   * authentication, use {@link acquireConnection}.
+   *
    * This unique acquire function structure of returning the ResourceAcquire
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
    * an acquire function with no parameters).
+   *
    * @param targetNodeId Id of target node to communicate with
    * @returns ResourceAcquire Resource API for use in with contexts
    */
@@ -754,10 +758,18 @@ class NodeConnectionManager {
   }
 
   /**
-   * For usage with withF, to acquire a connection
    * This unique acquire function structure of returning the ResourceAcquire
    * itself is such that we can pass targetNodeId as a parameter (as opposed to
-   * an acquire function with no parameters).
+   * an acquire function with no parameters). It waits for the connection to be
+   * authenticated, otherwise throws an error. See {@link acquireConnectionInternal}
+   * to connect to a node without waiting for authentication.
+   *
+   * If a connection exists but is not authenticated, the authentication is
+   * attempted. Authentication is reattempted if it has failed before but
+   * another attmept is being made to connect to a node.
+   *
+   * For usage with withF, to acquire a connection.
+   *
    * @param targetNodeId Id of target node to communicate with
    * @param ctx
    * @returns ResourceAcquire Resource API for use in with contexts
@@ -837,7 +849,7 @@ class NodeConnectionManager {
   }
 
   /**
-   * Starts a connection.
+   * Starts a connection. This step also attemps to authenticate the connection.
    */
   public createConnection(
     nodeIds: Array<NodeId>,
@@ -1022,12 +1034,16 @@ class NodeConnectionManager {
   }
 
   /**
-   * Adds connection to the connections map. Preforms some checks and lifecycle hooks.
-   * This code is shared between the reverse and forward connection creation.
+   * Adds connection to the connections map. Preforms some checks and lifecycle
+   * hooks. This code sets up the authentication state machine, and must be run
+   * before attempting authentication.
    *
    * Multiple connections can be added for a single NodeId, but the connection
    * with the 'lowest' `connectionId` will be used. The remaining
    * connections will be left to timeout gracefully.
+   *
+   * @param nodeId The target NodeId to connect to
+   * @param nodeConnection The object corresponding to the node connection
    */
   protected addConnection(
     nodeId: NodeId,
@@ -1049,7 +1065,6 @@ class NodeConnectionManager {
 
     // Creating TTL timeout.
     // Add to map
-    // TODO: update type to something like ConnectionDetails
     const newConnAndTimer: ConnectionAndTimer = {
       connection: nodeConnection,
       timer: null,
@@ -1287,10 +1302,11 @@ class NodeConnectionManager {
 
   /**
    * Open up a port in the NAT by sending packets to the target address.
-   * The packets will be sent in an exponential backoff dialing pattern and contain random data.
+   * The packets will be sent in an exponential backoff dialing pattern and
+   * contain random data.
    *
-   * This is only ever done used in the reverse direction to open up the nat for the connection to establish from the
-   * forward direction.
+   * This is only ever done used in the reverse direction to open up the nat
+   * for the connection to establish from the forward direction.
    *
    * This can't know it succeeded, it will continue until timed out or cancelled.
    *
@@ -1314,7 +1330,8 @@ class NodeConnectionManager {
     port: Port,
     @decorators.context ctx: ContextTimed,
   ): Promise<void> {
-    // We need to send a random data packet to the target until the process times out or a connection is established
+    // We need to send a random data packet to the target until the process
+    // times out or a connection is established.
     let ended = false;
     const { p: endedP, resolveP: endedResolveP } = utils.promise();
     if (ctx.signal.aborted) {
@@ -1332,8 +1349,9 @@ class NodeConnectionManager {
     try {
       while (true) {
         const message = keysUtils.getRandomBytes(32);
-        // Since the intention is to abstract away the success/failure of the hole-punch operation,
-        // We should catch any errors thrown out of this, as the caller does not expect the method to throw
+        // Since the intention is to abstract away the success/failure of the
+        // hole-punch operation, we should catch any errors thrown out of this,
+        // as the caller does not expect the method to throw.
         await this.quicSocket
           .send(Buffer.from(message), port, host)
           .catch(() => {});
@@ -1411,7 +1429,7 @@ class NodeConnectionManager {
     return size;
   }
 
-  public updateTlsConfig(tlsConfig: TLSConfig) {
+  public updateTlsConfig(tlsConfig: TLSConfig): void {
     this.tlsConfig = tlsConfig;
     this.quicServer.updateConfig({
       key: tlsConfig.keyPrivatePem,
@@ -1420,13 +1438,15 @@ class NodeConnectionManager {
   }
 
   /**
-   * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch procedure.
+   * This is used by the `NodesConnectionSignalFinal` to initiate the hole punch
+   * procedure.
    *
-   * Will validate the message, and initiate hole punching in the background and return immediately.
+   * Will validate the message, and initiate hole punching in the background and
+   * return immediately.
    * Attempts to the same host and port are coalesced.
    * Attempts to the same host are limited by a semaphore.
-   * Active attempts are tracked inside the `activeHolePunchPs` set and are cancelled and awaited when the
-   * `NodeConnectionManager` stops.
+   * Active attempts are tracked inside the `activeHolePunchPs` set and are
+   * cancelled and awaited when the `NodeConnectionManager` stops.
    */
   @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public handleNodesConnectionSignalFinal(host: Host, port: Port) {
@@ -1466,19 +1486,21 @@ class NodeConnectionManager {
   }
 
   /**
-   * This is used by the `NodesConnectionSignalInitial` to initiate a relay request.
-   * Requests can only be relayed to nodes this node is currently connected to.
+   * This is used by the `NodesConnectionSignalInitial` to initiate a relay
+   * request. Requests can only be relayed to nodes this node is currently
+   * connected to.
    *
-   * Requests made by the same node are rate limited, when the limit has been exceeded the request
-   * throws an `ErrorNodeConnectionManagerRequestRateExceeded` error.
+   * Requests made by the same node are rate limited, when the limit has been
+   * exceeded the request throws an `ErrorNodeConnectionManagerRequestRateExceeded`
+   * error.
    *
-   * Active relay attempts are tracked in `activeSignalFinalPs` and are cancelled and awaited when the
-   * `NodeConnectionManager` stops.
+   * Active relay attempts are tracked in `activeSignalFinalPs` and are cancelled
+   * and awaited when the `NodeConnectionManager` stops.
    *
-   * @param sourceNodeId - NodeId of the node making the request. Used for rate limiting.
-   * @param targetNodeId - NodeId of the node that needs to initiate hole punching.
-   * @param address - Address the target needs to punch to.
-   * @param requestSignature - `base64url` encoded signature
+   * @param sourceNodeId NodeId of the node making the request. Used for rate limiting.
+   * @param targetNodeId NodeId of the node that needs to initiate hole punching.
+   * @param address Address the target needs to punch to.
+   * @param requestSignature `base64url` encoded signature
    * @param ctx
    */
   public async handleNodesConnectionSignalInitial(
@@ -1568,8 +1590,9 @@ class NodeConnectionManager {
       .then(
         () => {},
         (e) => {
-          // If it's a connection error or missing handler then it's a signalling failure, we ignore these since this
-          // is a fire and forget. Any unexpected errors should still be thrown
+          // If it's a connection error or missing handler then it's a signalling
+          // failure, we ignore these since this is a fire and forget. Any
+          // unexpected errors should still be thrown.
           if (
             nodesUtils.isConnectionError(e) ||
             e instanceof rpcErrors.ErrorRPCHandlerFailed
@@ -1639,6 +1662,22 @@ class NodeConnectionManager {
     });
   }
 
+  /**
+   * Handles the authentication for two nodes. This is done by triggering a RPC
+   * duplex method. The duplex stream writes messages to a writer and awaits the
+   * responses from a reader in real-time. The authentication follows a strict
+   * protocol.
+   *
+   * SEND Authentication message
+   * RECV Response message (reverse)
+   * RECV Authentication message from Node B
+   * SEND Response message (reverse)
+   * RECV Acknowledgement message
+   *
+   * @param nodeId The NodeId of the target node
+   * @param ctx
+   * @see {@link handleAuthentication} for RPC protocol
+   */
   public forwardAuthenticate(
     nodeId: NodeId,
     ctx?: Partial<ContextTimedInput>,
@@ -1658,66 +1697,103 @@ class NodeConnectionManager {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
     // Need to make an authenticate request here. Get the connection and RPC.
+    let reader:
+      | ReadableStreamDefaultReader<
+          SuccessMessage | NodesAuthenticateConnectionMessage
+        >
+      | undefined;
+    let writer:
+      | WritableStreamDefaultWriter<
+          SuccessMessage | NodesAuthenticateConnectionMessage
+        >
+      | undefined;
     try {
       const authenticateMessage =
         await this.authenticateNetworkForwardCallback(ctx);
       await withF([this.acquireConnectionInternal(nodeId)], async ([conn]) => {
         const authStream =
           await conn.rpcClient.methods.nodesAuthenticateConnection(ctx);
-        const writer = authStream.writable.getWriter();
-        const reader = authStream.readable.getReader();
+        writer = authStream.writable.getWriter();
+        reader = authStream.readable.getReader();
+
+        // Write the forward authentication message from this node
         await writer.write(authenticateMessage);
-        const reverseMessageIn = (await reader.read()).value;
-        // If the reverse auth was unsuccessful, error out gracefully.
-        if (
-          reverseMessageIn == null ||
-          reverseMessageIn.type !== 'success' ||
-          !reverseMessageIn.success
-        ) {
+        const forwardMessageResultPair = await utils.resultOrAbort(
+          reader.read(),
+          ctx,
+        );
+        if (forwardMessageResultPair.done) {
+          throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+            'Stream ended prematurely',
+          );
+        }
+        const forwardMessageResult = forwardMessageResultPair.value;
+        if (forwardMessageResult.type !== 'success') {
           throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
-            'Unsuccessful forward response',
+            'Expected success message but got authentication message',
           );
         }
-        const forwardMessageIn = (await reader.read()).value;
-        // If the forward message retrieval was unsuccessful, error out.
-        if (forwardMessageIn == null || forwardMessageIn.type === 'success') {
-          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
-            'Invalid forward message',
+
+        // Read and process the authentication token sent by the connectee
+        const reverseMessageInPair = await utils.resultOrAbort(
+          reader.read(),
+          ctx,
+        );
+        if (reverseMessageInPair.done) {
+          throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+            'Stream ended prematurely',
           );
         }
-        try {
-          await this.handleReverseAuthenticate(
-            conn.nodeId,
-            forwardMessageIn,
-            ctx,
+        const reverseMessageIn = reverseMessageInPair.value;
+        if (reverseMessageIn.type === 'success') {
+          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedReverse(
+            'Expected authentication message but got success message',
           );
-        } catch (e) {
-          await writer.close();
-          await reader.cancel();
-          throw e;
         }
-        // If reverse authentication finished without errors, then we continue
+        await this.handleReverseAuthenticate(
+          conn.nodeId,
+          reverseMessageIn,
+          ctx,
+        );
         await writer.write({ type: 'success', success: true });
-        const ack = (await reader.read()).value;
 
-        if (ack == null || ack.type !== 'success' || !ack.success) {
-          throw new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
-            'Invalid ack response',
+        // Wait for other node to set its state
+        const ackPair = await utils.resultOrAbort(reader.read(), ctx);
+        if (ackPair.done) {
+          throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+            'Stream ended prematurely',
           );
         }
-
+        const ack = ackPair.value;
+        if (ack.type !== 'success') {
+          throw new nodesErrors.ErrorNodeManagerAuthenticationFailed(
+            'Expected success message but got authentication message',
+          );
+        }
         await writer.close();
         await reader.cancel();
       });
       connectionsEntry.authenticatedForward = AuthenticatingState.SUCCESS;
     } catch (e) {
-      const err = new nodesErrors.ErrorNodeManagerAuthenticationFailedForward(
+      const err = new nodesErrors.ErrorNodeManagerAuthenticationFailed(
         undefined,
         { cause: e },
       );
-      connectionsEntry.authenticatedForward = AuthenticatingState.FAIL;
+      // We only care if the reader and writer closed properly
+      await writer?.abort(err).catch(() => {});
+      await reader?.cancel(err).catch(() => {});
+      // Make sure any pending authentication is set to FAIL accordingly
+      if (
+        connectionsEntry.authenticatedForward === AuthenticatingState.PENDING
+      ) {
+        connectionsEntry.authenticatedForward = AuthenticatingState.FAIL;
+      }
+      if (
+        connectionsEntry.authenticatedReverse === AuthenticatingState.PENDING
+      ) {
+        connectionsEntry.authenticatedReverse = AuthenticatingState.FAIL;
+      }
       this.authenticateFail(targetNodeIdString, err);
-      return;
     }
     // Check the reverse result
     switch (connectionsEntry.authenticatedReverse) {
@@ -1782,7 +1858,8 @@ class NodeConnectionManager {
   }
 
   /**
-   * Will initiate a forward authentication call and coalesce
+   * Will initiate a forward authentication call and coalesce. This method is
+   * idempotent.
    */
   public initiateForwardAuthenticate(nodeId: NodeId): void {
     // Needs check the map if one is already running, otherwise it needs to start one and manage it.
@@ -1794,15 +1871,18 @@ class NodeConnectionManager {
     const existingAuthenticate =
       this.activeForwardAuthenticateCalls.get(nodeIdString);
 
-    // If it exists in the map then we don't need to start one and can just return
-    if (existingAuthenticate != null) return;
-    // TODO: retry if fail
-    // create retry authenticatoin on new connections if the existing connection
-    // had a failed authentication. put a limit - soemwhere around 3.
+    // If it exists in the map then we don't need to start one and can just
+    // return. However, if the previous attmept failed, we can reattempt
+    // authentication.
+    if (existingAuthenticate != null) {
+      return;
+    }
     if (
-      authenticationEntry.authenticatedForward !==
-        AuthenticatingState.PENDING ||
-      authenticationEntry.authenticateComplete
+      authenticationEntry.authenticatedForward ===
+        AuthenticatingState.SUCCESS ||
+      (authenticationEntry.authenticateComplete &&
+        authenticationEntry.authenticatedForward !== AuthenticatingState.FAIL &&
+        authenticationEntry.authenticatedReverse !== AuthenticatingState.FAIL)
     ) {
       return;
     }
@@ -1818,37 +1898,117 @@ class NodeConnectionManager {
     this.activeForwardAuthenticateCalls.set(nodeIdString, forwardAuthenticateP);
   }
 
-  public handleAuthentication(
+  /**
+   * Handles the authentication for two nodes. This is done by yielding messages
+   * and awaiting response for the messages in real-time. The messages are
+   * yielded by the async generator and the reponse is awaited for via the
+   * async iterator. The authentication follows a strict protocol.
+   *
+   * RECV Authentication message from Node A
+   * SEND Response message
+   * SEND Authentication message from Node B
+   * RECV Response message
+   * SEND Acknowledgement message
+   *
+   * @param requestingNodeId The NodeId of the requesting node
+   * @param inputIterator An iterator yielding responses for the sent messages
+   * @param ctx
+   * @see {@link forwardAuthenticate} for usage example
+   */
+  public async *handleAuthentication(
     requestingNodeId: NodeId,
-    forwardMessage: NodesAuthenticateConnectionMessage,
+    inputIterator: AsyncIterableIterator<
+      SuccessMessage | NodesAuthenticateConnectionMessage
+    >,
     ctx: ContextTimed,
-  ): PromiseCancellable<NodesAuthenticateConnectionMessage>;
-  @decorators.timedCancellable(true)
-  public async handleAuthentication(
-    requestingNodeId: NodeId,
-    forwardMessage: NodesAuthenticateConnectionMessage,
-    @decorators.context ctx: ContextTimed,
-  ): Promise<NodesAuthenticateConnectionMessage> {
+  ): AsyncGenerator<
+    SuccessMessage | NodesAuthenticateConnectionMessage,
+    void,
+    void
+  > {
     const requestingNodeIdString = requestingNodeId.toString() as NodeIdString;
     const connectionEntry = this.connections.get(requestingNodeIdString);
     if (connectionEntry == null) utils.never('Connection should be defined');
 
-    await this.handleReverseAuthenticate(requestingNodeId, forwardMessage, ctx);
-    connectionEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
+    try {
+      const reverseMessageInPair = await utils.resultOrAbort(
+        inputIterator.next(),
+        ctx,
+      );
+      if (reverseMessageInPair.done === true) {
+        throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+          'Stream ended prematurely',
+        );
+      }
+      const reverseMessageIn = reverseMessageInPair.value;
+      if (reverseMessageIn.type === 'success') {
+        throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+          'Expected authentication message but got success message',
+        );
+      }
 
-    return await this.authenticateNetworkForwardCallback(ctx);
-  }
+      // If reverse authentication succeeded without errors, then authentication
+      // was successful. The error is not wrapped to ensure a useful stack trace
+      // in case of an error.
+      await this.handleReverseAuthenticate(
+        requestingNodeId,
+        reverseMessageIn,
+        ctx,
+      );
 
-  public finalizeAuthentication(requestingNodeId: NodeId, success: boolean) {
-    const requestingNodeIdString = requestingNodeId.toString() as NodeIdString;
-    const connectionEntry = this.connections.get(requestingNodeIdString);
-    if (connectionEntry == null) utils.never('Connection should be defined');
-    if (success) {
-      connectionEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
+      yield {
+        type: 'success',
+        success: true,
+      };
+
+      // Generate and yield the forward token from this node
+      yield await this.authenticateNetworkForwardCallback(ctx);
+      const forwardMessageResultPair = await utils.resultOrAbort(
+        inputIterator.next(),
+        ctx,
+      );
+      if (forwardMessageResultPair.done === true) {
+        throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+          'Stream ended prematurely',
+        );
+      }
+      const forwardMessageResult = forwardMessageResultPair.value;
+      if (forwardMessageResult.type !== 'success') {
+        throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
+          'Expected success message but got authentication message',
+        );
+      }
+
+      // Success message should never return { success: false }. If there was an
+      // error with authentication, the RPC should be aborted immediately.
+
+      // It is impossible to reach here without having the reverse connection
+      // being in a non-success state.
+      connectionEntry.authenticatedForward = AuthenticatingState.SUCCESS;
       this.authenticateSuccess(requestingNodeIdString);
-    } else {
-      connectionEntry.authenticatedReverse = AuthenticatingState.FAIL;
-      this.authenticateFail(requestingNodeIdString, new Error('temp'));
+
+      // Yield a final acknowledgement message stating authentication has been
+      // completed and the state has been set.
+      yield {
+        type: 'success',
+        success: true,
+      };
+    } catch (e) {
+      // Make sure any pending authentication is set to FAIL accordingly
+      if (
+        connectionEntry.authenticatedForward === AuthenticatingState.PENDING
+      ) {
+        connectionEntry.authenticatedForward = AuthenticatingState.FAIL;
+      }
+      if (
+        connectionEntry.authenticatedReverse === AuthenticatingState.PENDING
+      ) {
+        connectionEntry.authenticatedReverse = AuthenticatingState.FAIL;
+      }
+      this.authenticateFail(requestingNodeIdString, e);
+      throw new nodesErrors.ErrorNodeManagerAuthenticationFailed(undefined, {
+        cause: e,
+      });
     }
   }
 
@@ -1900,7 +2060,11 @@ class NodeConnectionManager {
       ctx.signal.addEventListener('abort', abortHandler, { once: true });
     }
     // If the connection isn't already authenticated, then try authenticating
-    if (!connectionsEntry.authenticateComplete) {
+    if (
+      !connectionsEntry.authenticateComplete ||
+      connectionsEntry.authenticatedForward === AuthenticatingState.FAIL ||
+      connectionsEntry.authenticatedReverse === AuthenticatingState.FAIL
+    ) {
       this.initiateForwardAuthenticate(nodeId);
     }
     try {
@@ -1944,7 +2108,8 @@ class NodeConnectionManager {
     }
     connectionsEntry.authenticatedResolveP();
     connectionsEntry.authenticateComplete = true;
-    // Resetting timeout delay for the active connection. The non-active connections would already have the min timeout.
+    // Resetting timeout delay for the active connection. The non-active
+    // connections would already have the min timeout.
     const connection =
       connectionsEntry.connections[connectionsEntry.activeConnection];
     const nodeId = IdInternal.fromString<NodeId>(targetNodeIdString);

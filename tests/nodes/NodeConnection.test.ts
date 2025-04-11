@@ -211,7 +211,7 @@ describe(`${NodeConnection.name}`, () => {
       nodesUtils.encodeNodeId(nodeConnection.nodeId),
     );
   });
-  test('Should fail due to server rejecting client certificate (no certs)', async () => {
+  test('should fail due to server rejecting client certificate (no certs)', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection({
       handleStream: () => {},
       targetNodeIds: [serverNodeId],
@@ -237,7 +237,7 @@ describe(`${NodeConnection.name}`, () => {
       quicErrors.ErrorQUICConnectionPeerTLS,
     );
   });
-  test('Should fail due to client rejecting server certificate (missing NodeId)', async () => {
+  test('should fail due to client rejecting server certificate (missing NodeId)', async () => {
     const nodeConnectionProm = NodeConnection.createNodeConnection({
       targetNodeIds: [clientNodeId],
       targetHost: localHost as Host,
@@ -249,7 +249,7 @@ describe(`${NodeConnection.name}`, () => {
     }).then(extractNodeConnection);
     await expect(nodeConnectionProm).rejects.toThrow();
   });
-  test('Should fail and destroy due to connection failure', async () => {
+  test('should fail and destroy due to connection failure', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
@@ -271,7 +271,7 @@ describe(`${NodeConnection.name}`, () => {
     await serverSocket.stop({ force: true });
     await destroyP;
   });
-  test('Should fail and destroy due to connection ending local', async () => {
+  test('should fail and destroy due to connection ending local', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],
@@ -297,7 +297,7 @@ describe(`${NodeConnection.name}`, () => {
     });
     await destroyP;
   });
-  test('Should fail and destroy due to connection ending remote', async () => {
+  test('should fail and destroy due to connection ending remote', async () => {
     const nodeConnection = await NodeConnection.createNodeConnection(
       {
         targetNodeIds: [serverNodeId],

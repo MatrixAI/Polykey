@@ -42,42 +42,13 @@ class NodesAuthenticateConnection extends DuplexHandler<
       throw new agentErrors.ErrorAgentNodeIdMissing();
     }
 
-    // Forward authentication message processing
-    const {
-      value: forwardMessageIn,
-    }: {
-      value: NodesAuthenticateConnectionMessage | SuccessMessage;
-    } = await input.next();
-    if (forwardMessageIn.type === 'success') throw new Error('exit');
-    const forwardMessageOut = await nodeConnectionManager.handleAuthentication(
+    // This async generator handles the back-and-forth communication to
+    // authenticate a connection.
+    yield* nodeConnectionManager.handleAuthentication(
       requestingNodeId,
-      forwardMessageIn,
+      input,
       ctx,
     );
-    yield {
-      type: 'success',
-      success: true,
-    };
-
-    // Sending authentication message
-    yield forwardMessageOut;
-    const {
-      value: reverseMessageIn,
-    }: {
-      value: NodesAuthenticateConnectionMessage | SuccessMessage;
-    } = await input.next();
-    if (reverseMessageIn.type !== 'success') throw new Error('exit');
-
-    nodeConnectionManager.finalizeAuthentication(
-      requestingNodeId,
-      reverseMessageIn.success,
-    );
-    yield {
-      type: 'success',
-      success: true,
-    }
-    // success: true
-    // fire authentication events before final ack
   };
 }
 

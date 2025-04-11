@@ -15,6 +15,7 @@ import * as keysUtils from '../../../keys/utils/index.js';
 import * as ids from '../../../ids/index.js';
 import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 
 class NodesConnectionSignalFinal extends UnaryHandler<
   {
@@ -68,7 +69,7 @@ class NodesConnectionSignalFinal extends UnaryHandler<
         requestSignature,
       )
     ) {
-      throw new agentErrors.ErrorNodesConnectionSignalRequestVerificationFailed();
+      throw new nodesErrors.ErrorNodeConnectionSignalRequestVerificationFailed();
     }
     // Checking relay message relaySignature.
     // relayData is just `<sourceNodeId><targetNodeId><Address><requestSignature>` concatenated.
@@ -83,7 +84,7 @@ class NodesConnectionSignalFinal extends UnaryHandler<
     if (
       !keysUtils.verifyWithPublicKey(relayPublicKey, relayData, relaySignature)
     ) {
-      throw new agentErrors.ErrorNodesConnectionSignalRelayVerificationFailed();
+      throw new nodesErrors.ErrorNodeConnectionSignalRelayVerificationFailed();
     }
 
     const host = input.address.host as Host;

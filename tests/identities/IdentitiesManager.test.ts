@@ -86,7 +86,7 @@ describe('IdentitiesManager', () => {
       await identitiesManager.getTokens('abc' as ProviderId);
     }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
   });
-  test.only.prop([
+  test.prop([
     identitiesTestUtils.identitiyIdArb,
     identitiesTestUtils.providerTokenArb,
   ])('get, set and unset tokens', async (identityId, providerToken) => {

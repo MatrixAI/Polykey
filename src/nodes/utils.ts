@@ -1,6 +1,7 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
+import type { X509Certificate } from '@peculiar/x509';
 import type { Key, Certificate, CertificatePEM } from '../keys/types.js';
 import type { Hostname, Port } from '../network/types.js';
 import type {
@@ -18,7 +19,6 @@ import type {
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
 } from './agent/types.js';
-import type { ContextTimed } from '@matrixai/contexts';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -566,7 +566,7 @@ async function verifyServerCertificateChain(
     };
   }
   if (nodeIds.length === 0) {
-    throw new nodesErrors.ErrorConnectionNodesEmpty();
+    throw new nodesErrors.ErrorNodeConnectionEmpty();
   }
   const certChain: Array<Readonly<X509Certificate>> = [];
   for (const certPEM of certPEMChain) {

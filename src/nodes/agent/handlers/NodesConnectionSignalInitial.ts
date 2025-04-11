@@ -14,6 +14,7 @@ import { matchSync } from '../../../utils/index.js';
 import { never } from '../../../utils/index.js';
 import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 import * as keysUtils from '../../../keys/utils/index.js';
 import * as ids from '../../../ids/index.js';
 
@@ -55,7 +56,7 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     const data = Buffer.concat([requestingNodeId, targetNodeId]);
     const sourcePublicKey = keysUtils.publicKeyFromNodeId(requestingNodeId);
     if (!keysUtils.verifyWithPublicKey(sourcePublicKey, data, signature)) {
-      throw new agentErrors.ErrorNodesConnectionSignalRelayVerificationFailed();
+      throw new nodesErrors.ErrorNodeConnectionSignalRelayVerificationFailed();
     }
     if (meta == null) never('Missing metadata from stream');
     const remoteHost = meta.remoteHost;
