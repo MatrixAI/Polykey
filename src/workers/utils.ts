@@ -11,10 +11,7 @@ import * as workerErrors from './errors.js';
 import { polykeyWorkerManifest } from '../workers/index.js';
 
 const dirname = url.fileURLToPath(new URL('.', import.meta.url));
-const workerPath = path.join(
-  dirname,
-  '../../dist/workers/polykeyWorkerManifest.js',
-);
+const workerPath = path.join(dirname, './polykeyWorkerManifest.js');
 
 async function createWorkerManager({
   cores,
