@@ -1697,24 +1697,16 @@ class NodeConnectionManager {
       throw new nodesErrors.ErrorNodeConnectionManagerConnectionNotFound();
     }
     // Need to make an authenticate request here. Get the connection and RPC.
-    let reader:
-      | ReadableStreamDefaultReader<
-          SuccessMessage | NodesAuthenticateConnectionMessage
-        >
-      | undefined;
-    let writer:
-      | WritableStreamDefaultWriter<
-          SuccessMessage | NodesAuthenticateConnectionMessage
-        >
-      | undefined;
+    let rpcCancel: ((reason?: any) => void) | undefined;
     try {
       const authenticateMessage =
         await this.authenticateNetworkForwardCallback(ctx);
       await withF([this.acquireConnectionInternal(nodeId)], async ([conn]) => {
         const authStream =
           await conn.rpcClient.methods.nodesAuthenticateConnection(ctx);
-        writer = authStream.writable.getWriter();
-        reader = authStream.readable.getReader();
+        const writer = authStream.writable.getWriter();
+        const reader = authStream.readable.getReader();
+        rpcCancel = (reason?: any) => authStream.cancel(reason);
 
         // Write the forward authentication message from this node
         await writer.write(authenticateMessage);
@@ -1770,8 +1762,7 @@ class NodeConnectionManager {
             'Expected success message but got authentication message',
           );
         }
-        await writer.close();
-        await reader.cancel();
+        rpcCancel();
       });
       connectionsEntry.authenticatedForward = AuthenticatingState.SUCCESS;
     } catch (e) {
@@ -1779,9 +1770,7 @@ class NodeConnectionManager {
         undefined,
         { cause: e },
       );
-      // We only care if the reader and writer closed properly
-      await writer?.abort(err).catch(() => {});
-      await reader?.cancel(err).catch(() => {});
+      rpcCancel?.(err);
       // Make sure any pending authentication is set to FAIL accordingly
       if (
         connectionsEntry.authenticatedForward === AuthenticatingState.PENDING

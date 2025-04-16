@@ -93,7 +93,7 @@
     "@matrixai/mdns": "^2.0.7",
     "@matrixai/quic": "^2.0.9",
     "@matrixai/resources": "^2.0.1",
-    "@matrixai/rpc": "^1.0.0",
+    "@matrixai/rpc": "^1.0.1",
     "@matrixai/timer": "^2.1.1",
     "@matrixai/workers": "^2.0.0",
     "@matrixai/ws": "^2.0.5",
