@@ -107,11 +107,12 @@ describe(`${NodeConnectionManager.name}`, () => {
   });
 
   // With constructed NCM and 1 peer
-  describe('With 1 peer', () => {
+  describe('with 1 peer', () => {
     let ncmLocal: NCMState;
     let ncmPeer1: NCMState;
 
     beforeEach(async () => {
+      jest.restoreAllMocks();
       ncmLocal = await nodesTestUtils.nodeConnectionManagerFactory({
         keyRing: keysTestUtils.createDummyKeyRing(),
         createOptions: {
@@ -928,6 +929,138 @@ describe(`${NodeConnectionManager.name}`, () => {
         nodesErrors.ErrorNodeManagerAuthenticationFailed,
       );
     });
+    test('can reauthenticate if previous reverse auth failed', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardDefault,
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Create the first connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      const authenticationAttemptFailP =
+        ncmLocal.nodeConnectionManager.withConnF(
+          ncmPeer1.nodeId,
+          undefined,
+          async () => {
+            // Do nothing
+          },
+        );
+      await expect(authenticationAttemptFailP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+      await ncmLocal.nodeConnectionManager.destroyConnection(
+        ncmPeer1.nodeId,
+        false,
+      );
+
+      // Change the reverse callback to accept the authentication
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Another connection should be made as the previous connection has
+      // already failed authentication.
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      const authenticationAttemptPassP =
+        ncmLocal.nodeConnectionManager.withConnF(
+          ncmPeer1.nodeId,
+          undefined,
+          async () => {
+            // Do nothing
+          },
+        );
+      await expect(authenticationAttemptPassP).toResolve();
+    });
+    test('can reauthenticate if previous forward auth failed', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardDefault,
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Create the first connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      const authenticationAttemptFailP =
+        ncmLocal.nodeConnectionManager.withConnF(
+          ncmPeer1.nodeId,
+          undefined,
+          async () => {
+            // Do nothing
+          },
+        );
+      await expect(authenticationAttemptFailP).rejects.toThrow(
+        nodesErrors.ErrorNodeManagerAuthenticationFailed,
+      );
+      await ncmLocal.nodeConnectionManager.destroyConnection(
+        ncmPeer1.nodeId,
+        false,
+      );
+
+      // Change the reverse callback to accept the authentication
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Another connection should be made as the previous connection has
+      // already failed authentication.
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      const authenticationAttemptPassP =
+        ncmLocal.nodeConnectionManager.withConnF(
+          ncmPeer1.nodeId,
+          undefined,
+          async () => {
+            // Do nothing
+          },
+        );
+      await expect(authenticationAttemptPassP).toResolve();
+    });
     test('non whitelisted RPC calls are prevented', async () => {
       ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
         nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
@@ -950,6 +1083,13 @@ describe(`${NodeConnectionManager.name}`, () => {
         ),
       );
 
+      // Disabling authentication function
+      const initiateForwardAuthenticationSpy = jest
+        .spyOn(ncmLocal.nodeConnectionManager, 'initiateForwardAuthenticate')
+        .mockImplementation(() => {
+          // Do nothing
+        });
+
       // Creating connection
       await ncmLocal.nodeConnectionManager.createConnection(
         [ncmPeer1.nodeId],
@@ -966,6 +1106,9 @@ describe(`${NodeConnectionManager.name}`, () => {
         connection?.connection.rpcClient.unaryCaller('dummyMethod', {}),
       ).rejects.toThrow(nodesErrors.ErrorNodeConnectionManagerRPCDenied);
 
+      // Restore the original authentication functionality
+      initiateForwardAuthenticationSpy.mockRestore();
+
       const forwardAuthenticateP = ncmLocal.nodeConnectionManager.withConnF(
         ncmPeer1.nodeId,
         undefined,
@@ -973,6 +1116,7 @@ describe(`${NodeConnectionManager.name}`, () => {
           // Do nothing
         },
       );
+
       await expect(forwardAuthenticateP).toResolve();
       const reverseAuthenticateP = ncmPeer1.nodeConnectionManager.withConnF(
         ncmLocal.nodeId,
@@ -981,6 +1125,7 @@ describe(`${NodeConnectionManager.name}`, () => {
           // Do nothing
         },
       );
+
       await expect(reverseAuthenticateP).toResolve();
 
       // Checking RPC again
@@ -998,7 +1143,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       );
     });
   });
-  describe('With 2 peers', () => {
+  describe('with 2 peers', () => {
     let ncmLocal: NCMState;
     let ncmPeer1: NCMState;
     let ncmPeer2: NCMState;

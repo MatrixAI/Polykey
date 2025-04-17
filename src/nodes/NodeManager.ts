@@ -14,12 +14,7 @@ import type {
 } from '../tasks/types.js';
 import type { SignedTokenEncoded } from '../tokens/types.js';
 import type { Host, Port } from '../network/types.js';
-import type {
-  Claim,
-  ClaimId,
-  // ClaimIdEncoded,
-  SignedClaim,
-} from '../claims/types.js';
+import type { Claim, ClaimId, SignedClaim } from '../claims/types.js';
 import type { ClaimLinkNode } from '../claims/payloads/index.js';
 import type NodeConnection from '../nodes/NodeConnection.js';
 import type {
@@ -48,8 +43,8 @@ import { decorators } from '@matrixai/contexts';
 import * as nodesUtils from './utils.js';
 import * as nodesEvents from './events.js';
 import * as nodesErrors from './errors.js';
-import * as agentErrors from './agent/errors.js';
 import NodeConnectionQueue from './NodeConnectionQueue.js';
+import config from '../config.js';
 import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority.js';
 import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess.js';
 import Token from '../tokens/Token.js';
@@ -58,7 +53,6 @@ import * as tasksErrors from '../tasks/errors.js';
 import * as claimsUtils from '../claims/utils.js';
 import * as claimsErrors from '../claims/errors.js';
 import * as utils from '../utils/utils.js';
-import config from '../config.js';
 import * as networkUtils from '../network/utils.js';
 
 const abortEphemeralTaskReason = Symbol('abort ephemeral task reason');
@@ -132,15 +126,7 @@ class NodeManager {
     _taskInfo,
     bucketIndex: NodeBucketIndex,
   ) => {
-    // Don't use defaults like this
-    // if a default is to be used
-    // provide it directly
-
-    await this.refreshBucket(
-      bucketIndex,
-      this.connectionConnectTimeoutTime,
-      ctx,
-    );
+    await this.refreshBucket(bucketIndex, undefined, ctx);
     // When completed reschedule the task
     // if refreshBucketDelay is 0 then it's considered disabled
     if (this.refreshBucketDelayTime > 0) {
@@ -718,6 +704,7 @@ class NodeManager {
     }
 
     while (true) {
+      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeSignal(
         async (nodeIdTarget, nodeIdSignaller) => {
           let nodeConnection: NodeConnection | undefined;
@@ -859,6 +846,7 @@ class NodeManager {
     }
 
     while (true) {
+      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeDirect(
         async (nodeIdTarget, nodeContact) => {
           if (!this.nodeConnectionManager.hasConnection(nodeIdTarget)) {
@@ -1131,6 +1119,7 @@ class NodeManager {
           );
         // Collecting results
         for await (const result of resultStream) {
+          ctx.signal.throwIfAborted();
           const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
           if (nodeIdNew == null) {
             utils.never(`failed to decode NodeId "${result.nodeId}"`);
@@ -1147,6 +1136,7 @@ class NodeManager {
             ctx,
           );
         for await (const { nodeIdEncoded, nodeContact } of resultStream) {
+          ctx.signal.throwIfAborted();
           const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
           if (nodeId == null) {
             utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
@@ -1632,7 +1622,7 @@ class NodeManager {
     }
 
     if (!success) {
-      throw new agentErrors.ErrorNodesClaimNetworkVerificationFailed();
+      throw new nodesErrors.ErrorNodeClaimNetworkVerificationFailed();
     }
 
     return {

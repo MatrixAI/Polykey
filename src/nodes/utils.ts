@@ -1,6 +1,7 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type { DBTransaction, KeyPath, LevelPath } from '@matrixai/db';
-import type { X509Certificate } from '@peculiar/x509';
 import type { QUICClientCrypto, QUICServerCrypto } from '@matrixai/quic';
+import type { X509Certificate } from '@peculiar/x509';
 import type { Key, Certificate, CertificatePEM } from '../keys/types.js';
 import type { Hostname, Port } from '../network/types.js';
 import type {
@@ -565,7 +566,7 @@ async function verifyServerCertificateChain(
     };
   }
   if (nodeIds.length === 0) {
-    throw new nodesErrors.ErrorConnectionNodesEmpty();
+    throw new nodesErrors.ErrorNodeConnectionEmpty();
   }
   const certChain: Array<Readonly<X509Certificate>> = [];
   for (const certPEM of certPEMChain) {
@@ -753,6 +754,7 @@ const quicServerCrypto: QUICServerCrypto = {
 async function* collectNodeContacts(
   levelPath: LevelPath,
   tran: DBTransaction,
+  ctx: ContextTimed,
   options: {
     reverse?: boolean;
     lt?: LevelPath;
@@ -773,6 +775,7 @@ async function* collectNodeContacts(
     gt: options.gt,
     valueAsBuffer: false,
   })) {
+    ctx.signal.throwIfAborted();
     const { nodeId: nodeIdCurrent, nodeContactAddress } = parseBucketsDbKey([
       ...(options.pathAdjust ?? []),
       ...keyPath,

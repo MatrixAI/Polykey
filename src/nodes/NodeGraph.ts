@@ -14,8 +14,8 @@ import type {
 import type KeyRing from '../keys/KeyRing.js';
 import Logger from '@matrixai/logger';
 import { createDestroyStartStop } from '@matrixai/async-init';
-import { IdInternal } from '@matrixai/id';
 import { decorators } from '@matrixai/contexts';
+import { IdInternal } from '@matrixai/id';
 import * as nodesUtils from './utils.js';
 import * as nodesErrors from './errors.js';
 import * as nodesEvents from './events.js';
@@ -291,11 +291,12 @@ class NodeGraph {
   @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async *getNodeContacts(
     order: 'asc' | 'desc' = 'asc',
-    tran?: DBTransaction,
+    tran: DBTransaction | undefined,
+    ctx: ContextTimed,
   ): AsyncGenerator<[NodeId, NodeContact]> {
     if (tran == null) {
       // Lambda generators don't grab the `this` context, so we need to bind it
-      const getNodeContacts = (tran) => this.getNodeContacts(order, tran);
+      const getNodeContacts = (tran) => this.getNodeContacts(order, tran, ctx);
       return yield* this.db.withTransactionG(async function* (tran) {
         return yield* getNodeContacts(tran);
       });
@@ -303,6 +304,7 @@ class NodeGraph {
     return yield* nodesUtils.collectNodeContacts(
       [...this.nodeGraphBucketsDbPath],
       tran,
+      ctx,
       { reverse: order !== 'asc' },
     );
   }
@@ -659,6 +661,7 @@ class NodeGraph {
       for await (const result of nodesUtils.collectNodeContacts(
         [...this.nodeGraphBucketsDbPath, bucketKey],
         tran,
+        ctx,
         {
           reverse: order !== 'asc',
           limit,
@@ -736,10 +739,18 @@ class NodeGraph {
    * Resets the bucket according to the new node ID.
    * Run this after new node ID is generated via renewal or reset.
    */
+  public async resetBuckets(
+    tran?: DBTransaction,
+    ctx?: ContextTimed,
+  ): Promise<void>;
   @createDestroyStartStop.ready(new nodesErrors.ErrorNodeGraphNotRunning())
-  public async resetBuckets(tran?: DBTransaction): Promise<void> {
+  @decorators.timedCancellable(true)
+  public async resetBuckets(
+    tran: DBTransaction | undefined,
+    @decorators.context ctx: ContextTimed,
+  ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => this.resetBuckets(tran));
+      return this.db.withTransactionF((tran) => this.resetBuckets(tran, ctx));
     }
     // Setup new space
     const spaceNew = this.space === '0' ? '1' : '0';
@@ -760,6 +771,7 @@ class NodeGraph {
     for await (const [nodeId, nodeContact] of nodesUtils.collectNodeContacts(
       [...this.nodeGraphBucketsDbPath],
       tran,
+      ctx,
     )) {
       const nodeIdKey = nodesUtils.bucketDbKey(nodeId);
       const nodeIdOwn = this.keyRing.getNodeId();
@@ -964,12 +976,12 @@ class NodeGraph {
       for await (const nodeEntry of nodesUtils.collectNodeContacts(
         this.nodeGraphBucketsDbPath,
         tran,
+        ctx,
         {
           lt: [bucketIdKey, ''],
           limit: remainingLimit,
         },
       )) {
-        ctx.signal.throwIfAborted();
         nodes.push(nodeEntry);
       }
     }
@@ -981,12 +993,12 @@ class NodeGraph {
       for await (const nodeEntry of nodesUtils.collectNodeContacts(
         this.nodeGraphBucketsDbPath,
         tran,
+        ctx,
         {
           gt: [bucketId, ''],
           limit: remainingLimit,
         },
       )) {
-        ctx.signal.throwIfAborted();
         nodes.push(nodeEntry);
       }
     }

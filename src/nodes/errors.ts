@@ -48,17 +48,21 @@ class ErrorNodeManagerAuthenticationFailed<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.NOPERM;
 }
 
-class ErrorNodeManagerAuthenticationFailedForward<T> extends ErrorNodes<T> {
+class ErrorNodeManagerAuthenticationFailedForward<
+  T,
+> extends ErrorNodeManager<T> {
   static description = 'Failed to complete forward authentication';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeManagerAuthenticationFailedReverse<T> extends ErrorNodes<T> {
+class ErrorNodeManagerAuthenticationFailedReverse<
+  T,
+> extends ErrorNodeManager<T> {
   static description = 'Failed to complete reverse authentication';
   exitCode = sysexits.USAGE;
 }
 
-class ErrorNodeManagerAuthenticatonTimedOut<T> extends ErrorNodes<T> {
+class ErrorNodeManagerAuthenticationTimedOut<T> extends ErrorNodeManager<T> {
   static description = 'Failed to complete authentication before timing out';
   exitCode = sysexits.USAGE;
 }
@@ -154,7 +158,7 @@ class ErrorNodeConnectionTransportGenericError<
   exitCode = sysexits.USAGE;
 }
 
-class ErrorConnectionNodesEmpty<T> extends ErrorNodeConnection<T> {
+class ErrorNodeConnectionEmpty<T> extends ErrorNodeConnection<T> {
   static description = 'Nodes list to verify against was empty';
   exitCode = sysexits.USAGE;
 }
@@ -256,6 +260,34 @@ class ErrorNodeAuthenticationFailed<T> extends ErrorNodes<T> {
   exitCode = sysexits.NOPERM;
 }
 
+class ErrorNodeAuthenticationInvalidProtocol<T> extends ErrorNodes<T> {
+  static description = 'Invalid protocol used for node authentication';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorNodeConnectionSignalRequestVerificationFailed<
+  T,
+> extends ErrorNodeConnection<T> {
+  static description = 'Failed to verify request message signature';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorNodeConnectionSignalRelayVerificationFailed<
+  T,
+> extends ErrorNodeConnection<T> {
+  static description = 'Failed to verify relay message signature';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorNodeClaimNetworkVerificationFailed<T> extends ErrorNodes<T> {
+  static description = 'Failed to verify claim network message';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
+class ErrorNodeConnectionInvalidIdentity<T> extends ErrorNodeConnection<T> {
+  static description = 'Failed to verify connection identity';
+}
+
 export {
   ErrorNodes,
   ErrorNodeManager,
@@ -269,7 +301,7 @@ export {
   ErrorNodeManagerAuthenticationFailed,
   ErrorNodeManagerAuthenticationFailedForward,
   ErrorNodeManagerAuthenticationFailedReverse,
-  ErrorNodeManagerAuthenticatonTimedOut,
+  ErrorNodeManagerAuthenticationTimedOut,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,
@@ -288,7 +320,7 @@ export {
   ErrorNodeConnectionInternalError,
   ErrorNodeConnectionTransportUnknownError,
   ErrorNodeConnectionTransportGenericError,
-  ErrorConnectionNodesEmpty,
+  ErrorNodeConnectionEmpty,
   ErrorNodeConnectionManager,
   ErrorNodeConnectionManagerNotRunning,
   ErrorNodeConnectionManagerStopping,
@@ -304,4 +336,9 @@ export {
   ErrorNodePermissionDenied,
   ErrorNodeLookupNotFound,
   ErrorNodeAuthenticationFailed,
+  ErrorNodeAuthenticationInvalidProtocol,
+  ErrorNodeClaimNetworkVerificationFailed,
+  ErrorNodeConnectionSignalRelayVerificationFailed,
+  ErrorNodeConnectionSignalRequestVerificationFailed,
+  ErrorNodeConnectionInvalidIdentity,
 };

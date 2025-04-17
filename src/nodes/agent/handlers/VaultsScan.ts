@@ -8,8 +8,8 @@ import type {
 import type VaultManager from '../../../vaults/VaultManager.js';
 import type { JSONValue } from '@matrixai/rpc';
 import { ServerHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 import * as vaultsUtils from '../../../vaults/utils.js';
 
 /**
@@ -33,7 +33,7 @@ class VaultsScan extends ServerHandler<
       this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     yield* db.withTransactionG(async function* (tran): AsyncGenerator<
       AgentRPCResponseResult<VaultsScanMessage>

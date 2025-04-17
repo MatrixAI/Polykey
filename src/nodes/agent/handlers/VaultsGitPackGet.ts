@@ -6,8 +6,8 @@ import type ACL from '../../../acl/ACL.js';
 import type VaultManager from '../../../vaults/VaultManager.js';
 import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 import * as nodesUtils from '../../utils.js';
 import * as vaultsUtils from '../../../vaults/utils.js';
 import * as vaultsErrors from '../../../vaults/errors.js';
@@ -31,7 +31,7 @@ class VaultsGitPackGet extends RawHandler<{
     const [headerMessage, inputStream] = input;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
     const params = headerMessage.params;

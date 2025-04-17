@@ -6,8 +6,8 @@ import type {
 import type NodeManager from '../../../nodes/NodeManager.js';
 import type { JSONValue } from '../../../types.js';
 import { UnaryHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 
 class NodesClaimNetworkVerify extends UnaryHandler<
   {
@@ -24,7 +24,7 @@ class NodesClaimNetworkVerify extends UnaryHandler<
     const { nodeManager }: { nodeManager: NodeManager } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     return nodeManager.handleVerifyClaimNetwork(requestingNodeId, input);
   };

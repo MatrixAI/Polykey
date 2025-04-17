@@ -1,3 +1,4 @@
+import type { ContextTimed } from '@matrixai/contexts';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -6,39 +7,48 @@ import type {
 } from '../types.js';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type { JSONValue } from '../../../types.js';
-import type { ContextTimed } from '@matrixai/contexts';
-import { UnaryHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
+import { DuplexHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 
-class NodesAuthenticateConnection extends UnaryHandler<
+class NodesAuthenticateConnection extends DuplexHandler<
   {
     nodeConnectionManager: NodeConnectionManager;
   },
-  AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
-  AgentRPCResponseResult<SuccessMessage>
+  AgentRPCRequestParams<SuccessMessage | NodesAuthenticateConnectionMessage>,
+  AgentRPCResponseResult<SuccessMessage | NodesAuthenticateConnectionMessage>
 > {
-  public handle = async (
-    input: AgentRPCRequestParams<NodesAuthenticateConnectionMessage>,
-    _cancel,
+  public handle = async function* (
+    input: AsyncIterableIterator<
+      AgentRPCRequestParams<SuccessMessage | NodesAuthenticateConnectionMessage>
+    >,
+    _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): Promise<AgentRPCResponseResult<SuccessMessage>> => {
-    const { nodeConnectionManager } = this.container;
+  ): AsyncGenerator<
+    AgentRPCResponseResult<SuccessMessage | NodesAuthenticateConnectionMessage>,
+    void,
+    void
+  > {
+    const {
+      nodeConnectionManager,
+    }: {
+      nodeConnectionManager: NodeConnectionManager;
+    } = this.container;
+
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
-    await nodeConnectionManager.handleReverseAuthenticate(
+
+    // This async generator handles the back-and-forth communication to
+    // authenticate a connection.
+    yield* nodeConnectionManager.handleAuthentication(
       requestingNodeId,
       input,
       ctx,
     );
-    return {
-      type: 'success',
-      success: true,
-    };
   };
 }
 

@@ -1,10 +1,10 @@
 import type { HandlerTypes } from '@matrixai/rpc';
 import type NodesAuthenticateConnection from '../handlers/NodesAuthenticateConnection.js';
-import { UnaryCaller } from '@matrixai/rpc';
+import { DuplexCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<NodesAuthenticateConnection>;
 
-const nodesAuthenticateConnection = new UnaryCaller<
+const nodesAuthenticateConnection = new DuplexCaller<
   CallerTypes['input'],
   CallerTypes['output']
 >();

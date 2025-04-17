@@ -76,7 +76,7 @@ describe(`${NodeManager.name}`, () => {
   const timeoutTime = 1000;
   const dummyAgentService = {
     nodesAuthenticateConnection: new DummyNodesAuthenticateConnection({}),
-  } as AgentServerManifest;
+  } as unknown as AgentServerManifest;
 
   let dataDir: string;
 
