@@ -7,7 +7,6 @@ import type {
 import type NodeManager from '../../NodeManager.js';
 import type ACL from '../../../acl/ACL.js';
 import { DuplexHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
 
@@ -36,7 +35,7 @@ class NodesCrossSignClaim extends DuplexHandler<
     } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     // Check the ACL for permissions
     const permissions = await acl.getNodePerm(requestingNodeId);

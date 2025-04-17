@@ -555,19 +555,19 @@ async function importFS(fs?: FileSystem): Promise<FileSystem> {
  * @param ctx The ctx with which to race the promise against
  * @returns A promise which resolves to the prom value or errors if ctx aborts
  */
-async function resultOrAbort<T>(
+async function raceSignal<T>(
   prom: Promise<T>,
-  ctx: ContextTimed,
+  abortSignal: AbortSignal,
 ): Promise<T> {
   // Create an abort promise which rejects when ctx is aborted
   const { p: abortP, rejectP: rejectAbortP } = promise<never>();
   const abortHandler = () => {
-    rejectAbortP(ctx.signal.reason);
+    rejectAbortP(abortSignal.reason);
   };
-  if (ctx.signal.aborted) {
+  if (abortSignal.aborted) {
     abortHandler();
   } else {
-    ctx.signal.addEventListener('abort', abortHandler, { once: true });
+    abortSignal.addEventListener('abort', abortHandler, { once: true });
   }
 
   // Race the original promise and abortP. If the original promise resolves
@@ -579,7 +579,7 @@ async function resultOrAbort<T>(
     Error.captureStackTrace(e);
     throw e;
   } finally {
-    ctx.signal.removeEventListener('abort', abortHandler);
+    abortSignal.removeEventListener('abort', abortHandler);
   }
 }
 
@@ -624,5 +624,5 @@ export {
   yieldMicro,
   setMaxListeners,
   importFS,
-  resultOrAbort,
+  raceSignal,
 };

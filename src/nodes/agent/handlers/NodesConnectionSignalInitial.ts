@@ -12,7 +12,6 @@ import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../../validation/index.js';
 import { matchSync } from '../../../utils/index.js';
 import { never } from '../../../utils/index.js';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
 import * as keysUtils from '../../../keys/utils/index.js';
@@ -38,7 +37,7 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     const { targetNodeId }: { targetNodeId: NodeId } = validateSync(
       (keyPath, value) => {

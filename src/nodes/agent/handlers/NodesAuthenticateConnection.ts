@@ -8,8 +8,8 @@ import type {
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type { JSONValue } from '../../../types.js';
 import { DuplexHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
 
 class NodesAuthenticateConnection extends DuplexHandler<
   {
@@ -39,7 +39,7 @@ class NodesAuthenticateConnection extends DuplexHandler<
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
 
     // This async generator handles the back-and-forth communication to

@@ -284,6 +284,10 @@ class ErrorNodeClaimNetworkVerificationFailed<T> extends ErrorNodes<T> {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorNodeConnectionInvalidIdentity<T> extends ErrorNodeConnection<T> {
+  static description = 'Failed to verify connection identity';
+}
+
 export {
   ErrorNodes,
   ErrorNodeManager,
@@ -336,4 +340,5 @@ export {
   ErrorNodeClaimNetworkVerificationFailed,
   ErrorNodeConnectionSignalRelayVerificationFailed,
   ErrorNodeConnectionSignalRequestVerificationFailed,
+  ErrorNodeConnectionInvalidIdentity,
 };

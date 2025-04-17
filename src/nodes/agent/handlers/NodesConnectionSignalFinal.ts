@@ -13,7 +13,6 @@ import { validateSync } from '../../../validation/index.js';
 import { matchSync } from '../../../utils/index.js';
 import * as keysUtils from '../../../keys/utils/index.js';
 import * as ids from '../../../ids/index.js';
-import * as agentErrors from '../errors.js';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
 
@@ -56,7 +55,7 @@ class NodesConnectionSignalFinal extends UnaryHandler<
     );
     const relayingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (relayingNodeId == null) {
-      throw new agentErrors.ErrorAgentNodeIdMissing();
+      throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
     }
     const requestSignature = Buffer.from(input.requestSignature, 'base64url');
     // Checking request requestSignature, requestData is just `<sourceNodeId><targetNodeId>` concatenated

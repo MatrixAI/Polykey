@@ -7,11 +7,11 @@ import type VaultManager from '../../../vaults/VaultManager.js';
 import type { JSONValue } from '../../../types.js';
 import { ReadableStream } from 'stream/web';
 import { RawHandler } from '@matrixai/rpc';
-import * as agentErrors from '../errors.js';
+import * as agentUtils from '../utils.js';
+import * as nodesErrors from '../../errors.js';
+import * as nodesUtils from '../../utils.js';
 import * as vaultsUtils from '../../../vaults/utils.js';
 import * as vaultsErrors from '../../../vaults/errors.js';
-import * as nodesUtils from '../../utils.js';
-import * as agentUtils from '../utils.js';
 import * as utils from '../../../utils/index.js';
 
 /**
@@ -65,7 +65,7 @@ class VaultsGitInfoGet extends RawHandler<{
       // Getting the NodeId from the connection metadata
       const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
       if (requestingNodeId == null) {
-        throw new agentErrors.ErrorAgentNodeIdMissing();
+        throw new nodesErrors.ErrorNodeConnectionInvalidIdentity();
       }
       const nodeIdEncoded = nodesUtils.encodeNodeId(requestingNodeId);
       const permissions = await acl.getNodePerm(requestingNodeId, tran);

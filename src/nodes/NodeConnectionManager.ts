@@ -1710,9 +1710,9 @@ class NodeConnectionManager {
 
         // Write the forward authentication message from this node
         await writer.write(authenticateMessage);
-        const forwardMessageResultPair = await utils.resultOrAbort(
+        const forwardMessageResultPair = await utils.raceSignal(
           reader.read(),
-          ctx,
+          ctx.signal,
         );
         if (forwardMessageResultPair.done) {
           throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
@@ -1727,9 +1727,9 @@ class NodeConnectionManager {
         }
 
         // Read and process the authentication token sent by the connectee
-        const reverseMessageInPair = await utils.resultOrAbort(
+        const reverseMessageInPair = await utils.raceSignal(
           reader.read(),
-          ctx,
+          ctx.signal,
         );
         if (reverseMessageInPair.done) {
           throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
@@ -1750,7 +1750,7 @@ class NodeConnectionManager {
         await writer.write({ type: 'success', success: true });
 
         // Wait for other node to set its state
-        const ackPair = await utils.resultOrAbort(reader.read(), ctx);
+        const ackPair = await utils.raceSignal(reader.read(), ctx.signal);
         if (ackPair.done) {
           throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
             'Stream ended prematurely',
@@ -1920,9 +1920,9 @@ class NodeConnectionManager {
     if (connectionEntry == null) utils.never('Connection should be defined');
 
     try {
-      const reverseMessageInPair = await utils.resultOrAbort(
+      const reverseMessageInPair = await utils.raceSignal(
         inputIterator.next(),
-        ctx,
+        ctx.signal,
       );
       if (reverseMessageInPair.done === true) {
         throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
@@ -1952,9 +1952,9 @@ class NodeConnectionManager {
 
       // Generate and yield the forward token from this node
       yield await this.authenticateNetworkForwardCallback(ctx);
-      const forwardMessageResultPair = await utils.resultOrAbort(
+      const forwardMessageResultPair = await utils.raceSignal(
         inputIterator.next(),
-        ctx,
+        ctx.signal,
       );
       if (forwardMessageResultPair.done === true) {
         throw new nodesErrors.ErrorNodeAuthenticationInvalidProtocol(
