@@ -1,3 +1,4 @@
+import type { ClientManifest } from '@matrixai/rpc';
 import nodesAuthenticateConnection from './nodesAuthenticateConnection.js';
 import nodesAuditEventsGet from './nodesAuditEventsGet.js';
 import nodesClaimsGet from './nodesClaimsGet.js';
@@ -13,17 +14,23 @@ import vaultsGitInfoGet from './vaultsGitInfoGet.js';
 import vaultsGitPackGet from './vaultsGitPackGet.js';
 import vaultsScan from './vaultsScan.js';
 
+const manifestClientCore = {
+  nodesConnectionSignalFinal,
+  nodesConnectionSignalInitial,
+  nodesAuthenticateConnection,
+} satisfies ClientManifest;
+
+type AgentClientManifestCore = typeof manifestClientCore & ClientManifest;
+
 /**
  * Client manifest
  */
 const manifestClient = {
-  nodesAuthenticateConnection,
+  ...manifestClientCore,
   nodesAuditEventsGet,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
-  nodesConnectionSignalFinal,
-  nodesConnectionSignalInitial,
   nodesCrossSignClaim,
   nodesClaimNetworkSign,
   nodesClaimNetworkVerify,
@@ -31,13 +38,14 @@ const manifestClient = {
   vaultsGitInfoGet,
   vaultsGitPackGet,
   vaultsScan,
-};
+} satisfies ClientManifest;
 
 type AgentClientManifest = typeof manifestClient;
 
 export default manifestClient;
 
 export {
+  manifestClientCore,
   nodesAuthenticateConnection,
   nodesAuditEventsGet,
   nodesClaimsGet,
@@ -54,4 +62,4 @@ export {
   vaultsScan,
 };
 
-export type { AgentClientManifest };
+export type { AgentClientManifestCore, AgentClientManifest };

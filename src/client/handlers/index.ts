@@ -15,6 +15,7 @@ import type NodeGraph from '../../nodes/NodeGraph.js';
 import type VaultManager from '../../vaults/VaultManager.js';
 import type PolykeyAgent from '../../PolykeyAgent.js';
 import type { FileSystem } from '../../types.js';
+import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
 import AgentLockAll from './AgentLockAll.js';
 import AgentStatus from './AgentStatus.js';
 import AgentStop from './AgentStop.js';
@@ -108,7 +109,7 @@ const serverManifest = (container: {
   audit: Audit;
   notificationsManager: NotificationsManager;
   nodeManager: NodeManager;
-  nodeConnectionManager: NodeConnectionManager;
+  nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   nodeGraph: NodeGraph;
   vaultManager: VaultManager;
   fs: FileSystem;

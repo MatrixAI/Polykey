@@ -5,6 +5,7 @@ import type { NodeId, NodeIdString } from '#ids/index.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import type { NodeConnection } from '#nodes/index.js';
 import type { ActiveConnectionDataMessage } from '#nodes/agent/types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as testsUtils from '../../../utils/index.js';
 import * as keysUtils from '#keys/utils/index.js';
@@ -12,6 +13,7 @@ import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
 import NodesAuthenticateConnection from '#nodes/agent/handlers/NodesAuthenticateConnection.js';
 import NodesClosestActiveConnectionsGet from '#nodes/agent/handlers/NodesClosestActiveConnectionsGet.js';
 import * as nodesUtils from '#nodes/utils.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('nodesClosestLocalNode', () => {
   const logger = new Logger('nodesClosestLocalNode test', LogLevel.WARN, [
@@ -22,11 +24,11 @@ describe('nodesClosestLocalNode', () => {
 
   let nodeIdLocal: NodeId;
   let keyRingDummyLocal: KeyRing;
-  let nodeConnectionManagerLocal: NodeConnectionManager;
+  let nodeConnectionManagerLocal: NodeConnectionManager<AgentClientManifest>;
 
   let nodeIdPeer1: NodeId;
   let keyRingDummyPeer1: KeyRing;
-  let nodeConnectionManagerPeer1: NodeConnectionManager;
+  let nodeConnectionManagerPeer1: NodeConnectionManager<AgentClientManifest>;
   let portPeer1: Port;
 
   beforeEach(async () => {
@@ -41,6 +43,7 @@ describe('nodesClosestLocalNode', () => {
       keyRing: keyRingDummyLocal,
       logger: logger.getChild(`${NodeConnectionManager.name}Local`),
       tlsConfig: tlsConfigLocal,
+      rpcClientManifest: rpcClientManifest,
       connectionIdleTimeoutTimeMin: 1000,
       connectionIdleTimeoutTimeScale: 0,
       connectionConnectTimeoutTime: timeoutTime,
@@ -65,6 +68,7 @@ describe('nodesClosestLocalNode', () => {
       keyRing: keyRingDummyPeer1,
       logger: logger.getChild(`${NodeConnectionManager.name}Peer1`),
       tlsConfig: tlsConfigPeer1,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: timeoutTime,
       authenticateNetworkForwardCallback:
         nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
@@ -123,7 +127,7 @@ describe('nodesClosestLocalNode', () => {
         connections: Record<
           string,
           {
-            connection: NodeConnection;
+            connection: NodeConnection<AgentClientManifest>;
             timer: Timer | null;
             usageCount: number;
           }
@@ -152,7 +156,7 @@ describe('nodesClosestLocalNode', () => {
               host: localHost,
               port: i,
               destroy: () => {},
-            } as NodeConnection,
+            } as NodeConnection<AgentClientManifest>,
             timer: null,
             usageCount: 0,
           },

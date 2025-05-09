@@ -12,6 +12,7 @@ import type { AuditEventId } from '../ids/types.js';
 import type NodeConnectionManager from '../nodes/NodeConnectionManager.js';
 import type Discovery from '../discovery/Discovery.js';
 import type { AbstractEvent } from '@matrixai/events';
+import type { AgentClientManifest } from '../nodes/agent/callers/index.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { createDestroyStartStop } from '@matrixai/async-init';
@@ -45,7 +46,7 @@ class Audit {
     fresh = false,
   }: {
     db: DB;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     discovery: Discovery;
     logger?: Logger;
     fresh?: boolean;
@@ -59,7 +60,7 @@ class Audit {
 
   protected logger: Logger;
   protected db: DB;
-  protected nodeConnectionManager: NodeConnectionManager;
+  protected nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   protected discovery: Discovery;
 
   protected eventHandlerMap: Map<
@@ -86,7 +87,7 @@ class Audit {
     logger,
   }: {
     db: DB;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     discovery: Discovery;
     logger: Logger;
   }) {

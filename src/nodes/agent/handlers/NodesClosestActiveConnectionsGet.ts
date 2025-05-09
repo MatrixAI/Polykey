@@ -8,6 +8,7 @@ import type {
 import type NodeConnectionManager from '../../NodeConnectionManager.js';
 import type { NodeId } from '../../../ids/index.js';
 import type { ActiveConnectionDataMessage } from '../types.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { ServerHandler } from '@matrixai/rpc';
 import * as utils from '../../../utils/index.js';
 import * as ids from '../../../ids/index.js';
@@ -19,7 +20,7 @@ import * as nodesUtils from '../../utils.js';
  */
 class NodesClosestActiveConnectionsGet extends ServerHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   },
   AgentRPCRequestParams<NodeIdMessage>,
   AgentRPCResponseResult<ActiveConnectionDataMessage>
@@ -33,7 +34,7 @@ class NodesClosestActiveConnectionsGet extends ServerHandler<
     const {
       nodeConnectionManager,
     }: {
-      nodeConnectionManager: NodeConnectionManager;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     } = this.container;
 
     const {

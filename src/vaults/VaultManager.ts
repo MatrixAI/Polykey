@@ -38,7 +38,7 @@ import * as gitHttp from '../git/http.js';
 import * as nodesUtils from '../nodes/utils.js';
 import * as keysUtils from '../keys/utils/index.js';
 import { polykeyWorkerManifest } from '../workers/index.js';
-import * as utils from '#utils/index.js';
+import * as utils from '../utils/index.js';
 
 /**
  * Object map pattern for each vault.

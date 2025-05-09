@@ -4,6 +4,7 @@ import type { KeyPair } from '#keys/types.js';
 import type { SignedTokenEncoded } from '#tokens/types.js';
 import type { ClaimNetworkAuthority } from '#claims/payloads/claimNetworkAuthority.js';
 import type { ClaimNetworkAccess } from '#claims/payloads/claimNetworkAccess.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -109,7 +110,7 @@ describe('nodesClaimNetworkVerify', () => {
       db,
       keyRing,
       gestaltGraph,
-      nodeConnectionManager: {} as NodeConnectionManager,
+      nodeConnectionManager: {} as NodeConnectionManager<AgentClientManifest>,
       nodeGraph: {} as NodeGraph,
       sigchain,
       taskManager,

@@ -1,6 +1,7 @@
 import type { AuditEventId } from '#ids/index.js';
 import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
 import type Discovery from '#discovery/Discovery.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -65,7 +66,8 @@ describe('nodesAuditEventsGet', () => {
     });
     audit = await Audit.createAudit({
       db,
-      nodeConnectionManager: new EventTarget() as NodeConnectionManager,
+      nodeConnectionManager:
+        new EventTarget() as NodeConnectionManager<AgentClientManifest>,
       discovery: new EventTarget() as Discovery,
       logger,
     });

@@ -4,6 +4,7 @@ import type { NodeId } from '#ids/index.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import type { DiscoveryQueueInfo } from '#discovery/types.js';
 import type { ClaimLinkIdentity } from '#claims/payloads/claimLinkIdentity.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -36,6 +37,7 @@ import * as keysUtils from '#keys/utils/index.js';
 import * as gestaltsUtils from '#gestalts/utils.js';
 import { encodeProviderIdentityId } from '#ids/index.js';
 import { polykeyWorkerManifest } from '#workers/index.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('Discovery', () => {
   const password = 'password';
@@ -58,7 +60,7 @@ describe('Discovery', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let db: DB;
   let acl: ACL;
@@ -152,6 +154,7 @@ describe('Discovery', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,

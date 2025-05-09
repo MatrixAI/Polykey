@@ -3,6 +3,7 @@ import type { NodeId } from '#ids/index.js';
 import type GestaltGraph from '#gestalts/GestaltGraph.js';
 import type { Host } from '#network/types.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -16,7 +17,9 @@ import KeyRing from '#keys/KeyRing.js';
 import * as nodesUtils from '#nodes/utils.js';
 import NodeGraph from '#nodes/NodeGraph.js';
 import * as notificationsUtils from '#notifications/utils.js';
-import { notificationsSend } from '#nodes/agent/callers/index.js';
+import rpcClientManifest, {
+  notificationsSend,
+} from '#nodes/agent/callers/index.js';
 import NotificationsSend from '#nodes/agent/handlers/NotificationsSend.js';
 import NotificationsManager from '#notifications/NotificationsManager.js';
 import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
@@ -45,7 +48,7 @@ describe('notificationsSend', () => {
   let acl: ACL;
   let sigchain: Sigchain;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let rpcServer: RPCServer;
@@ -121,6 +124,7 @@ describe('notificationsSend', () => {
     );
     nodeConnectionManager = new NodeConnectionManager({
       tlsConfig: tlsConfigClient,
+      rpcClientManifest: rpcClientManifest,
       keyRing,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
