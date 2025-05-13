@@ -6,12 +6,13 @@ import type {
 import type NodeConnectionManager from '../../nodes/NodeConnectionManager.js';
 import type { ContextTimed } from '@matrixai/contexts';
 import type { JSONValue } from '@matrixai/rpc';
+import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
 import { ServerHandler } from '@matrixai/rpc';
 import * as nodesUtils from '../../nodes/utils.js';
 
 class NodesListConnections extends ServerHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   },
   ClientRPCRequestParams,
   ClientRPCResponseResult<NodeConnectionMessage>
@@ -25,7 +26,7 @@ class NodesListConnections extends ServerHandler<
     const {
       nodeConnectionManager,
     }: {
-      nodeConnectionManager: NodeConnectionManager;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     } = this.container;
     const connections = nodeConnectionManager.listConnections();
     for (const connection of connections) {

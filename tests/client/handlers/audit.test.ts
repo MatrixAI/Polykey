@@ -4,6 +4,7 @@ import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
 import type Discovery from '#discovery/Discovery.js';
 import type { GestaltIdEncoded } from '#ids/index.js';
 import type { POJO } from '#index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -46,7 +47,7 @@ describe('auditEventGet', () => {
     }>
   >;
   let tlsConfig: TLSConfig;
-  let nodeConnectionManager: NodeConnectionManager; // Event target pretending to be discovery
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>; // Event target pretending to be discovery
   let discovery: Discovery; // Event target pretending to be discovery
 
   const handleEvent = async (evt) => {
@@ -440,7 +441,7 @@ describe('auditMetricGet', () => {
     }>
   >;
   let tlsConfig: TLSConfig;
-  let nodeConnectionManager: NodeConnectionManager; // Event target pretending to be discovery
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>; // Event target pretending to be discovery
   let discovery: Discovery; // Event target pretending to be discovery
 
   beforeEach(async () => {

@@ -11,11 +11,12 @@ import type {
   SuccessMessage,
 } from '#nodes/agent/types.js';
 import type { ContextTimed } from '@matrixai/contexts';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { jest } from '@jest/globals';
 import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { Timer } from '@matrixai/timer';
 import { destroyed } from '@matrixai/async-init';
-import { UnaryHandler } from '@matrixai/rpc';
+import { UnaryCaller, UnaryHandler } from '@matrixai/rpc';
 import * as nodesTestUtils from './utils.js';
 import * as keysTestUtils from '../keys/utils.js';
 import * as testsUtils from '../utils/index.js';
@@ -28,6 +29,9 @@ import NodesConnectionSignalFinal from '#nodes/agent/handlers/NodesConnectionSig
 import NodesConnectionSignalInitial from '#nodes/agent/handlers/NodesConnectionSignalInitial.js';
 import * as utils from '#utils/index.js';
 import * as nodesUtils from '#nodes/utils.js';
+import rpcClientManifest, {
+  manifestClientCore,
+} from '#nodes/agent/callers/index.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
   ObjectEmpty,
@@ -73,6 +77,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       keyRing: dummyKeyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       tlsConfig: tlsConfig,
+      rpcClientManifest: rpcClientManifest,
     });
     await nodeConnectionManager.start({
       agentService: dummyManifest,
@@ -93,6 +98,7 @@ describe(`${NodeConnectionManager.name}`, () => {
       keyRing: dummyKeyRing,
       logger: logger.getChild(NodeConnectionManager.name),
       tlsConfig: tlsConfig,
+      rpcClientManifest: rpcClientManifest,
     });
     await nodeConnectionManager.start({
       agentService: {} as AgentServerManifest,
@@ -103,6 +109,33 @@ describe(`${NodeConnectionManager.name}`, () => {
       agentService: {} as AgentServerManifest,
       host: localHost as Host,
     });
+    await nodeConnectionManager.stop();
+  });
+  test('NodeConnectionManager with custom client manifest', async () => {
+    const keyPair = keysUtils.generateKeyPair();
+    const nodeId = keysUtils.publicKeyToNodeId(keyPair.publicKey);
+    const tlsConfig = await testsUtils.createTLSConfig(keyPair);
+    const dummyKeyRing = {
+      getNodeId: () => nodeId,
+      keyPair,
+    } as KeyRing;
+
+    const newManifest = {
+      ...manifestClientCore,
+      echo: new UnaryCaller<{ message: string }, { response: string }>(),
+    };
+
+    const nodeConnectionManager = new NodeConnectionManager({
+      keyRing: dummyKeyRing,
+      logger: logger.getChild(NodeConnectionManager.name),
+      tlsConfig: tlsConfig,
+      rpcClientManifest: newManifest,
+    });
+    await nodeConnectionManager.start({
+      agentService: dummyManifest,
+      host: localHost,
+    });
+
     await nodeConnectionManager.stop();
   });
 
@@ -1392,7 +1425,9 @@ describe(`${NodeConnectionManager.name}`, () => {
       await ncmPeer1.nodeConnectionManager.isAuthenticatedP(ncmPeer2.nodeId);
       // Excessive connections will fail due to rate limit
       const connectionsP = (async () => {
-        const connectionPs: Array<Promise<NodeConnection>> = [];
+        const connectionPs: Array<
+          Promise<NodeConnection<AgentClientManifest>>
+        > = [];
         for (let i = 0; i < 21; i++) {
           const connectionP =
             ncmLocal.nodeConnectionManager.createConnectionPunch(

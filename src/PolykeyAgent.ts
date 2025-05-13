@@ -9,6 +9,7 @@ import type {
 import type { PolykeyWorkerManager } from './workers/types.js';
 import type { TLSConfig } from './network/types.js';
 import type { NodeAddress, NodeId, SeedNodes } from './nodes/types.js';
+import type { AgentClientManifest } from './nodes/agent/callers/index.js';
 import path from 'node:path';
 import process from 'process';
 import Logger from '@matrixai/logger';
@@ -45,6 +46,7 @@ import * as workersUtils from './workers/utils.js';
 import * as clientMiddleware from './client/middleware.js';
 import clientServerManifest from './client/handlers/index.js';
 import agentServerManifest from './nodes/agent/handlers/index.js';
+import manifestClient from './nodes/agent/callers/index.js';
 
 interface PolykeyAgent extends createDestroyStartStop.CreateDestroyStartStop {}
 @createDestroyStartStop.CreateDestroyStartStop(
@@ -177,7 +179,9 @@ class PolykeyAgent {
     let gestaltGraph: GestaltGraph | undefined;
     let identitiesManager: IdentitiesManager | undefined;
     let nodeGraph: NodeGraph | undefined;
-    let nodeConnectionManager: NodeConnectionManager | undefined;
+    let nodeConnectionManager:
+      | NodeConnectionManager<AgentClientManifest>
+      | undefined;
     let nodeManager: NodeManager | undefined;
     let discovery: Discovery | undefined;
     let notificationsManager: NotificationsManager | undefined;
@@ -286,6 +290,7 @@ class PolykeyAgent {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig,
+        rpcClientManifest: manifestClient,
         connectionFindConcurrencyLimit:
           optionsDefaulted.nodes.connectionFindConcurrencyLimit,
         connectionFindLocalTimeoutTime:
@@ -469,7 +474,7 @@ class PolykeyAgent {
   public readonly gestaltGraph: GestaltGraph;
   public readonly nodeGraph: NodeGraph;
   public readonly taskManager: TaskManager;
-  public readonly nodeConnectionManager: NodeConnectionManager;
+  public readonly nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   public readonly nodeManager: NodeManager;
   public readonly discovery: Discovery;
   public readonly vaultManager: VaultManager;
@@ -540,7 +545,7 @@ class PolykeyAgent {
     gestaltGraph: GestaltGraph;
     nodeGraph: NodeGraph;
     taskManager: TaskManager;
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     nodeManager: NodeManager;
     discovery: Discovery;
     vaultManager: VaultManager;

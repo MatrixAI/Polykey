@@ -8,6 +8,7 @@ import type {
 import type { NodeId } from '../../../ids/index.js';
 import type NodeConnectionManager from '../../NodeConnectionManager.js';
 import type { Host, Port } from '../../../network/types.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../../validation/index.js';
 import { matchSync } from '../../../utils/index.js';
@@ -18,7 +19,7 @@ import * as nodesErrors from '../../errors.js';
 
 class NodesConnectionSignalFinal extends UnaryHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     logger: Logger;
   },
   AgentRPCRequestParams<HolePunchRequestMessage>,
@@ -33,7 +34,7 @@ class NodesConnectionSignalFinal extends UnaryHandler<
       nodeConnectionManager,
       logger,
     }: {
-      nodeConnectionManager: NodeConnectionManager;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
       logger: Logger;
     } = this.container;
     // Connections should always be validated

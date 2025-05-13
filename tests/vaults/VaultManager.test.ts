@@ -10,6 +10,7 @@ import type NotificationsManager from '#notifications/NotificationsManager.js';
 import type { Host } from '#network/types.js';
 import type { Sigchain } from '#sigchain/index.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -40,6 +41,7 @@ import * as keysUtils from '#keys/utils/index.js';
 import * as vaultsErrors from '#vaults/errors.js';
 import * as vaultsUtils from '#vaults/utils.js';
 import * as nodesUtils from '#nodes/utils.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('VaultManager', () => {
   const localhost = '127.0.0.1';
@@ -596,7 +598,7 @@ describe('VaultManager', () => {
     let allDataDir: string;
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
-    let nodeConnectionManager: NodeConnectionManager;
+    let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let nodeManager: NodeManager;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
@@ -710,6 +712,7 @@ describe('VaultManager', () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig,
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,

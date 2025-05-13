@@ -36,12 +36,12 @@ describe(`${NodeConnection.name}`, () => {
   let rpcServer: RPCServer;
   let clientSocket: QUICSocket;
 
-  const nodeConnections: Array<NodeConnection> = [];
+  const nodeConnections: Array<NodeConnection<AgentClientManifest>> = [];
   /**
    * Adds created nodeConnections to the `nodeConnections` array for automated cleanup.
    * @param nc
    */
-  const extractNodeConnection = (nc: NodeConnection) => {
+  const extractNodeConnection = (nc: NodeConnection<AgentClientManifest>) => {
     nodeConnections.push(nc);
     return nc;
   };
@@ -328,7 +328,8 @@ describe(`${NodeConnection.name}`, () => {
     await destroyP;
   });
   test('should wrap reverse connection', async () => {
-    const nodeConnectionReverseProm = promise<NodeConnection>();
+    const nodeConnectionReverseProm =
+      promise<NodeConnection<AgentClientManifest>>();
     quicServer.removeEventListener(
       quicEvents.EventQUICConnectionStream.name,
       handleEventQUICConnectionStream,
@@ -370,7 +371,8 @@ describe(`${NodeConnection.name}`, () => {
     await destroyP;
   });
   test('should handle reverse streams', async () => {
-    const nodeConnectionReverseProm = promise<NodeConnection>();
+    const nodeConnectionReverseProm =
+      promise<NodeConnection<AgentClientManifest>>();
     const reverseStreamProm = promise<RPCStream<Uint8Array, Uint8Array>>();
     quicServer.removeEventListener(
       quicEvents.EventQUICConnectionStream.name,

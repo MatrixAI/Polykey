@@ -4,6 +4,7 @@ import type { TLSConfig, Host, Port } from '#network/types.js';
 import type { Notification } from '#notifications/types.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import type { NodeAddress, NodeContactAddressData } from '#nodes/types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -44,6 +45,7 @@ import * as networkUtils from '#network/utils.js';
 import * as notificationsUtils from '#notifications/utils.js';
 import * as validationErrors from '#validation/errors.js';
 import { parseNodeId } from '#ids/index.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('nodesAdd', () => {
   const logger = new Logger('nodesAdd test', LogLevel.WARN, [
@@ -64,7 +66,7 @@ describe('nodesAdd', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   beforeEach(async () => {
@@ -105,6 +107,7 @@ describe('nodesAdd', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -266,7 +269,7 @@ describe('nodesClaim', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -336,6 +339,7 @@ describe('nodesClaim', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -454,7 +458,7 @@ describe('nodesFind', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let mockedFindNode: jest.SpiedFunction<typeof NodeManager.prototype.findNode>;
@@ -507,6 +511,7 @@ describe('nodesFind', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -610,7 +615,7 @@ describe('nodesPing', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let mockedPingNode: jest.SpiedFunction<typeof NodeManager.prototype.pingNode>;
@@ -653,6 +658,7 @@ describe('nodesPing', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -766,7 +772,7 @@ describe('nodesGetAll', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   beforeEach(async () => {
@@ -807,6 +813,7 @@ describe('nodesGetAll', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -914,7 +921,7 @@ describe('nodesListConnections', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
   let mockedConnection: jest.SpiedFunction<
@@ -962,6 +969,7 @@ describe('nodesListConnections', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,

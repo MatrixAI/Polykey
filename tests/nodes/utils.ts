@@ -9,6 +9,7 @@ import type Logger from '@matrixai/logger';
 import type { KeyRing } from '#keys/index.js';
 import type { Host, Port } from '#network/types.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { webcrypto } from 'crypto';
 import { IdInternal } from '@matrixai/id';
 import * as fc from 'fast-check';
@@ -18,6 +19,7 @@ import * as keysUtils from '#keys/utils/index.js';
 import * as utils from '#utils/index.js';
 import * as nodesUtils from '#nodes/utils.js';
 import NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 /**
  * Generate random `NodeId`
@@ -262,7 +264,7 @@ function createReasonConverters() {
 
 type NCMState = {
   nodeId: NodeId;
-  nodeConnectionManager: NodeConnectionManager;
+  nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   port: Port;
 };
 
@@ -309,6 +311,7 @@ async function nodeConnectionManagerFactory({
     keyRing: keyRing,
     logger: logger,
     tlsConfig: tlsConfig,
+    rpcClientManifest: rpcClientManifest,
     connectionFindConcurrencyLimit,
     connectionFindLocalTimeoutTime,
     connectionIdleTimeoutTimeMin,

@@ -8,6 +8,7 @@ import type { VaultActions, VaultName } from '#vaults/types.js';
 import type { Notification, NotificationData } from '#notifications/types.js';
 import type GestaltGraph from '#gestalts/GestaltGraph.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -35,6 +36,7 @@ import * as vaultsUtils from '#vaults/utils.js';
 import * as nodesUtils from '#nodes/utils.js';
 import * as keysUtils from '#keys/utils/index.js';
 import { polykeyWorkerManifest } from '#workers/index.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -59,7 +61,7 @@ describe('NotificationsManager', () => {
   let db: DB;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let keyRing: KeyRing;
   let sigchain: Sigchain;
@@ -110,6 +112,7 @@ describe('NotificationsManager', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig,
+      rpcClientManifest: rpcClientManifest,
       authenticateNetworkForwardCallback:
         nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
           testsUtils.testNetworkName,

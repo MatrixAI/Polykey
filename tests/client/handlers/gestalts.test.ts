@@ -18,6 +18,7 @@ import type { Host } from '#network/types.js';
 import type { ClaimLinkIdentity } from '#claims/payloads/index.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import type { DiscoveryQueueInfo } from '#discovery/types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -81,6 +82,7 @@ import * as gestaltsErrors from '#gestalts/errors.js';
 import * as networkUtils from '#network/utils.js';
 import * as keysUtils from '#keys/utils/index.js';
 import * as utils from '#utils/index.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 describe('gestaltsActionsByIdentity', () => {
   const logger = new Logger('gestaltsActionsByIdentity test', LogLevel.WARN, [
@@ -393,7 +395,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -450,6 +452,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -579,7 +582,7 @@ describe('gestaltsDiscoveryByNode', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
 
   beforeEach(async () => {
@@ -637,6 +640,7 @@ describe('gestaltsDiscoveryByNode', () => {
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -763,7 +767,7 @@ describe('gestaltsDiscoveryQueue', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
 
   beforeEach(async () => {
@@ -821,6 +825,7 @@ describe('gestaltsDiscoveryQueue', () => {
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -1393,7 +1398,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   let testProvider: TestProvider;
   const connectedIdentity = 'trusted-node' as IdentityId;
@@ -1455,6 +1460,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -1747,7 +1753,7 @@ describe('gestaltsGestaltTrustByNode', () => {
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
   let nodeManager: NodeManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   let testProvider: TestProvider;
   const connectedIdentity = 'trusted-node' as IdentityId;
@@ -1875,6 +1881,7 @@ describe('gestaltsGestaltTrustByNode', () => {
       nodeGraph,
       // @ts-ignore: TLS not needed for this test
       tlsConfig: {},
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,

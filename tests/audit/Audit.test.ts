@@ -1,5 +1,6 @@
 import type { ConnectionData, Host, Port } from '#network/types.js';
 import type NodeConnectionManager from '#nodes/NodeConnectionManager.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -23,7 +24,7 @@ describe(Audit.name, () => {
 
   let dataDir: string;
   let db: DB;
-  let mockNodeConnectionManager: NodeConnectionManager;
+  let mockNodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -38,7 +39,8 @@ describe(Audit.name, () => {
         ops: polykeyWorkerManifest,
       },
     });
-    mockNodeConnectionManager = new EventTarget() as NodeConnectionManager;
+    mockNodeConnectionManager =
+      new EventTarget() as NodeConnectionManager<AgentClientManifest>;
   });
   afterEach(async () => {
     await db.stop();

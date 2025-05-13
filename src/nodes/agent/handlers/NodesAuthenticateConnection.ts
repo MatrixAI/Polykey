@@ -7,13 +7,14 @@ import type {
 } from '../types.js';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type { JSONValue } from '../../../types.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { DuplexHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
 
 class NodesAuthenticateConnection extends DuplexHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   },
   AgentRPCRequestParams<SuccessMessage | NodesAuthenticateConnectionMessage>,
   AgentRPCResponseResult<SuccessMessage | NodesAuthenticateConnectionMessage>
@@ -33,7 +34,7 @@ class NodesAuthenticateConnection extends DuplexHandler<
     const {
       nodeConnectionManager,
     }: {
-      nodeConnectionManager: NodeConnectionManager;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     } = this.container;
 
     // Connections should always be validated

@@ -33,6 +33,7 @@ import type {
 import type NodeConnectionManager from './NodeConnectionManager.js';
 import type NodeGraph from './NodeGraph.js';
 import type { ServicePOJO } from '@matrixai/mdns';
+import type { AgentClientManifest } from './agent/callers/index.js';
 import { withF } from '@matrixai/resources';
 import { events as mdnsEvents, MDNS, utils as mdnsUtils } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
@@ -100,7 +101,7 @@ class NodeManager {
   protected gestaltGraph: GestaltGraph;
   protected taskManager: TaskManager;
   protected nodeGraph: NodeGraph;
-  protected nodeConnectionManager: NodeConnectionManager;
+  protected nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   protected mdnsOptions:
     | {
         groups: Array<Host>;
@@ -243,7 +244,7 @@ class NodeManager {
     );
     const successfulConnections = connectionResults.filter(
       (r) => r.status === 'fulfilled',
-    ) as Array<PromiseFulfilledResult<NodeConnection>>;
+    ) as Array<PromiseFulfilledResult<NodeConnection<AgentClientManifest>>>;
     if (successfulConnections.length === 0) {
       const failedConnectionErrors = connectionResults
         .filter((r) => r.status === 'rejected')
@@ -343,7 +344,7 @@ class NodeManager {
       groups: Array<Host>;
       port: Port;
     };
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     connectionConnectTimeoutTime?: number;
     refreshBucketDelayTime?: number;
     refreshBucketDelayJitter?: number;
@@ -459,7 +460,7 @@ class NodeManager {
   public acquireConnection(
     nodeId: NodeId,
     ctx: ContextTimed,
-  ): ResourceAcquire<NodeConnection> {
+  ): ResourceAcquire<NodeConnection<AgentClientManifest>> {
     if (this.keyRing.getNodeId().equals(nodeId)) {
       throw new nodesErrors.ErrorNodeManagerNodeIdOwn();
     }
@@ -497,13 +498,13 @@ class NodeManager {
   public async withConnF<T>(
     nodeId: NodeId,
     ctx: Partial<ContextTimedInput> | undefined,
-    f: (conn: NodeConnection) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
   ): Promise<T>;
   @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   public async withConnF<T>(
     nodeId: NodeId,
     @decorators.context ctx: ContextTimed,
-    f: (conn: NodeConnection) => Promise<T>,
+    f: (conn: NodeConnection<AgentClientManifest>) => Promise<T>,
   ): Promise<T> {
     return await withF(
       [this.acquireConnection(nodeId, ctx)],
@@ -525,14 +526,18 @@ class NodeManager {
   public withConnG<T, TReturn, TNext>(
     nodeId: NodeId,
     ctx: Partial<ContextTimedInput> | undefined,
-    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+    g: (
+      conn: NodeConnection<AgentClientManifest>,
+    ) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext>;
   @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @decorators.timed()
   public async *withConnG<T, TReturn, TNext>(
     nodeId: NodeId,
     @decorators.context ctx: ContextTimed,
-    g: (conn: NodeConnection) => AsyncGenerator<T, TReturn, TNext>,
+    g: (
+      conn: NodeConnection<AgentClientManifest>,
+    ) => AsyncGenerator<T, TReturn, TNext>,
   ): AsyncGenerator<T, TReturn, TNext> {
     const acquire = this.acquireConnection(nodeId, ctx);
     const [release, conn] = await acquire();
@@ -707,7 +712,7 @@ class NodeManager {
       ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeSignal(
         async (nodeIdTarget, nodeIdSignaller) => {
-          let nodeConnection: NodeConnection | undefined;
+          let nodeConnection: NodeConnection<AgentClientManifest> | undefined;
           if (
             !this.nodeConnectionManager.hasConnection(nodeIdTarget) &&
             nodeIdSignaller != null
@@ -1162,7 +1167,7 @@ class NodeManager {
   @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @decorators.timedCancellable(
     true,
-    (nodeConnectionManager: NodeConnectionManager) =>
+    (nodeConnectionManager: NodeConnectionManager<AgentClientManifest>) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async pingNode(
@@ -1194,7 +1199,7 @@ class NodeManager {
   @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
   @decorators.timedCancellable(
     true,
-    (nodeConnectionManager: NodeConnectionManager) =>
+    (nodeConnectionManager: NodeConnectionManager<AgentClientManifest>) =>
       nodeConnectionManager.connectionConnectTimeoutTime,
   )
   public async pingNodeAddress(

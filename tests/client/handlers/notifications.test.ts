@@ -12,6 +12,7 @@ import type {
 } from '#ids/types.js';
 import type { VaultName } from '#vaults/types.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -53,6 +54,7 @@ import * as nodesUtils from '#nodes/utils.js';
 import * as keysUtils from '#keys/utils/index.js';
 import * as networkUtils from '#network/utils.js';
 import * as notificationsUtils from '#notifications/utils.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 async function* arrayToGenerator<T>(
   array: Array<T>,
@@ -81,7 +83,7 @@ describe('notificationsInboxClear', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -134,6 +136,7 @@ describe('notificationsInboxClear', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -250,7 +253,7 @@ describe('notificationsInboxRead', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -304,6 +307,7 @@ describe('notificationsInboxRead', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -678,7 +682,7 @@ describe('notificationsInboxRemove', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -731,6 +735,7 @@ describe('notificationsInboxRemove', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -853,7 +858,7 @@ describe('notificationsOutboxClear', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -906,6 +911,7 @@ describe('notificationsOutboxClear', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -1022,7 +1028,7 @@ describe('notificationsOutboxRead', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -1076,6 +1082,7 @@ describe('notificationsOutboxRead', () => {
       keyRing,
       // TLS not needed for this test
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -1380,7 +1387,7 @@ describe('notificationsOutboxRemove', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -1433,6 +1440,7 @@ describe('notificationsOutboxRemove', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,
@@ -1555,7 +1563,7 @@ describe('notificationsSend', () => {
   }>;
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
-  let nodeConnectionManager: NodeConnectionManager;
+  let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let nodeManager: NodeManager;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
@@ -1605,6 +1613,7 @@ describe('notificationsSend', () => {
     nodeConnectionManager = new NodeConnectionManager({
       keyRing,
       tlsConfig: {} as TLSConfig,
+      rpcClientManifest: rpcClientManifest,
       connectionConnectTimeoutTime: 2000,
       connectionIdleTimeoutTimeMin: 2000,
       connectionIdleTimeoutTimeScale: 0,

@@ -11,6 +11,7 @@ import type {
 } from '#nodes/agent/types.js';
 import type { JSONValue, ObjectEmpty } from '#index.js';
 import type { ContextTimed } from '@matrixai/contexts';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -46,6 +47,7 @@ import { Sigchain } from '#sigchain/index.js';
 import { KeyRing } from '#keys/index.js';
 import NodeConnectionQueue from '#nodes/NodeConnectionQueue.js';
 import * as utils from '#utils/index.js';
+import rpcClientManifest from '#nodes/agent/callers/index.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
   ObjectEmpty,
@@ -116,7 +118,7 @@ describe(`${NodeManager.name}`, () => {
         nodeConnectionManager: {
           addEventListener: (..._args) => {},
           removeEventListener: (..._args) => {},
-        } as NodeConnectionManager,
+        } as NodeConnectionManager<AgentClientManifest>,
         nodeGraph: {} as nodeGraph,
         sigchain: {} as Sigchain,
         taskManager,
@@ -154,7 +156,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchain: Sigchain;
     let gestaltGraph: GestaltGraph;
     let nodeGraph: NodeGraph;
-    let nodeConnectionManager: NodeConnectionManager;
+    let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
     let nodeManager: NodeManager;
 
@@ -196,6 +198,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,
@@ -431,7 +434,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchain: Sigchain;
     let gestaltGraph: GestaltGraph;
     let nodeGraph: NodeGraph;
-    let nodeConnectionManager: NodeConnectionManager;
+    let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
     let nodeManager: NodeManager;
 
@@ -442,7 +445,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchainPeer: Sigchain;
     let gestaltGraphPeer: GestaltGraph;
     let nodeGraphPeer: NodeGraph;
-    let nodeConnectionManagerPeer: NodeConnectionManager;
+    let nodeConnectionManagerPeer: NodeConnectionManager<AgentClientManifest>;
     let taskManagerPeer: TaskManager;
     let nodeManagerPeer: NodeManager;
 
@@ -484,6 +487,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,
@@ -556,6 +560,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,
@@ -944,7 +949,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchain: Sigchain;
     let gestaltGraph: GestaltGraph;
     let nodeGraph: NodeGraph;
-    let nodeConnectionManager: NodeConnectionManager;
+    let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
     let nodeManager: NodeManager;
 
@@ -955,7 +960,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchainPeer: Sigchain;
     let gestaltGraphPeer: GestaltGraph;
     let nodeGraphPeer: NodeGraph;
-    let nodeConnectionManagerPeer: NodeConnectionManager;
+    let nodeConnectionManagerPeer: NodeConnectionManager<AgentClientManifest>;
     let taskManagerPeer: TaskManager;
     let nodeManagerPeer: NodeManager;
 
@@ -997,6 +1002,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,
@@ -1070,6 +1076,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManagerPeer = new NodeConnectionManager({
         keyRing: keyRingPeer,
         tlsConfig: await testsUtils.createTLSConfig(keyRingPeer.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,
@@ -1170,7 +1177,7 @@ describe(`${NodeManager.name}`, () => {
     let sigchain: Sigchain;
     let gestaltGraph: GestaltGraph;
     let nodeGraph: NodeGraph;
-    let nodeConnectionManager: NodeConnectionManager;
+    let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
     let nodeManager: NodeManager;
 
@@ -1265,6 +1272,7 @@ describe(`${NodeManager.name}`, () => {
       nodeConnectionManager = new NodeConnectionManager({
         keyRing,
         tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        rpcClientManifest: rpcClientManifest,
         authenticateNetworkForwardCallback:
           nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
             testsUtils.testNetworkName,

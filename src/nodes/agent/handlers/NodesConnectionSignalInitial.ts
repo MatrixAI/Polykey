@@ -8,6 +8,7 @@ import type { NodeId } from '../../../ids/index.js';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type { Host, Port } from '../../../network/types.js';
 import type { JSONValue } from '../../../types.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../../validation/index.js';
 import { matchSync } from '../../../utils/index.js';
@@ -19,7 +20,7 @@ import * as ids from '../../../ids/index.js';
 
 class NodesConnectionSignalInitial extends UnaryHandler<
   {
-    nodeConnectionManager: NodeConnectionManager;
+    nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   },
   AgentRPCRequestParams<HolePunchSignalMessage>,
   AgentRPCResponseResult<AddressMessage>
@@ -32,7 +33,7 @@ class NodesConnectionSignalInitial extends UnaryHandler<
     const {
       nodeConnectionManager,
     }: {
-      nodeConnectionManager: NodeConnectionManager;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     } = this.container;
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);

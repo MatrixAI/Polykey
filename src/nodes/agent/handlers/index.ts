@@ -9,6 +9,7 @@ import type NodeManager from '../../../nodes/NodeManager.js';
 import type NodeConnectionManager from '../../../nodes/NodeConnectionManager.js';
 import type NotificationsManager from '../../../notifications/NotificationsManager.js';
 import type VaultManager from '../../../vaults/VaultManager.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import NodesAuthenticateConnection from './NodesAuthenticateConnection.js';
 import NodesAuditEventsGet from './NodesAuditEventsGet.js';
 import NodesClaimsGet from './NodesClaimsGet.js';
@@ -33,7 +34,7 @@ const manifestServer = (container: {
   nodeGraph: NodeGraph;
   acl: ACL;
   nodeManager: NodeManager;
-  nodeConnectionManager: NodeConnectionManager;
+  nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   keyRing: KeyRing;
   logger: Logger;
   notificationsManager: NotificationsManager;
