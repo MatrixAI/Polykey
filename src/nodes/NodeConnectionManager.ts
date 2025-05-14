@@ -5,6 +5,7 @@ import type {
   ClientManifest,
   JSONRPCRequest,
   JSONRPCResponse,
+  ServerManifest,
 } from '@matrixai/rpc';
 import type {
   AuthenticateNetworkForwardCallback,
@@ -16,7 +17,6 @@ import type {
   NodesAuthenticateConnectionMessage,
   SuccessMessage,
 } from './agent/types.js';
-import type { AgentServerManifest } from './agent/handlers/index.js';
 import type { AgentClientManifestNodeConnectionManager } from './agent/callers/index.js';
 import type KeyRing from '../keys/KeyRing.js';
 import type { CertificatePEM } from '../keys/types.js';
@@ -566,7 +566,7 @@ class NodeConnectionManager<
     reuseAddr,
     ipv6Only,
   }: {
-    agentService: AgentServerManifest;
+    agentService: ServerManifest;
     host?: Host;
     port?: Port;
     reuseAddr?: boolean;
