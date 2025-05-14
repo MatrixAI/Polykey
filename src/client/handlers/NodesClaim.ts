@@ -7,6 +7,7 @@ import type {
 } from '../types.js';
 import type { NodeId } from '../../ids/index.js';
 import type NodeManager from '../../nodes/NodeManager.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids/index.js';
 import { matchSync } from '../../utils/index.js';
@@ -15,7 +16,7 @@ import { validateSync } from '../../validation/index.js';
 class NodesClaim extends UnaryHandler<
   {
     db: DB;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
   },
   ClientRPCRequestParams<ClaimNodeMessage>,
   ClientRPCResponseResult<SuccessMessage>
@@ -23,7 +24,10 @@ class NodesClaim extends UnaryHandler<
   public handle = async (
     input: ClientRPCRequestParams<ClaimNodeMessage>,
   ): Promise<ClientRPCResponseResult<SuccessMessage>> => {
-    const { db, nodeManager }: { db: DB; nodeManager: NodeManager } =
+    const {
+      db,
+      nodeManager,
+    }: { db: DB; nodeManager: NodeManager<AgentClientManifest> } =
       this.container;
     const {
       nodeId,

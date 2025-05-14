@@ -9,6 +9,7 @@ import type {
 import type { NodeId } from '../../ids/index.js';
 import type { Host, Port } from '../../network/types.js';
 import type NodeManager from '../../nodes/NodeManager.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import { matchSync } from '../../utils/index.js';
 import { validateSync } from '../../validation/index.js';
@@ -19,7 +20,7 @@ import * as nodeErrors from '../../nodes/errors.js';
 class NodesAdd extends UnaryHandler<
   {
     db: DB;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
   },
   ClientRPCRequestParams<NodesAddMessage>,
   ClientRPCResponseResult
@@ -30,7 +31,10 @@ class NodesAdd extends UnaryHandler<
     _meta: Record<string, JSONValue>,
     ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult> => {
-    const { db, nodeManager }: { db: DB; nodeManager: NodeManager } =
+    const {
+      db,
+      nodeManager,
+    }: { db: DB; nodeManager: NodeManager<AgentClientManifest> } =
       this.container;
     const {
       nodeId,

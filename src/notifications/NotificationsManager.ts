@@ -16,6 +16,7 @@ import type {
 } from '../ids/types.js';
 import type { Task, TaskHandler, TaskInfo } from '../tasks/types.js';
 import type { TaskManager } from '../tasks/index.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { createDestroyStartStop } from '@matrixai/async-init';
@@ -67,7 +68,7 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap?: number;
@@ -100,7 +101,7 @@ class NotificationsManager {
   protected acl: ACL;
   protected db: DB;
   protected keyRing: KeyRing;
-  protected nodeManager: NodeManager;
+  protected nodeManager: NodeManager<AgentClientManifest>;
   protected taskManager: TaskManager;
   protected messageCap: number;
   protected sendNotificationRetries: number;
@@ -225,7 +226,7 @@ class NotificationsManager {
   }: {
     acl: ACL;
     db: DB;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     taskManager: TaskManager;
     keyRing: KeyRing;
     messageCap: number;

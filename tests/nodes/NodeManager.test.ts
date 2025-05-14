@@ -97,7 +97,7 @@ describe(`${NodeManager.name}`, () => {
   test('NodeManager readiness', async () => {
     let db: DB | undefined;
     let taskManager: TaskManager | undefined;
-    let nodeManager: NodeManager | undefined;
+    let nodeManager: NodeManager<AgentClientManifest> | undefined;
     try {
       // Creating dependencies
       const dbPath = path.join(dataDir, 'db');
@@ -158,7 +158,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
-    let nodeManager: NodeManager;
+    let nodeManager: NodeManager<AgentClientManifest>;
 
     beforeEach(async () => {
       basePath = path.join(dataDir, 'local');
@@ -436,7 +436,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
-    let nodeManager: NodeManager;
+    let nodeManager: NodeManager<AgentClientManifest>;
 
     let basePathPeer: string;
     let keyRingPeer: KeyRing;
@@ -447,7 +447,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraphPeer: NodeGraph;
     let nodeConnectionManagerPeer: NodeConnectionManager<AgentClientManifest>;
     let taskManagerPeer: TaskManager;
-    let nodeManagerPeer: NodeManager;
+    let nodeManagerPeer: NodeManager<AgentClientManifest>;
 
     beforeEach(async () => {
       basePath = path.join(dataDir, 'local');
@@ -951,7 +951,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
-    let nodeManager: NodeManager;
+    let nodeManager: NodeManager<AgentClientManifest>;
 
     let basePathPeer: string;
     let keyRingPeer: KeyRing;
@@ -962,7 +962,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraphPeer: NodeGraph;
     let nodeConnectionManagerPeer: NodeConnectionManager<AgentClientManifest>;
     let taskManagerPeer: TaskManager;
-    let nodeManagerPeer: NodeManager;
+    let nodeManagerPeer: NodeManager<AgentClientManifest>;
 
     beforeEach(async () => {
       basePath = path.join(dataDir, 'local');
@@ -1179,7 +1179,7 @@ describe(`${NodeManager.name}`, () => {
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
     let taskManager: TaskManager;
-    let nodeManager: NodeManager;
+    let nodeManager: NodeManager<AgentClientManifest>;
 
     // Will create 6 peers forming a simple network
     let ncmPeers: Array<

@@ -62,7 +62,7 @@ describe('NotificationsManager', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let keyRing: KeyRing;
   let sigchain: Sigchain;
 

@@ -5,13 +5,14 @@ import type {
 } from '../types.js';
 import type NodeManager from '../../../nodes/NodeManager.js';
 import type { JSONValue } from '../../../types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
 
 class NodesClaimNetworkSign extends UnaryHandler<
   {
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
   },
   AgentRPCRequestParams<AgentClaimMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
@@ -21,7 +22,8 @@ class NodesClaimNetworkSign extends UnaryHandler<
     _cancel: (reason?: any) => void,
     meta: Record<string, JSONValue> | undefined,
   ): Promise<AgentRPCResponseResult<AgentClaimMessage>> => {
-    const { nodeManager }: { nodeManager: NodeManager } = this.container;
+    const { nodeManager }: { nodeManager: NodeManager<AgentClientManifest> } =
+      this.container;
     // Connections should always be validated
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {

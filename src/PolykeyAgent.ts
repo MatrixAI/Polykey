@@ -182,7 +182,7 @@ class PolykeyAgent {
     let nodeConnectionManager:
       | NodeConnectionManager<AgentClientManifest>
       | undefined;
-    let nodeManager: NodeManager | undefined;
+    let nodeManager: NodeManager<AgentClientManifest> | undefined;
     let discovery: Discovery | undefined;
     let notificationsManager: NotificationsManager | undefined;
     let vaultManager: VaultManager | undefined;
@@ -475,7 +475,7 @@ class PolykeyAgent {
   public readonly nodeGraph: NodeGraph;
   public readonly taskManager: TaskManager;
   public readonly nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  public readonly nodeManager: NodeManager;
+  public readonly nodeManager: NodeManager<AgentClientManifest>;
   public readonly discovery: Discovery;
   public readonly vaultManager: VaultManager;
   public readonly notificationsManager: NotificationsManager;
@@ -546,7 +546,7 @@ class PolykeyAgent {
     nodeGraph: NodeGraph;
     taskManager: TaskManager;
     nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     discovery: Discovery;
     vaultManager: VaultManager;
     notificationsManager: NotificationsManager;

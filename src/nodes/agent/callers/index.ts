@@ -14,24 +14,33 @@ import vaultsGitInfoGet from './vaultsGitInfoGet.js';
 import vaultsGitPackGet from './vaultsGitPackGet.js';
 import vaultsScan from './vaultsScan.js';
 
-const manifestClientCore = {
+const manifestClientNodeConnectionManager = {
   nodesConnectionSignalFinal,
   nodesConnectionSignalInitial,
   nodesAuthenticateConnection,
 } satisfies ClientManifest;
 
-type AgentClientManifestCore = typeof manifestClientCore & ClientManifest;
+type AgentClientManifestNodeConnectionManager =
+  typeof manifestClientNodeConnectionManager & ClientManifest;
+
+const manifestClientNodeManager = {
+  nodesClaimsGet,
+  nodesClosestActiveConnectionsGet,
+  nodesClosestLocalNodesGet,
+  nodesCrossSignClaim,
+  ...manifestClientNodeConnectionManager,
+} satisfies ClientManifest;
+
+type AgentClientManifestNodeManager = typeof manifestClientNodeManager &
+  ClientManifest;
 
 /**
  * Client manifest
  */
 const manifestClient = {
-  ...manifestClientCore,
+  ...manifestClientNodeConnectionManager,
+  ...manifestClientNodeManager,
   nodesAuditEventsGet,
-  nodesClaimsGet,
-  nodesClosestActiveConnectionsGet,
-  nodesClosestLocalNodesGet,
-  nodesCrossSignClaim,
   nodesClaimNetworkSign,
   nodesClaimNetworkVerify,
   notificationsSend,
@@ -45,7 +54,8 @@ type AgentClientManifest = typeof manifestClient;
 export default manifestClient;
 
 export {
-  manifestClientCore,
+  manifestClientNodeConnectionManager,
+  manifestClientNodeManager,
   nodesAuthenticateConnection,
   nodesAuditEventsGet,
   nodesClaimsGet,
@@ -62,4 +72,8 @@ export {
   vaultsScan,
 };
 
-export type { AgentClientManifestCore, AgentClientManifest };
+export type {
+  AgentClientManifestNodeConnectionManager,
+  AgentClientManifestNodeManager,
+  AgentClientManifest,
+};

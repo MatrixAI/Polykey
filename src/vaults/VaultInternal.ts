@@ -19,6 +19,7 @@ import type { POJO } from '../types.js';
 import type { NodeId, NodeIdEncoded } from '../ids/types.js';
 import type KeyRing from '../keys/KeyRing.js';
 import type NodeManager from '../nodes/NodeManager.js';
+import type { AgentClientManifest } from '../nodes/agent/callers/index.js';
 import type agentClientManifest from '../nodes/agent/callers/index.js';
 import path from 'node:path';
 import git from 'isomorphic-git';
@@ -164,7 +165,7 @@ class VaultInternal {
       vaultsDbPath: LevelPath;
       efs: EncryptedFS;
       keyRing: KeyRing;
-      nodeManager: NodeManager;
+      nodeManager: NodeManager<AgentClientManifest>;
       logger?: Logger;
     },
     tran?: DBTransaction,
@@ -190,7 +191,7 @@ class VaultInternal {
       vaultsDbPath: LevelPath;
       efs: EncryptedFS;
       keyRing: KeyRing;
-      nodeManager: NodeManager;
+      nodeManager: NodeManager<AgentClientManifest>;
       logger?: Logger;
     },
     tran: DBTransaction | undefined,
@@ -721,7 +722,7 @@ class VaultInternal {
       pullNodeId,
       pullVaultNameOrId,
     }: {
-      nodeManager: NodeManager;
+      nodeManager: NodeManager<AgentClientManifest>;
       pullNodeId?: NodeId;
       pullVaultNameOrId?: VaultId | VaultName;
     },
@@ -736,7 +737,7 @@ class VaultInternal {
       pullNodeId,
       pullVaultNameOrId,
     }: {
-      nodeManager: NodeManager;
+      nodeManager: NodeManager<AgentClientManifest>;
       pullNodeId?: NodeId;
       pullVaultNameOrId?: VaultId | VaultName;
     },

@@ -49,7 +49,7 @@ describe('notificationsSend', () => {
   let sigchain: Sigchain;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let rpcServer: RPCServer;
   let quicServer: QUICServer;

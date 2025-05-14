@@ -394,7 +394,7 @@ describe('gestaltsDiscoveryByIdentity', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   beforeEach(async () => {
@@ -581,7 +581,7 @@ describe('gestaltsDiscoveryByNode', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
 
@@ -766,7 +766,7 @@ describe('gestaltsDiscoveryQueue', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
 
@@ -1397,7 +1397,7 @@ describe('gestaltsGestaltTrustByIdentity', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   let testProvider: TestProvider;
@@ -1752,7 +1752,7 @@ describe('gestaltsGestaltTrustByNode', () => {
   let identitiesManager: IdentitiesManager;
   let nodeGraph: NodeGraph;
   let sigchain: Sigchain;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   let discovery: Discovery;
   let testProvider: TestProvider;

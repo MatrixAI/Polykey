@@ -6,6 +6,7 @@ import type {
 } from '../types.js';
 import type NodeManager from '../../NodeManager.js';
 import type ACL from '../../../acl/ACL.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { DuplexHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';
@@ -16,7 +17,7 @@ import * as nodesErrors from '../../errors.js';
 class NodesCrossSignClaim extends DuplexHandler<
   {
     acl: ACL;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
   },
   AgentRPCRequestParams<AgentClaimMessage>,
   AgentRPCResponseResult<AgentClaimMessage>
@@ -31,7 +32,7 @@ class NodesCrossSignClaim extends DuplexHandler<
       nodeManager,
     }: {
       acl: ACL;
-      nodeManager: NodeManager;
+      nodeManager: NodeManager<AgentClientManifest>;
     } = this.container;
     const requestingNodeId = agentUtils.nodeIdFromMeta(meta);
     if (requestingNodeId == null) {

@@ -61,7 +61,7 @@ describe('Discovery', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let db: DB;
   let acl: ACL;
   let keyRing: KeyRing;

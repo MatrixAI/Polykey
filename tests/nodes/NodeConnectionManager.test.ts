@@ -30,7 +30,7 @@ import NodesConnectionSignalInitial from '#nodes/agent/handlers/NodesConnectionS
 import * as utils from '#utils/index.js';
 import * as nodesUtils from '#nodes/utils.js';
 import rpcClientManifest, {
-  manifestClientCore,
+  manifestClientNodeConnectionManager,
 } from '#nodes/agent/callers/index.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
@@ -121,7 +121,7 @@ describe(`${NodeConnectionManager.name}`, () => {
     } as KeyRing;
 
     const newManifest = {
-      ...manifestClientCore,
+      ...manifestClientNodeConnectionManager,
       echo: new UnaryCaller<{ message: string }, { response: string }>(),
     };
 

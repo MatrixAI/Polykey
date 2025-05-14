@@ -74,7 +74,7 @@ describe('VaultManager', () => {
   const dummyGestaltGraph = {} as GestaltGraph;
   const dummySigchain = {} as Sigchain;
   const dummyACL = {} as ACL;
-  const dummyNodeManager = {} as NodeManager;
+  const dummyNodeManager = {} as NodeManager<AgentClientManifest>;
   const dummyNotificationsManager = {} as NotificationsManager;
 
   beforeEach(async () => {
@@ -599,7 +599,7 @@ describe('VaultManager', () => {
     let keyRing: KeyRing;
     let nodeGraph: NodeGraph;
     let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-    let nodeManager: NodeManager;
+    let nodeManager: NodeManager<AgentClientManifest>;
     let remoteKeynode1: PolykeyAgent, remoteKeynode2: PolykeyAgent;
     let localNodeId: NodeId;
     let taskManager: TaskManager;

@@ -17,7 +17,7 @@ import type {
   SuccessMessage,
 } from './agent/types.js';
 import type { AgentServerManifest } from './agent/handlers/index.js';
-import type { AgentClientManifestCore } from './agent/callers/index.js';
+import type { AgentClientManifestNodeConnectionManager } from './agent/callers/index.js';
 import type KeyRing from '../keys/KeyRing.js';
 import type { CertificatePEM } from '../keys/types.js';
 import type {
@@ -125,16 +125,19 @@ const rpcMethodsWhitelist = ['nodesAuthenticateConnection'];
  * The NodeConnectionManager encapsulates `QUICServer`.
  * While the NodeConnection encapsulates `QUICClient`.
  */
-// eslint-disable-next-line
-interface NodeConnectionManager<Manifest extends AgentClientManifestCore>
-  extends startStop.StartStop {}
+interface NodeConnectionManager<
+  // eslint-disable-next-line
+  Manifest extends AgentClientManifestNodeConnectionManager,
+> extends startStop.StartStop {}
 @startStop.StartStop({
   eventStart: nodesEvents.EventNodeConnectionManagerStart,
   eventStarted: nodesEvents.EventNodeConnectionManagerStarted,
   eventStop: nodesEvents.EventNodeConnectionManagerStop,
   eventStopped: nodesEvents.EventNodeConnectionManagerStopped,
 })
-class NodeConnectionManager<Manifest extends AgentClientManifestCore> {
+class NodeConnectionManager<
+  Manifest extends AgentClientManifestNodeConnectionManager,
+> {
   /**
    * Alpha constant for kademlia
    * The number of the closest nodes to contact initially

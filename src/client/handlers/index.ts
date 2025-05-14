@@ -108,7 +108,7 @@ const serverManifest = (container: {
   acl: ACL;
   audit: Audit;
   notificationsManager: NotificationsManager;
-  nodeManager: NodeManager;
+  nodeManager: NodeManager<AgentClientManifest>;
   nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   nodeGraph: NodeGraph;
   vaultManager: VaultManager;

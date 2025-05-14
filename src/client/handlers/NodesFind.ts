@@ -8,6 +8,7 @@ import type {
 } from '../types.js';
 import type { NodeId } from '../../ids/index.js';
 import type NodeManager from '../../nodes/NodeManager.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import { validateSync } from '../../validation/index.js';
 import { matchSync } from '../../utils/index.js';
@@ -16,7 +17,7 @@ import * as nodesErrors from '../../nodes/errors.js';
 
 class NodesFind extends UnaryHandler<
   {
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
   },
   ClientRPCRequestParams<NodeIdMessage>,
   ClientRPCResponseResult<NodesFindMessage>
@@ -27,7 +28,8 @@ class NodesFind extends UnaryHandler<
     _meta: Record<string, JSONValue>,
     ctx: ContextTimed,
   ): Promise<ClientRPCResponseResult<NodesFindMessage>> => {
-    const { nodeManager }: { nodeManager: NodeManager } = this.container;
+    const { nodeManager }: { nodeManager: NodeManager<AgentClientManifest> } =
+      this.container;
     const {
       nodeId,
     }: {

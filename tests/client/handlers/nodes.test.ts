@@ -67,7 +67,7 @@ describe('nodesAdd', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let sigchain: Sigchain;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -270,7 +270,7 @@ describe('nodesClaim', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -459,7 +459,7 @@ describe('nodesFind', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let sigchain: Sigchain;
   let mockedFindNode: jest.SpiedFunction<typeof NodeManager.prototype.findNode>;
   beforeEach(async () => {
@@ -616,7 +616,7 @@ describe('nodesPing', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let sigchain: Sigchain;
   let mockedPingNode: jest.SpiedFunction<typeof NodeManager.prototype.pingNode>;
   beforeEach(async () => {
@@ -773,7 +773,7 @@ describe('nodesGetAll', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let sigchain: Sigchain;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -922,7 +922,7 @@ describe('nodesListConnections', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let sigchain: Sigchain;
   let mockedConnection: jest.SpiedFunction<
     typeof NodeConnectionManager.prototype.listConnections

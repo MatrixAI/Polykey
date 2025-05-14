@@ -84,7 +84,7 @@ describe('notificationsInboxClear', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -254,7 +254,7 @@ describe('notificationsInboxRead', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -683,7 +683,7 @@ describe('notificationsInboxRemove', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -859,7 +859,7 @@ describe('notificationsOutboxClear', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -1029,7 +1029,7 @@ describe('notificationsOutboxRead', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -1388,7 +1388,7 @@ describe('notificationsOutboxRemove', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;
@@ -1564,7 +1564,7 @@ describe('notificationsSend', () => {
   let nodeGraph: NodeGraph;
   let taskManager: TaskManager;
   let nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
-  let nodeManager: NodeManager;
+  let nodeManager: NodeManager<AgentClientManifest>;
   let notificationsManager: NotificationsManager;
   let acl: ACL;
   let sigchain: Sigchain;

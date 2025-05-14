@@ -19,6 +19,7 @@ import type ACL from '../acl/ACL.js';
 import type { PolykeyWorkerManager } from '../workers/types.js';
 import type { RemoteInfo } from './VaultInternal.js';
 import type { VaultAction } from './types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import path from 'node:path';
 import { DB } from '@matrixai/db';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';
@@ -82,7 +83,7 @@ class VaultManager {
     db: DB;
     acl: ACL;
     keyRing: KeyRing;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     fs?: FileSystem;
@@ -116,7 +117,7 @@ class VaultManager {
   protected db: DB;
   protected acl: ACL;
   protected keyRing: KeyRing;
-  protected nodeManager: NodeManager;
+  protected nodeManager: NodeManager<AgentClientManifest>;
   protected gestaltGraph: GestaltGraph;
   protected notificationsManager: NotificationsManager;
   protected vaultsDbPath: LevelPath = [this.constructor.name];
@@ -144,7 +145,7 @@ class VaultManager {
     db: DB;
     acl: ACL;
     keyRing: KeyRing;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     gestaltGraph: GestaltGraph;
     notificationsManager: NotificationsManager;
     fs: FileSystem;

@@ -28,6 +28,7 @@ import type {
   ClaimLinkNode,
 } from '../claims/payloads/index.js';
 import type { DiscoveryQueueInfo } from './types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import Logger from '@matrixai/logger';
 import { createDestroyStartStop } from '@matrixai/async-init';
 import { decorators } from '@matrixai/contexts';
@@ -90,7 +91,7 @@ class Discovery {
     keyRing: KeyRing;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     taskManager: TaskManager;
     discoverVertexTimeoutTime?: number;
     rediscoverCheckIntervalTime?: number;
@@ -125,7 +126,7 @@ class Discovery {
   protected keyRing: KeyRing;
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
-  protected nodeManager: NodeManager;
+  protected nodeManager: NodeManager<AgentClientManifest>;
   protected taskManager: TaskManager;
   protected discoverVertexTimeoutTime: number;
   /**
@@ -242,7 +243,7 @@ class Discovery {
     keyRing: KeyRing;
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
-    nodeManager: NodeManager;
+    nodeManager: NodeManager<AgentClientManifest>;
     taskManager: TaskManager;
     discoverVertexTimeoutTime: number;
     rediscoverCheckIntervalTime: number;

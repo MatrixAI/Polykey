@@ -5,6 +5,7 @@ import type {
   PasswordOpsLimit,
   PasswordMemLimit,
 } from '../keys/types.js';
+import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
 import path from 'node:path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
@@ -168,7 +169,7 @@ async function bootstrapState({
       logger: logger.getChild(NodeGraph.name),
     });
 
-    const nodeManager = new NodeManager({
+    const nodeManager = new NodeManager<AgentClientManifest>({
       db,
       keyRing,
       nodeGraph,

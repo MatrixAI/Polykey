@@ -33,7 +33,7 @@ const manifestServer = (container: {
   sigchain: Sigchain;
   nodeGraph: NodeGraph;
   acl: ACL;
-  nodeManager: NodeManager;
+  nodeManager: NodeManager<AgentClientManifest>;
   nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
   keyRing: KeyRing;
   logger: Logger;
