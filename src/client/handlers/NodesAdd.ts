@@ -9,7 +9,7 @@ import type {
 import type { NodeId } from '../../ids/index.js';
 import type { Host, Port } from '../../network/types.js';
 import type NodeManager from '../../nodes/NodeManager.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import { matchSync } from '../../utils/index.js';
 import { validateSync } from '../../validation/index.js';

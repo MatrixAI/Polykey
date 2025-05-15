@@ -28,7 +28,7 @@ import type {
   ClaimLinkNode,
 } from '../claims/payloads/index.js';
 import type { DiscoveryQueueInfo } from './types.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../nodes/agent/callers/index.js';
 import Logger from '@matrixai/logger';
 import { createDestroyStartStop } from '@matrixai/async-init';
 import { decorators } from '@matrixai/contexts';

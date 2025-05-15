@@ -6,7 +6,7 @@ import type {
 } from '../types.js';
 import type NodeManager from '../../NodeManager.js';
 import type ACL from '../../../acl/ACL.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { DuplexHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';

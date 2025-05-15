@@ -19,7 +19,7 @@ import type ACL from '../acl/ACL.js';
 import type { PolykeyWorkerManager } from '../workers/types.js';
 import type { RemoteInfo } from './VaultInternal.js';
 import type { VaultAction } from './types.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../nodes/agent/callers/index.js';
 import path from 'node:path';
 import { DB } from '@matrixai/db';
 import { EncryptedFS, errors as encryptedFsErrors } from 'encryptedfs';

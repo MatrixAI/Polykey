@@ -6,7 +6,7 @@ import type {
 } from '../types.js';
 import type { NodeId } from '../../ids/index.js';
 import type NodeManager from '../../nodes/NodeManager.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as ids from '../../ids/index.js';
 import { validateSync } from '../../validation/index.js';

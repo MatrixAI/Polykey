@@ -5,7 +5,7 @@ import type {
 } from '../types.js';
 import type NodeManager from '../../../nodes/NodeManager.js';
 import type { JSONValue } from '../../../types.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 import * as agentUtils from '../utils.js';
 import * as nodesErrors from '../../errors.js';

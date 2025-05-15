@@ -16,7 +16,7 @@ import type {
 } from '../ids/types.js';
 import type { Task, TaskHandler, TaskInfo } from '../tasks/types.js';
 import type { TaskManager } from '../tasks/index.js';
-import type { AgentClientManifest } from '#nodes/agent/callers/index.js';
+import type { AgentClientManifest } from '../nodes/agent/callers/index.js';
 import Logger from '@matrixai/logger';
 import { IdInternal } from '@matrixai/id';
 import { createDestroyStartStop } from '@matrixai/async-init';
