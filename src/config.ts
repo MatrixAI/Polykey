@@ -33,7 +33,7 @@ const config = {
    * It is only incremented on breaking changes
    * Use this to know if you must upgrade your service client
    */
-  networkVersion: 1,
+  networkVersion: 2,
   /**
    * Default provider configuration
    * These are managed by Matrix AI and Polykey developers
