@@ -511,7 +511,7 @@ function parseSeedNodes(data: any): [SeedNodes, boolean] {
         ? seedNodeString
         : `pk://${seedNodeString}`;
       seedNodeUrl = new URL(seedNodeStringProtocol);
-    } catch (e) {
+    } catch {
       throw new validationErrors.ErrorParse(
         'Seed nodes must be of format `nodeId@host:port;...`',
       );

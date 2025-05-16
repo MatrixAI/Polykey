@@ -25,7 +25,7 @@ function fromMultibase(s: string): Buffer | undefined {
   let data: Uint8Array;
   try {
     data = codec.decode(s);
-  } catch (e) {
+  } catch {
     return;
   }
   return bufferWrap(data);

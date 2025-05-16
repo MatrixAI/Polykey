@@ -45,7 +45,7 @@ async function verifySessionToken(
     const expiry = parsedToken.payload.exp;
     if (expiry != null && expiry < Math.round(Date.now() / 1000)) return;
     return parsedToken.payload;
-  } catch (e) {
+  } catch {
     return;
   }
 }
