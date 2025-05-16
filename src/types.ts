@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-restricted-imports -- Interim types for FileSystem
 import type fs from 'node:fs';
 import type {
   JSONRPCRequest,
