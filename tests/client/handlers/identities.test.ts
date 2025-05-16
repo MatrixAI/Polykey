@@ -476,7 +476,9 @@ describe('identitiesClaim', () => {
       .mockImplementation(async (payload, _, func) => {
         const token = Token.fromPayload(payload);
         // We need to call the function to resolve a promise in the code
-        func != null && (await func(token as unknown as Token<Claim>));
+        if (func) {
+          await func(token as unknown as Token<Claim>);
+        }
         return [claimId, signedClaim];
       });
 
@@ -1750,7 +1752,9 @@ describe('identitiesInvite', () => {
       .mockImplementation(async (payload, _, func) => {
         const token = Token.fromPayload(payload);
         // We need to call the function to resolve a promise in the code
-        func != null && (await func(token as unknown as Token<Claim>));
+        if (func) {
+          await func(token as unknown as Token<Claim>);
+        }
         return [claimId, signedClaim];
       });
 

@@ -947,8 +947,8 @@ class KeyRing {
         `${this.dbKeyPath}.tmp`,
         dbJWEJSON,
         'utf-8',
-      ),
-        await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
+      );
+      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(
         `DB key path ${this.dbKeyPath} cannot be written to`,
