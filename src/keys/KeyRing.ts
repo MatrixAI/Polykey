@@ -60,7 +60,7 @@ class KeyRing {
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
+  } & (
     | {}
     | {
         recoveryCode: RecoveryCode;

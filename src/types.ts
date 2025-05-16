@@ -194,7 +194,6 @@ type InverseRecord<
  * Used when an empty object is needed.
  * Defined here with a linter override to avoid a false positive.
  */
-// eslint-disable-next-line @typescript-eslint/ban-types
 type ObjectEmpty = {};
 
 /**

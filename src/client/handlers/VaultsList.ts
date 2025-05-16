@@ -29,7 +29,7 @@ class VaultsList extends ServerHandler<
     const vaults = await db.withTransactionF((tran) =>
       vaultManager.listVaults(ctx, tran),
     );
-    for await (const [vaultName, vaultId] of vaults) {
+    for (const [vaultName, vaultId] of vaults) {
       ctx.signal.throwIfAborted();
       yield {
         vaultName: vaultName,
