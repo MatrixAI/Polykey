@@ -1752,7 +1752,7 @@ describe('identitiesInvite', () => {
       .mockImplementation(async (payload, _, func) => {
         const token = Token.fromPayload(payload);
         // We need to call the function to resolve a promise in the code
-        if (func) {
+        if (func != null) {
           await func(token as unknown as Token<Claim>);
         }
         return [claimId, signedClaim];
