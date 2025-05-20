@@ -60,7 +60,7 @@ class KeyRing {
     fs?: FileSystem;
     logger?: Logger;
     fresh?: boolean;
-  } & ( // eslint-disable-next-line @typescript-eslint/ban-types
+  } & (
     | {}
     | {
         recoveryCode: RecoveryCode;
@@ -947,8 +947,8 @@ class KeyRing {
         `${this.dbKeyPath}.tmp`,
         dbJWEJSON,
         'utf-8',
-      ),
-        await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
+      );
+      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(
         `DB key path ${this.dbKeyPath} cannot be written to`,

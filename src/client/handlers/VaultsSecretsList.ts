@@ -66,7 +66,7 @@ class VaultsSecretsList extends ServerHandler<
           }
           throw e;
         }
-        for await (const file of files) {
+        for (const file of files) {
           ctx.signal.throwIfAborted();
           const filePath = path.join(input.secretName, file.toString());
           const stat = await fs.promises.stat(filePath);

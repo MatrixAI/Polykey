@@ -45,7 +45,7 @@ describe(KeyRing.name, () => {
       keysErrors.ErrorKeyRingDestroyed,
     );
     expect(() => {
-      keyRing.keyPair;
+      void keyRing.keyPair;
     }).toThrow(keysErrors.ErrorKeyRingNotRunning);
     await expect(async () => {
       await keyRing.checkPassword(password);

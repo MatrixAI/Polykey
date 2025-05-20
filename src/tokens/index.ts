@@ -7,5 +7,5 @@
 export { default as Token } from './Token.js';
 export * as utils from './utils.js';
 export * as errors from './errors.js';
-export * as types from './types.js';
+export type * as types from './types.js';
 export * as schemas from './schemas/index.js';

@@ -5,5 +5,5 @@
  */
 export * as payloads from './payloads/index.js';
 export * as utils from './utils.js';
-export * as types from './types.js';
+export type * as types from './types.js';
 export * as errors from './errors.js';

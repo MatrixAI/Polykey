@@ -1219,7 +1219,7 @@ class VaultInternal {
       dir: this.vaultDataDir,
       gitdir: this.vaultGitDir,
     });
-    for await (const [filePath, , workingDirStatus] of statusMatrix) {
+    for (const [filePath, , workingDirStatus] of statusMatrix) {
       ctx.signal.throwIfAborted();
       // Stage all changes across all files. This is needed so that we can
       // checkout all untracked files as well.

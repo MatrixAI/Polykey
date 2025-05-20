@@ -6,4 +6,4 @@ export * as utils from './utils.js';
 export * as middleware from './middleware.js';
 export * as authenticationMiddleware from './authenticationMiddleware.js';
 export * as errors from './errors.js';
-export * as types from './types.js';
+export type * as types from './types.js';
