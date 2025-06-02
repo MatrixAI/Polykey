@@ -1,7 +1,6 @@
 import type { DB } from '@matrixai/db';
 import type Logger from '@matrixai/logger';
 import type KeyRing from '../../../keys/KeyRing.js';
-import type Audit from '../../../audit/Audit.js';
 import type Sigchain from '../../../sigchain/Sigchain.js';
 import type ACL from '../../../acl/ACL.js';
 import type NodeGraph from '../../../nodes/NodeGraph.js';
@@ -11,7 +10,6 @@ import type NotificationsManager from '../../../notifications/NotificationsManag
 import type VaultManager from '../../../vaults/VaultManager.js';
 import type { AgentClientManifest } from '../callers/index.js';
 import NodesAuthenticateConnection from './NodesAuthenticateConnection.js';
-import NodesAuditEventsGet from './NodesAuditEventsGet.js';
 import NodesClaimsGet from './NodesClaimsGet.js';
 import NodesClosestActiveConnectionsGet from './NodesClosestActiveConnectionsGet.js';
 import NodesClosestLocalNodesGet from './NodesClosestLocalNodesGet.js';
@@ -28,7 +26,6 @@ import VaultsScan from './VaultsScan.js';
  * Server manifest factory.
  */
 const manifestServer = (container: {
-  audit: Audit;
   db: DB;
   sigchain: Sigchain;
   nodeGraph: NodeGraph;
@@ -42,7 +39,6 @@ const manifestServer = (container: {
 }) => {
   return {
     nodesAuthenticateConnection: new NodesAuthenticateConnection(container),
-    nodesAuditEventsGet: new NodesAuditEventsGet(container),
     nodesClaimsGet: new NodesClaimsGet(container),
     nodesClosestActiveConnectionsGet: new NodesClosestActiveConnectionsGet(
       container,
@@ -65,7 +61,6 @@ export default manifestServer;
 
 export {
   NodesAuthenticateConnection,
-  NodesAuditEventsGet,
   NodesClaimsGet,
   NodesClosestActiveConnectionsGet,
   NodesClosestLocalNodesGet,

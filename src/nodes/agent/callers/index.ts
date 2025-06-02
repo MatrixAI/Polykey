@@ -1,6 +1,5 @@
 import type { ClientManifest } from '@matrixai/rpc';
 import nodesAuthenticateConnection from './nodesAuthenticateConnection.js';
-import nodesAuditEventsGet from './nodesAuditEventsGet.js';
 import nodesClaimsGet from './nodesClaimsGet.js';
 import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet.js';
 import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet.js';
@@ -40,7 +39,6 @@ type AgentClientManifestNodeManager = typeof manifestClientNodeManager &
 const manifestClient = {
   ...manifestClientNodeConnectionManager,
   ...manifestClientNodeManager,
-  nodesAuditEventsGet,
   nodesClaimNetworkSign,
   nodesClaimNetworkVerify,
   notificationsSend,
@@ -57,7 +55,6 @@ export {
   manifestClientNodeConnectionManager,
   manifestClientNodeManager,
   nodesAuthenticateConnection,
-  nodesAuditEventsGet,
   nodesClaimsGet,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,

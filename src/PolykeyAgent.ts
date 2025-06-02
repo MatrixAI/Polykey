@@ -718,7 +718,6 @@ class PolykeyAgent {
         port: optionsDefaulted.agentServicePort,
         ipv6Only: optionsDefaulted.ipv6Only,
         agentService: agentServerManifest({
-          audit: this.audit,
           acl: this.acl,
           db: this.db,
           keyRing: this.keyRing,

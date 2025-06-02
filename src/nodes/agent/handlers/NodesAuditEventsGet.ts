@@ -13,6 +13,8 @@ import type { AuditEventId } from '../../../ids/index.js';
 import { ServerHandler } from '@matrixai/rpc';
 import * as auditUtils from '../../../audit/utils.js';
 
+// This is currently not used until security is built into it. It will require some way to verify that the requesting
+//  node should have access to the information. For that we need a claim that we can verify.
 /**
  * Gets audit events from a node
  */

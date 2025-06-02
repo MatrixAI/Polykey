@@ -14,7 +14,7 @@ import { RPCClient, RPCServer } from '@matrixai/rpc';
 import * as tlsTestsUtils from '../../../utils/tls.js';
 import * as testNodesUtils from '../../../nodes/utils.js';
 import NodesAuditEventsGet from '#nodes/agent/handlers/NodesAuditEventsGet.js';
-import { nodesAuditEventsGet } from '#nodes/agent/callers/index.js';
+import nodesAuditEventsGet from '#nodes/agent/callers/nodesAuditEventsGet.js';
 import * as nodesUtils from '#nodes/utils.js';
 import KeyRing from '#keys/KeyRing.js';
 import Audit from '#audit/Audit.js';
