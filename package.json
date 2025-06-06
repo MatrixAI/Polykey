@@ -89,7 +89,7 @@
     "@matrixai/errors": "^2.1.3",
     "@matrixai/events": "^4.0.1",
     "@matrixai/id": "^4.0.0",
-    "@matrixai/js-virtualtar": "^2.0.0",
+    "@matrixai/js-virtualtar": "../js-virtualtar",
     "@matrixai/logger": "^4.0.3",
     "@matrixai/mdns": "^2.0.7",
     "@matrixai/quic": "^2.0.9",
