@@ -1,4 +1,4 @@
-import type { DB, DBTransaction } from '@matrixai/db';
+import type { DB, DBTransaction, LevelPath } from '@matrixai/db';
 import type { ContextTimed, ContextTimedInput } from '@matrixai/contexts';
 import type { PromiseCancellable } from '@matrixai/async-cancellable';
 import type { ResourceAcquire } from '@matrixai/resources';
@@ -14,8 +14,16 @@ import type {
 } from '../tasks/types.js';
 import type { SignedTokenEncoded } from '../tokens/types.js';
 import type { Host, Port } from '../network/types.js';
-import type { Claim, ClaimId, SignedClaim } from '../claims/types.js';
-import type { ClaimLinkNode } from '../claims/payloads/index.js';
+import type {
+  Claim,
+  ClaimId,
+  ClaimIdEncoded,
+  SignedClaim,
+} from '../claims/types.js';
+import type {
+  ClaimLinkNode,
+  ClaimNetworkAccess,
+} from '../claims/payloads/index.js';
 import type NodeConnection from '../nodes/NodeConnection.js';
 import type {
   AgentClaimMessage,
@@ -34,6 +42,7 @@ import type NodeConnectionManager from './NodeConnectionManager.js';
 import type NodeGraph from './NodeGraph.js';
 import type { ServicePOJO } from '@matrixai/mdns';
 import type { AgentClientManifestNodeManager } from './agent/callers/index.js';
+import type { ClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority.js';
 import { withF } from '@matrixai/resources';
 import { events as mdnsEvents, MDNS, utils as mdnsUtils } from '@matrixai/mdns';
 import Logger from '@matrixai/logger';
@@ -46,8 +55,8 @@ import * as nodesEvents from './events.js';
 import * as nodesErrors from './errors.js';
 import NodeConnectionQueue from './NodeConnectionQueue.js';
 import config from '../config.js';
-import { assertClaimNetworkAuthority } from '../claims/payloads/claimNetworkAuthority.js';
-import { assertClaimNetworkAccess } from '../claims/payloads/claimNetworkAccess.js';
+import * as claimNetworkAuthorityUtils from '../claims/payloads/claimNetworkAuthority.js';
+import * as claimNetworkAccessUtils from '../claims/payloads/claimNetworkAccess.js';
 import Token from '../tokens/Token.js';
 import * as keysUtils from '../keys/utils/index.js';
 import * as tasksErrors from '../tasks/errors.js';
@@ -123,6 +132,33 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
    * Used to track locks for authentication failure and acquiring connections
    */
   protected connectionLockBox: LockBox<Lock> = new LockBox();
+
+  /**
+   * If this node is acting as a network authority then the claim is stored here and used as needed.
+   * If the node is not acting as an authority then the lack of claim here should indicate that.
+   * If the claim is missing then any request that requires it should reject with an error.
+   */
+  protected claimNetworkAuthority: Token<ClaimNetworkAuthority> | undefined =
+    undefined;
+  /**
+   * If a node has joined a network then it's `ClaimNetworkAccess` is tracked here
+   */
+  protected claimNetworkAccess: Token<ClaimNetworkAccess> | undefined =
+    undefined;
+
+  /**
+   * These are the level paths for mapping the ClaimNetworkAccess and ClaimNetworkAuthority claims for each network it has joined.
+   * Used to look up and switch between networks as needed.
+   */
+  protected nodeManagerDbPath: LevelPath = [this.constructor.name];
+  protected nodeManagerClaimNetworkAuthorityPath: LevelPath = [
+    ...this.nodeManagerDbPath,
+    'claimNetworkAuthority',
+  ];
+  protected nodeManagerClaimNetworkAccessPath: LevelPath = [
+    ...this.nodeManagerDbPath,
+    'claimNetworkAccess',
+  ];
 
   protected refreshBucketHandler: TaskHandler = async (
     ctx,
@@ -1506,19 +1542,443 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     });
   }
 
-  public async handleClaimNetwork(
-    requestingNodeId: NodeId,
-    input: AgentRPCRequestParams<AgentClaimMessage>,
+  /**
+   * Creates a claim on the sigchain granting this node authority over a network to create `ClaimNetworkAccess` claims.
+   *
+   * @param networkNodeId - The public key NodeId for the root authority for the network
+   * @param network - The network URL.
+   * @param isPrivate - Indicates if the network is private or not.
+   * @param signingHook - A callback used to sign the claim with the network's private key.
+   * @param tran
+   */
+  public async createClaimNetworkAuthority(
+    networkNodeId: NodeId,
+    network: string,
+    isPrivate: boolean,
+    signingHook: (token: Token<ClaimNetworkAuthority>) => Promise<Token<Claim>>,
     tran?: DBTransaction,
-  ): Promise<AgentRPCResponseResult<AgentClaimMessage>> {
+  ): Promise<[ClaimId, Token<ClaimNetworkAuthority>]> {
     if (tran == null) {
-      return await this.db.withTransactionF(
-        async (tran) =>
-          await this.handleClaimNetwork(requestingNodeId, input, tran),
+      return await this.db.withTransactionF((tran) =>
+        this.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          isPrivate,
+          signingHook,
+          tran,
+        ),
       );
     }
-    const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
+
+    const [claimId, signedClaim] = await this.sigchain.addClaim(
+      {
+        typ: 'ClaimNetworkAuthority',
+        sub: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        iss: nodesUtils.encodeNodeId(networkNodeId),
+        network,
+        isPrivate,
+      },
+      undefined,
+      signingHook,
+    );
+    const token = Token.fromSigned<ClaimNetworkAuthority>(
+      signedClaim as SignedClaim<ClaimNetworkAuthority>,
+    );
+    this.claimNetworkAuthority = token;
+    await this.setClaimNetworkAuthority(token);
+    await this.switchNetwork(network);
+    return [claimId, token];
+  }
+
+  public async createSelfSignedClaimNetworkAccess(
+    claimNetworkAuthority: Token<ClaimNetworkAuthority>,
+  ): Promise<[ClaimId, Token<ClaimNetworkAccess>]> {
+    const thisNodeId = this.keyRing.getNodeId();
+    const encodedNetworkAuthority = claimsUtils.generateSignedClaim(
+      claimNetworkAuthority.toSigned(),
+    );
+    if (
+      claimNetworkAuthority.payload.sub !== nodesUtils.encodeNodeId(thisNodeId)
+    ) {
+      throw new claimsErrors.ErrorClaimsVerificationFailed(
+        'ClaimNetworkAuthority does not grant authority to this node',
+      );
+    }
+    const network = claimNetworkAuthority.payload.network;
+    const isPrivate = claimNetworkAuthority.payload.isPrivate;
+    const [claimId, signedClaim] = await this.sigchain.addClaim({
+      typ: 'ClaimNetworkAccess',
+      iss: nodesUtils.encodeNodeId(thisNodeId),
+      sub: nodesUtils.encodeNodeId(thisNodeId),
+      network,
+      isPrivate,
+      signedClaimNetworkAuthorityEncoded: encodedNetworkAuthority,
+    });
+    const token = Token.fromSigned<ClaimNetworkAccess>(
+      signedClaim as SignedClaim<ClaimNetworkAccess>,
+    );
+    this.claimNetworkAccess = token;
+    await this.setClaimNetworkAccess(token);
+    await this.switchNetwork(network);
+    return [claimId, token];
+  }
+
+  /**
+   * This takes a `ClaimNetworkAuthority` and tracks it in the database under the network name.
+   */
+  protected async setClaimNetworkAuthority(
+    claimNetworkAuthority: Token<ClaimNetworkAuthority>,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.setClaimNetworkAuthority(claimNetworkAuthority, tran),
+      );
+    }
+
+    const network = claimNetworkAuthority.payload.network;
+    await tran.put(
+      [...this.nodeManagerClaimNetworkAuthorityPath, network],
+      claimNetworkAuthority.payload.jti,
+      false,
+    );
+  }
+
+  /**
+   * This returns the `ClaimNetworkAuthority` for the given network.
+   */
+  protected async getClaimNetworkAuthority(
+    network: string,
+    tran?: DBTransaction,
+  ): Promise<Token<ClaimNetworkAuthority> | undefined> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.getClaimNetworkAuthority(network, tran),
+      );
+    }
+
+    const jti = await tran.get<ClaimIdEncoded>(
+      [...this.nodeManagerClaimNetworkAuthorityPath, network],
+      false,
+    );
+    if (jti == null) return;
+    const claim = await this.sigchain.getSignedClaim(
+      claimsUtils.decodeClaimId(jti)!,
+      tran,
+    );
+    if (claim == null) return;
+    const token = Token.fromSigned(claim);
+    claimNetworkAuthorityUtils.assertClaimNetworkAuthority(token.payload);
+    return token as Token<ClaimNetworkAuthority>;
+  }
+
+  /**
+   * This takes a `ClaimNetworkAccess` and tracks it in the database under the network name.
+   */
+  protected async setClaimNetworkAccess(
+    claimNetworkAccess: Token<ClaimNetworkAccess>,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.setClaimNetworkAccess(claimNetworkAccess, tran),
+      );
+    }
+
+    const network = claimNetworkAccess.payload.network;
+    await tran.put(
+      [...this.nodeManagerClaimNetworkAccessPath, network],
+      claimNetworkAccess.payload.jti,
+      false,
+    );
+  }
+
+  /**
+   * This returns the `ClaimNetworkAccess` for the given network.
+   */
+  protected async getClaimNetworkAccess(
+    network: string,
+    tran?: DBTransaction,
+  ): Promise<Token<ClaimNetworkAccess> | undefined> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.getClaimNetworkAccess(network, tran),
+      );
+    }
+
+    const jti = await tran.get<ClaimIdEncoded>(
+      [...this.nodeManagerClaimNetworkAccessPath, network],
+      false,
+    );
+    if (jti == null) return;
+    const claim = await this.sigchain.getSignedClaim(
+      claimsUtils.decodeClaimId(jti)!,
+      tran,
+    );
+    if (claim == null) return;
+    const token = Token.fromSigned(claim);
+    claimNetworkAccessUtils.assertClaimNetworkAccess(token.payload);
+    return token as Token<ClaimNetworkAccess>;
+  }
+
+  /**
+   * This switches out the active `ClaimNetworkAuthority` and `ClaimNetworkAccess` for the desired network.
+   * If no claims exist for the network or no network is provided, then it switches to using no network.
+   * In doing so this also updates the `NodeConnectionManager`'s authentication callbacks to use the selected
+   * network for authentication.
+   * @param network - The Network URL for the desired network to switch to.
+   * @param tran
+   */
+  public async switchNetwork(
+    network?: string,
+    tran?: DBTransaction,
+  ): Promise<void> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.switchNetwork(network, tran),
+      );
+    }
+
+    if (network == null) {
+      this.claimNetworkAuthority = undefined;
+      this.claimNetworkAccess = undefined;
+      // Use the basic no network behavior
+      this.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardDefault,
+      );
+      this.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+      return;
+    }
+
+    this.claimNetworkAuthority = await this.getClaimNetworkAuthority(
+      network,
+      tran,
+    );
+    this.claimNetworkAccess = await this.getClaimNetworkAccess(network, tran);
+    if (this.claimNetworkAccess != null) {
+      // Use the claim to verify connections
+      this.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticationConnectionForwardPrivateFactory(
+          this.claimNetworkAccess,
+        ),
+      );
+      this.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticationConnectionReversePrivateFactory(
+          this.claimNetworkAccess,
+        ),
+      );
+    } else {
+      // Use the basic no network behavior
+      this.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardDefault,
+      );
+      this.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseDeny,
+      );
+    }
+  }
+
+  /**
+   * Quick hand utility for checking if the active `ClaimNetworkAuthority` is a private network
+   */
+  public isClaimNetworkAuthorityPrivate(): boolean | undefined {
+    // Return undefined if we're not acting as a network authority
+    if (this.claimNetworkAuthority == null) return;
+    return this.claimNetworkAuthority.payload.isPrivate;
+  }
+
+  /**
+   * This creates a cross-signed `ClaimNetworkAccess` on the sigchain. The resulting `ClaimNetworkAccess` is used to
+   * authenticate connections between nodes within the network.
+   *
+   * @param targetNodeId - This is a node with an active `ClaimNetworkAuthority` for the network you wish to join.
+   * This usually is a seed node for that network.
+   * @param network - The URL of the network you wish to join.
+   * @param tran
+   * @param ctx
+   */
+  public async claimNetwork(
+    targetNodeId: NodeId,
+    network: string,
+    tran?: DBTransaction,
+    ctx?: ContextTimedInput,
+  ): Promise<[ClaimId, Token<ClaimNetworkAccess>]>;
+  @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async claimNetwork(
+    targetNodeId: NodeId,
+    network: string,
+    tran: DBTransaction | undefined,
+    @decorators.context ctx: ContextTimed,
+  ): Promise<[ClaimId, Token<ClaimNetworkAccess>]> {
+    if (tran == null) {
+      return await this.db.withTransactionF((tran) =>
+        this.claimNetwork(targetNodeId, network, tran, ctx),
+      );
+    }
+
+    // Validating that the ClaimNetworkAuthority is correct.
+    const claimNetworkAuthority = await this.remoteClaimNetworkAuthorityGet(
+      network,
+      targetNodeId,
+    );
+    const encodedNetworkAuthority = claimsUtils.generateSignedClaim(
+      claimNetworkAuthority.toSigned(),
+    );
+    const networkNodeId = nodesUtils.decodeNodeId(
+      claimNetworkAuthority.payload.iss,
+    );
+    if (networkNodeId == null) utils.never('failed to decode networkNodeId');
+
+    const subjectNodeId = this.keyRing.getNodeId();
+    const isPrivate = claimNetworkAuthority.payload.isPrivate;
+    const [claimId, signedClaim] = await this.sigchain.addClaim(
+      {
+        typ: 'ClaimNetworkAccess',
+        iss: nodesUtils.encodeNodeId(targetNodeId),
+        sub: nodesUtils.encodeNodeId(subjectNodeId),
+        network,
+        isPrivate,
+        signedClaimNetworkAuthorityEncoded: encodedNetworkAuthority,
+      },
+      undefined,
+      async (token) => {
+        // Using the nodeConnection.withConnF so we can use the connection without being authenticated
+        return await withF(
+          [this.nodeConnectionManager.acquireConnectionInternal(targetNodeId)],
+          async ([conn]) => {
+            // 2. create the agentClaim message to send
+            const halfSignedClaim = token.toSigned();
+            const halfSignedClaimEncoded =
+              claimsUtils.generateSignedClaim(halfSignedClaim);
+            const client = conn.getClient();
+            const stream = await client.methods.nodesClaimNetworkSign();
+            const writer = stream.writable.getWriter();
+            const reader = stream.readable.getReader();
+            let fullySignedToken: Token<ClaimNetworkAccess>;
+            try {
+              await writer.write({
+                signedTokenEncoded: halfSignedClaimEncoded,
+              });
+              // 3. We expect to receive the doubly signed claim
+              const readStatus = await reader.read();
+              if (readStatus.done) {
+                throw new claimsErrors.ErrorEmptyStream(
+                  'nodesClaimNetworkSign stream ended too soon, likely due to lack of permission',
+                );
+              }
+              const receivedClaim = readStatus.value;
+              // We need to re-construct the token from the message
+              const receivedClaimNetworkAccess =
+                claimNetworkAccessUtils.parseSignedClaimNetworkAccess(
+                  receivedClaim.signedTokenEncoded,
+                );
+              fullySignedToken = Token.fromSigned(receivedClaimNetworkAccess);
+              claimNetworkAccessUtils.verifyClaimNetworkAccess(
+                networkNodeId,
+                subjectNodeId,
+                network,
+                fullySignedToken,
+              );
+
+              // Next stage is to process the claim for the other node
+              const readStatus2 = await reader.read();
+              if (readStatus2.done) {
+                throw new claimsErrors.ErrorEmptyStream();
+              }
+              const receivedClaimRemote = readStatus2.value;
+
+              // We need to re-construct the token from the message
+              const signedClaimRemote =
+                claimNetworkAccessUtils.parseSignedClaimNetworkAccess(
+                  receivedClaimRemote.signedTokenEncoded,
+                );
+              // This is a singly signed claim,
+              // we want to verify it before signing and sending back
+              const signedTokenRemote = Token.fromSigned(signedClaimRemote);
+              signedTokenRemote.signWithPrivateKey(this.keyRing.keyPair);
+              // Verify everything is correct
+              claimNetworkAccessUtils.verifyClaimNetworkAccess(
+                networkNodeId,
+                subjectNodeId,
+                network,
+                signedTokenRemote,
+              );
+              // 4. X <- responds with double signing the X signed claim <- Y
+              const agentClaimedMessageRemote = claimsUtils.generateSignedClaim(
+                signedTokenRemote.toSigned(),
+              );
+              await writer.write({
+                signedTokenEncoded: agentClaimedMessageRemote,
+              });
+
+              // Check the stream is closed (should be closed by other side)
+              const finalResponse = await reader.read();
+              if (finalResponse.done != null) {
+                await writer.close();
+              }
+            } catch (e) {
+              await writer.abort(e);
+              throw e;
+            }
+            return fullySignedToken;
+          },
+        );
+      },
+      tran,
+    );
+    const token = Token.fromSigned(
+      signedClaim as SignedClaim<ClaimNetworkAccess>,
+    );
+    this.claimNetworkAccess = token;
+    await this.setClaimNetworkAccess(token, tran);
+    await this.switchNetwork(network, tran);
+    return [claimId, token];
+  }
+
+  /**
+   * This provides the handler side of the ClaimNetwork logic.
+   * @param requestingNodeId - The nodeId of the node making the request. This should be taken from the connections
+   * certificate to confirm that `ClaimNetworkAccess` is being created for the node requesting it.
+   * @param input - The input stream for the RPC handler.
+   * @param tran
+   */
+  public async *handleClaimNetwork(
+    requestingNodeId: NodeId,
+    input: AsyncIterableIterator<AgentRPCRequestParams<AgentClaimMessage>>,
+    tran?: DBTransaction,
+  ): AsyncGenerator<AgentRPCResponseResult<AgentClaimMessage>> {
+    if (tran == null) {
+      return yield* this.db.withTransactionG((tran) =>
+        this.handleClaimNetwork(requestingNodeId, input, tran),
+      );
+    }
+    if (this.claimNetworkAuthority == null) {
+      throw new nodesErrors.ErrorNodeManagerClaimNetworkAuthorityMissing(
+        'Node is not acting as a network authority and can not create a claimNetworkAccess',
+      );
+    }
+
+    const readStatus = await input.next();
+    // If nothing to read, end and destroy
+    if (readStatus.done) {
+      throw new claimsErrors.ErrorEmptyStream();
+    }
+    const receivedMessage = readStatus.value;
+    const signedClaim = claimsUtils.parseSignedClaim(
+      receivedMessage.signedTokenEncoded,
+    );
     const token = Token.fromSigned(signedClaim);
+    // Verify if token is for our network
+    if (
+      token.payload.network == null ||
+      token.payload.network !== this.claimNetworkAuthority.payload.network
+    ) {
+      throw new claimsErrors.ErrorClaimsVerificationFailed(
+        'Claim does not match expected network',
+      );
+    }
     // Verify if the token is signed
     if (
       !token.verifyWithPublicKey(
@@ -1533,105 +1993,123 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     const doublySignedClaim = token.toSigned();
     const halfSignedClaimEncoded =
       claimsUtils.generateSignedClaim(doublySignedClaim);
-    return {
+    yield {
       signedTokenEncoded: halfSignedClaimEncoded,
     };
+
+    // Now we want to send our own claim signed
+    const { p: halfSignedClaimP, resolveP: halfSignedClaimResolveP } =
+      utils.promise<SignedTokenEncoded>();
+    const claimP = this.sigchain.addClaim(
+      {
+        typ: 'ClaimNetworkAccess',
+        iss: nodesUtils.encodeNodeId(this.keyRing.getNodeId()),
+        sub: nodesUtils.encodeNodeId(requestingNodeId),
+        network: this.claimNetworkAuthority.payload.network,
+        isPrivate: this.claimNetworkAuthority.payload.isPrivate,
+        signedClaimNetworkAuthorityEncoded: claimsUtils.generateSignedClaim(
+          this.claimNetworkAuthority.toSigned(),
+        ),
+      },
+      undefined,
+      async (token) => {
+        const halfSignedClaim = token.toSigned();
+        const halfSignedClaimEncoded =
+          claimsUtils.generateSignedClaim(halfSignedClaim);
+        halfSignedClaimResolveP(halfSignedClaimEncoded);
+        const readStatus = await input.next();
+        if (readStatus.done) {
+          throw new claimsErrors.ErrorEmptyStream();
+        }
+        const receivedClaim = readStatus.value;
+        // We need to re-construct the token from the message
+        const signedClaim =
+          claimNetworkAccessUtils.parseSignedClaimNetworkAccess(
+            receivedClaim.signedTokenEncoded,
+          );
+        const fullySignedToken = Token.fromSigned(signedClaim);
+        // Check that the signatures are correct
+        const networkNodeId = nodesUtils.decodeNodeId(
+          this.claimNetworkAuthority!.payload.iss,
+        );
+        if (networkNodeId == null) {
+          utils.never('failed to decode networkNodeId');
+        }
+
+        claimNetworkAccessUtils.verifyClaimNetworkAccess(
+          networkNodeId,
+          requestingNodeId,
+          this.claimNetworkAuthority!.payload.network,
+          fullySignedToken,
+        );
+        // Ending the stream
+        return fullySignedToken;
+      },
+    );
+    // Prevent async promise handling leak
+    void claimP.catch(() => {});
+    yield {
+      signedTokenEncoded: await halfSignedClaimP,
+    };
+    const [, claim] = await claimP;
+    // With the claim created we want to add it to the gestalt graph
+    const issNodeInfo = {
+      nodeId: requestingNodeId,
+    };
+    const subNodeInfo = {
+      nodeId: this.keyRing.getNodeId(),
+    };
+    await this.gestaltGraph.linkNodeAndNode(issNodeInfo, subNodeInfo, {
+      claim: claim as SignedClaim<ClaimLinkNode>,
+      meta: {},
+    });
   }
 
-  public async handleVerifyClaimNetwork(
-    requestingNodeId: NodeId,
-    input: AgentRPCRequestParams<AgentClaimMessage>,
-    tran?: DBTransaction,
-  ): Promise<AgentRPCResponseResult<{ success: true }>> {
-    if (tran == null) {
-      return await this.db.withTransactionF(
-        async (tran) =>
-          await this.handleVerifyClaimNetwork(requestingNodeId, input, tran),
-      );
-    }
-    const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
-    const token = Token.fromSigned(signedClaim);
-    assertClaimNetworkAccess(token.payload);
-    // Verify if the token is signed
-    if (
-      !token.verifyWithPublicKey(
-        keysUtils.publicKeyFromNodeId(requestingNodeId),
-      ) ||
-      !token.verifyWithPublicKey(
-        keysUtils.publicKeyFromNodeId(
-          nodesUtils.decodeNodeId(token.payload.iss)!,
-        ),
-      )
-    ) {
-      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-    }
-    if (
-      token.payload.network === 'testnet.polykey.com' ||
-      token.payload.network === 'mainnet.polykey.com'
-    ) {
-      return { success: true };
-    }
-    if (token.payload.signedClaimNetworkAuthorityEncoded == null) {
-      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-    }
-    const authorityToken = Token.fromEncoded(
-      token.payload.signedClaimNetworkAuthorityEncoded,
+  /**
+   * Gets the `ClaimNetworkAuthority` from the target node. It also verifies its valid and for the expected network.
+   * @param network
+   * @param targetNodeId
+   */
+  public async remoteClaimNetworkAuthorityGet(
+    network: string,
+    targetNodeId: NodeId,
+  ): Promise<Token<ClaimNetworkAuthority>> {
+    return await withF(
+      [this.nodeConnectionManager.acquireConnectionInternal(targetNodeId)],
+      async ([conn]) => {
+        const client = conn.getClient();
+        const receivedClaim =
+          await client.methods.nodesClaimNetworkAuthorityGet({});
+        const signedClaim =
+          claimNetworkAuthorityUtils.parseSignedClaimNetworkAuthority(
+            receivedClaim,
+          );
+        const token = Token.fromSigned(signedClaim);
+        const networkNodeId = nodesUtils.decodeNodeId(token.payload.iss);
+        if (networkNodeId == null) {
+          utils.never('failed to decode networkNodeId');
+        }
+        claimNetworkAuthorityUtils.verifyClaimNetworkAuthority(
+          networkNodeId,
+          targetNodeId,
+          network,
+          token,
+        );
+        return token;
+      },
     );
-    // Verify if the token is signed
-    if (
-      token.payload.iss !== authorityToken.payload.sub ||
-      !authorityToken.verifyWithPublicKey(
-        keysUtils.publicKeyFromNodeId(
-          nodesUtils.decodeNodeId(authorityToken.payload.sub)!,
-        ),
-      ) ||
-      !authorityToken.verifyWithPublicKey(
-        keysUtils.publicKeyFromNodeId(
-          nodesUtils.decodeNodeId(authorityToken.payload.iss)!,
-        ),
-      )
-    ) {
-      throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-    }
+  }
 
-    let success = false;
-    for await (const [_, claim] of this.sigchain.getSignedClaims({})) {
-      try {
-        assertClaimNetworkAccess(claim.payload);
-      } catch {
-        continue;
-      }
-      if (claim.payload.signedClaimNetworkAuthorityEncoded == null) {
-        throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
-      }
-      const tokenNetworkAuthority = Token.fromEncoded(
-        claim.payload.signedClaimNetworkAuthorityEncoded,
-      );
-      try {
-        assertClaimNetworkAuthority(tokenNetworkAuthority.payload);
-      } catch {
-        continue;
-      }
-      // No need to check if local claims are correctly signed by a Network Authority.
-      if (
-        authorityToken.verifyWithPublicKey(
-          keysUtils.publicKeyFromNodeId(
-            nodesUtils.decodeNodeId(claim.payload.iss)!,
-          ),
-        )
-      ) {
-        success = true;
-        break;
-      }
+  /**
+   * The handler side logic for `remoteClaimNetworkAuthorityGet`.
+   */
+  public async handleClaimNetworkAuthorityGet(): Promise<SignedTokenEncoded> {
+    if (this.claimNetworkAuthority == null) {
+      throw new nodesErrors.ErrorNodeManagerClaimNetworkAuthorityMissing();
     }
-
-    if (!success) {
-      throw new nodesErrors.ErrorNodeClaimNetworkVerificationFailed();
-    }
-
-    return {
-      success: true,
-    };
+    return claimsUtils.generateSignedClaim(
+      this.claimNetworkAuthority.toSigned(),
+    );
   }
 
   /**

@@ -8,6 +8,11 @@ class ErrorClaimsUndefinedClaimPayload<T> extends ErrorClaims<T> {
   exitCode = sysexits.UNKNOWN;
 }
 
+class ErrorClaimsVerificationFailed<T> extends ErrorClaims<T> {
+  static description = 'Failed to verify claim';
+  exitCode = sysexits.SOFTWARE;
+}
+
 /**
  * Exceptions arising in cross-signing process
  */
@@ -59,6 +64,7 @@ class ErrorNodesClaimType<T> extends ErrorSchemaValidate<T> {
 export {
   ErrorClaims,
   ErrorClaimsUndefinedClaimPayload,
+  ErrorClaimsVerificationFailed,
   ErrorEmptyStream,
   ErrorUndefinedSinglySignedClaim,
   ErrorUndefinedDoublySignedClaim,

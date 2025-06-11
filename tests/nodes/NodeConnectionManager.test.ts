@@ -1175,6 +1175,51 @@ describe(`${NodeConnectionManager.name}`, () => {
         },
       );
     });
+
+    test('can authenticate a connection to a private network', async () => {
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkForwardCallback(
+        nodesUtils.nodesAuthenticateConnectionForwardBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmLocal.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+      ncmPeer1.nodeConnectionManager.setAuthenticateNetworkReverseCallback(
+        nodesUtils.nodesAuthenticateConnectionReverseBasicPublicFactory(
+          'someNetwork',
+        ),
+      );
+
+      // Creating connection
+      await ncmLocal.nodeConnectionManager.createConnection(
+        [ncmPeer1.nodeId],
+        localHost,
+        ncmPeer1.port,
+      );
+      // Checking authentication result
+      await ncmLocal.nodeConnectionManager.withConnF(
+        ncmPeer1.nodeId,
+        undefined,
+        async () => {
+          // Do nothing
+        },
+      );
+      await ncmPeer1.nodeConnectionManager.withConnF(
+        ncmLocal.nodeId,
+        undefined,
+        async () => {
+          // Do nothing
+        },
+      );
+    });
   });
   describe('with 2 peers', () => {
     let ncmLocal: NCMState;

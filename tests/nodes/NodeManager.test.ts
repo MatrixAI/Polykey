@@ -2,7 +2,11 @@ import type { Host, Port } from '#network/types.js';
 import type { AgentServerManifest } from '#nodes/agent/handlers/index.js';
 import type nodeGraph from '#nodes/NodeGraph.js';
 import type { NCMState } from './utils.js';
-import type { NodeAddress, NodeContactAddressData } from '#nodes/types.js';
+import type {
+  NodeAddress,
+  NodeContactAddressData,
+  NodeId,
+} from '#nodes/types.js';
 import type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -48,6 +52,11 @@ import { KeyRing } from '#keys/index.js';
 import NodeConnectionQueue from '#nodes/NodeConnectionQueue.js';
 import * as utils from '#utils/index.js';
 import rpcClientManifest from '#nodes/agent/callers/index.js';
+import * as claimNetworkAuthorityUtils from '#claims/payloads/claimNetworkAuthority.js';
+import * as claimNetworkAccessUtils from '#claims/payloads/claimNetworkAccess.js';
+import NodesClaimNetworkSign from '#nodes/agent/handlers/NodesClaimNetworkSign.js';
+import NodesClaimNetworkAuthorityGet from '#nodes/agent/handlers/NodesClaimNetworkAuthorityGet.js';
+import * as claimsErrors from '#claims/errors.js';
 
 class DummyNodesAuthenticateConnection extends UnaryHandler<
   ObjectEmpty,
@@ -65,6 +74,16 @@ class DummyNodesAuthenticateConnection extends UnaryHandler<
       success: true,
     };
   };
+}
+
+async function allowNodeToJoin(
+  gestaltGraph: GestaltGraph,
+  nodeId: NodeId,
+): Promise<void> {
+  await gestaltGraph.setNode({
+    nodeId: nodeId,
+  });
+  await gestaltGraph.setGestaltAction(['node', nodeId], 'join');
 }
 
 describe(`${NodeManager.name}`, () => {
@@ -425,6 +444,80 @@ describe(`${NodeManager.name}`, () => {
       await nodeManager.setNode(nodeId, nodeAddress, nodeContactAddressData);
       waitResolveP();
     });
+    test('can create a claimNetworkAuthority and verify using the network public ID', async () => {
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+      const result = await nodeManager.createClaimNetworkAuthority(
+        networkNodeId,
+        network,
+        true,
+        async (claim) => {
+          claim.signWithPrivateKey(networkKeyPair.privateKey);
+          return claim;
+        },
+      );
+
+      const [, token] = result;
+      const targetNodeId = keyRing.getNodeId();
+      // The generated claim is valid
+      claimNetworkAuthorityUtils.verifyClaimNetworkAuthority(
+        networkNodeId,
+        targetNodeId,
+        network,
+        token,
+      );
+
+      // Will throw because the subject node isn't the network authority or vice versa
+      expect(() =>
+        claimNetworkAuthorityUtils.verifyClaimNetworkAuthority(
+          targetNodeId,
+          networkNodeId,
+          network,
+          token,
+        ),
+      ).toThrow();
+      // Will throw if network doesn't match
+      expect(() =>
+        claimNetworkAuthorityUtils.verifyClaimNetworkAuthority(
+          networkNodeId,
+          targetNodeId,
+          'some.other.network.com',
+          token,
+        ),
+      ).toThrow();
+    });
+    test('can create a self signed claimNetworkAccess and verify it', async () => {
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+      const result = await nodeManager.createClaimNetworkAuthority(
+        networkNodeId,
+        network,
+        true,
+        async (claim) => {
+          claim.signWithPrivateKey(networkKeyPair.privateKey);
+          return claim;
+        },
+      );
+
+      const [, token] = result;
+      const targetNodeId = keyRing.getNodeId();
+
+      // Creating the self signed access claim
+      const [, selfSignedClaimNetworkAccessToken] =
+        await nodeManager.createSelfSignedClaimNetworkAccess(token);
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        targetNodeId,
+        network,
+        selfSignedClaimNetworkAccessToken,
+      );
+    });
   });
   describe('with 1 peer', () => {
     let basePath: string;
@@ -599,6 +692,13 @@ describe(`${NodeManager.name}`, () => {
           }),
           nodesAuthenticateConnection: new NodesAuthenticateConnection({
             nodeConnectionManager: nodeConnectionManagerPeer,
+          }),
+          nodesClaimNetworkSign: new NodesClaimNetworkSign({
+            nodeManager: nodeManagerPeer,
+            acl: aclPeer,
+          }),
+          nodesClaimNetworkAuthorityGet: new NodesClaimNetworkAuthorityGet({
+            nodeManager: nodeManagerPeer,
           }),
         } as AgentServerManifest,
         host: localHost,
@@ -939,6 +1039,51 @@ describe(`${NodeManager.name}`, () => {
       await utils.sleep(1000);
       expect(await nodeGraph.nodesTotal()).toBe(0);
       expect(await nodeGraphPeer.nodesTotal()).toBe(0);
+    });
+
+    // TODO tests
+    //  1. claiming a network should fail if issuer doesn't have a valid claimNetworkAuthority
+    //  2. Claming a network should fail if issuer doesn't allow the requesting node access.
+    test('creating a claimNetworkAccess token and verifying it', async () => {
+      const nodeIdTarget = keyRingPeer.getNodeId();
+      // Adding permission
+      await aclPeer.setNodePerm(keyRing.getNodeId(), {
+        gestalt: {
+          claim: null,
+        },
+        vaults: {},
+      });
+
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      await nodeManagerPeer.createClaimNetworkAuthority(
+        networkNodeId,
+        network,
+        true,
+        async (claim) => {
+          claim.signWithPrivateKey(networkKeyPair.privateKey);
+          return claim;
+        },
+      );
+      // Start the connection
+      await nodeConnectionManager.createConnection(
+        [nodeIdTarget],
+        localHost,
+        nodeConnectionManagerPeer.port,
+      );
+      await allowNodeToJoin(gestaltGraphPeer, keyRing.getNodeId());
+      const result = await nodeManager.claimNetwork(nodeIdTarget, network);
+      const [, token] = result;
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        keyRing.getNodeId(),
+        network,
+        token,
+      );
     });
   });
   describe('with 1 peer and mdns', () => {
@@ -2179,6 +2324,644 @@ describe(`${NodeManager.name}`, () => {
       );
 
       expect(await nodeGraph.nodesTotal()).toBe(5);
+    });
+  });
+  describe('simulating a private network', () => {
+    let basePath: string;
+
+    // Will create 6 peers forming a simple network
+    const ncmPeers: Array<{
+      db: DB;
+      keyRing: KeyRing;
+      acl: ACL;
+      sigchain: Sigchain;
+      gestaltGraph: GestaltGraph;
+      nodeGraph: NodeGraph;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
+      taskManager: TaskManager;
+      nodeManager: NodeManager<AgentClientManifest>;
+    }> = [];
+
+    const createPeerNode = async (): Promise<{
+      db: DB;
+      keyRing: KeyRing;
+      acl: ACL;
+      sigchain: Sigchain;
+      gestaltGraph: GestaltGraph;
+      nodeGraph: NodeGraph;
+      nodeConnectionManager: NodeConnectionManager<AgentClientManifest>;
+      taskManager: TaskManager;
+      nodeManager: NodeManager<AgentClientManifest>;
+    }> => {
+      const newId = ncmPeers.length;
+      const db = await DB.createDB({
+        dbPath: path.join(basePath, `db-${newId}`),
+        logger,
+      });
+      const keyRing = await KeyRing.createKeyRing({
+        keysPath: path.join(basePath, `key-${newId}`),
+        password,
+        passwordOpsLimit: keysUtils.passwordOpsLimits.min,
+        passwordMemLimit: keysUtils.passwordMemLimits.min,
+        strictMemoryLock: false,
+        logger,
+      });
+      const acl = await ACL.createACL({
+        db,
+        logger: logger.getChild(ACL.name),
+      });
+      const sigchain = await Sigchain.createSigchain({
+        db,
+        keyRing,
+        logger: logger.getChild(Sigchain.name),
+      });
+      const gestaltGraph = await GestaltGraph.createGestaltGraph({
+        db,
+        acl,
+        logger: logger.getChild(GestaltGraph.name),
+      });
+      const nodeGraph = await NodeGraph.createNodeGraph({
+        db,
+        keyRing,
+        logger: logger.getChild(NodeGraph.name),
+      });
+      const nodeConnectionManager = new NodeConnectionManager({
+        keyRing,
+        tlsConfig: await testsUtils.createTLSConfig(keyRing.keyPair),
+        rpcClientManifest: rpcClientManifest,
+        authenticateNetworkForwardCallback:
+          nodesUtils.nodesAuthenticateConnectionForwardDefault,
+        authenticateNetworkReverseCallback:
+          nodesUtils.nodesAuthenticateConnectionReverseDeny,
+        logger: logger.getChild(NodeConnectionManager.name),
+        connectionConnectTimeoutTime: timeoutTime,
+      });
+      const taskManager = await TaskManager.createTaskManager({
+        db,
+        logger: logger.getChild(TaskManager.name),
+      });
+      const nodeManager = new NodeManager({
+        db,
+        keyRing,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        sigchain,
+        taskManager,
+        logger: logger.getChild(NodeManager.name),
+      });
+      await nodeConnectionManager.start({
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: nodeConnectionManager,
+          }),
+          nodesClaimNetworkSign: new NodesClaimNetworkSign({
+            nodeManager,
+            acl,
+          }),
+          nodesClaimNetworkAuthorityGet: new NodesClaimNetworkAuthorityGet({
+            nodeManager,
+          }),
+        },
+        host: localHost,
+      });
+      await nodeManager.start();
+
+      const peer = {
+        db,
+        keyRing,
+        acl,
+        sigchain,
+        gestaltGraph,
+        nodeGraph,
+        nodeConnectionManager,
+        taskManager,
+        nodeManager,
+      };
+      ncmPeers[newId] = peer;
+      return peer;
+    };
+
+    beforeEach(async () => {
+      basePath = path.join(dataDir, 'local');
+      await fs.promises.mkdir(basePath);
+    });
+    afterEach(async () => {
+      for (const ncmPeer of ncmPeers) {
+        await ncmPeer.nodeManager.stop();
+        await ncmPeer.taskManager.stop();
+        await ncmPeer.nodeConnectionManager.stop();
+        await ncmPeer.nodeGraph.stop();
+        await ncmPeer.gestaltGraph.stop();
+        await ncmPeer.sigchain.stop();
+        await ncmPeer.acl.stop();
+        await ncmPeer.db.stop();
+        await ncmPeer.keyRing.stop();
+      }
+    });
+
+    test('one seed node and one joining node', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+      // Connect to the seed node
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      const node1Id = node1.keyRing.getNodeId();
+      await allowNodeToJoin(seedNode.gestaltGraph, node1Id);
+      const [, peerClaimNetworkAccess] = await node1.nodeManager.claimNetwork(
+        seedNodeId,
+        network,
+      );
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        node1Id,
+        network,
+        peerClaimNetworkAccess,
+      );
+
+      // We have now proved that a node can request access to the network from a node with network authority.
+      // Now We should be able to connect while authenticated to the seed node.
+
+      // Re-initiate authentication
+      await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
+      await node1.nodeConnectionManager.destroyConnection(seedNodeId, true);
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await node1.nodeManager.withConnF(seedNodeId, undefined, async () => {
+        // Do nothing
+      });
+    });
+    test('joining node can restart and stay apart of the network', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+      // Connect to the seed node
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await allowNodeToJoin(seedNode.gestaltGraph, node1.keyRing.getNodeId());
+      const [, peerClaimNetworkAccess] = await node1.nodeManager.claimNetwork(
+        seedNodeId,
+        network,
+      );
+      const node1Id = node1.keyRing.getNodeId();
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        node1Id,
+        network,
+        peerClaimNetworkAccess,
+      );
+
+      // We have now proved that a node can request access to the network from a node with network authority.
+      // Now We should be able to connect while authenticated to the seed node.
+
+      // Re-initiate authentication
+      await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
+
+      await node1.nodeManager.stop();
+      await node1.nodeConnectionManager.stop();
+      await node1.nodeConnectionManager.start({
+        agentService: {
+          nodesAuthenticateConnection: new NodesAuthenticateConnection({
+            nodeConnectionManager: node1.nodeConnectionManager,
+          }),
+          nodesClaimNetworkSign: new NodesClaimNetworkSign({
+            nodeManager: node1.nodeManager,
+            acl: node1.acl,
+          }),
+        } as AgentServerManifest,
+        host: localHost,
+      });
+      await node1.nodeManager.start();
+      await node1.nodeManager.switchNetwork(network);
+
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await node1.nodeManager.withConnF(seedNodeId, undefined, async () => {
+        // Do nothing
+      });
+    });
+    test('two nodes can join a network and connect to each other', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new nodes entering the network
+      const node1 = await createPeerNode();
+      const node2 = await createPeerNode();
+      const node1Id = node1.keyRing.getNodeId();
+      const node2Id = node2.keyRing.getNodeId();
+
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await node2.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await allowNodeToJoin(seedNode.gestaltGraph, node1Id);
+      await node1.nodeManager.claimNetwork(seedNodeId, network);
+      await allowNodeToJoin(seedNode.gestaltGraph, node2Id);
+      await node2.nodeManager.claimNetwork(seedNodeId, network);
+
+      // The two nodes should allow connections to each other
+      await node1.nodeConnectionManager.createConnection(
+        [node2Id],
+        localHost,
+        node2.nodeConnectionManager.port,
+      );
+
+      await node1.nodeManager.withConnF(node2Id, undefined, async () => {});
+    });
+    test('two nodes can not communicate if they do not share the network', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new nodes entering the network
+      const node1 = await createPeerNode();
+      const node2 = await createPeerNode();
+      const node1Id = node1.keyRing.getNodeId();
+      const node2Id = node2.keyRing.getNodeId();
+
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await node2.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await allowNodeToJoin(seedNode.gestaltGraph, node1Id);
+      await node1.nodeManager.claimNetwork(seedNodeId, network);
+      // We intentionally don't have node2 join the network here
+
+      // The two nodes should allow connections to each other
+      await node1.nodeConnectionManager.createConnection(
+        [node2Id],
+        localHost,
+        node2.nodeConnectionManager.port,
+      );
+
+      await expect(
+        node1.nodeManager.withConnF(node2Id, undefined, async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(nodesErrors.ErrorNodeManagerAuthenticationFailed);
+    });
+    test('two networks can operate side by side without crosstalk', async () => {
+      // Creating network credentials
+      const networkKeyPair1 = keysUtils.generateKeyPair();
+      const networkNodeId1 = keysUtils.publicKeyToNodeId(
+        networkKeyPair1.publicKey,
+      );
+      const network1 = 'test1.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode1 = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority1] =
+        await seedNode1.nodeManager.createClaimNetworkAuthority(
+          networkNodeId1,
+          network1,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair1.privateKey);
+            return claim;
+          },
+        );
+      await seedNode1.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority1,
+      );
+      const seedNodeId1 = seedNode1.keyRing.getNodeId();
+
+      // Setting up 2nd seed node
+      // Creating network credentials
+      const networkKeyPair2 = keysUtils.generateKeyPair();
+      const networkNodeId2 = keysUtils.publicKeyToNodeId(
+        networkKeyPair2.publicKey,
+      );
+      const network2 = 'test2.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode2 = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority2] =
+        await seedNode2.nodeManager.createClaimNetworkAuthority(
+          networkNodeId2,
+          network2,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair2.privateKey);
+            return claim;
+          },
+        );
+      await seedNode2.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority2,
+      );
+      const seedNodeId2 = seedNode2.keyRing.getNodeId();
+
+      // Setting up the new nodes entering the network
+      const node1 = await createPeerNode();
+      const node1Id = node1.keyRing.getNodeId();
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId1],
+        localHost,
+        seedNode1.nodeConnectionManager.port,
+      );
+      await allowNodeToJoin(seedNode1.gestaltGraph, node1Id);
+      await node1.nodeManager.claimNetwork(seedNodeId1, network1);
+
+      const node2 = await createPeerNode();
+      const node2Id = node2.keyRing.getNodeId();
+      await node2.nodeConnectionManager.createConnection(
+        [seedNodeId2],
+        localHost,
+        seedNode2.nodeConnectionManager.port,
+      );
+      await allowNodeToJoin(seedNode2.gestaltGraph, node2Id);
+      await node2.nodeManager.claimNetwork(seedNodeId2, network2);
+
+      // The two nodes should allow connections to each other
+      await node1.nodeConnectionManager.createConnection(
+        [node2Id],
+        localHost,
+        node2.nodeConnectionManager.port,
+      );
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId2],
+        localHost,
+        seedNode2.nodeConnectionManager.port,
+      );
+      await node2.nodeConnectionManager.createConnection(
+        [node1Id],
+        localHost,
+        node1.nodeConnectionManager.port,
+      );
+      await node2.nodeConnectionManager.createConnection(
+        [seedNodeId1],
+        localHost,
+        seedNode1.nodeConnectionManager.port,
+      );
+      await seedNode1.nodeConnectionManager.createConnection(
+        [seedNodeId2],
+        localHost,
+        seedNode2.nodeConnectionManager.port,
+      );
+
+      // Two nodes can't talk
+      await expect(
+        node1.nodeManager.withConnF(node2Id, undefined, async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(nodesErrors.ErrorNodeManagerAuthenticationFailed);
+      await expect(
+        node2.nodeManager.withConnF(node1Id, undefined, async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(nodesErrors.ErrorNodeManagerAuthenticationFailed);
+
+      // Two seed nodes can't talk
+      await expect(
+        seedNode1.nodeManager.withConnF(seedNodeId2, undefined, async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(nodesErrors.ErrorNodeManagerAuthenticationFailed);
+      await expect(
+        seedNode2.nodeManager.withConnF(seedNodeId1, undefined, async () => {
+          // Do nothing
+        }),
+      ).rejects.toThrow(nodesErrors.ErrorNodeManagerAuthenticationFailed);
+
+      await seedNode1.nodeConnectionManager.destroyConnection(node1Id, true);
+      await node1.nodeConnectionManager.destroyConnection(seedNodeId1, true);
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId1],
+        localHost,
+        seedNode1.nodeConnectionManager.port,
+      );
+      // Test1 network can talk
+      await node1.nodeManager.withConnF(seedNodeId1, undefined, async () => {
+        // Do nothing
+      });
+      await seedNode1.nodeManager.withConnF(node1Id, undefined, async () => {
+        // Do nothing
+      });
+
+      await seedNode2.nodeConnectionManager.destroyConnection(node2Id, true);
+      await node2.nodeConnectionManager.destroyConnection(seedNodeId2, true);
+      await node2.nodeConnectionManager.createConnection(
+        [seedNodeId2],
+        localHost,
+        seedNode2.nodeConnectionManager.port,
+      );
+      // Test2 network can talk
+      await node2.nodeManager.withConnF(seedNodeId2, undefined, async () => {
+        // Do nothing
+      });
+      await seedNode2.nodeManager.withConnF(node2Id, undefined, async () => {
+        // Do nothing
+      });
+    });
+    test('a node can join a public network without permissions', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'public.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          false,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+      // Connect to the seed node
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      const node1Id = node1.keyRing.getNodeId();
+      // We intentionally do not add permission for the joining node to the seed node
+      const [, peerClaimNetworkAccess] = await node1.nodeManager.claimNetwork(
+        seedNodeId,
+        network,
+      );
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        node1Id,
+        network,
+        peerClaimNetworkAccess,
+      );
+
+      // We have now proved that a node can request access to the network from a node with network authority.
+      // Now We should be able to connect while authenticated to the seed node.
+
+      // Re-initiate authentication
+      await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
+      await node1.nodeConnectionManager.destroyConnection(seedNodeId, true);
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      await node1.nodeManager.withConnF(seedNodeId, undefined, async () => {
+        // Do nothing
+      });
+    });
+    test('node can not join network without permission', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+      // Connect to the seed node
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+      // We intentionally don't provide permission here
+      await expect(
+        node1.nodeManager.claimNetwork(seedNodeId, network),
+      ).rejects.toThrow(claimsErrors.ErrorEmptyStream);
     });
   });
 });

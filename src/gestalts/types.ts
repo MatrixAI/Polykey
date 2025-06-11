@@ -14,7 +14,7 @@ import type {
 } from '../claims/payloads/index.js';
 import type { ProviderPaginationToken } from '../identities/types.js';
 
-const gestaltActions = ['notify', 'scan', 'claim'] as const;
+const gestaltActions = ['notify', 'scan', 'claim', 'join'] as const;
 
 type GestaltKey = Opaque<'GestaltKey', Buffer>;
 
