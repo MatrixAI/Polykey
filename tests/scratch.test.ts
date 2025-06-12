@@ -1,14 +1,44 @@
+import type { types as vtarTypes } from '@matrixai/js-virtualtar';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import {
-  VirtualTarGenerator,
-  VirtualTarParser,
-  types as vtarTypes,
-} from '@matrixai/js-virtualtar';
+import { VirtualTarGenerator, VirtualTarParser } from '@matrixai/js-virtualtar';
 
-// Default chunk size for reading files from the filesystem.
 const DEFAULT_CHUNK_SIZE = 64 * 1024;
+
+/**
+ * An abstracted, reusable async generator to stream a file's content
+ * from the local filesystem in manageable chunks.
+ * @param localFilePath The path to the file on the local filesystem.
+ * @param chunkSize The size of each chunk to read into memory.
+ * @returns An AsyncGenerator yielding Buffer chunks of the file's content.
+ */
+async function* fileContentStreamer(
+  localFilePath: string,
+  chunkSize: number = DEFAULT_CHUNK_SIZE,
+): AsyncGenerator<Buffer, void, void> {
+  let fd: fs.promises.FileHandle | undefined;
+  try {
+    // Open the file for reading.
+    fd = await fs.promises.open(localFilePath, 'r');
+    const buffer = Buffer.alloc(chunkSize);
+    while (true) {
+      // Read a chunk from the file into our buffer.
+      const { bytesRead } = await fd.read(buffer, 0, chunkSize, null);
+      if (bytesRead === 0) {
+        // No more bytes to read, end of file.
+        break;
+      }
+      // Yield only the portion of the buffer that contains actual data.
+      yield buffer.subarray(0, bytesRead);
+    }
+  } finally {
+    // Crucially, ensure the file handle is closed, even if errors occur.
+    if (fd) {
+      await fd.close();
+    }
+  }
+}
 
 /**
  * Creates an AsyncGenerator that yields Uint8Array chunks of a tar archive
@@ -47,31 +77,9 @@ async function* streamFileAsTar(
     gid: fileStats.gid,
   };
 
-  // 3. Create a dedicated async generator to stream the file's content.
-  async function* fileContentStreamer(): AsyncGenerator<Buffer, void, void> {
-    let fd: fs.promises.FileHandle | undefined;
-    try {
-      fd = await fs.promises.open(localFilePath, 'r');
-      const buffer = Buffer.alloc(chunkSize);
-      while (true) {
-        const { bytesRead } = await fd.read(buffer, 0, chunkSize, null);
-        if (bytesRead === 0) {
-          break;
-        }
-        yield buffer.subarray(0, bytesRead);
-      }
-    } finally {
-      if (fd) {
-        await fd.close();
-      }
-    }
-  }
-
   // 4. Add the file entry to the tar generator.
-  vtar.addFile(
-    pathInArchive,
-    tarFileStats,
-    () => fileContentStreamer(),
+  vtar.addFile(pathInArchive, tarFileStats, () =>
+    fileContentStreamer(localFilePath, chunkSize),
   );
 
   // 5. Finalize the tar archive.
@@ -82,11 +90,71 @@ async function* streamFileAsTar(
 }
 
 /**
+ * Creates an AsyncGenerator that yields Uint8Array chunks of a tar archive
+ * containing the contents of a specified directory, streamed from the file system.
+ */
+async function* streamDirectoryAsTar(
+  localDirPath: string,
+  basePathInArchive: string,
+  chunkSize: number = DEFAULT_CHUNK_SIZE,
+): AsyncGenerator<Uint8Array, void, void> {
+  const vtar = new VirtualTarGenerator();
+
+  // This recursive function will "walk" the directory tree and add operations
+  // to the VirtualTarGenerator instance.
+  async function walkAndTar(currentFsPath: string, currentArchivePath: string) {
+    const entries = await fs.promises.readdir(currentFsPath, { withFileTypes: true });
+    // Using Promise.all to handle entries in parallel, which can be more efficient.
+    await Promise.all(
+      entries.map(async (entry) => {
+        const fullFsPath = path.join(currentFsPath, entry.name);
+        const fullArchivePath = path.join(currentArchivePath, entry.name);
+
+        if (entry.isDirectory()) {
+          const dirStats = await fs.promises.stat(fullFsPath);
+          const tarDirStats: vtarTypes.FileStat = {
+            mode: dirStats.mode, mtime: dirStats.mtime, uid: dirStats.uid, gid: dirStats.gid,
+          };
+          vtar.addDirectory(fullArchivePath, tarDirStats);
+          // Recurse into the subdirectory
+          await walkAndTar(fullFsPath, fullArchivePath);
+        } else if (entry.isFile()) {
+          const fileStats = await fs.promises.stat(fullFsPath);
+          const tarFileStats: vtarTypes.FileStat = {
+            size: fileStats.size, mode: fileStats.mode, mtime: fileStats.mtime, uid: fileStats.uid, gid: fileStats.gid,
+          };
+          
+          vtar.addFile(
+              fullArchivePath, 
+              tarFileStats, 
+              () => fileContentStreamer(fullFsPath, chunkSize)
+          );
+        }
+      })
+    );
+  }
+
+  const walkPromise = (async () => {
+    try {
+      await walkAndTar(localDirPath, basePathInArchive);
+    } catch(err) {
+      // If the walk fails, we'll re-throw the error at the end.
+      // The `finally` block ensures the consumer doesn't hang.
+      throw err;
+    } finally {
+
+      vtar.finalize();
+    }
+  })();
+
+  yield* vtar.yieldChunks();
+  
+  await walkPromise;
+}
+
+/**
  * Parses a tar stream and writes the contents (files and directories)
  * to a specified destination on the local filesystem.
- * This is the core function for the "parsing" part of the task.
- * @param tarStream An AsyncIterable that yields Uint8Array chunks of a tar archive.
- * @param destDir The destination directory to extract the contents to.
  */
 async function parseTarStreamToFS(
   tarStream: AsyncIterable<Uint8Array>,
@@ -95,30 +163,22 @@ async function parseTarStreamToFS(
   console.log(`--- Parsing Tar Stream to Directory: ${destDir} ---`);
   
   const vtarParser = new VirtualTarParser({
-    // This callback runs when the parser finds a file header.
     onFile: async (header, dataStream) => {
       console.log(`  -> Found file in archive: '${header.path}'`);
       const fullDestPath = path.join(destDir, header.path);
-
-      // Ensure the directory for the file exists.
       await fs.promises.mkdir(path.dirname(fullDestPath), { recursive: true });
 
-      // Open a file handle for writing.
       let fd: fs.promises.FileHandle | undefined;
       try {
         fd = await fs.promises.open(fullDestPath, 'w');
-        // Stream the file's content chunks directly to the file on disk.
         for await (const chunk of dataStream()) {
           await fd.write(chunk);
         }
         console.log(`    -> Wrote file to: '${fullDestPath}'`);
       } finally {
-        if (fd) {
-          await fd.close();
-        }
+        if (fd) await fd.close();
       }
     },
-    // This callback runs when the parser finds a directory header.
     onDirectory: async (header) => {
       console.log(`  -> Found directory in archive: '${header.path}'`);
       const fullDestPath = path.join(destDir, header.path);
@@ -129,11 +189,9 @@ async function parseTarStreamToFS(
     },
   });
 
-  // Feed the generated tar chunks from the stream into the parser.
   for await (const chunk of tarStream) {
     await vtarParser.write(chunk);
   }
-  // Wait for all asynchronous parsing operations (like onFile) to complete.
   await vtarParser.settled();
 }
 
@@ -154,15 +212,16 @@ describe('scratch', () => {
   });
 
   test('should stream a file as a tar, then parse it back and verify content', async () => {
-    // SETUP 
+    // SETUP
     const originalFileName = 'source-file.txt';
-    const originalFileContent = 'This is a test of streaming a file with virtualtar!';
+    const originalFileContent =
+      'This is a test of streaming a file with virtualtar!';
     const localFilePath = path.join(tempDir, originalFileName);
     const pathInArchive = 'test/file-in-tar.txt';
     await fs.promises.writeFile(localFilePath, originalFileContent);
     console.log(`--- Original File Content ---\n'${originalFileContent}'\n`);
-    
-    // GENERATION (stream to tar) 
+
+    // GENERATION (stream to tar)
     const tarStreamGenerator = streamFileAsTar(localFilePath, pathInArchive);
 
     // PARSING (tar to file)
@@ -171,9 +230,82 @@ describe('scratch', () => {
     await parseTarStreamToFS(tarStreamGenerator, extractionDir);
 
     const extractedFilePath = path.join(extractionDir, pathInArchive);
-    const extractedFileContent = await fs.promises.readFile(extractedFilePath, 'utf-8');
-    
+    const extractedFileContent = await fs.promises.readFile(
+      extractedFilePath,
+      'utf-8',
+    );
+
     expect(extractedFileContent).toEqual(originalFileContent);
-    console.log('✅ Verification successful: Original and parsed content match!');
+    console.log(
+      '✅ Verification successful: Original and parsed content match!',
+    );
+  });
+
+  test('should stream a directory as a tar, then parse it back and verify content', async () => {
+    const sourceDirName = 'source-dir';
+    const localDirPath = path.join(tempDir, sourceDirName);
+    const subDirName = 'sub';
+    const localSubDirPath = path.join(localDirPath, subDirName);
+    const file1Name = 'file1.txt';
+    const file2Name = 'file2.log';
+    const file1Content = 'Content of file 1';
+    const file2Content = 'Content of file 2 in subdirectory';
+
+    await fs.promises.mkdir(localSubDirPath, { recursive: true });
+    await fs.promises.writeFile(
+      path.join(localDirPath, file1Name),
+      file1Content,
+    );
+    await fs.promises.writeFile(
+      path.join(localSubDirPath, file2Name),
+      file2Content,
+    );
+    console.log(
+      `--- Created source directory structure in: ${localDirPath} ---\n`,
+    );
+
+    const archiveBasePath = 'my-archive';
+
+    const tarStreamGenerator = streamDirectoryAsTar(
+      localDirPath,
+      archiveBasePath,
+    );
+
+    const extractionDir = path.join(tempDir, 'extracted-dir');
+    await fs.promises.mkdir(extractionDir);
+    await parseTarStreamToFS(tarStreamGenerator, extractionDir);
+
+    const extractedFile1Path = path.join(
+      extractionDir,
+      archiveBasePath,
+      file1Name,
+    );
+    const extractedFile1Content = await fs.promises.readFile(
+      extractedFile1Path,
+      'utf-8',
+    );
+    expect(extractedFile1Content).toEqual(file1Content);
+    console.log(`✅ Verified content of: ${extractedFile1Path}`);
+
+    const extractedFile2Path = path.join(
+      extractionDir,
+      archiveBasePath,
+      subDirName,
+      file2Name,
+    );
+    const extractedFile2Content = await fs.promises.readFile(
+      extractedFile2Path,
+      'utf-8',
+    );
+    expect(extractedFile2Content).toEqual(file2Content);
+    console.log(`✅ Verified content of: ${extractedFile2Path}`);
+
+    const subDirStat = await fs.promises.stat(
+      path.join(extractionDir, archiveBasePath, subDirName),
+    );
+    expect(subDirStat.isDirectory()).toBe(true);
+    console.log(
+      '✅ Verification successful: Directory structure and all file contents match!',
+    );
   });
 });
