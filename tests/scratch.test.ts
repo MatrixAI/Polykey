@@ -137,7 +137,6 @@ async function parseTarStreamToFS(
   await vtarParser.settled();
 }
 
-
 /**
  * This is a 'scratch paper' test file for quickly running tests in the CI.
  */
@@ -155,7 +154,7 @@ describe('scratch', () => {
   });
 
   test('should stream a file as a tar, then parse it back and verify content', async () => {
-    // --- SETUP ---
+    // SETUP 
     const originalFileName = 'source-file.txt';
     const originalFileContent = 'This is a test of streaming a file with virtualtar!';
     const localFilePath = path.join(tempDir, originalFileName);
@@ -163,16 +162,14 @@ describe('scratch', () => {
     await fs.promises.writeFile(localFilePath, originalFileContent);
     console.log(`--- Original File Content ---\n'${originalFileContent}'\n`);
     
-    // --- GENERATION (STREAMING -> TAR) ---
+    // GENERATION (stream to tar) 
     const tarStreamGenerator = streamFileAsTar(localFilePath, pathInArchive);
 
-    // --- PARSING (TAR -> FILE) ---
+    // PARSING (tar to file)
     const extractionDir = path.join(tempDir, 'extracted');
     await fs.promises.mkdir(extractionDir);
-    // Call our new utility function to handle the parsing and file writing.
     await parseTarStreamToFS(tarStreamGenerator, extractionDir);
 
-    // --- VERIFICATION ---
     const extractedFilePath = path.join(extractionDir, pathInArchive);
     const extractedFileContent = await fs.promises.readFile(extractedFilePath, 'utf-8');
     
