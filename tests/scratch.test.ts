@@ -17,26 +17,19 @@ async function* fileContentStreamer(
   localFilePath: string,
   chunkSize: number = DEFAULT_CHUNK_SIZE,
 ): AsyncGenerator<Buffer, void, void> {
-  let fd: fs.promises.FileHandle | undefined;
+  const fd = await fs.promises.open(localFilePath, 'r');
   try {
-    // Open the file for reading.
-    fd = await fs.promises.open(localFilePath, 'r');
     const buffer = Buffer.alloc(chunkSize);
     while (true) {
-      // Read a chunk from the file into our buffer.
       const { bytesRead } = await fd.read(buffer, 0, chunkSize, null);
       if (bytesRead === 0) {
-        // No more bytes to read, end of file.
         break;
       }
-      // Yield only the portion of the buffer that contains actual data.
       yield buffer.subarray(0, bytesRead);
     }
   } finally {
-    // Crucially, ensure the file handle is closed, even if errors occur.
-    if (fd) {
-      await fd.close();
-    }
+    await fd.close();
+    console.log(`  -> Closed read handle for: ${path.basename(localFilePath)}`);
   }
 }
 
@@ -104,7 +97,6 @@ async function* streamDirectoryAsTar(
   // to the VirtualTarGenerator instance.
   async function walkAndTar(currentFsPath: string, currentArchivePath: string) {
     const entries = await fs.promises.readdir(currentFsPath, { withFileTypes: true });
-    // Using Promise.all to handle entries in parallel, which can be more efficient.
     await Promise.all(
       entries.map(async (entry) => {
         const fullFsPath = path.join(currentFsPath, entry.name);
