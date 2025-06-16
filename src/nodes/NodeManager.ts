@@ -310,7 +310,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
         connectedTime: Date.now(),
         scopes: ['global'],
       },
-      true,
+      false,
       false,
     );
   };
@@ -925,7 +925,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       });
     }
 
-    if (!connectionMade) {
+    if (connectionMade == null) {
       throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
         'failed to find node via direct',
       );
@@ -1312,8 +1312,8 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     @decorators.context ctx: ContextTimed,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) => {
-        return this.claimNode(targetNodeId, tran);
+      return await this.db.withTransactionF(async (tran) => {
+        return await this.claimNode(targetNodeId, tran);
       });
     }
     const [, claim] = await this.sigchain.addClaim(
@@ -1515,8 +1515,9 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     tran?: DBTransaction,
   ): Promise<AgentRPCResponseResult<AgentClaimMessage>> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.handleClaimNetwork(requestingNodeId, input, tran),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.handleClaimNetwork(requestingNodeId, input, tran),
       );
     }
     const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
@@ -1546,8 +1547,9 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     tran?: DBTransaction,
   ): Promise<AgentRPCResponseResult<{ success: true }>> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.handleVerifyClaimNetwork(requestingNodeId, input, tran),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.handleVerifyClaimNetwork(requestingNodeId, input, tran),
       );
     }
     const signedClaim = claimsUtils.parseSignedClaim(input.signedTokenEncoded);
@@ -1680,17 +1682,18 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     }
 
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.setNode(
-          nodeId,
-          nodeAddress,
-          nodeContactAddressData,
-          block,
-          force,
-          connectionConnectTimeoutTime,
-          tran,
-          ctx,
-        ),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.setNode(
+            nodeId,
+            nodeAddress,
+            nodeContactAddressData,
+            block,
+            force,
+            connectionConnectTimeoutTime,
+            tran,
+            ctx,
+          ),
       );
     }
 
@@ -1824,13 +1827,14 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     tran?: DBTransaction,
   ): Promise<void> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.garbageCollectBucket(
-          bucketIndex,
-          connectionConnectTimeoutTime,
-          ctx,
-          tran,
-        ),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.garbageCollectBucket(
+            bucketIndex,
+            connectionConnectTimeoutTime,
+            ctx,
+            tran,
+          ),
       );
     }
 
@@ -2041,8 +2045,8 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
 
   protected async setupRefreshBucketTasks(tran?: DBTransaction) {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.setupRefreshBucketTasks(tran),
+      return await this.db.withTransactionF(
+        async (tran) => await this.setupRefreshBucketTasks(tran),
       );
     }
 
@@ -2149,8 +2153,15 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     @decorators.context ctx: ContextTimed,
   ): Promise<Task> {
     if (tran == null) {
-      return this.db.withTransactionF((tran) =>
-        this.updateRefreshBucketDelay(bucketIndex, delay, lazy, tran, ctx),
+      return await this.db.withTransactionF(
+        async (tran) =>
+          await this.updateRefreshBucketDelay(
+            bucketIndex,
+            delay,
+            lazy,
+            tran,
+            ctx,
+          ),
       );
     }
 
