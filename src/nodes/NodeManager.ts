@@ -707,7 +707,6 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     }
 
     while (true) {
-      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeSignal(
         async (nodeIdTarget, nodeIdSignaller) => {
           let nodeConnection: NodeConnection<Manifest> | undefined;
@@ -849,7 +848,6 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     }
 
     while (true) {
-      ctx.signal.throwIfAborted();
       const isDone = await nodeConnectionsQueue.withNodeDirect(
         async (nodeIdTarget, nodeContact) => {
           if (!this.nodeConnectionManager.hasConnection(nodeIdTarget)) {
@@ -924,8 +922,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
         throw e;
       });
     }
-
-    if (connectionMade == null) {
+    if (!connectionMade) {
       throw new nodesErrors.ErrorNodeManagerFindNodeFailed(
         'failed to find node via direct',
       );
