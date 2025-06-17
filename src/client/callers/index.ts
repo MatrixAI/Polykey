@@ -4,6 +4,7 @@ import agentStop from './agentStop.js';
 import agentUnlock from './agentUnlock.js';
 import auditEventsGet from './auditEventsGet.js';
 import auditMetricGet from './auditMetricGet.js';
+import authSignToken from './authSignToken.js';
 import gestaltsActionsGetByIdentity from './gestaltsActionsGetByIdentity.js';
 import gestaltsActionsGetByNode from './gestaltsActionsGetByNode.js';
 import gestaltsActionsSetByIdentity from './gestaltsActionsSetByIdentity.js';
@@ -85,6 +86,7 @@ const clientManifest = {
   agentUnlock,
   auditEventsGet,
   auditMetricGet,
+  authSignToken,
   gestaltsActionsGetByIdentity,
   gestaltsActionsGetByNode,
   gestaltsActionsSetByIdentity,
@@ -165,6 +167,7 @@ export {
   agentStop,
   agentUnlock,
   auditEventsGet,
+  authSignToken,
   gestaltsActionsGetByIdentity,
   gestaltsActionsGetByNode,
   gestaltsActionsSetByIdentity,
