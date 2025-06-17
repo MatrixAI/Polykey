@@ -21,6 +21,7 @@ import type {
 } from '../keys/types.js';
 import type { Notification } from '../notifications/types.js';
 import type { ProviderToken } from '../identities/types.js';
+import type { TokenPayload, SignedTokenEncoded } from '../tokens/types.js';
 import type { AuditMetricGetTypeOverride } from './callers/auditMetricGet.js';
 import type {
   NodeContact,
@@ -106,6 +107,22 @@ type ClaimNodeMessage = NodeIdMessage & {
 type TokenMessage = {
   token: ProviderToken;
 };
+
+// Return URL must be present on the token, otherwise token contents is decided
+// by the client.
+type IdentityRequestData = TokenPayload & {
+  returnUrl: string;
+  publicKey: string;
+};
+
+type TokenIdentityRequest = SignedTokenEncoded;
+
+type IdentityResponseData = TokenPayload & {
+  requestToken: TokenIdentityRequest;
+  nodeId: NodeIdEncoded;
+};
+
+type TokenIdentityResponse = SignedTokenEncoded;
 
 // Nodes messages
 
@@ -405,6 +422,10 @@ export type {
   ClaimIdMessage,
   ClaimNodeMessage,
   TokenMessage,
+  IdentityRequestData,
+  IdentityResponseData,
+  TokenIdentityRequest,
+  TokenIdentityResponse,
   NodeIdMessage,
   AddressMessage,
   NodeAddressMessage,
