@@ -1,5 +1,5 @@
 import type { HandlerTypes } from '@matrixai/rpc';
-import type AuthSignToken from '../handlers/AgentLockAll.js';
+import type AuthSignToken from '../handlers/AuthSignToken.js';
 import { UnaryCaller } from '@matrixai/rpc';
 
 type CallerTypes = HandlerTypes<AuthSignToken>;

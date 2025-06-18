@@ -53,7 +53,7 @@ class ErrorClientVerificationFailed<T> extends ErrorClientService<T> {
 class ErrorAuthentication<T> extends ErrorPolykey<T> {}
 
 class ErrorAuthenticationInvalidToken<T> extends ErrorAuthentication<T> {
-  static description = 'Incoming token does not match its signature';
+  static description = 'Token is invalid';
   exitCode = sysexits.PROTOCOL;
 }
 

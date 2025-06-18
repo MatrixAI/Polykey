@@ -111,7 +111,7 @@ type TokenMessage = {
 // Return URL must be present on the token, otherwise token contents is decided
 // by the client.
 type IdentityRequestData = TokenPayload & {
-  returnUrl: string;
+  returnURL: string;
   publicKey: string;
 };
 

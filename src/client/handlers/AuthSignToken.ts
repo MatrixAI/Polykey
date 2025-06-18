@@ -28,11 +28,19 @@ class AuthSignToken extends UnaryHandler<
     // Get and verify incoming node
     const inputToken = { payload: input.payload, signatures: input.signatures };
     const incomingToken = Token.fromEncoded<IdentityRequestData>(inputToken);
+    if (!('publicKey' in incomingToken.payload)) {
+      throw new clientErrors.ErrorAuthenticationInvalidToken(
+        'Input token does not contain public key',
+      );
+    }
     const incomingPublicKey = Buffer.from(
       incomingToken.payload.publicKey,
+      'base64url',
     ) as PublicKey;
     if (!incomingToken.verifyWithPublicKey(incomingPublicKey)) {
-      throw new clientErrors.ErrorAuthenticationInvalidToken();
+      throw new clientErrors.ErrorAuthenticationInvalidToken(
+        'Incoming token does not match its signature',
+      );
     }
 
     // Create the outgoing token with the incoming token integrated into the
