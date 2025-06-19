@@ -477,7 +477,10 @@ function fromError(error: any) {
     // serialising only the error type, message and its stack.
     const wrappedError = new errors.ErrorPolykeyUnexpected(
       `Unexpected error occurred: ${error.name}`,
-      { cause: error },
+      {
+        cause: error,
+        data: { message: 'message' in error ? error.message : undefined },
+      },
     );
     return wrappedError.toJSON();
   }

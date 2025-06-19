@@ -22,6 +22,7 @@ import AgentStop from './AgentStop.js';
 import AgentUnlock from './AgentUnlock.js';
 import AuditEventsGet from './AuditEventsGet.js';
 import AuditMetricGet from './AuditMetricGet.js';
+import AuthSignToken from './AuthSignToken.js';
 import GestaltsActionsGetByIdentity from './GestaltsActionsGetByIdentity.js';
 import GestaltsActionsGetByNode from './GestaltsActionsGetByNode.js';
 import GestaltsActionsSetByIdentity from './GestaltsActionsSetByIdentity.js';
@@ -122,6 +123,7 @@ const serverManifest = (container: {
     agentUnlock: new AgentUnlock(container),
     auditEventsGet: new AuditEventsGet(container),
     auditMetricGet: new AuditMetricGet(container),
+    authSignToken: new AuthSignToken(container),
     gestaltsActionsGetByIdentity: new GestaltsActionsGetByIdentity(container),
     gestaltsActionsGetByNode: new GestaltsActionsGetByNode(container),
     gestaltsActionsSetByIdentity: new GestaltsActionsSetByIdentity(container),
@@ -208,6 +210,7 @@ export {
   AgentUnlock,
   AuditEventsGet,
   AuditMetricGet,
+  AuthSignToken,
   GestaltsActionsGetByIdentity,
   GestaltsActionsGetByNode,
   GestaltsActionsSetByIdentity,
