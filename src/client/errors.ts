@@ -50,9 +50,7 @@ class ErrorClientVerificationFailed<T> extends ErrorClientService<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorAuthentication<T> extends ErrorPolykey<T> {}
-
-class ErrorAuthenticationInvalidToken<T> extends ErrorAuthentication<T> {
+class ErrorClientAuthenticationInvalidToken<T> extends ErrorClient<T> {
   static description = 'Token is invalid';
   exitCode = sysexits.PROTOCOL;
 }
@@ -69,6 +67,5 @@ export {
   ErrorClientServiceNotRunning,
   ErrorClientServiceDestroyed,
   ErrorClientVerificationFailed,
-  ErrorAuthentication,
-  ErrorAuthenticationInvalidToken,
+  ErrorClientAuthenticationInvalidToken,
 };

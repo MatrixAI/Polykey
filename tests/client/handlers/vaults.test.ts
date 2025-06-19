@@ -94,10 +94,7 @@ describe('vaultsClone', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let vaultManager: VaultManager;
-  let taskManager: TaskManager;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -130,11 +127,7 @@ describe('vaultsClone', () => {
     });
   });
   afterEach(async () => {
-    await clientService?.stop({ force: true });
-    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
-    await taskManager.stopProcessing();
-    await taskManager.stopTasks();
     await db.stop();
     await keyRing.stop();
     await fs.promises.rm(dataDir, {
@@ -693,8 +686,6 @@ describe('vaultsPull', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let vaultManager: VaultManager;
   let taskManager: TaskManager;
   let acl: ACL;
@@ -758,8 +749,6 @@ describe('vaultsPull', () => {
     });
   });
   afterEach(async () => {
-    await clientService?.stop({ force: true });
-    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await notificationsManager.stop();
     await gestaltGraph.stop();
@@ -884,8 +873,6 @@ describe('vaultsScan', () => {
   let dataDir: string;
   let db: DB;
   let keyRing: KeyRing;
-  let webSocketClient: WebSocketClient;
-  let clientService: ClientService;
   let vaultManager: VaultManager;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -918,8 +905,6 @@ describe('vaultsScan', () => {
     });
   });
   afterEach(async () => {
-    await clientService?.stop({ force: true });
-    await webSocketClient.destroy({ force: true });
     await vaultManager.stop();
     await db.stop();
     await keyRing.stop();

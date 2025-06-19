@@ -29,7 +29,7 @@ class AuthSignToken extends UnaryHandler<
     const inputToken = { payload: input.payload, signatures: input.signatures };
     const incomingToken = Token.fromEncoded<IdentityRequestData>(inputToken);
     if (!('publicKey' in incomingToken.payload)) {
-      throw new clientErrors.ErrorAuthenticationInvalidToken(
+      throw new clientErrors.ErrorClientAuthenticationInvalidToken(
         'Input token does not contain public key',
       );
     }
@@ -38,7 +38,7 @@ class AuthSignToken extends UnaryHandler<
       'base64url',
     ) as PublicKey;
     if (!incomingToken.verifyWithPublicKey(incomingPublicKey)) {
-      throw new clientErrors.ErrorAuthenticationInvalidToken(
+      throw new clientErrors.ErrorClientAuthenticationInvalidToken(
         'Incoming token does not match its signature',
       );
     }
