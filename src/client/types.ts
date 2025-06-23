@@ -109,7 +109,9 @@ type TokenMessage = {
 };
 
 type IdentityResponseData = TokenPayload & {
-  nodeId: NodeIdEncoded;
+  jti: string;
+  exp: number;
+  iss: NodeIdEncoded;
 };
 
 type TokenIdentityResponse = SignedTokenEncoded;

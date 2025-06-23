@@ -7,8 +7,8 @@ import Logger, { formatting, LogLevel, StreamHandler } from '@matrixai/logger';
 import { RPCClient } from '@matrixai/rpc';
 import { WebSocketClient } from '@matrixai/ws';
 import * as testsUtils from '../../utils/index.js';
-import { AuthSignToken } from '#client/handlers/index.js';
-import { authSignToken } from '#client/callers/index.js';
+import { AuthIdentityToken } from '#client/handlers/index.js';
+import { authIdentityToken } from '#client/callers/index.js';
 import KeyRing from '#keys/KeyRing.js';
 import Token from '#tokens/Token.js';
 import ClientService from '#client/ClientService.js';
@@ -16,8 +16,8 @@ import * as keysUtils from '#keys/utils/index.js';
 import * as networkUtils from '#network/utils.js';
 import * as nodesUtils from '#nodes/utils.js';
 
-describe('authSignToken', () => {
-  const logger = new Logger('authSignToken test', LogLevel.WARN, [
+describe('authIdentityToken', () => {
+  const logger = new Logger('authIdentityToken test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -30,7 +30,7 @@ describe('authSignToken', () => {
   let clientService: ClientService;
   let webSocketClient: WebSocketClient;
   let rpcClient: RPCClient<{
-    authSignToken: typeof authSignToken;
+    authIdentityToken: typeof authIdentityToken;
   }>;
 
   beforeEach(async () => {
@@ -53,7 +53,7 @@ describe('authSignToken', () => {
     });
     await clientService.start({
       manifest: {
-        authSignToken: new AuthSignToken({
+        authIdentityToken: new AuthIdentityToken({
           keyRing,
         }),
       },
@@ -69,7 +69,7 @@ describe('authSignToken', () => {
     });
     rpcClient = new RPCClient({
       manifest: {
-        authSignToken,
+        authIdentityToken,
       },
       streamFactory: () => webSocketClient.connection.newStream(),
       toError: networkUtils.toError,
@@ -89,11 +89,13 @@ describe('authSignToken', () => {
   });
 
   test('should return a signed token', async () => {
-    const identityToken = await rpcClient.methods.authSignToken({});
+    const identityToken = await rpcClient.methods.authIdentityToken({});
     const decodedToken = Token.fromEncoded<IdentityResponseData>(identityToken);
     const decodedPublicKey = keysUtils.publicKeyFromNodeId(keyRing.getNodeId());
     expect(decodedToken.verifyWithPublicKey(decodedPublicKey)).toBeTrue();
     const encodedNodeId = nodesUtils.encodeNodeId(keyRing.getNodeId());
-    expect(decodedToken.payload.nodeId).toBe(encodedNodeId);
+    expect(decodedToken.payload.iss).toBe(encodedNodeId);
+    expect(decodedToken.payload.exp).toBeDefined();
+    expect(decodedToken.payload.jti).toBeDefined();
   });
 });
