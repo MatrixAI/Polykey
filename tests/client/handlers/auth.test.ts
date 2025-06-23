@@ -1,4 +1,4 @@
-import type { IdentityResponseData } from '#src/client/types.js';
+import type { IdentityResponseData } from '#client/types.js';
 import type { TLSConfig } from '#network/types.js';
 import fs from 'node:fs';
 import path from 'node:path';
