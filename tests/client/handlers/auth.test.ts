@@ -1,7 +1,4 @@
-import type {
-  IdentityRequestData,
-  IdentityResponseData,
-} from '#src/client/types.js';
+import type { IdentityResponseData } from '#src/client/types.js';
 import type { TLSConfig } from '#network/types.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +14,7 @@ import Token from '#tokens/Token.js';
 import ClientService from '#client/ClientService.js';
 import * as keysUtils from '#keys/utils/index.js';
 import * as networkUtils from '#network/utils.js';
-import * as clientErrors from '#client/errors.js';
+import * as nodesUtils from '#nodes/utils.js';
 
 describe('authSignToken', () => {
   const logger = new Logger('authSignToken test', LogLevel.WARN, [
@@ -91,44 +88,12 @@ describe('authSignToken', () => {
     });
   });
 
-  test('should sign a valid token', async () => {
-    // Create token with separate key pair
-    const keyPair = keysUtils.generateKeyPair();
-    const token = Token.fromPayload<IdentityRequestData>({
-      publicKey: keyPair.publicKey.toString('base64url'),
-      returnURL: 'test',
-    });
-    token.signWithPrivateKey(keyPair);
-
-    // Get the node to sign the token as well
-    const encodedToken = token.toEncoded();
-    const identityToken = await rpcClient.methods.authSignToken(encodedToken);
-
-    // Check the signature of both the incoming token and the original sent token
+  test('should return a signed token', async () => {
+    const identityToken = await rpcClient.methods.authSignToken({});
     const decodedToken = Token.fromEncoded<IdentityResponseData>(identityToken);
     const decodedPublicKey = keysUtils.publicKeyFromNodeId(keyRing.getNodeId());
     expect(decodedToken.verifyWithPublicKey(decodedPublicKey)).toBeTrue();
-    const requestToken = Token.fromEncoded<IdentityRequestData>(
-      decodedToken.payload.requestToken,
-    );
-    expect(requestToken.verifyWithPublicKey(keyPair.publicKey)).toBeTrue();
-  });
-
-  test('should fail if public key does not match signature', async () => {
-    // Create token with a key pair and sign it with another
-    const keyPair1 = keysUtils.generateKeyPair();
-    const keyPair2 = keysUtils.generateKeyPair();
-    const token = Token.fromPayload<IdentityRequestData>({
-      publicKey: keyPair1.publicKey.toString('base64url'),
-      returnURL: 'test',
-    });
-    token.signWithPrivateKey(keyPair2);
-
-    // The token should fail validation
-    const encodedToken = token.toEncoded();
-    await testsUtils.expectRemoteError(
-      rpcClient.methods.authSignToken(encodedToken),
-      clientErrors.ErrorClientAuthenticationInvalidToken,
-    );
+    const encodedNodeId = nodesUtils.encodeNodeId(keyRing.getNodeId());
+    expect(decodedToken.payload.nodeId).toBe(encodedNodeId);
   });
 });
