@@ -111,7 +111,11 @@ const activeForwardAuthenticateCancellationReason = Symbol(
   'active forward authenticate cancellation reason',
 );
 
-const rpcMethodsWhitelist = ['nodesAuthenticateConnection'];
+const rpcMethodsWhitelist = [
+  'nodesAuthenticateConnection',
+  'nodesClaimNetworkSign',
+  'nodesClaimNetworkAuthorityGet',
+];
 
 /**
  * NodeConnectionManager is a server that manages all node connections.
@@ -711,7 +715,7 @@ class NodeConnectionManager<
    * @param targetNodeId Id of target node to communicate with
    * @returns ResourceAcquire Resource API for use in with contexts
    */
-  protected acquireConnectionInternal(
+  public acquireConnectionInternal(
     targetNodeId: NodeId,
   ): ResourceAcquire<NodeConnection<Manifest>> {
     if (this.keyRing.getNodeId().equals(targetNodeId)) {
@@ -1837,7 +1841,7 @@ class NodeConnectionManager<
     }
     try {
       // Should resolve without issue if authentication succeeds.
-      await this.authenticateNetworkReverseCallback(message, ctx);
+      await this.authenticateNetworkReverseCallback(message, nodeId, ctx);
       connectionsEntry.authenticatedReverse = AuthenticatingState.SUCCESS;
     } catch (e) {
       const err = new nodesErrors.ErrorNodeManagerAuthenticationFailedReverse(

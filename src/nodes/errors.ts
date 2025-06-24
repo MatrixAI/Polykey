@@ -67,6 +67,14 @@ class ErrorNodeManagerAuthenticationTimedOut<T> extends ErrorNodeManager<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorNodeManagerClaimNetworkAuthorityMissing<
+  T,
+> extends ErrorNodeManager<T> {
+  static description =
+    'Missing ClaimNetworkAuthority required to create ClaimNetworkAccess';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorNodeGraph<T> extends ErrorNodes<T> {}
 
 class ErrorNodeGraphRunning<T> extends ErrorNodeGraph<T> {
@@ -302,6 +310,7 @@ export {
   ErrorNodeManagerAuthenticationFailedForward,
   ErrorNodeManagerAuthenticationFailedReverse,
   ErrorNodeManagerAuthenticationTimedOut,
+  ErrorNodeManagerClaimNetworkAuthorityMissing,
   ErrorNodeGraph,
   ErrorNodeGraphRunning,
   ErrorNodeGraphNotRunning,

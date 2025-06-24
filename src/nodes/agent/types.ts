@@ -15,6 +15,7 @@ import type { SignedNotification } from '../../notifications/types.js';
 import type { Host, Hostname, Port } from '../../network/types.js';
 import type { NetworkId, NodeContact } from '../../nodes/types.js';
 import type { AuditEvent } from '../../audit/types.js';
+import type { SignedClaimEncoded } from '../../claims/types.js';
 
 type AgentRPCRequestParams<T extends JSONObject = JSONObject> =
   JSONRPCRequestParams<T>;
@@ -106,13 +107,20 @@ type SuccessMessage = {
 };
 
 type NodesAuthenticateConnectionMessage =
+  | NodesAuthenticateConnectionMessagePrivate
   | NodesAuthenticateConnectionMessageBasicPublic
   | NodesAuthenticateConnectionMessageNone;
+
+type NodesAuthenticateConnectionMessagePrivate = {
+  type: 'NodesAuthenticateConnectionMessagePrivate';
+  claimNetworkAccessEncoded: SignedClaimEncoded;
+};
 
 type NodesAuthenticateConnectionMessageBasicPublic = {
   type: 'NodesAuthenticateConnectionMessageBasicPublic';
   networkId: NetworkId;
 };
+
 type NodesAuthenticateConnectionMessageNone = {
   type: 'NodesAuthenticateConnectionMessageNone';
 };
@@ -136,6 +144,7 @@ export type {
   VaultsScanMessage,
   SuccessMessage,
   NodesAuthenticateConnectionMessage,
+  NodesAuthenticateConnectionMessagePrivate,
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
 };

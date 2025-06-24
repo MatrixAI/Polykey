@@ -84,6 +84,7 @@ type AuthenticateNetworkForwardCallback = (
  */
 type AuthenticateNetworkReverseCallback = (
   message: NodesAuthenticateConnectionMessage,
+  requestingNodeId: NodeId,
   ctx: ContextTimed,
 ) => Promise<void>;
 

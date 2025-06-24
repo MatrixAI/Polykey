@@ -13,12 +13,16 @@ import type {
   NodeBucketIndex,
   NodeId,
   SeedNodes,
+  AuthenticateNetworkForwardCallback,
+  AuthenticateNetworkReverseCallback,
 } from './types.js';
 import type {
   NodesAuthenticateConnectionMessage,
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
+  NodesAuthenticateConnectionMessagePrivate,
 } from './agent/types.js';
+import type { ClaimNetworkAccess } from '../claims/payloads/index.js';
 import dns from 'dns';
 import { utils as dbUtils } from '@matrixai/db';
 import { IdInternal } from '@matrixai/id';
@@ -33,6 +37,11 @@ import * as networkUtils from '../network/utils.js';
 import * as validationErrors from '../validation/errors.js';
 import config from '../config.js';
 import * as utils from '../utils/index.js';
+import * as claimsUtils from '../claims/utils.js';
+import Token from '../tokens/Token.js';
+import * as claimNetworkAuthorityUtils from '../claims/payloads/claimNetworkAuthority.js';
+import * as nodesUtils from '../nodes/utils.js';
+import * as claimNetworkAccessUtils from '../claims/payloads/claimNetworkAccess.js';
 
 const sepBuffer = dbUtils.sep;
 
@@ -808,7 +817,7 @@ async function nodesAuthenticateConnectionReverseDefault(): Promise<void> {
 
 function nodesAuthenticateConnectionForwardBasicPublicFactory(
   networkId: string,
-) {
+): AuthenticateNetworkForwardCallback {
   return async (): Promise<NodesAuthenticateConnectionMessageBasicPublic> => {
     return {
       type: 'NodesAuthenticateConnectionMessageBasicPublic',
@@ -819,7 +828,7 @@ function nodesAuthenticateConnectionForwardBasicPublicFactory(
 
 function nodesAuthenticateConnectionReverseBasicPublicFactory(
   networkId: string,
-) {
+): AuthenticateNetworkReverseCallback {
   return async (message: NodesAuthenticateConnectionMessage): Promise<void> => {
     if (message.type !== 'NodesAuthenticateConnectionMessageBasicPublic') {
       throw new nodesErrors.ErrorNodeAuthenticationFailed(
@@ -838,6 +847,65 @@ async function nodesAuthenticateConnectionReverseDeny() {
   throw new nodesErrors.ErrorNodeAuthenticationFailed(
     'All connections are being denied',
   );
+}
+
+function nodesAuthenticationConnectionForwardPrivateFactory(
+  networkAccessClaim: Token<ClaimNetworkAccess>,
+): AuthenticateNetworkForwardCallback {
+  const claimNetworkAccessEncoded = claimsUtils.generateSignedClaim(
+    networkAccessClaim.toSigned(),
+  );
+  return async (): Promise<NodesAuthenticateConnectionMessagePrivate> => {
+    return {
+      type: 'NodesAuthenticateConnectionMessagePrivate',
+      claimNetworkAccessEncoded,
+    };
+  };
+}
+
+function nodesAuthenticationConnectionReversePrivateFactory(
+  networkAccessClaim: Token<ClaimNetworkAccess>,
+): AuthenticateNetworkReverseCallback {
+  const expectedNetwork = networkAccessClaim.payload.network;
+  const claimNetworkAuthority =
+    claimNetworkAuthorityUtils.parseSignedClaimNetworkAuthority(
+      networkAccessClaim.payload.signedClaimNetworkAuthorityEncoded,
+    );
+  const tokenClaimNetworkAuthority = Token.fromSigned(claimNetworkAuthority);
+  const expectedNetworkNodeId = nodesUtils.decodeNodeId(
+    tokenClaimNetworkAuthority.payload.iss,
+  );
+  if (expectedNetworkNodeId == null) {
+    utils.never('expectedNetworkNodeId should be defined');
+  }
+
+  return async (
+    message: NodesAuthenticateConnectionMessage,
+    requestingNodeId: NodeId,
+  ): Promise<void> => {
+    if (message.type !== 'NodesAuthenticateConnectionMessagePrivate') {
+      throw new nodesErrors.ErrorNodeAuthenticationFailed(
+        'message type must be "NodesAuthenticateConnectionMessagePrivate"',
+      );
+    }
+    const claimNetworkAccess =
+      claimNetworkAccessUtils.parseSignedClaimNetworkAccess(
+        message.claimNetworkAccessEncoded,
+      );
+    const tokenClaimNetworkAccess = Token.fromSigned(claimNetworkAccess);
+    try {
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        expectedNetworkNodeId,
+        requestingNodeId,
+        expectedNetwork,
+        tokenClaimNetworkAccess,
+      );
+    } catch (e) {
+      throw new nodesErrors.ErrorNodeAuthenticationFailed(
+        `authentication failed with ${e.name}:${e.message}`,
+      );
+    }
+  };
 }
 
 export {
@@ -879,6 +947,8 @@ export {
   nodesAuthenticateConnectionForwardBasicPublicFactory,
   nodesAuthenticateConnectionReverseBasicPublicFactory,
   nodesAuthenticateConnectionReverseDeny,
+  nodesAuthenticationConnectionForwardPrivateFactory,
+  nodesAuthenticationConnectionReversePrivateFactory,
 };
 
 export { encodeNodeId, decodeNodeId } from '../ids/index.js';

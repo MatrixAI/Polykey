@@ -1,5 +1,6 @@
 import type { ClientManifest } from '@matrixai/rpc';
 import nodesAuthenticateConnection from './nodesAuthenticateConnection.js';
+import nodesClaimNetworkAuthorityGet from './nodesClaimNetworkAuthorityGet.js';
 import nodesClaimsGet from './nodesClaimsGet.js';
 import nodesClosestActiveConnectionsGet from './nodesClosestActiveConnectionsGet.js';
 import nodesClosestLocalNodesGet from './nodesClosestLocalNodesGet.js';
@@ -7,7 +8,6 @@ import nodesConnectionSignalFinal from './nodesConnectionSignalFinal.js';
 import nodesConnectionSignalInitial from './nodesConnectionSignalInitial.js';
 import nodesCrossSignClaim from './nodesCrossSignClaim.js';
 import nodesClaimNetworkSign from './nodesClaimNetworkSign.js';
-import nodesClaimNetworkVerify from './nodesClaimNetworkVerify.js';
 import notificationsSend from './notificationsSend.js';
 import vaultsGitInfoGet from './vaultsGitInfoGet.js';
 import vaultsGitPackGet from './vaultsGitPackGet.js';
@@ -23,7 +23,9 @@ type AgentClientManifestNodeConnectionManager =
   typeof manifestClientNodeConnectionManager & ClientManifest;
 
 const manifestClientNodeManager = {
+  nodesClaimNetworkAuthorityGet,
   nodesClaimsGet,
+  nodesClaimNetworkSign,
   nodesClosestActiveConnectionsGet,
   nodesClosestLocalNodesGet,
   nodesCrossSignClaim,
@@ -39,8 +41,6 @@ type AgentClientManifestNodeManager = typeof manifestClientNodeManager &
 const manifestClient = {
   ...manifestClientNodeConnectionManager,
   ...manifestClientNodeManager,
-  nodesClaimNetworkSign,
-  nodesClaimNetworkVerify,
   notificationsSend,
   vaultsGitInfoGet,
   vaultsGitPackGet,
@@ -62,7 +62,6 @@ export {
   nodesConnectionSignalInitial,
   nodesCrossSignClaim,
   nodesClaimNetworkSign,
-  nodesClaimNetworkVerify,
   notificationsSend,
   vaultsGitInfoGet,
   vaultsGitPackGet,
