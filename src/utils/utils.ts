@@ -114,8 +114,6 @@ function sleepCancellable(ms: number): PromiseCancellable<void> {
 /**
  * Checks if value is an object.
  * Arrays are also considered objects.
- * The type guard here says `o is any`.
- * TODO: When TS 4.9.x is released, change this to `o is object`.
  * At that point `'x' in o` checks become type guards that
  * can assert the property's existence.
  */
