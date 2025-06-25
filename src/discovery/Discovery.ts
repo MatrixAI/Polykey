@@ -460,7 +460,11 @@ class Discovery {
       return;
     }
     // Iterate over each of the claims in the chain (already verified).
-    for (const signedClaim of Object.values(vertexChainData)) {
+    const processedClaimIds: Set<string> = new Set();
+    for (const [claimIdString, signedClaim] of Object.entries(
+      vertexChainData,
+    )) {
+      processedClaimIds.add(claimIdString);
       switch (signedClaim.payload.typ) {
         case 'ClaimLinkNode':
           await this.processClaimLinkNode(
@@ -481,6 +485,23 @@ class Discovery {
           never(
             `signedClaim.payload.typ must be "ClaimLinkNode" or "ClaimLinkIdentity" got "${signedClaim.payload.typ}"`,
           );
+      }
+    }
+    // Queue up known linked vertices that weren't just processed
+    for await (const [gestaltId, gestaltLink] of this.gestaltGraph.getLinks([
+      'node',
+      nodeId,
+    ])) {
+      const claimIdString = decodeClaimId(
+        gestaltLink[1].claim.payload.jti,
+      )!.toString();
+      if (!processedClaimIds.has(claimIdString)) {
+        await this.scheduleDiscoveryForVertex(
+          gestaltId,
+          undefined,
+          lastProcessedCutoffTime,
+          ['node', nodeId],
+        );
       }
     }
     await this.gestaltGraph.setVertexProcessedTime(

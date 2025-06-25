@@ -1284,18 +1284,18 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param _claimId If set then we get the claims newer that this claim ID.
+   * @param claimId If set then we get the claims newer that this claim ID.
    * @param ctx
    */
   public requestChainData(
     targetNodeId: NodeId,
-    _claimId?: ClaimId,
+    claimId?: ClaimId,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
   @decorators.timedCancellable(true)
   public async requestChainData(
     targetNodeId: NodeId,
-    _claimId: ClaimId | undefined,
+    claimId: ClaimId | undefined,
     @decorators.context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
@@ -1303,18 +1303,11 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
 
-      // Let claimIdEncoded: ClaimIdEncoded | undefined;
-
-      // if (claimId != null) {
-      //   claimIdEncoded = claimsUtils.encodeClaimId(claimId);
-      // } else {
-      //   claimIdEncoded = undefined;
-      // }
-
+      const claimIdEncoded: ClaimIdEncoded | undefined =
+        claimId != null ? claimsUtils.encodeClaimId(claimId) : undefined;
       for await (const agentClaim of await client.methods.nodesClaimsGet(
         {
-          // Needs to be addressed later - causes test failures in Discovery.test.ts
-          // seek: claimIdEncoded,
+          seek: claimIdEncoded,
         },
         ctx,
       )) {
