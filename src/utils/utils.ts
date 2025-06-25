@@ -296,8 +296,8 @@ function promise<T = void>(): PromiseDeconstructed<T> {
  * Promise constructed from signal
  * This rejects when the signal is aborted
  */
-//  fixme: There is also a one signal to many `signalPromise` relationship in the NM connection queue that needs to be fixed.
 function signalPromise(signal: AbortSignal): PromiseCancellable<void> {
+  setMaxListeners(signal);
   return new PromiseCancellable((resolve, _, signalCancel) => {
     // Short circuit if signal already aborted
     if (signal.aborted) return resolve();
