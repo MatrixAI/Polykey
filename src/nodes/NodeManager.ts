@@ -34,6 +34,7 @@ import type {
   NodeAddress,
   NodeBucket,
   NodeBucketIndex,
+  NodeContact,
   NodeContactAddressData,
   NodeId,
   NodeIdEncoded,
@@ -1145,48 +1146,68 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     nodeConnectionsQueue: NodeConnectionQueue,
     ctx: ContextTimed,
   ) {
-    await this.nodeConnectionManager.withConnF(nodeId, ctx, async (conn) => {
-      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
-      const closestConnectionsRequestP = (async () => {
-        const resultStream =
-          await conn.rpcClient.methods.nodesClosestActiveConnectionsGet(
-            {
-              nodeIdEncoded: nodeIdEncoded,
-            },
-            ctx,
-          );
-        // Collecting results
-        for await (const result of resultStream) {
-          ctx.signal.throwIfAborted();
-          const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
-          if (nodeIdNew == null) {
-            utils.never(`failed to decode NodeId "${result.nodeId}"`);
+    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
+    const closestConnectionsRequestP = (async () => {
+      const data = await this.nodeConnectionManager.withConnF(
+        nodeId,
+        ctx,
+        async (conn) => {
+          const resultStream =
+            await conn.rpcClient.methods.nodesClosestActiveConnectionsGet(
+              {
+                nodeIdEncoded: nodeIdEncoded,
+              },
+              ctx,
+            );
+          const connections: Array<NodeId> = [];
+          // Collecting results
+          for await (const result of resultStream) {
+            ctx.signal.throwIfAborted();
+            const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
+            if (nodeIdNew == null) {
+              utils.never(`failed to decode NodeId "${result.nodeId}"`);
+            }
+            connections.push(nodeIdNew);
           }
-          nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
-        }
-      })();
-      const closestNodesRequestP = (async () => {
-        const resultStream =
-          await conn.rpcClient.methods.nodesClosestLocalNodesGet(
-            {
-              nodeIdEncoded: nodeIdEncoded,
-            },
-            ctx,
-          );
-        for await (const { nodeIdEncoded, nodeContact } of resultStream) {
-          ctx.signal.throwIfAborted();
-          const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-          if (nodeId == null) {
-            utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+          return connections;
+        },
+      );
+      for (const nodeIdNew of data) {
+        nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
+      }
+    })();
+    const closestNodesRequestP = (async () => {
+      const data = await this.nodeConnectionManager.withConnF(
+        nodeId,
+        ctx,
+        async (conn) => {
+          const resultStream =
+            await conn.rpcClient.methods.nodesClosestLocalNodesGet(
+              {
+                nodeIdEncoded: nodeIdEncoded,
+              },
+              ctx,
+            );
+          const data: Array<[NodeId, NodeContact]> = [];
+          for await (const { nodeIdEncoded, nodeContact } of resultStream) {
+            ctx.signal.throwIfAborted();
+            const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+            if (nodeId == null) {
+              utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+            }
+            data.push([nodeId, nodeContact]);
           }
-          nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
-        }
-      })();
-      await Promise.allSettled([
-        closestConnectionsRequestP,
-        closestNodesRequestP,
-      ]);
-    });
+          return data;
+        },
+      );
+      for (const [nodeId, nodeContact] of data) {
+        nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
+      }
+    })();
+    await Promise.allSettled([
+      closestConnectionsRequestP,
+      closestNodesRequestP,
+    ]);
   }
 
   /**
