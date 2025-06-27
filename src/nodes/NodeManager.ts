@@ -34,6 +34,7 @@ import type {
   NodeAddress,
   NodeBucket,
   NodeBucketIndex,
+  NodeContact,
   NodeContactAddressData,
   NodeId,
   NodeIdEncoded,
@@ -1145,48 +1146,68 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     nodeConnectionsQueue: NodeConnectionQueue,
     ctx: ContextTimed,
   ) {
-    await this.nodeConnectionManager.withConnF(nodeId, ctx, async (conn) => {
-      const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
-      const closestConnectionsRequestP = (async () => {
-        const resultStream =
-          await conn.rpcClient.methods.nodesClosestActiveConnectionsGet(
-            {
-              nodeIdEncoded: nodeIdEncoded,
-            },
-            ctx,
-          );
-        // Collecting results
-        for await (const result of resultStream) {
-          ctx.signal.throwIfAborted();
-          const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
-          if (nodeIdNew == null) {
-            utils.never(`failed to decode NodeId "${result.nodeId}"`);
+    const nodeIdEncoded = nodesUtils.encodeNodeId(nodeIdTarget);
+    const closestConnectionsRequestP = (async () => {
+      const data = await this.nodeConnectionManager.withConnF(
+        nodeId,
+        ctx,
+        async (conn) => {
+          const resultStream =
+            await conn.rpcClient.methods.nodesClosestActiveConnectionsGet(
+              {
+                nodeIdEncoded: nodeIdEncoded,
+              },
+              ctx,
+            );
+          const connections: Array<NodeId> = [];
+          // Collecting results
+          for await (const result of resultStream) {
+            ctx.signal.throwIfAborted();
+            const nodeIdNew = nodesUtils.decodeNodeId(result.nodeId);
+            if (nodeIdNew == null) {
+              utils.never(`failed to decode NodeId "${result.nodeId}"`);
+            }
+            connections.push(nodeIdNew);
           }
-          nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
-        }
-      })();
-      const closestNodesRequestP = (async () => {
-        const resultStream =
-          await conn.rpcClient.methods.nodesClosestLocalNodesGet(
-            {
-              nodeIdEncoded: nodeIdEncoded,
-            },
-            ctx,
-          );
-        for await (const { nodeIdEncoded, nodeContact } of resultStream) {
-          ctx.signal.throwIfAborted();
-          const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
-          if (nodeId == null) {
-            utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+          return connections;
+        },
+      );
+      for (const nodeIdNew of data) {
+        nodeConnectionsQueue.queueNodeSignal(nodeIdNew, nodeId);
+      }
+    })();
+    const closestNodesRequestP = (async () => {
+      const data = await this.nodeConnectionManager.withConnF(
+        nodeId,
+        ctx,
+        async (conn) => {
+          const resultStream =
+            await conn.rpcClient.methods.nodesClosestLocalNodesGet(
+              {
+                nodeIdEncoded: nodeIdEncoded,
+              },
+              ctx,
+            );
+          const data: Array<[NodeId, NodeContact]> = [];
+          for await (const { nodeIdEncoded, nodeContact } of resultStream) {
+            ctx.signal.throwIfAborted();
+            const nodeId = nodesUtils.decodeNodeId(nodeIdEncoded);
+            if (nodeId == null) {
+              utils.never(`failed to decode NodeId "${nodeIdEncoded}"`);
+            }
+            data.push([nodeId, nodeContact]);
           }
-          nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
-        }
-      })();
-      await Promise.allSettled([
-        closestConnectionsRequestP,
-        closestNodesRequestP,
-      ]);
-    });
+          return data;
+        },
+      );
+      for (const [nodeId, nodeContact] of data) {
+        nodeConnectionsQueue.queueNodeDirect(nodeId, nodeContact);
+      }
+    })();
+    await Promise.allSettled([
+      closestConnectionsRequestP,
+      closestNodesRequestP,
+    ]);
   }
 
   /**
@@ -1257,24 +1278,62 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   }
 
   /**
+   * Will attempt to make a direct connection without ICE.
+   * This will only succeed due to these conditions
+   * 1. connection already exists to target.
+   * 2. Nat already allows port due to already being punched.
+   * 3. Port is publicly accessible due to nat configuration .
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNodeAddressMultiple(
+    nodeId: NodeId,
+    addresses: Array<[Host, Port]>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager<Manifest>) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNodeAddressMultiple(
+    nodeId: NodeId,
+    addresses: Array<[Host, Port]>,
+    @decorators.context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    try {
+      await this.nodeConnectionManager.createConnectionMultiple(
+        [nodeId],
+        addresses,
+        ctx,
+      );
+      return true;
+    } catch (e) {
+      if (!nodesUtils.isConnectionError(e)) throw e;
+      return false;
+    }
+  }
+
+  /**
    * Connects to the target node, and retrieves its sigchain data.
    * Verifies and returns the decoded chain as ChainData. Note: this will drop
    * any unverifiable claims.
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    * @param targetNodeId Id of the node to connect request the chain data of.
-   * @param _claimId If set then we get the claims newer that this claim ID.
+   * @param claimId If set then we get the claims newer that this claim ID.
    * @param ctx
    */
   public requestChainData(
     targetNodeId: NodeId,
-    _claimId?: ClaimId,
+    claimId?: ClaimId,
     ctx?: Partial<ContextTimed>,
   ): PromiseCancellable<Record<ClaimId, SignedClaim>>;
   @decorators.timedCancellable(true)
   public async requestChainData(
     targetNodeId: NodeId,
-    _claimId: ClaimId | undefined,
+    claimId: ClaimId | undefined,
     @decorators.context ctx: ContextTimed,
   ): Promise<Record<ClaimId, SignedClaim>> {
     // Verify the node's chain with its own public key
@@ -1282,18 +1341,11 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       const claims: Record<ClaimId, SignedClaim> = {};
       const client = connection.getClient();
 
-      // Let claimIdEncoded: ClaimIdEncoded | undefined;
-
-      // if (claimId != null) {
-      //   claimIdEncoded = claimsUtils.encodeClaimId(claimId);
-      // } else {
-      //   claimIdEncoded = undefined;
-      // }
-
+      const claimIdEncoded: ClaimIdEncoded | undefined =
+        claimId != null ? claimsUtils.encodeClaimId(claimId) : undefined;
       for await (const agentClaim of await client.methods.nodesClaimsGet(
         {
-          // Needs to be addressed later - causes test failures in Discovery.test.ts
-          // seek: claimIdEncoded,
+          seek: claimIdEncoded,
         },
         ctx,
       )) {
@@ -2339,7 +2391,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
-    for (const [nodeId] of bucket) {
+    for (const [nodeId, nodeContact] of bucket) {
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock(ctx);
       if (ctx.signal?.aborted === true) break;
@@ -2351,21 +2403,34 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
             signal: ctx.signal,
             timer: connectionConnectTimeoutTime,
           };
-          const pingResult = await this.pingNode(nodeId, pingCtx);
-          if (pingResult != null) {
-            // Succeeded so update
-            const [nodeAddress, nodeContactAddressData] = pingResult;
-            await this.setNode(
-              nodeId,
-              nodeAddress,
-              nodeContactAddressData,
-              false,
-              false,
-              undefined,
-              tran,
-              ctx,
-            );
-          } else {
+          // Getting known addresses for the ping
+          const desiredAddresses: Array<NodeAddress> = [];
+          for (const [
+            nodeContactAddress,
+            nodeContactAddressData,
+          ] of Object.entries(nodeContact)) {
+            if (nodeContactAddressData.mode === 'direct') {
+              desiredAddresses.push(
+                nodesUtils.parseNodeContactAddress(nodeContactAddress),
+              );
+            }
+          }
+
+          const resolvedAddresses = await networkUtils.resolveHostnames(
+            desiredAddresses,
+            undefined,
+            this.dnsServers,
+            ctx,
+          );
+
+          const pingResult = await this.pingNodeAddressMultiple(
+            nodeId,
+            resolvedAddresses,
+            pingCtx,
+          );
+
+          // If ping fails we remove it, otherwise we don't update
+          if (!pingResult) {
             // We don't remove node the ping was aborted
             if (ctx.signal.aborted) return;
             // We need to lock this since it's concurrent

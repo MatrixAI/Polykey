@@ -114,8 +114,6 @@ function sleepCancellable(ms: number): PromiseCancellable<void> {
 /**
  * Checks if value is an object.
  * Arrays are also considered objects.
- * The type guard here says `o is any`.
- * TODO: When TS 4.9.x is released, change this to `o is object`.
  * At that point `'x' in o` checks become type guards that
  * can assert the property's existence.
  */
@@ -298,8 +296,8 @@ function promise<T = void>(): PromiseDeconstructed<T> {
  * Promise constructed from signal
  * This rejects when the signal is aborted
  */
-//  fixme: There is also a one signal to many `signalPromise` relationship in the NM connection queue that needs to be fixed.
 function signalPromise(signal: AbortSignal): PromiseCancellable<void> {
+  setMaxListeners(signal);
   return new PromiseCancellable((resolve, _, signalCancel) => {
     // Short circuit if signal already aborted
     if (signal.aborted) return resolve();
