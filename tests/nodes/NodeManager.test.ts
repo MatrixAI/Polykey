@@ -350,7 +350,7 @@ describe(`${NodeManager.name}`, () => {
       );
     });
     test('should not add new node if bucket is full and old nodes are responsive', async () => {
-      const mockedPingNode = jest.spyOn(nodeManager, 'pingNode');
+      const mockedPingNode = jest.spyOn(nodeManager, 'pingNodeAddressMultiple');
       // Fill bucket
       const nodeId = generateNodeIdForBucket(keyRing.getNodeId(), 255, 0);
       for (let i = 0; i < 20; i++) {
@@ -362,7 +362,7 @@ describe(`${NodeManager.name}`, () => {
         });
       }
 
-      mockedPingNode.mockResolvedValue([nodeAddress, nodeContactAddressData]);
+      mockedPingNode.mockResolvedValue(true);
       // Add 21st node
       await nodeManager.setNode(
         nodeId,
@@ -374,7 +374,7 @@ describe(`${NodeManager.name}`, () => {
       expect(await nodeGraph.getNodeContact(nodeId)).toBeUndefined();
     });
     test('should add new node if bucket is full and old nodes are responsive but force is set', async () => {
-      const mockedPingNode = jest.spyOn(nodeManager, 'pingNode');
+      const mockedPingNode = jest.spyOn(nodeManager, 'pingNodeAddressMultiple');
       // Fill bucket
       const nodeId = generateNodeIdForBucket(keyRing.getNodeId(), 255, 0);
       for (let i = 0; i < 20; i++) {
@@ -386,7 +386,7 @@ describe(`${NodeManager.name}`, () => {
         });
       }
 
-      mockedPingNode.mockResolvedValue([nodeAddress, nodeContactAddressData]);
+      mockedPingNode.mockResolvedValue(true);
       // Add 21st node
       await nodeManager.setNode(
         nodeId,
@@ -399,7 +399,7 @@ describe(`${NodeManager.name}`, () => {
       expect(await nodeGraph.getNodeContact(nodeId)).toBeDefined();
     });
     test('should add new node if bucket is full and old nodes are unresponsive', async () => {
-      const mockedPingNode = jest.spyOn(nodeManager, 'pingNode');
+      const mockedPingNode = jest.spyOn(nodeManager, 'pingNodeAddressMultiple');
       // Fill bucket
       const nodeId = generateNodeIdForBucket(keyRing.getNodeId(), 255, 0);
       for (let i = 0; i < 20; i++) {
@@ -407,7 +407,7 @@ describe(`${NodeManager.name}`, () => {
         await nodeManager.setNode(nodeId, nodeAddress, nodeContactAddressData);
       }
 
-      mockedPingNode.mockResolvedValue(undefined);
+      mockedPingNode.mockResolvedValue(false);
       // Add 21st node
       await nodeManager.setNode(
         nodeId,
@@ -419,7 +419,7 @@ describe(`${NodeManager.name}`, () => {
       expect(await nodeGraph.getNodeContact(nodeId)).toBeDefined();
     });
     test('should not block when bucket is full', async () => {
-      const mockedPingNode = jest.spyOn(nodeManager, 'pingNode');
+      const mockedPingNode = jest.spyOn(nodeManager, 'pingNodeAddressMultiple');
       // Fill bucket
       const nodeId = generateNodeIdForBucket(keyRing.getNodeId(), 255, 0);
       for (let i = 0; i < 20; i++) {
@@ -436,7 +436,7 @@ describe(`${NodeManager.name}`, () => {
       mockedPingNode.mockImplementation(() => {
         return new PromiseCancellable(async (resolve) => {
           await waitP;
-          resolve(undefined);
+          resolve(false);
         });
       });
       // Add 21st node

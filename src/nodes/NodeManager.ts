@@ -1278,6 +1278,44 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   }
 
   /**
+   * Will attempt to make a direct connection without ICE.
+   * This will only succeed due to these conditions
+   * 1. connection already exists to target.
+   * 2. Nat already allows port due to already being punched.
+   * 3. Port is publicly accessible due to nat configuration .
+   * Will return true if connection was established or already exists, false otherwise.
+   */
+  public pingNodeAddressMultiple(
+    nodeId: NodeId,
+    addresses: Array<[Host, Port]>,
+    ctx?: Partial<ContextTimedInput>,
+  ): PromiseCancellable<boolean>;
+  @startStop.ready(new nodesErrors.ErrorNodeConnectionManagerNotRunning())
+  @decorators.timedCancellable(
+    true,
+    (nodeConnectionManager: NodeConnectionManager<Manifest>) =>
+      nodeConnectionManager.connectionConnectTimeoutTime,
+  )
+  public async pingNodeAddressMultiple(
+    nodeId: NodeId,
+    addresses: Array<[Host, Port]>,
+    @decorators.context ctx: ContextTimed,
+  ): Promise<boolean> {
+    if (this.nodeConnectionManager.hasConnection(nodeId)) return true;
+    try {
+      await this.nodeConnectionManager.createConnectionMultiple(
+        [nodeId],
+        addresses,
+        ctx,
+      );
+      return true;
+    } catch (e) {
+      if (!nodesUtils.isConnectionError(e)) throw e;
+      return false;
+    }
+  }
+
+  /**
    * Connects to the target node, and retrieves its sigchain data.
    * Verifies and returns the decoded chain as ChainData. Note: this will drop
    * any unverifiable claims.
@@ -2353,7 +2391,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     let removedNodes = 0;
     const unsetLock = new Lock();
     const pendingPromises: Array<Promise<void>> = [];
-    for (const [nodeId] of bucket) {
+    for (const [nodeId, nodeContact] of bucket) {
       if (removedNodes >= pendingNodes.size) break;
       await semaphore.waitForUnlock(ctx);
       if (ctx.signal?.aborted === true) break;
@@ -2365,21 +2403,34 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
             signal: ctx.signal,
             timer: connectionConnectTimeoutTime,
           };
-          const pingResult = await this.pingNode(nodeId, pingCtx);
-          if (pingResult != null) {
-            // Succeeded so update
-            const [nodeAddress, nodeContactAddressData] = pingResult;
-            await this.setNode(
-              nodeId,
-              nodeAddress,
-              nodeContactAddressData,
-              false,
-              false,
-              undefined,
-              tran,
-              ctx,
-            );
-          } else {
+          // Getting known addresses for the ping
+          const desiredAddresses: Array<NodeAddress> = [];
+          for (const [
+            nodeContactAddress,
+            nodeContactAddressData,
+          ] of Object.entries(nodeContact)) {
+            if (nodeContactAddressData.mode === 'direct') {
+              desiredAddresses.push(
+                nodesUtils.parseNodeContactAddress(nodeContactAddress),
+              );
+            }
+          }
+
+          const resolvedAddresses = await networkUtils.resolveHostnames(
+            desiredAddresses,
+            undefined,
+            this.dnsServers,
+            ctx,
+          );
+
+          const pingResult = await this.pingNodeAddressMultiple(
+            nodeId,
+            resolvedAddresses,
+            pingCtx,
+          );
+
+          // If ping fails we remove it, otherwise we don't update
+          if (!pingResult) {
             // We don't remove node the ping was aborted
             if (ctx.signal.aborted) return;
             // We need to lock this since it's concurrent
