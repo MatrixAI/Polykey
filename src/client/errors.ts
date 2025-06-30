@@ -28,6 +28,11 @@ class ErrorClientProtocolError<T> extends ErrorClient<T> {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorClientAuthenticationInvalidJTI<T> extends ErrorClient<T> {
+  static description = 'Failed to generate JTI';
+  exitCode = sysexits.PROTOCOL;
+}
+
 class ErrorClientService<T> extends ErrorClient<T> {}
 
 class ErrorClientServiceRunning<T> extends ErrorClientService<T> {
@@ -50,11 +55,6 @@ class ErrorClientVerificationFailed<T> extends ErrorClientService<T> {
   exitCode = sysexits.USAGE;
 }
 
-class ErrorClientAuthenticationInvalidToken<T> extends ErrorClient<T> {
-  static description = 'Token is invalid';
-  exitCode = sysexits.PROTOCOL;
-}
-
 export {
   ErrorClient,
   ErrorClientAuthMissing,
@@ -62,10 +62,10 @@ export {
   ErrorClientAuthDenied,
   ErrorClientInvalidHeader,
   ErrorClientProtocolError,
+  ErrorClientAuthenticationInvalidJTI,
   ErrorClientService,
   ErrorClientServiceRunning,
   ErrorClientServiceNotRunning,
   ErrorClientServiceDestroyed,
   ErrorClientVerificationFailed,
-  ErrorClientAuthenticationInvalidToken,
 };

@@ -108,18 +108,10 @@ type TokenMessage = {
   token: ProviderToken;
 };
 
-// Return URL must be present on the token, otherwise token contents is decided
-// by the client.
-type IdentityRequestData = TokenPayload & {
-  returnURL: string;
-  publicKey: string;
-};
-
-type TokenIdentityRequest = SignedTokenEncoded;
-
 type IdentityResponseData = TokenPayload & {
-  requestToken: TokenIdentityRequest;
-  nodeId: NodeIdEncoded;
+  jti: string;
+  exp: number;
+  iss: NodeIdEncoded;
 };
 
 type TokenIdentityResponse = SignedTokenEncoded;
@@ -422,9 +414,7 @@ export type {
   ClaimIdMessage,
   ClaimNodeMessage,
   TokenMessage,
-  IdentityRequestData,
   IdentityResponseData,
-  TokenIdentityRequest,
   TokenIdentityResponse,
   NodeIdMessage,
   AddressMessage,
