@@ -5,12 +5,11 @@ import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
   SecretIdentifierMessage,
-  SecretContentMessage,
+  SecretContentOrErrorMessage,
 } from '../types.js';
 import type VaultManager from '../../vaults/VaultManager.js';
 import { DuplexHandler } from '@matrixai/rpc';
 import * as vaultsUtils from '../../vaults/utils.js';
-import * as vaultsErrors from '../../vaults/errors.js';
 
 class VaultsSecretsEnv extends DuplexHandler<
   {
@@ -18,7 +17,7 @@ class VaultsSecretsEnv extends DuplexHandler<
     vaultManager: VaultManager;
   },
   ClientRPCRequestParams<SecretIdentifierMessage>,
-  ClientRPCResponseResult<SecretContentMessage>
+  ClientRPCResponseResult<SecretContentOrErrorMessage>
 > {
   public handle = async function* (
     input: AsyncIterableIterator<
@@ -27,64 +26,71 @@ class VaultsSecretsEnv extends DuplexHandler<
     _cancel: (reason?: any) => void,
     _meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): AsyncGenerator<ClientRPCResponseResult<SecretContentMessage>> {
+  ): AsyncGenerator<
+    ClientRPCResponseResult<SecretContentOrErrorMessage>,
+    void,
+    void
+  > {
     const { db, vaultManager }: { db: DB; vaultManager: VaultManager } =
       this.container;
     return yield* db.withTransactionG(async function* (tran): AsyncGenerator<
-      ClientRPCResponseResult<SecretContentMessage>
+      ClientRPCResponseResult<SecretContentOrErrorMessage>,
+      void,
+      void
     > {
       for await (const secretIdentifierMessage of input) {
         const { nameOrId, secretName } = secretIdentifierMessage;
         const vaultIdFromName = await vaultManager.getVaultId(nameOrId, tran);
         const vaultId = vaultIdFromName ?? vaultsUtils.decodeVaultId(nameOrId);
         if (vaultId == null) {
-          throw new vaultsErrors.ErrorVaultsVaultUndefined(
-            `Vault "${nameOrId}" does not exist`,
-          );
+          yield {
+            type: 'ErrorMessage',
+            code: 'ENOENT',
+            reason: `Vault "${nameOrId}" does not exist`,
+          };
+          continue;
         }
-        const secrets = await vaultManager.withVaults(
+        yield* vaultManager.withVaultsG(
           [vaultId],
-          async (vault) => {
-            const results: Array<{
-              filePath: string;
-              value: string;
-            }> = [];
-            return await vault.readF(async (fs) => {
+          async function* (
+            vault,
+          ): AsyncGenerator<SecretContentOrErrorMessage, void, void> {
+            yield* vault.readG(async function* (efs): AsyncGenerator<
+              SecretContentOrErrorMessage,
+              void,
+              void
+            > {
               try {
                 for await (const filePath of vaultsUtils.walkFs(
-                  fs,
+                  efs,
                   secretName,
                 )) {
                   ctx.signal.throwIfAborted();
-                  const fileContents = await fs.readFile(filePath);
-                  results.push({
-                    filePath: filePath,
-                    value: fileContents.toString(),
-                  });
+                  const fileContents = await efs.readFile(filePath);
+                  yield {
+                    type: 'SuccessMessage',
+                    success: true,
+                    nameOrId: nameOrId,
+                    secretName: filePath,
+                    secretContent: fileContents.toString(),
+                  };
                 }
               } catch (e) {
                 if (e.code === 'ENOENT') {
-                  throw new vaultsErrors.ErrorSecretsSecretUndefined(
-                    `Secret with name: ${secretName} does not exist`,
-                    { cause: e },
-                  );
+                  yield {
+                    type: 'ErrorMessage',
+                    code: e.code,
+                    reason: `Secret "${secretName}" does not exist`,
+                  };
+                } else {
+                  throw e;
                 }
-                throw e;
               }
-              return results;
             });
           },
           tran,
           ctx,
         );
-        for (const { filePath, value } of secrets) {
-          ctx.signal.throwIfAborted();
-          yield {
-            nameOrId: nameOrId,
-            secretName: filePath,
-            secretContent: value,
-          };
-        }
       }
     });
   };

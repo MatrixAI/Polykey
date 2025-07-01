@@ -345,6 +345,13 @@ type ContentOrErrorMessage = ContentSuccessMessage | ErrorMessageTagged;
 
 type SecretContentMessage = SecretIdentifierMessage & ContentMessage;
 
+type SecretContentSuccessMessage = SecretIdentifierMessage &
+  ContentSuccessMessage;
+
+type SecretContentOrErrorMessage =
+  | SecretContentSuccessMessage
+  | ErrorMessageTagged;
+
 type SecretDirMessage = VaultIdentifierMessage & {
   dirName: string;
 };
@@ -462,9 +469,11 @@ export type {
   SecretPathMessage,
   SecretIdentifierMessage,
   ContentMessage,
+  SecretContentMessage,
   ContentSuccessMessage,
   ContentOrErrorMessage,
-  SecretContentMessage,
+  SecretContentSuccessMessage,
+  SecretContentOrErrorMessage,
   SecretDirMessage,
   SecretRenameMessage,
   SecretFilesMessage,

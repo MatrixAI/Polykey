@@ -5,8 +5,8 @@ import type { VaultId } from '#ids/index.js';
 import type NodeManager from '#nodes/NodeManager.js';
 import type {
   LogEntryMessage,
-  SecretContentMessage,
   SecretDirMessage,
+  SecretContentSuccessMessage,
   SecretIdentifierMessage,
   SecretIdentifierMessageTagged,
   SecretRenameMessage,
@@ -1165,8 +1165,8 @@ describe('vaultsSecretsWriteFile', () => {
     await expect(result).rejects.toThrow(cancelMessage);
   });
 });
-describe('vaultsSecretEnv', () => {
-  const logger = new Logger('vaultsSecretEnv test', LogLevel.WARN, [
+describe('vaultsSecretsEnv', () => {
+  const logger = new Logger('vaultsSecretsEnv test', LogLevel.WARN, [
     new StreamHandler(
       formatting.format`${formatting.level}:${formatting.keys}:${formatting.msg}`,
     ),
@@ -1259,18 +1259,18 @@ describe('vaultsSecretEnv', () => {
     // Demonstrating we can pull out multiple secrets across separate vaults
     const vaultName1 = 'vault1';
     const vaultName2 = 'vault2';
+    const vaultId1 = await vaultManager.createVault(vaultName1);
+    const vaultId2 = await vaultManager.createVault(vaultName2);
     const secretName1 = 'secret1';
     const secretName2 = 'secret2';
     const secretName3 = 'secret3';
     const secretName4 = 'secret4';
-    const vaultId1 = await vaultManager.createVault(vaultName1);
     await vaultManager.withVaults([vaultId1], async (vault) => {
       await vault.writeF(async (efs) => {
         await efs.writeFile(secretName1, secretName1);
         await efs.writeFile(secretName2, secretName2);
       });
     });
-    const vaultId2 = await vaultManager.createVault(vaultName2);
     await vaultManager.withVaults([vaultId2], async (vault) => {
       await vault.writeF(async (efs) => {
         await efs.writeFile(secretName3, secretName3);
@@ -1278,46 +1278,46 @@ describe('vaultsSecretEnv', () => {
       });
     });
 
-    const secrets = [
-      [vaultName1, secretName1],
-      [vaultName1, secretName2],
-      [vaultName2, secretName3],
-      [vaultName2, secretName4],
-    ];
+    const response = await rpcClient.methods.vaultsSecretsEnv();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: vaultName1, secretName: secretName1 });
+    await writer.write({ nameOrId: vaultName1, secretName: secretName2 });
+    await writer.write({ nameOrId: vaultName2, secretName: secretName3 });
+    await writer.write({ nameOrId: vaultName2, secretName: secretName4 });
+    await writer.close();
 
-    const duplexStream = await rpcClient.methods.vaultsSecretsEnv();
-    const writeP = (async () => {
-      const writer = duplexStream.writable.getWriter();
-      for (const [name, secret] of secrets) {
-        await writer.write({
-          nameOrId: name,
-          secretName: secret,
-        });
+    const results: Array<SecretContentSuccessMessage> = [];
+    for await (const value of response.readable) {
+      if (value.type !== 'SuccessMessage') {
+        fail('Expected type to be SuccessMessage');
       }
-      await writer.close();
-    })();
-    const results: Array<SecretContentMessage> = [];
-    for await (const value of duplexStream.readable) {
       results.push(value);
     }
-    await writeP;
 
     expect(results[0]).toMatchObject({
+      type: 'SuccessMessage',
+      success: true,
       nameOrId: vaultName1,
       secretName: secretName1,
       secretContent: secretName1,
     });
     expect(results[1]).toMatchObject({
+      type: 'SuccessMessage',
+      success: true,
       nameOrId: vaultName1,
       secretName: secretName2,
       secretContent: secretName2,
     });
     expect(results[2]).toMatchObject({
+      type: 'SuccessMessage',
+      success: true,
       nameOrId: vaultName2,
       secretName: secretName3,
       secretContent: secretName3,
     });
     expect(results[3]).toMatchObject({
+      type: 'SuccessMessage',
+      success: true,
       nameOrId: vaultName2,
       secretName: secretName4,
       secretContent: secretName4,
@@ -1325,7 +1325,8 @@ describe('vaultsSecretEnv', () => {
   });
   test('should get secrets by directory', async () => {
     // Demonstrating we can pull out multiple secrets across separate vaults
-    const vaultName1 = 'vault1';
+    const vaultName = 'vault';
+    const vaultId = await vaultManager.createVault(vaultName);
     const dirName1 = 'dir1';
     const dirName2 = 'dir2';
     const dirName3 = 'dir3';
@@ -1333,9 +1334,8 @@ describe('vaultsSecretEnv', () => {
     const secretName2 = 'secret2';
     const secretName3 = 'secret3';
     const secretName4 = 'secret4';
-    const vaultId1 = await vaultManager.createVault(vaultName1);
 
-    await vaultManager.withVaults([vaultId1], async (vault) => {
+    await vaultManager.withVaults([vaultId], async (vault) => {
       await vault.writeF(async (efs) => {
         await efs.mkdir(dirName1);
         await efs.writeFile(`${dirName1}/${secretName1}`, secretName1);
@@ -1350,82 +1350,86 @@ describe('vaultsSecretEnv', () => {
       });
     });
 
-    const secrets = [
-      [vaultName1, dirName1],
-      [vaultName1, dirName2],
-    ];
+    const response = await rpcClient.methods.vaultsSecretsEnv();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: vaultName, secretName: dirName1 });
+    await writer.write({ nameOrId: vaultName, secretName: dirName2 });
+    await writer.close();
 
-    const duplexStream = await rpcClient.methods.vaultsSecretsEnv();
-    const writeP = (async () => {
-      const writer = duplexStream.writable.getWriter();
-      for (const [name, secret] of secrets) {
-        await writer.write({
-          nameOrId: name,
-          secretName: secret,
-        });
+    const results: Map<string, SecretContentSuccessMessage> = new Map();
+    for await (const value of response.readable) {
+      if (value.type !== 'SuccessMessage') {
+        fail('Type should be SuccessMessage');
       }
-      await writer.close();
-    })();
-    const results: Map<string, SecretContentMessage> = new Map();
-    for await (const value of duplexStream.readable) {
       results.set(value.secretName, value);
     }
-    await writeP;
     expect(results.size).toBe(4);
     expect(results.has(`${dirName1}/${secretName1}`)).toBeTrue();
     expect(results.get(`${dirName1}/${secretName1}`)).toMatchObject({
-      nameOrId: vaultName1,
+      type: 'SuccessMessage',
+      success: true,
+      nameOrId: vaultName,
       secretName: `${dirName1}/${secretName1}`,
       secretContent: secretName1,
     });
     expect(results.has(`${dirName1}/${secretName2}`)).toBeTrue();
     expect(results.get(`${dirName1}/${secretName2}`)).toMatchObject({
-      nameOrId: vaultName1,
+      type: 'SuccessMessage',
+      success: true,
+      nameOrId: vaultName,
       secretName: `${dirName1}/${secretName2}`,
       secretContent: secretName2,
     });
     expect(results.has(`${dirName2}/${dirName3}/${secretName4}`)).toBeTrue();
     expect(results.get(`${dirName2}/${dirName3}/${secretName4}`)).toMatchObject(
       {
-        nameOrId: vaultName1,
+        type: 'SuccessMessage',
+        success: true,
+        nameOrId: vaultName,
         secretName: `${dirName2}/${dirName3}/${secretName4}`,
         secretContent: secretName4,
       },
     );
     expect(results.has(`${dirName2}/${secretName3}`)).toBeTrue();
     expect(results.get(`${dirName2}/${secretName3}`)).toMatchObject({
-      nameOrId: vaultName1,
+      type: 'SuccessMessage',
+      success: true,
+      nameOrId: vaultName,
       secretName: `${dirName2}/${secretName3}`,
       secretContent: secretName3,
     });
   });
-  test('errors should be descriptive', async () => {
-    // Demonstrating we can pull out multiple secrets across separate vaults
-    const vaultName1 = 'vault1';
-    await vaultManager.createVault(vaultName1);
+  test('should continue on error', async () => {
+    const vaultName = 'vault';
+    const vaultId = await vaultManager.createVault(vaultName);
+    const secretName1 = 'secret1';
+    const secretName2 = 'secret2';
+    const wrongSecret = 'noSecret';
 
-    const secrets = [[vaultName1, 'noSecret']];
+    await vaultManager.withVaults([vaultId], async (vault) => {
+      await vault.writeF(async (efs) => {
+        await efs.writeFile(secretName1, secretName1);
+        await efs.writeFile(secretName2, secretName2);
+      });
+    });
 
-    const duplexStream = await rpcClient.methods.vaultsSecretsEnv();
-    const writeP = (async () => {
-      const writer = duplexStream.writable.getWriter();
-      for (const [name, secret] of secrets) {
-        await writer.write({
-          nameOrId: name,
-          secretName: secret,
-        });
+    // Request secrets
+    const response = await rpcClient.methods.vaultsSecretsEnv();
+    const writer = response.writable.getWriter();
+    await writer.write({ nameOrId: vaultName, secretName: secretName1 });
+    await writer.write({ nameOrId: vaultName, secretName: wrongSecret });
+    await writer.write({ nameOrId: vaultName, secretName: secretName1 });
+    await writer.close();
+
+    // Parse responses
+    for await (const result of response.readable) {
+      if (result.type === 'SuccessMessage') {
+        expect(result.secretName).toBeOneOf([secretName1, secretName2]);
+        expect(result.secretContent).toBeOneOf([secretName1, secretName2]);
+      } else {
+        expect(result.reason).toContain(wrongSecret);
       }
-      await writer.close();
-    })();
-    await testsUtils.expectRemoteError(
-      (async () => {
-        for await (const _ of duplexStream.readable) {
-          // Do nothing until it throws
-        }
-      })(),
-      vaultsErrors.ErrorSecretsSecretUndefined,
-    );
-    await writeP;
+    }
   });
   test.prop([testsUtils.vaultNameArb(), testsUtils.fileNameLengthSampleArb()], {
     numRuns: 10,
