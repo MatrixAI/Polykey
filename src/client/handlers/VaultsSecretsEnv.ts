@@ -45,8 +45,9 @@ class VaultsSecretsEnv extends DuplexHandler<
         if (vaultId == null) {
           yield {
             type: 'ErrorMessage',
-            code: 'ENOENT',
+            code: 'EINVAL',
             reason: `Vault "${nameOrId}" does not exist`,
+            data: { secretName: undefined, nameOrId },
           };
           continue;
         }
@@ -81,6 +82,7 @@ class VaultsSecretsEnv extends DuplexHandler<
                     type: 'ErrorMessage',
                     code: e.code,
                     reason: `Secret "${secretName}" does not exist`,
+                    data: { secretName, nameOrId },
                   };
                 } else {
                   throw e;
