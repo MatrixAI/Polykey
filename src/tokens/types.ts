@@ -118,6 +118,8 @@ type SignedTokenEncoded = {
   signatures: Array<TokenHeaderSignatureEncoded>;
 };
 
+type CompactToken = Opaque<'CompactToken', string>;
+
 export type {
   TokenPayload,
   TokenPayloadEncoded,
@@ -132,4 +134,5 @@ export type {
   SignedToken,
   SignedTokenJSON,
   SignedTokenEncoded,
+  CompactToken,
 };
