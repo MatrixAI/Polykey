@@ -1,1 +1,1 @@
-export * from './authSignedIdentity.js';
+export * from './authIdentityToken.js';

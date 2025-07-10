@@ -1,9 +1,9 @@
 import type {
   ClientRPCRequestParams,
   ClientRPCResponseResult,
-  IdentityResponseData,
   TokenIdentityResponse,
 } from '../types.js';
+import type { AuthIdentityToken as AuthIdentityJWT } from '../../tokens/payloads/authIdentityToken.js';
 import type KeyRing from '../../keys/KeyRing.js';
 import { IdSortable } from '@matrixai/id';
 import { UnaryHandler } from '@matrixai/rpc';
@@ -25,7 +25,7 @@ class AuthIdentityToken extends UnaryHandler<
     if (jti == null) {
       throw new clientErrors.ErrorClientAuthenticationInvalidJTI();
     }
-    const outgoingToken = Token.fromPayload<IdentityResponseData>({
+    const outgoingToken = Token.fromPayload<AuthIdentityJWT>({
       jti: jti.toMultibase('base64'),
       exp: Math.floor(Date.now() / 1000) + 60, // 60 seconds after issuing
       iss: nodesUtils.encodeNodeId(keyRing.getNodeId()),

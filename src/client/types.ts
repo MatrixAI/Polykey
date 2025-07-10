@@ -108,12 +108,6 @@ type TokenMessage = {
   token: ProviderToken;
 };
 
-type IdentityResponseData = TokenPayload & {
-  jti: string;
-  exp: number;
-  iss: NodeIdEncoded;
-};
-
 type TokenIdentityResponse = SignedTokenEncoded;
 
 // Nodes messages
@@ -421,7 +415,6 @@ export type {
   ClaimIdMessage,
   ClaimNodeMessage,
   TokenMessage,
-  IdentityResponseData,
   TokenIdentityResponse,
   NodeIdMessage,
   AddressMessage,
