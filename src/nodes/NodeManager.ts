@@ -1875,6 +1875,12 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       network,
       targetNodeId,
     );
+
+    // Error out if a network access claim already exists
+    if (await this.getClaimNetworkAccess(network, tran) != null) {
+      throw new Error('TMP network access claim already exists')
+    }
+    
     const encodedNetworkAuthority = claimsUtils.generateSignedClaim(
       claimNetworkAuthority.toSigned(),
     );
