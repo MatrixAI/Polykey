@@ -2144,6 +2144,7 @@ describe(`${NodeManager.name}`, () => {
       const mockedRefreshBucket = jest.spyOn(nodeManager, 'refreshBucket');
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2203,6 +2204,7 @@ describe(`${NodeManager.name}`, () => {
       const mockedRefreshBucket = jest.spyOn(nodeManager, 'refreshBucket');
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2225,6 +2227,7 @@ describe(`${NodeManager.name}`, () => {
     });
     test('network entry with syncNodeGraph handles failure to resolve hostnames', async () => {
       const syncP = nodeManager.syncNodeGraph(
+        undefined,
         [
           [ncmPeers[0].nodeId, ['some.random.host' as Host, 55555 as Port]],
           [ncmPeers[0].nodeId, [localHost, 55555 as Port]],
@@ -2309,6 +2312,7 @@ describe(`${NodeManager.name}`, () => {
       expect(await nodeGraph.nodesTotal()).toBe(0);
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2963,5 +2967,11 @@ describe(`${NodeManager.name}`, () => {
         node1.nodeManager.claimNetwork(seedNodeId, network),
       ).rejects.toThrow(claimsErrors.ErrorEmptyStream);
     });
+    // verify the claim exists
+    test.todo(
+      'node should automatically request NetworkAccessClaim if it does not exist',
+    );
+    // verify the claim is unmodified
+    test.todo('node should not request new NetworkAccessClaim if it exist');
   });
 });
