@@ -199,8 +199,6 @@ enum HeaderMagic {
   END = 0x44, // 'D' 68
 }
 
-export {};
-
 export type {
   VaultId,
   VaultIdEncoded,
