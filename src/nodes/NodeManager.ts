@@ -301,9 +301,9 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     if (ctx.signal.aborted) return;
 
     if (network != null) {
-      try {
+      if (this.getClaimNetworkAccess(network) == null) {
         await this.claimNetwork(successfulConnections[0].value.nodeId, network);
-      } catch {
+      } else {
         await this.switchNetwork(network);
       }
     }
@@ -1757,7 +1757,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   /**
    * This returns the `ClaimNetworkAccess` for the given network.
    */
-  protected async getClaimNetworkAccess(
+  public async getClaimNetworkAccess(
     network: string,
     tran?: DBTransaction,
   ): Promise<Token<ClaimNetworkAccess> | undefined> {

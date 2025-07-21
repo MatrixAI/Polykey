@@ -1,6 +1,6 @@
 import path from 'node:path';
 import url from 'node:url';
-import tsconfigJSON from './tsconfig.json' assert { type: "json" };
+import tsconfigJSON from './tsconfig.json' with { type: "json" };
 
 const projectPath = path.dirname(url.fileURLToPath(import.meta.url));
 
