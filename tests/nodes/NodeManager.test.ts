@@ -3017,7 +3017,7 @@ describe(`${NodeManager.name}`, () => {
       );
 
       // We have now proved that a node can request access to the network from a node with network authority.
-      // Now We should be able to connect while authenticated to the seed node.
+      // Now we should be able to connect while authenticated to the seed node.
 
       // Re-initiate authentication
       await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
@@ -3030,9 +3030,7 @@ describe(`${NodeManager.name}`, () => {
 
       const networkAccess =
         await node1.nodeManager.getClaimNetworkAccess(network);
-      if (networkAccess == null) {
-        throw new Error('network access claim not found');
-      }
+      if (networkAccess == null) fail('network access claim not found');
       claimNetworkAccessUtils.verifyClaimNetworkAccess(
         networkNodeId,
         node1Id,
@@ -3096,15 +3094,17 @@ describe(`${NodeManager.name}`, () => {
 
       // Check the claim once we have re-authenticated
       const token1 = await node1.nodeManager.getClaimNetworkAccess(network);
-      if (token1 == null) throw new Error('network access claim not found');
+      if (token1 == null) fail('network access claim not found');
       const token1Id = token1.payload.jti;
 
       // Try claiming again
-      await expect(node1.nodeManager.claimNetwork(seedNodeId, network)).toReject();
+      await expect(
+        node1.nodeManager.claimNetwork(seedNodeId, network),
+      ).toReject();
 
       // The token should not have changed
       const token2 = await node1.nodeManager.getClaimNetworkAccess(network);
-      if (token2 == null) throw new Error('network access claim not found');
+      if (token2 == null) fail('network access claim not found');
       const token2Id = token2.payload.jti;
       expect(token1Id).toBe(token2Id);
     });

@@ -301,7 +301,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
     if (ctx.signal.aborted) return;
 
     if (network != null) {
-      if (this.getClaimNetworkAccess(network) == null) {
+      if ((await this.getClaimNetworkAccess(network)) == null) {
         await this.claimNetwork(successfulConnections[0].value.nodeId, network);
       } else {
         await this.switchNetwork(network);
