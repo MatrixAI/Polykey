@@ -13,12 +13,7 @@ import type {
 import type { VaultAction, VaultName } from '../../vaults/types.js';
 import type { SignedNotification } from '../../notifications/types.js';
 import type { Host, Hostname, Port } from '../../network/types.js';
-import type {
-  NetworkId,
-  NodeContact,
-  NodeId,
-  NodeAddress,
-} from '../../nodes/types.js';
+import type { NetworkId, NodeContact } from '../../nodes/types.js';
 import type { AuditEvent } from '../../audit/types.js';
 import type { SignedClaimEncoded } from '../../claims/types.js';
 
@@ -130,12 +125,6 @@ type NodesAuthenticateConnectionMessageNone = {
   type: 'NodesAuthenticateConnectionMessageNone';
 };
 
-type NodesSyncGraphMessage = {
-  network: string;
-  initialNodes: Array<[NodeId, NodeAddress]>;
-  connectionTimeout: number;
-};
-
 export type {
   AgentRPCRequestParams,
   AgentRPCResponseResult,
@@ -158,5 +147,4 @@ export type {
   NodesAuthenticateConnectionMessagePrivate,
   NodesAuthenticateConnectionMessageBasicPublic,
   NodesAuthenticateConnectionMessageNone,
-  NodesSyncGraphMessage,
 };

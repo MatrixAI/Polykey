@@ -1,27 +1,27 @@
 import type { ContextTimed } from '@matrixai/contexts';
 import type { JSONValue } from '@matrixai/rpc';
-import type NodeManager from '../../NodeManager.js';
+import type NodeManager from '../../nodes/NodeManager.js';
 import type {
-  AgentRPCRequestParams,
-  AgentRPCResponseResult,
+  ClientRPCRequestParams,
+  ClientRPCResponseResult,
   NodesSyncGraphMessage,
 } from '../types.js';
-import type { AgentClientManifest } from '../callers/index.js';
+import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
 import { UnaryHandler } from '@matrixai/rpc';
 
 class NodesSyncGraph extends UnaryHandler<
   {
     nodeManager: NodeManager<AgentClientManifest>;
   },
-  AgentRPCRequestParams<NodesSyncGraphMessage>,
-  AgentRPCResponseResult
+  ClientRPCRequestParams<NodesSyncGraphMessage>,
+  ClientRPCResponseResult
 > {
   public handle = async (
-    input: AgentRPCRequestParams<NodesSyncGraphMessage>,
+    input: ClientRPCRequestParams<NodesSyncGraphMessage>,
     _cancel: (reason?: any) => void,
     _meta: Record<string, JSONValue> | undefined,
     ctx: ContextTimed,
-  ): Promise<AgentRPCResponseResult> => {
+  ): Promise<ClientRPCResponseResult> => {
     const {
       nodeManager,
     }: {
