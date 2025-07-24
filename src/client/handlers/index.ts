@@ -64,6 +64,7 @@ import NodesFind from './NodesFind.js';
 import NodesGetAll from './NodesGetAll.js';
 import NodesListConnections from './NodesListConnections.js';
 import NodesPing from './NodesPing.js';
+import NodesSyncGraph from './NodesSyncGraph.js';
 import NotificationsInboxClear from './NotificationsInboxClear.js';
 import NotificationsInboxRead from './NotificationsInboxRead.js';
 import NotificationsInboxRemove from './NotificationsInboxRemove.js';
@@ -169,6 +170,7 @@ const serverManifest = (container: {
     nodesGetAll: new NodesGetAll(container),
     nodesListConnections: new NodesListConnections(container),
     nodesPing: new NodesPing(container),
+    nodesSyncGraph: new NodesSyncGraph(container),
     notificationsInboxClear: new NotificationsInboxClear(container),
     notificationsInboxRead: new NotificationsInboxRead(container),
     notificationsInboxRemove: new NotificationsInboxRemove(container),
@@ -252,6 +254,7 @@ export {
   NodesGetAll,
   NodesListConnections,
   NodesPing,
+  NodesSyncGraph,
   NotificationsInboxClear,
   NotificationsInboxRead,
   NotificationsInboxRemove,

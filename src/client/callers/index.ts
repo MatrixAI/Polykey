@@ -46,6 +46,7 @@ import nodesFind from './nodesFind.js';
 import nodesGetAll from './nodesGetAll.js';
 import nodesListConnections from './nodesListConnections.js';
 import nodesPing from './nodesPing.js';
+import nodesSyncGraph from './nodesSyncGraph.js';
 import notificationsInboxClear from './notificationsInboxClear.js';
 import notificationsInboxRead from './notificationsInboxRead.js';
 import notificationsInboxRemove from './notificationsInboxRemove.js';
@@ -128,6 +129,7 @@ const clientManifest = {
   nodesGetAll,
   nodesListConnections,
   nodesPing,
+  nodesSyncGraph,
   notificationsInboxClear,
   notificationsInboxRead,
   notificationsInboxRemove,
@@ -209,6 +211,7 @@ export {
   nodesGetAll,
   nodesListConnections,
   nodesPing,
+  nodesSyncGraph,
   notificationsInboxClear,
   notificationsInboxRead,
   notificationsInboxRemove,

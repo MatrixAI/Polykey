@@ -253,6 +253,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   protected syncNodeGraphHandler = async (
     ctx: ContextTimed,
     _taskInfo: TaskInfo | undefined,
+    network: string | undefined,
     initialNodes: Array<[NodeIdEncoded, NodeAddress]>,
     connectionConnectTimeoutTime: number | undefined,
   ) => {
@@ -298,6 +299,14 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       );
     }
     if (ctx.signal.aborted) return;
+
+    if (network != null) {
+      if ((await this.getClaimNetworkAccess(network)) == null) {
+        await this.claimNetwork(successfulConnections[0].value.nodeId, network);
+      } else {
+        await this.switchNetwork(network);
+      }
+    }
 
     // Attempt a findNode operation looking for ourselves
     await this.findNode(
@@ -1748,7 +1757,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   /**
    * This returns the `ClaimNetworkAccess` for the given network.
    */
-  protected async getClaimNetworkAccess(
+  public async getClaimNetworkAccess(
     network: string,
     tran?: DBTransaction,
   ): Promise<Token<ClaimNetworkAccess> | undefined> {
@@ -1875,6 +1884,12 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       network,
       targetNodeId,
     );
+
+    // Error out if a network access claim already exists
+    if ((await this.getClaimNetworkAccess(network, tran)) != null) {
+      throw new Error('TMP network access claim already exists');
+    }
+
     const encodedNetworkAuthority = claimsUtils.generateSignedClaim(
       claimNetworkAuthority.toSigned(),
     );
@@ -2787,6 +2802,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
    *
    */
   public syncNodeGraph(
+    network: string | undefined,
     initialNodes: Array<[NodeId, NodeAddress]>,
     connectionConnectTimeoutTime?: number,
     blocking?: boolean,
@@ -2795,6 +2811,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
   @startStop.ready(new nodesErrors.ErrorNodeManagerNotRunning())
   @decorators.timedCancellable(true)
   public async syncNodeGraph(
+    network: string,
     initialNodes: Array<[NodeId, NodeAddress]>,
     connectionConnectTimeoutTime: number = this.connectionConnectTimeoutTime,
     blocking: boolean = false,
@@ -2817,6 +2834,7 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
       await this.syncNodeGraphHandler(
         ctx,
         undefined,
+        network,
         initialNodesParameter,
         connectionConnectTimeoutTime,
       );
@@ -2826,7 +2844,11 @@ class NodeManager<Manifest extends AgentClientManifestNodeManager> {
         delay: 0,
         handlerId: this.syncNodeGraphHandlerId,
         lazy: true,
-        parameters: [initialNodesParameter, connectionConnectTimeoutTime],
+        parameters: [
+          network,
+          initialNodesParameter,
+          connectionConnectTimeoutTime,
+        ],
         path: [this.tasksPath, this.syncNodeGraphHandlerId],
         priority: 0,
       });

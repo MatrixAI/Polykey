@@ -774,6 +774,7 @@ class PolykeyAgent {
         });
         const initialNodesShortlist = initialNodes.slice(0, 3);
         await this.nodeManager.syncNodeGraph(
+          options.network,
           initialNodesShortlist,
           undefined,
           false,

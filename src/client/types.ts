@@ -151,6 +151,12 @@ type NodeConnectionMessage = NodeAddressMessage & {
   authenticated: boolean;
 };
 
+type NodesSyncGraphMessage = {
+  network: string;
+  initialNodes: Array<[NodeIdEncoded, NodeAddress]>;
+  connectionTimeout?: number;
+};
+
 // Gestalts messages
 
 type ActionsListMessage = {
@@ -428,6 +434,7 @@ export type {
   NodeAddressMessage,
   NodesFindMessage,
   NodeConnectionMessage,
+  NodesSyncGraphMessage,
   ActionsListMessage,
   SetIdentityActionMessage,
   SetNodeActionMessage,

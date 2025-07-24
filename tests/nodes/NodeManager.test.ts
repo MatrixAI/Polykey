@@ -2144,6 +2144,7 @@ describe(`${NodeManager.name}`, () => {
       const mockedRefreshBucket = jest.spyOn(nodeManager, 'refreshBucket');
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2203,6 +2204,7 @@ describe(`${NodeManager.name}`, () => {
       const mockedRefreshBucket = jest.spyOn(nodeManager, 'refreshBucket');
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2225,6 +2227,7 @@ describe(`${NodeManager.name}`, () => {
     });
     test('network entry with syncNodeGraph handles failure to resolve hostnames', async () => {
       const syncP = nodeManager.syncNodeGraph(
+        undefined,
         [
           [ncmPeers[0].nodeId, ['some.random.host' as Host, 55555 as Port]],
           [ncmPeers[0].nodeId, [localHost, 55555 as Port]],
@@ -2309,6 +2312,7 @@ describe(`${NodeManager.name}`, () => {
       expect(await nodeGraph.nodesTotal()).toBe(0);
 
       await nodeManager.syncNodeGraph(
+        undefined,
         [
           [
             ncmPeers[0].nodeId,
@@ -2962,6 +2966,147 @@ describe(`${NodeManager.name}`, () => {
       await expect(
         node1.nodeManager.claimNetwork(seedNodeId, network),
       ).rejects.toThrow(claimsErrors.ErrorEmptyStream);
+    });
+    test('node should automatically request a claim if it does not exist', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'public.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          false,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+      // We intentionally do not claim the network manually
+      const node1Id = node1.keyRing.getNodeId();
+      await allowNodeToJoin(seedNode.gestaltGraph, node1Id);
+      // Connect to the seed node
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+
+      await node1.nodeManager.syncNodeGraph(
+        network,
+        [
+          [
+            seedNode.keyRing.getNodeId(),
+            [localHost, seedNode.nodeConnectionManager.port],
+          ],
+        ],
+        1000,
+        true,
+      );
+
+      // We have now proved that a node can request access to the network from a node with network authority.
+      // Now we should be able to connect while authenticated to the seed node.
+
+      // Re-initiate authentication
+      await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
+      await node1.nodeConnectionManager.destroyConnection(seedNodeId, true);
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+
+      const networkAccess =
+        await node1.nodeManager.getClaimNetworkAccess(network);
+      if (networkAccess == null) fail('network access claim not found');
+      claimNetworkAccessUtils.verifyClaimNetworkAccess(
+        networkNodeId,
+        node1Id,
+        network,
+        networkAccess,
+      );
+
+      await node1.nodeManager.withConnF(seedNodeId, undefined, async () => {
+        // Do nothing
+      });
+    });
+    test('node should not request new claim if it already exists', async () => {
+      // Creating network credentials
+      const networkKeyPair = keysUtils.generateKeyPair();
+      const networkNodeId = keysUtils.publicKeyToNodeId(
+        networkKeyPair.publicKey,
+      );
+      const network = 'test.network.com';
+
+      // Setting up seed nodes claims
+      const seedNode = await createPeerNode();
+      const [, seedNodeClaimNetworkAuthority] =
+        await seedNode.nodeManager.createClaimNetworkAuthority(
+          networkNodeId,
+          network,
+          true,
+          async (claim) => {
+            claim.signWithPrivateKey(networkKeyPair.privateKey);
+            return claim;
+          },
+        );
+      await seedNode.nodeManager.createSelfSignedClaimNetworkAccess(
+        seedNodeClaimNetworkAuthority,
+      );
+      const seedNodeId = seedNode.keyRing.getNodeId();
+
+      // Setting up the new node entering the network
+      const node1 = await createPeerNode();
+
+      const node1Id = node1.keyRing.getNodeId();
+      await allowNodeToJoin(seedNode.gestaltGraph, node1Id);
+
+      // Connect to the seednode
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+
+      // Create a network access claim
+      await node1.nodeManager.claimNetwork(seedNodeId, network);
+
+      // Re-initiate authentication
+      await seedNode.nodeConnectionManager.destroyConnection(node1Id, true);
+      await node1.nodeConnectionManager.destroyConnection(seedNodeId, true);
+      await node1.nodeConnectionManager.createConnection(
+        [seedNodeId],
+        localHost,
+        seedNode.nodeConnectionManager.port,
+      );
+
+      // Check the claim once we have re-authenticated
+      const token1 = await node1.nodeManager.getClaimNetworkAccess(network);
+      if (token1 == null) fail('network access claim not found');
+      const token1Id = token1.payload.jti;
+
+      // Try claiming again
+      await expect(
+        node1.nodeManager.claimNetwork(seedNodeId, network),
+      ).toReject();
+
+      // The token should not have changed
+      const token2 = await node1.nodeManager.getClaimNetworkAccess(network);
+      if (token2 == null) fail('network access claim not found');
+      const token2Id = token2.payload.jti;
+      expect(token1Id).toBe(token2Id);
     });
   });
 });
