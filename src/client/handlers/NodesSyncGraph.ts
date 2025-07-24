@@ -7,7 +7,9 @@ import type {
   NodesSyncGraphMessage,
 } from '../types.js';
 import type { AgentClientManifest } from '../../nodes/agent/callers/index.js';
+import type { NodeId, NodeAddress } from '../../nodes/types.js';
 import { UnaryHandler } from '@matrixai/rpc';
+import * as nodesUtils from '../../nodes/utils.js';
 
 class NodesSyncGraph extends UnaryHandler<
   {
@@ -27,9 +29,14 @@ class NodesSyncGraph extends UnaryHandler<
     }: {
       nodeManager: NodeManager<AgentClientManifest>;
     } = this.container;
+    // Convert the encoded node id to the binary one we expect
+    const parsedInitialNodes = input.initialNodes.map(
+      (value) =>
+        [nodesUtils.decodeNodeId(value[0]), value[1]] as [NodeId, NodeAddress],
+    );
     await nodeManager.syncNodeGraph(
       input.network,
-      input.initialNodes,
+      parsedInitialNodes,
       input.connectionTimeout,
       true,
       ctx,

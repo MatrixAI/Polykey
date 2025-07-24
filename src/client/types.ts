@@ -27,7 +27,6 @@ import type {
   NodeContact,
   NodeAddress,
   NodeContactAddressData,
-  NodeId,
 } from '../nodes/types.js';
 import type { AuditEventsGetTypeOverride } from './callers/auditEventsGet.js';
 
@@ -154,7 +153,7 @@ type NodeConnectionMessage = NodeAddressMessage & {
 
 type NodesSyncGraphMessage = {
   network: string;
-  initialNodes: Array<[NodeId, NodeAddress]>;
+  initialNodes: Array<[NodeIdEncoded, NodeAddress]>;
   connectionTimeout?: number;
 };
 
