@@ -9,6 +9,7 @@ import type {
   SignedToken,
   SignedTokenEncoded,
   TokenHeaderSignatureEncoded,
+  CompactToken,
 } from './types.js';
 import { Buffer } from 'buffer';
 import canonicalize from 'canonicalize';
@@ -16,6 +17,9 @@ import * as ids from '../ids/index.js';
 import * as validationErrors from '../validation/errors.js';
 import * as keysUtils from '../keys/utils/index.js';
 import * as utils from '../utils/index.js';
+
+const compactTokenAssertRegex =
+  /^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$/;
 
 function generateTokenPayload(payload: TokenPayload): TokenPayloadEncoded {
   // @ts-ignore: canonicalize exports is function improperly for ESM
@@ -250,6 +254,22 @@ function parseSignedToken<P extends TokenPayload = TokenPayload>(
   };
 }
 
+/**
+ * Asserts a value is a valid compact token
+ */
+function assertCompactToken(
+  compactToken: unknown,
+): asserts compactToken is CompactToken {
+  if (typeof compactToken !== 'string') {
+    throw new validationErrors.ErrorParse('token must be a string');
+  }
+  if (!compactTokenAssertRegex.test(compactToken)) {
+    throw new validationErrors.ErrorParse(
+      'Input is not a compact JWT (format: xxxx.yyyy.zzzz, base64url-encoded)',
+    );
+  }
+}
+
 export {
   generateTokenPayload,
   generateTokenProtectedHeader,
@@ -261,4 +281,5 @@ export {
   parseTokenSignature,
   parseTokenHeaderSignature,
   parseSignedToken,
+  assertCompactToken,
 };

@@ -79,6 +79,23 @@ class Token<P extends TokenPayload = TokenPayload> {
     );
   }
 
+  public static fromCompact<P extends TokenPayload = TokenPayload>(
+    signedTokenEncoded: string,
+  ): Token<P> {
+    tokensUtils.assertCompactToken(signedTokenEncoded);
+    const [header, payload, signature] = signedTokenEncoded.split('.');
+    const tokenEncoded = {
+      payload: payload,
+      signatures: [
+        {
+          protected: header,
+          signature: signature,
+        },
+      ],
+    } as SignedTokenEncoded;
+    return this.fromEncoded(tokenEncoded);
+  }
+
   public constructor(
     payload: P,
     payloadEncoded: TokenPayloadEncoded,
@@ -256,6 +273,20 @@ class Token<P extends TokenPayload = TokenPayload> {
    */
   public toJSON() {
     return this.toEncoded();
+  }
+
+  /**
+   * The compact, xxxx.yyyy.zzzz representation of this `Token` is `string`. The
+   * token must have exactly one signature, otherwise it cannot be converted to
+   * a compact token. This function will return undefined in that case.
+   */
+  public toCompact(): string | undefined {
+    if (this.signatures.length !== 1) {
+      return;
+    }
+    const { payload, signatures } = this.toEncoded();
+    const { protected: header, signature } = signatures[0];
+    return `${header}.${payload}.${signature}`;
   }
 }
 
